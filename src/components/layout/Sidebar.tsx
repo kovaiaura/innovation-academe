@@ -30,9 +30,8 @@ const menuItems: MenuItem[] = [
   { label: 'Institutions', icon: <Building2 className="h-5 w-5" />, path: '/institutions', roles: ['system_admin'] },
   { label: 'Licenses', icon: <Shield className="h-5 w-5" />, path: '/licenses', roles: ['system_admin'] },
   // Officers Management
-  { label: 'Officer Directory', icon: <Users className="h-5 w-5" />, path: '/officers', roles: ['system_admin'] },
+  { label: 'Officer Management', icon: <Users className="h-5 w-5" />, path: '/officers', roles: ['system_admin'] },
   { label: 'Attendance & Payroll', icon: <Clock className="h-5 w-5" />, path: '/officer-attendance', roles: ['system_admin'] },
-  { label: 'Officer Assignments', icon: <UserCheck className="h-5 w-5" />, path: '/officer-assignments', roles: ['system_admin'] },
   // CRM & Communication
   { label: 'Contacts & Leads', icon: <Users className="h-5 w-5" />, path: '/contacts', roles: ['system_admin'] },
   { label: 'Renewal Tracker', icon: <Calendar className="h-5 w-5" />, path: '/renewal-tracker', roles: ['system_admin'] },

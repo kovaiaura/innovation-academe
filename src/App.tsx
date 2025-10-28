@@ -17,9 +17,8 @@ import SystemAdminTenants from "./pages/system-admin/Tenants";
 import SystemAdminInstitutions from "./pages/system-admin/Institutions";
 import SystemAdminLicenses from "./pages/system-admin/Licenses";
 import SystemAdminReports from "./pages/system-admin/Reports";
-import Officers from "./pages/system-admin/Officers";
+import OfficerManagement from "./pages/system-admin/OfficerManagement";
 import SystemAdminOfficerAttendance from "./pages/system-admin/OfficerAttendance";
-import OfficerAssignments from "./pages/system-admin/OfficerAssignments";
 import Contacts from "./pages/system-admin/Contacts";
 import RenewalTracker from "./pages/system-admin/RenewalTracker";
 import CommunicationLog from "./pages/system-admin/CommunicationLog";
@@ -140,7 +139,7 @@ const App = () => (
               path="/system-admin/officers"
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
-                  <Officers />
+                  <OfficerManagement />
                 </ProtectedRoute>
               }
             />
@@ -149,14 +148,6 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <SystemAdminOfficerAttendance />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/system-admin/officer-assignments"
-              element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
-                  <OfficerAssignments />
                 </ProtectedRoute>
               }
             />
