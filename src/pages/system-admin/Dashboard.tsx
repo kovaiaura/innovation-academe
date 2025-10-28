@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Building2, Users, GraduationCap, Key, TrendingUp, AlertCircle, Phone, Package } from 'lucide-react';
+import { Building2, Users, GraduationCap, Key, TrendingUp, AlertCircle, Phone, Package, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Layout } from '@/components/layout/Layout';
@@ -215,6 +215,12 @@ export default function SystemAdminDashboard() {
                 <Link to="/system-admin/inventory-management#overview">
                   <Package className="h-6 w-6" />
                   Inventory Management
+                </Link>
+              </Button>
+              <Button variant="outline" className="h-24 flex-col gap-2" asChild>
+                <Link to="/system-admin/institutional-calendar">
+                  <Calendar className="h-6 w-6" />
+                  Institutional Calendar
                 </Link>
               </Button>
             </div>

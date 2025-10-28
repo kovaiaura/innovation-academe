@@ -49,6 +49,7 @@ import ManagementReports from "./pages/management/Reports";
 import SystemAdminCourseManagement from "./pages/system-admin/CourseManagement";
 import OfficerCourseManagement from "./pages/officer/CourseManagement";
 import StudentCourseDetail from "./pages/student/CourseDetail";
+import InstitutionalCalendar from "./pages/system-admin/InstitutionalCalendar";
 
 const queryClient = new QueryClient();
 
@@ -152,6 +153,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <SystemAdminCourseManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/institutional-calendar"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <InstitutionalCalendar />
                 </ProtectedRoute>
               }
             />
