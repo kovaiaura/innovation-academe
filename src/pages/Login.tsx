@@ -56,6 +56,16 @@ export default function Login() {
           <CardDescription>
             Enter your credentials to access your account
           </CardDescription>
+          <div className="mt-4 rounded-lg border bg-muted/50 p-3 text-xs">
+            <p className="font-semibold mb-2">Mock Credentials:</p>
+            <div className="space-y-1 text-muted-foreground">
+              <p>Super Admin: <code>admin@metainnova.com</code> / <code>admin123</code></p>
+              <p>Student: <code>student@college.edu</code> / <code>student123</code></p>
+              <p>Officer: <code>officer@college.edu</code> / <code>officer123</code></p>
+              <p>Teacher: <code>teacher@college.edu</code> / <code>teacher123</code></p>
+              <p>Inst. Admin: <code>admin@college.edu</code> / <code>admin123</code></p>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">

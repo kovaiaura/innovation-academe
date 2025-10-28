@@ -1,28 +1,41 @@
 import api from './api';
 import { AuthResponse, User } from '@/types';
 import { jwtDecode } from 'jwt-decode';
+import { mockAuthService } from '@/data/mockUsers';
 
 export interface LoginCredentials {
   email: string;
   password: string;
 }
 
+// Toggle this to switch between mock and real API
+const USE_MOCK_AUTH = true;
+
 export const authService = {
   // Login
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/auth/login', credentials);
+    let response: AuthResponse;
+
+    if (USE_MOCK_AUTH) {
+      // Use mock authentication
+      response = await mockAuthService.login(credentials.email, credentials.password);
+    } else {
+      // Use real API
+      const apiResponse = await api.post<AuthResponse>('/auth/login', credentials);
+      response = apiResponse.data;
+    }
     
     // Store token and user data
-    if (response.data.success && response.data.token) {
-      localStorage.setItem('authToken', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+    if (response.success && response.token) {
+      localStorage.setItem('authToken', response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
       
-      if (response.data.tenant) {
-        localStorage.setItem('tenant', JSON.stringify(response.data.tenant));
+      if (response.tenant) {
+        localStorage.setItem('tenant', JSON.stringify(response.tenant));
       }
     }
     
-    return response.data;
+    return response;
   },
 
   // Logout
