@@ -18,7 +18,7 @@ import SystemAdminReports from "./pages/system-admin/Reports";
 import OfficerManagement from "./pages/system-admin/OfficerManagement";
 import SystemAdminOfficerAttendance from "./pages/system-admin/OfficerAttendance";
 import CRMCommunication from "./pages/system-admin/CRMCommunication";
-import InventoryOverview from "./pages/system-admin/InventoryOverview";
+import InventoryManagement from "./pages/system-admin/InventoryManagement";
 import MonthlyReports from "./pages/system-admin/MonthlyReports";
 import CustomAnalytics from "./pages/system-admin/CustomAnalytics";
 import StudentDashboard from "./pages/student/Dashboard";
@@ -139,10 +139,10 @@ const App = () => (
               }
             />
             <Route
-              path="/system-admin/inventory-overview"
+              path="/system-admin/inventory-management"
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
-                  <InventoryOverview />
+                  <InventoryManagement />
                 </ProtectedRoute>
               }
             />

@@ -33,7 +33,7 @@ const menuItems: MenuItem[] = [
   // CRM & Communication
   { label: 'CRM & Communication', icon: <Phone className="h-5 w-5" />, path: '/crm', roles: ['system_admin'] },
   // Inventory & Purchase
-  { label: 'Inventory Overview', icon: <Package className="h-5 w-5" />, path: '/inventory-overview', roles: ['system_admin'] },
+  { label: 'Inventory Management', icon: <Package className="h-5 w-5" />, path: '/inventory-management', roles: ['system_admin'] },
   // Analytics & Reports
   { label: 'Monthly Reports', icon: <FileText className="h-5 w-5" />, path: '/monthly-reports', roles: ['system_admin'] },
   { label: 'Custom Analytics', icon: <PieChart className="h-5 w-5" />, path: '/custom-analytics', roles: ['system_admin'] },

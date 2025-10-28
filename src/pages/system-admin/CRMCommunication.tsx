@@ -74,19 +74,6 @@ interface FollowUpTask {
   assigned_to: string;
 }
 
-interface PurchaseRequest {
-  id: string;
-  institution_id: string;
-  institution_name: string;
-  requested_by: string;
-  items: Array<{ name: string; quantity: number; unit_price: number }>;
-  total_amount: number;
-  status: 'pending' | 'approved' | 'rejected' | 'completed';
-  requested_date: string;
-  category: string;
-  notes?: string;
-}
-
 interface ActionNote {
   id: string;
   date: string;
@@ -134,12 +121,6 @@ const mockFollowUpTasks: FollowUpTask[] = [
   { id: "4", institution_id: "inst1", institution_name: "Tech Valley University", contact_id: "1", contact_name: "Dr. Sarah Johnson", task_description: "Check renewal decision status", due_date: "2025-02-15", priority: "high", status: "pending", assigned_to: "Admin" },
 ];
 
-const mockPurchaseRequests: PurchaseRequest[] = [
-  { id: "1", institution_id: "inst1", institution_name: "Tech Valley University", requested_by: "Dr. Sarah Johnson", items: [{ name: "Arduino Kits", quantity: 50, unit_price: 45 }, { name: "Raspberry Pi", quantity: 30, unit_price: 75 }], total_amount: 4500, status: "pending", requested_date: "2025-01-10", category: "Electronics" },
-  { id: "2", institution_id: "inst2", institution_name: "Innovation High School", requested_by: "Prof. Michael Chen", items: [{ name: "3D Printer", quantity: 2, unit_price: 2500 }], total_amount: 5000, status: "approved", requested_date: "2025-01-08", category: "Lab Equipment" },
-  { id: "3", institution_id: "inst3", institution_name: "Future Skills Academy", requested_by: "Ms. Emily Rodriguez", items: [{ name: "Laptops", quantity: 25, unit_price: 800 }], total_amount: 20000, status: "pending", requested_date: "2025-01-12", category: "Computers" },
-];
-
 const mockActionNotes: ActionNote[] = [
   { id: "1", date: "2025-01-15", related_to_type: "institution", related_to_id: "inst1", related_to_name: "Tech Valley University", category: "action_item", priority: "high", content: "Need to finalize premium upgrade terms and send proposal by EOW", action_required: true, assigned_to: "Admin", due_date: "2025-01-20", status: "pending", created_by: "Admin", created_at: "2025-01-15T10:00:00Z" },
   { id: "2", date: "2025-01-10", related_to_type: "contact", related_to_id: "2", related_to_name: "Prof. Michael Chen", category: "discussion", priority: "medium", content: "Discussed lab modernization plans. Interested in IoT equipment package.", action_required: false, status: "completed", created_by: "Admin", created_at: "2025-01-10T14:30:00Z" },
@@ -151,7 +132,6 @@ export default function CRMCommunication() {
   const [communicationLogs, setCommunicationLogs] = useState<CommunicationLog[]>(mockCommunicationLogs);
   const [renewalContracts, setRenewalContracts] = useState<RenewalContract[]>(mockRenewalContracts);
   const [followUpTasks, setFollowUpTasks] = useState<FollowUpTask[]>(mockFollowUpTasks);
-  const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>(mockPurchaseRequests);
   const [actionNotes, setActionNotes] = useState<ActionNote[]>(mockActionNotes);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -159,7 +139,6 @@ export default function CRMCommunication() {
   const [logTypeFilter, setLogTypeFilter] = useState<string>("all");
   const [renewalStatusFilter, setRenewalStatusFilter] = useState<string>("all");
   const [taskStatusFilter, setTaskStatusFilter] = useState<string>("all");
-  const [requestStatusFilter, setRequestStatusFilter] = useState<string>("all");
   const [noteStatusFilter, setNoteStatusFilter] = useState<string>("all");
 
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
@@ -303,20 +282,6 @@ export default function CRMCommunication() {
     toast.success("Task marked as completed");
   };
 
-  const handleApproveRequest = (id: string) => {
-    setPurchaseRequests(purchaseRequests.map(req =>
-      req.id === id ? { ...req, status: "approved" as const } : req
-    ));
-    toast.success("Purchase request approved");
-  };
-
-  const handleRejectRequest = (id: string) => {
-    setPurchaseRequests(purchaseRequests.map(req =>
-      req.id === id ? { ...req, status: "rejected" as const } : req
-    ));
-    toast.success("Purchase request rejected");
-  };
-
   const handleAddNote = () => {
     const newNote: ActionNote = {
       id: Date.now().toString(),
@@ -376,12 +341,6 @@ export default function CRMCommunication() {
     return matchesSearch && matchesStatus;
   });
 
-  const filteredRequests = purchaseRequests.filter(req => {
-    const matchesSearch = req.institution_name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = requestStatusFilter === "all" || req.status === requestStatusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
   const filteredNotes = actionNotes.filter(note => {
     const matchesSearch = note.related_to_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       note.content.toLowerCase().includes(searchTerm.toLowerCase());
@@ -438,16 +397,6 @@ export default function CRMCommunication() {
     return <Badge variant={variants[status]}>{status}</Badge>;
   };
 
-  const getRequestStatusBadge = (status: PurchaseRequest['status']) => {
-    const variants: Record<PurchaseRequest['status'], "default" | "secondary" | "destructive" | "outline"> = { 
-      pending: "secondary", 
-      approved: "default", 
-      rejected: "destructive", 
-      completed: "outline" 
-    };
-    return <Badge variant={variants[status]}>{status}</Badge>;
-  };
-
   const getNoteStatusBadge = (status: ActionNote['status']) => {
     const variants: Record<ActionNote['status'], "default" | "secondary" | "outline"> = { 
       pending: "secondary", 
@@ -485,11 +434,6 @@ export default function CRMCommunication() {
     overdue: followUpTasks.filter(t => t.status === 'overdue').length,
   };
 
-  const requestStats = {
-    pending: purchaseRequests.filter(r => r.status === 'pending').length,
-    pendingValue: purchaseRequests.filter(r => r.status === 'pending').reduce((sum, r) => sum + r.total_amount, 0),
-  };
-
   const noteStats = {
     actionItems: actionNotes.filter(n => n.action_required && n.status !== 'completed').length,
     overdue: actionNotes.filter(n => n.action_required && n.due_date && new Date(n.due_date) < new Date() && n.status !== 'completed').length,
@@ -509,7 +453,6 @@ export default function CRMCommunication() {
             <TabsTrigger value="logs">Communication Logs</TabsTrigger>
             <TabsTrigger value="renewals">Renewal Tracker ({renewalStats.expiring})</TabsTrigger>
             <TabsTrigger value="followups">Follow-Up Scheduler ({taskStats.pending})</TabsTrigger>
-            <TabsTrigger value="purchases">Purchase Requests ({requestStats.pending})</TabsTrigger>
             <TabsTrigger value="notes">Notes & Actions ({noteStats.actionItems})</TabsTrigger>
           </TabsList>
 
@@ -1001,94 +944,6 @@ export default function CRMCommunication() {
                             <Button size="sm" variant="outline" onClick={() => handleCompleteTask(task.id)}>
                               <CheckCircle className="mr-1 h-3 w-3" />Complete
                             </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Purchase Requests Tab */}
-          <TabsContent value="purchases" className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{requestStats.pending}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Pending Value</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">${requestStats.pendingValue.toLocaleString()}</div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Purchase Requests</CardTitle>
-                    <CardDescription>Review and approve purchase requests from institutions</CardDescription>
-                  </div>
-                  <Select value={requestStatusFilter} onValueChange={setRequestStatusFilter}>
-                    <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by status" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Institution</TableHead>
-                      <TableHead>Requested By</TableHead>
-                      <TableHead>Items</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredRequests.map((request) => (
-                      <TableRow key={request.id}>
-                        <TableCell className="font-medium">{request.institution_name}</TableCell>
-                        <TableCell>{request.requested_by}</TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {request.items.map((item, idx) => (
-                              <div key={idx}>{item.name} x{item.quantity}</div>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell>{request.category}</TableCell>
-                        <TableCell>${request.total_amount.toLocaleString()}</TableCell>
-                        <TableCell>{request.requested_date}</TableCell>
-                        <TableCell>{getRequestStatusBadge(request.status)}</TableCell>
-                        <TableCell>
-                          {request.status === 'pending' && (
-                            <div className="flex gap-2">
-                              <Button size="sm" onClick={() => handleApproveRequest(request.id)}>Approve</Button>
-                              <Button size="sm" variant="destructive" onClick={() => handleRejectRequest(request.id)}>Reject</Button>
-                            </div>
                           )}
                         </TableCell>
                       </TableRow>
