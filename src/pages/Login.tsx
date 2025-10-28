@@ -50,7 +50,7 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-meta-dark">
-            <span className="text-3xl font-bold text-meta-accent">MI</span>
+            <span className="text-3xl font-bold text-white">MI</span>
           </div>
           <CardTitle className="text-2xl font-bold">Meta-INNOVA LMS</CardTitle>
           <CardDescription>
