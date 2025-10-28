@@ -12,6 +12,10 @@ import SuperAdminDashboard from "./pages/super-admin/Dashboard";
 import SuperAdminTenants from "./pages/super-admin/Tenants";
 import SuperAdminSystemConfig from "./pages/super-admin/SystemConfig";
 import SuperAdminAuditLogs from "./pages/super-admin/AuditLogs";
+import SystemAdminDashboard from "./pages/system-admin/Dashboard";
+import SystemAdminInstitutions from "./pages/system-admin/Institutions";
+import SystemAdminLicenses from "./pages/system-admin/Licenses";
+import SystemAdminReports from "./pages/system-admin/Reports";
 import StudentDashboard from "./pages/student/Dashboard";
 import StudentCourses from "./pages/student/Courses";
 import StudentProjects from "./pages/student/Projects";
@@ -80,6 +84,40 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['super_admin']}>
                   <SuperAdminAuditLogs />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* System Admin Routes */}
+            <Route
+              path="/system-admin/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/institutions"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminInstitutions />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/licenses"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminLicenses />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/reports"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminReports />
                 </ProtectedRoute>
               }
             />

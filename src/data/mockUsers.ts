@@ -58,6 +58,15 @@ export const mockUsers: MockUser[] = [
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=InstAdmin',
     created_at: new Date().toISOString(),
   },
+  {
+    id: '6',
+    email: 'system@metainnova.com',
+    password: 'system123',
+    name: 'System Admin',
+    role: 'system_admin',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SystemAdmin',
+    created_at: new Date().toISOString(),
+  },
 ];
 
 export const mockTenants = [

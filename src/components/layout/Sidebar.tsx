@@ -24,7 +24,10 @@ const menuItems: MenuItem[] = [
   { label: 'Tenants', icon: <Building2 className="h-5 w-5" />, path: '/tenants', roles: ['super_admin'] },
   { label: 'System Config', icon: <Settings className="h-5 w-5" />, path: '/system-config', roles: ['super_admin'] },
   { label: 'Audit Logs', icon: <FileText className="h-5 w-5" />, path: '/audit-logs', roles: ['super_admin'] },
+  // System Admin menu items
   { label: 'Institutions', icon: <Building2 className="h-5 w-5" />, path: '/institutions', roles: ['system_admin'] },
+  { label: 'Licenses', icon: <Award className="h-5 w-5" />, path: '/licenses', roles: ['system_admin'] },
+  { label: 'Reports', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['system_admin'] },
   // Institution Admin menu items
   { label: 'Faculty', icon: <Users className="h-5 w-5" />, path: '/teachers', roles: ['institution_admin'] },
   { label: 'Students', icon: <GraduationCap className="h-5 w-5" />, path: '/students', roles: ['institution_admin'] },
@@ -72,6 +75,11 @@ export function Sidebar() {
     // Super admin routes
     if (user.role === 'super_admin') {
       return `/super-admin${path}`;
+    }
+
+    // System admin routes
+    if (user.role === 'system_admin') {
+      return `/system-admin${path}`;
     }
     
     // Institution Admin routes (with tenant path)

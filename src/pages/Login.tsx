@@ -64,6 +64,7 @@ export default function Login() {
               <p>Officer: <code>officer@college.edu</code> / <code>officer123</code></p>
               <p>Teacher: <code>teacher@college.edu</code> / <code>teacher123</code></p>
               <p>Inst. Admin: <code>admin@college.edu</code> / <code>admin123</code></p>
+              <p>System Admin: <code>system@metainnova.com</code> / <code>system123</code></p>
             </div>
           </div>
         </CardHeader>
