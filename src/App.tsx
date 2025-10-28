@@ -9,6 +9,9 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
 import SuperAdminDashboard from "./pages/super-admin/Dashboard";
+import SuperAdminTenants from "./pages/super-admin/Tenants";
+import SuperAdminSystemConfig from "./pages/super-admin/SystemConfig";
+import SuperAdminAuditLogs from "./pages/super-admin/AuditLogs";
 import StudentDashboard from "./pages/student/Dashboard";
 
 const queryClient = new QueryClient();
@@ -31,6 +34,30 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['super_admin']}>
                   <SuperAdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/super-admin/tenants"
+              element={
+                <ProtectedRoute allowedRoles={['super_admin']}>
+                  <SuperAdminTenants />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/super-admin/system-config"
+              element={
+                <ProtectedRoute allowedRoles={['super_admin']}>
+                  <SuperAdminSystemConfig />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/super-admin/audit-logs"
+              element={
+                <ProtectedRoute allowedRoles={['super_admin']}>
+                  <SuperAdminAuditLogs />
                 </ProtectedRoute>
               }
             />

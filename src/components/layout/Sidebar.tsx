@@ -4,7 +4,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   Home, Users, Settings, LogOut, ChevronLeft, 
-  BookOpen, Target, Calendar, Award, BarChart 
+  BookOpen, Target, Calendar, Award, BarChart,
+  Building2, FileText
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
@@ -20,8 +21,10 @@ interface MenuItem {
 // Role-based menu configuration
 const menuItems: MenuItem[] = [
   { label: 'Dashboard', icon: <Home className="h-5 w-5" />, path: '/dashboard', roles: ['super_admin', 'system_admin', 'institution_admin', 'management', 'officer', 'teacher', 'student'] },
-  { label: 'Tenants', icon: <Users className="h-5 w-5" />, path: '/tenants', roles: ['super_admin'] },
-  { label: 'Institutions', icon: <Users className="h-5 w-5" />, path: '/institutions', roles: ['system_admin'] },
+  { label: 'Tenants', icon: <Building2 className="h-5 w-5" />, path: '/tenants', roles: ['super_admin'] },
+  { label: 'System Config', icon: <Settings className="h-5 w-5" />, path: '/system-config', roles: ['super_admin'] },
+  { label: 'Audit Logs', icon: <FileText className="h-5 w-5" />, path: '/audit-logs', roles: ['super_admin'] },
+  { label: 'Institutions', icon: <Building2 className="h-5 w-5" />, path: '/institutions', roles: ['system_admin'] },
   { label: 'My Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['student', 'teacher'] },
   { label: 'My Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['student', 'officer'] },
   { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['student', 'teacher'] },
@@ -39,10 +42,22 @@ export function Sidebar() {
     window.location.href = '/login';
   };
 
-  // Filter menu items based on user role
   const visibleMenuItems = menuItems.filter(
     (item) => user && item.roles.includes(user.role)
   );
+
+  // Get base path for role-based routing
+  const getFullPath = (path: string) => {
+    if (!user) return path;
+    
+    // Super admin routes
+    if (user.role === 'super_admin') {
+      return `/super-admin${path}`;
+    }
+    
+    // For other roles, will be implemented in future phases
+    return path;
+  };
 
   return (
     <div
@@ -75,9 +90,10 @@ export function Sidebar() {
       <ScrollArea className="flex-1 px-2 py-4">
         <div className="space-y-1">
           {visibleMenuItems.map((item) => {
+            const fullPath = getFullPath(item.path);
             const isActive = location.pathname.includes(item.path);
             return (
-              <Link key={item.path} to={item.path}>
+              <Link key={item.path} to={fullPath}>
                 <Button
                   variant="ghost"
                   className={cn(
