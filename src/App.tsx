@@ -13,6 +13,12 @@ import SuperAdminTenants from "./pages/super-admin/Tenants";
 import SuperAdminSystemConfig from "./pages/super-admin/SystemConfig";
 import SuperAdminAuditLogs from "./pages/super-admin/AuditLogs";
 import StudentDashboard from "./pages/student/Dashboard";
+import StudentCourses from "./pages/student/Courses";
+import StudentProjects from "./pages/student/Projects";
+import StudentTimetable from "./pages/student/Timetable";
+import StudentCertificates from "./pages/student/Certificates";
+import StudentGamification from "./pages/student/Gamification";
+import StudentResume from "./pages/student/Resume";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +74,54 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['student']}>
                   <StudentDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/courses"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentCourses />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/projects"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentProjects />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/timetable"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentTimetable />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/certificates"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentCertificates />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/gamification"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentGamification />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/resume"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentResume />
                 </ProtectedRoute>
               }
             />

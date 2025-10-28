@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { 
   Home, Users, Settings, LogOut, ChevronLeft, 
   BookOpen, Target, Calendar, Award, BarChart,
-  Building2, FileText
+  Building2, FileText, Trophy
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
@@ -29,6 +29,8 @@ const menuItems: MenuItem[] = [
   { label: 'My Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['student', 'officer'] },
   { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['student', 'teacher'] },
   { label: 'Certificates', icon: <Award className="h-5 w-5" />, path: '/certificates', roles: ['student'] },
+  { label: 'Gamification', icon: <Trophy className="h-5 w-5" />, path: '/gamification', roles: ['student'] },
+  { label: 'Resume', icon: <FileText className="h-5 w-5" />, path: '/resume', roles: ['student'] },
   { label: 'Analytics', icon: <BarChart className="h-5 w-5" />, path: '/analytics', roles: ['super_admin', 'system_admin', 'institution_admin'] },
 ];
 
@@ -53,6 +55,15 @@ export function Sidebar() {
     // Super admin routes
     if (user.role === 'super_admin') {
       return `/super-admin${path}`;
+    }
+    
+    // Student routes (with tenant path)
+    if (user.role === 'student' && user.tenant_id) {
+      // Get tenant slug from localStorage
+      const tenantStr = localStorage.getItem('tenant');
+      const tenant = tenantStr ? JSON.parse(tenantStr) : null;
+      const tenantSlug = tenant?.slug || 'default';
+      return `/tenant/${tenantSlug}/student${path}`;
     }
     
     // For other roles, will be implemented in future phases
