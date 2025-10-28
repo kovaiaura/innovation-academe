@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { BookOpen, Plus, Upload, FileText, Video, Link as LinkIcon, Search, Filter, Edit, Trash2, Copy, BarChart3, Users, TrendingUp, Award, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { mockCourses, mockModules, mockContent, mockAssignments, mockQuizzes, mockCourseAssignments, mockCourseAnalytics } from '@/data/mockCourseData';
+import { ModuleBuilder } from '@/components/course/ModuleBuilder';
 
 export default function CourseManagement() {
   const [activeTab, setActiveTab] = useState('all-courses');
@@ -29,7 +30,8 @@ export default function CourseManagement() {
     difficulty: 'beginner',
     duration_weeks: 8,
     prerequisites: '',
-    learning_outcomes: ['']
+    learning_outcomes: [''],
+    modules: [] as any[]
   });
 
   const filteredCourses = courses.filter(course =>
@@ -44,8 +46,27 @@ export default function CourseManagement() {
     totalEnrollments: mockCourseAnalytics.reduce((sum, a) => sum + a.total_enrollments, 0)
   };
 
-  const handleCreateCourse = () => {
-    toast.success('Course created successfully!');
+  const handleCreateCourse = (isDraft = false) => {
+    if (!newCourse.title || !newCourse.course_code) {
+      toast.error("Please fill in course title and code");
+      return;
+    }
+
+    console.log("Creating course:", { ...newCourse, status: isDraft ? 'draft' : 'active' });
+    toast.success(`Course ${isDraft ? 'saved as draft' : 'created and published'} successfully!`);
+    
+    // Reset form after creation
+    setNewCourse({
+      course_code: '',
+      title: '',
+      description: '',
+      category: 'ai_ml',
+      difficulty: 'beginner',
+      duration_weeks: 8,
+      prerequisites: '',
+      learning_outcomes: [''],
+      modules: []
+    });
     setActiveTab('all-courses');
   };
 
@@ -212,10 +233,11 @@ export default function CourseManagement() {
 
           {/* Tab 2: Create Course */}
           <TabsContent value="create" className="space-y-6">
+            {/* Basic Course Information */}
             <Card>
               <CardHeader>
-                <CardTitle>Create New Course</CardTitle>
-                <CardDescription>Fill in the course details to create a new course</CardDescription>
+                <CardTitle>Basic Course Information</CardTitle>
+                <CardDescription>Enter the fundamental details of your course</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-2">
@@ -301,16 +323,29 @@ export default function CourseManagement() {
                 <div className="space-y-2">
                   <Label>Learning Outcomes</Label>
                   {newCourse.learning_outcomes.map((outcome, index) => (
-                    <Input
-                      key={index}
-                      placeholder={`Learning outcome ${index + 1}`}
-                      value={outcome}
-                      onChange={(e) => {
-                        const updated = [...newCourse.learning_outcomes];
-                        updated[index] = e.target.value;
-                        setNewCourse({ ...newCourse, learning_outcomes: updated });
-                      }}
-                    />
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        placeholder={`Learning outcome ${index + 1}`}
+                        value={outcome}
+                        onChange={(e) => {
+                          const updated = [...newCourse.learning_outcomes];
+                          updated[index] = e.target.value;
+                          setNewCourse({ ...newCourse, learning_outcomes: updated });
+                        }}
+                      />
+                      {newCourse.learning_outcomes.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            const updated = newCourse.learning_outcomes.filter((_, i) => i !== index);
+                            setNewCourse({ ...newCourse, learning_outcomes: updated });
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
                   ))}
                   <Button
                     type="button"
@@ -322,11 +357,55 @@ export default function CourseManagement() {
                     Add Outcome
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
 
+            {/* Course Structure - Modules and Content */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Course Structure</CardTitle>
+                <CardDescription>
+                  Build your course by adding modules and uploading content (PDFs, videos, presentations, YouTube links, etc.)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ModuleBuilder
+                  modules={newCourse.modules}
+                  onChange={(modules) => setNewCourse({ ...newCourse, modules })}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Action Buttons */}
+            <Card>
+              <CardContent className="pt-6">
                 <div className="flex gap-4">
-                  <Button onClick={handleCreateCourse}>Save & Publish</Button>
-                  <Button variant="outline">Save as Draft</Button>
-                  <Button variant="ghost">Cancel</Button>
+                  <Button onClick={() => handleCreateCourse(false)} className="flex-1">
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    Save & Publish Course
+                  </Button>
+                  <Button variant="outline" className="flex-1" onClick={() => handleCreateCourse(true)}>
+                    Save as Draft
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => {
+                      setNewCourse({
+                        course_code: '',
+                        title: '',
+                        description: '',
+                        category: 'ai_ml',
+                        difficulty: 'beginner',
+                        duration_weeks: 8,
+                        prerequisites: '',
+                        learning_outcomes: [''],
+                        modules: []
+                      });
+                      setActiveTab('all-courses');
+                    }}
+                  >
+                    Cancel
+                  </Button>
                 </div>
               </CardContent>
             </Card>
