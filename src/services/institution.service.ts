@@ -1,5 +1,6 @@
 import api from './api';
 import { ApiResponse } from '@/types';
+import { Student } from '@/types/student';
 
 export interface Teacher {
   id: string;
@@ -90,11 +91,6 @@ export const institutionService = {
     return response.data;
   },
 
-  async deleteStudent(id: string): Promise<ApiResponse<void>> {
-    const response = await api.delete(`/institution/students/${id}`);
-    return response.data;
-  },
-
   // Course Assignments
   async getCourseAssignments(): Promise<ApiResponse<CourseAssignment[]>> {
     const response = await api.get('/institution/course-assignments');
@@ -130,6 +126,32 @@ export const institutionService = {
   // Dashboard Stats
   async getDashboardStats(): Promise<ApiResponse<any>> {
     const response = await api.get('/institution/dashboard/stats');
+    return response.data;
+  },
+
+  // Student Management
+  async getInstitutionById(id: string): Promise<ApiResponse<any>> {
+    const response = await api.get(`/institution/${id}`);
+    return response.data;
+  },
+
+  async getStudentsByInstitution(institutionId: string): Promise<ApiResponse<Student[]>> {
+    const response = await api.get(`/institution/${institutionId}/students`);
+    return response.data;
+  },
+
+  async getStudentsByClass(institutionId: string, className: string): Promise<ApiResponse<Student[]>> {
+    const response = await api.get(`/institution/${institutionId}/students/class/${className}`);
+    return response.data;
+  },
+
+  async updateStudentDetails(studentId: string, data: Partial<Student>): Promise<ApiResponse<Student>> {
+    const response = await api.put(`/institution/students/${studentId}`, data);
+    return response.data;
+  },
+
+  async deleteStudent(studentId: string): Promise<ApiResponse<void>> {
+    const response = await api.delete(`/institution/students/${studentId}`);
     return response.data;
   },
 };

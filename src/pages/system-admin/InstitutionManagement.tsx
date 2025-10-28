@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -135,6 +136,7 @@ const mockInstitutions: Institution[] = [
 ];
 
 export default function InstitutionManagement() {
+  const navigate = useNavigate();
   const [institutions, setInstitutions] = useState<Institution[]>(mockInstitutions);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -400,10 +402,10 @@ export default function InstitutionManagement() {
                   </TableHeader>
                   <TableBody>
                     {filteredInstitutions.map((inst) => (
-                      <TableRow key={inst.id}>
+                      <TableRow key={inst.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/system-admin/institutions/${inst.id}`)}>
                         <TableCell>
                           <div>
-                            <div className="font-medium">{inst.name}</div>
+                            <div className="font-medium text-primary hover:underline">{inst.name}</div>
                             <div className="text-sm text-muted-foreground">{inst.code}</div>
                           </div>
                         </TableCell>
