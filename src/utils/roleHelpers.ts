@@ -4,7 +4,7 @@ export const getRoleBasePath = (role: UserRole, tenantSlug?: string): string => 
   const basePaths: Record<UserRole, string> = {
     super_admin: '/super-admin',
     system_admin: '/system-admin',
-    institution_admin: tenantSlug ? `/tenant/${tenantSlug}/admin` : '/admin',
+    institution_admin: tenantSlug ? `/tenant/${tenantSlug}/institution` : '/institution',
     management: tenantSlug ? `/tenant/${tenantSlug}/management` : '/management',
     officer: tenantSlug ? `/tenant/${tenantSlug}/officer` : '/officer',
     teacher: tenantSlug ? `/tenant/${tenantSlug}/teacher` : '/teacher',

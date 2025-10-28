@@ -24,6 +24,11 @@ import OfficerSessions from "./pages/officer/Sessions";
 import OfficerProjects from "./pages/officer/Projects";
 import OfficerInventory from "./pages/officer/Inventory";
 import OfficerAttendance from "./pages/officer/Attendance";
+import InstitutionDashboard from "./pages/institution/Dashboard";
+import InstitutionTeachers from "./pages/institution/Teachers";
+import InstitutionStudents from "./pages/institution/Students";
+import InstitutionCourses from "./pages/institution/Courses";
+import InstitutionReports from "./pages/institution/Reports";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +74,48 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['super_admin']}>
                   <SuperAdminAuditLogs />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Institution Admin Routes (path-based multi-tenancy) */}
+            <Route
+              path="/tenant/:tenantId/institution/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['institution_admin']}>
+                  <InstitutionDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/institution/teachers"
+              element={
+                <ProtectedRoute allowedRoles={['institution_admin']}>
+                  <InstitutionTeachers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/institution/students"
+              element={
+                <ProtectedRoute allowedRoles={['institution_admin']}>
+                  <InstitutionStudents />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/institution/courses"
+              element={
+                <ProtectedRoute allowedRoles={['institution_admin']}>
+                  <InstitutionCourses />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/institution/reports"
+              element={
+                <ProtectedRoute allowedRoles={['institution_admin']}>
+                  <InstitutionReports />
                 </ProtectedRoute>
               }
             />
