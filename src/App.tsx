@@ -40,6 +40,10 @@ import TeacherGrades from "./pages/teacher/Grades";
 import TeacherAttendance from "./pages/teacher/Attendance";
 import TeacherSchedule from "./pages/teacher/Schedule";
 import TeacherMaterials from "./pages/teacher/Materials";
+import ManagementDashboard from "./pages/management/Dashboard";
+import ManagementFaculty from "./pages/management/Faculty";
+import ManagementPerformance from "./pages/management/Performance";
+import ManagementReports from "./pages/management/Reports";
 
 const queryClient = new QueryClient();
 
@@ -253,6 +257,40 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['officer']}>
                   <OfficerAttendance />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Management Routes (path-based multi-tenancy) */}
+            <Route
+              path="/tenant/:tenantId/management/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <ManagementDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/management/faculty"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <ManagementFaculty />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/management/performance"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <ManagementPerformance />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/management/reports"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <ManagementReports />
                 </ProtectedRoute>
               }
             />

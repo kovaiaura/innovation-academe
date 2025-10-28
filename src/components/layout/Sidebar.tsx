@@ -51,6 +51,10 @@ const menuItems: MenuItem[] = [
   { label: 'Certificates', icon: <Award className="h-5 w-5" />, path: '/certificates', roles: ['student'] },
   { label: 'Gamification', icon: <Trophy className="h-5 w-5" />, path: '/gamification', roles: ['student'] },
   { label: 'Resume', icon: <FileText className="h-5 w-5" />, path: '/resume', roles: ['student'] },
+  // Management menu items
+  { label: 'Faculty', icon: <Users className="h-5 w-5" />, path: '/faculty', roles: ['management'] },
+  { label: 'Performance', icon: <BarChart className="h-5 w-5" />, path: '/performance', roles: ['management'] },
+  { label: 'Reports', icon: <FileText className="h-5 w-5" />, path: '/reports', roles: ['management'] },
   { label: 'Analytics', icon: <BarChart className="h-5 w-5" />, path: '/analytics', roles: ['super_admin', 'system_admin'] },
 ];
 
@@ -104,6 +108,14 @@ export function Sidebar() {
       const tenant = tenantStr ? JSON.parse(tenantStr) : null;
       const tenantSlug = tenant?.slug || 'default';
       return `/tenant/${tenantSlug}/officer${path}`;
+    }
+
+    // Management routes (with tenant path)
+    if (user.role === 'management' && user.tenant_id) {
+      const tenantStr = localStorage.getItem('tenant');
+      const tenant = tenantStr ? JSON.parse(tenantStr) : null;
+      const tenantSlug = tenant?.slug || 'default';
+      return `/tenant/${tenantSlug}/management${path}`;
     }
     
     // Student routes (with tenant path)
