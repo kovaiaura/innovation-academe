@@ -50,7 +50,7 @@ export default function Login() {
   return <div 
       className="flex min-h-screen items-center justify-center p-4 relative"
       style={{
-        backgroundImage: `linear-gradient(rgba(71, 85, 105, 0.85), rgba(51, 65, 85, 0.9)), url(${loginBg})`,
+        backgroundImage: `linear-gradient(rgba(45, 67, 127, 0.85), rgba(45, 67, 127, 0.95)), url(${loginBg})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat'
