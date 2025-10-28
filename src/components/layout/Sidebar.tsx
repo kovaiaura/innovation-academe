@@ -26,15 +26,12 @@ const menuItems: MenuItem[] = [
   { label: 'System Config', icon: <Settings className="h-5 w-5" />, path: '/system-config', roles: ['super_admin'] },
   { label: 'Audit Logs', icon: <FileText className="h-5 w-5" />, path: '/audit-logs', roles: ['super_admin'] },
   // System Admin menu items - Business operations
-  { label: 'Tenants', icon: <Building2 className="h-5 w-5" />, path: '/tenants', roles: ['system_admin'] },
-  { label: 'Institutions', icon: <Building2 className="h-5 w-5" />, path: '/institutions', roles: ['system_admin'] },
-  { label: 'Licenses', icon: <Shield className="h-5 w-5" />, path: '/licenses', roles: ['system_admin'] },
+  { label: 'Institution Management', icon: <Building2 className="h-5 w-5" />, path: '/institutions', roles: ['system_admin'] },
   // Officers Management
   { label: 'Officer Management', icon: <Users className="h-5 w-5" />, path: '/officers', roles: ['system_admin'] },
   { label: 'Attendance & Payroll', icon: <Clock className="h-5 w-5" />, path: '/officer-attendance', roles: ['system_admin'] },
   // CRM & Communication
   { label: 'Contacts & Leads', icon: <Users className="h-5 w-5" />, path: '/contacts', roles: ['system_admin'] },
-  { label: 'Renewal Tracker', icon: <Calendar className="h-5 w-5" />, path: '/renewal-tracker', roles: ['system_admin'] },
   { label: 'Communication Log', icon: <Phone className="h-5 w-5" />, path: '/communication-log', roles: ['system_admin'] },
   // Inventory & Purchase
   { label: 'Purchase Requests', icon: <ShoppingCart className="h-5 w-5" />, path: '/purchase-requests', roles: ['system_admin'] },

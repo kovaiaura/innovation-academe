@@ -188,15 +188,9 @@ export default function SystemAdminDashboard() {
           <CardContent>
             <div className="grid gap-4 md:grid-cols-4">
               <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-                <Link to="/system-admin/tenants">
+                <Link to="/system-admin/institutions">
                   <Building2 className="h-6 w-6" />
-                  Manage Tenants
-                </Link>
-              </Button>
-              <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-                <Link to="/system-admin/licenses">
-                  <Key className="h-6 w-6" />
-                  License Management
+                  Institution Management
                 </Link>
               </Button>
               <Button variant="outline" className="h-24 flex-col gap-2" asChild>
@@ -206,9 +200,15 @@ export default function SystemAdminDashboard() {
                 </Link>
               </Button>
               <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-                <Link to="/system-admin/institutions">
-                  <Building2 className="h-6 w-6" />
-                  Institutions
+                <Link to="/system-admin/officers">
+                  <Users className="h-6 w-6" />
+                  Officer Management
+                </Link>
+              </Button>
+              <Button variant="outline" className="h-24 flex-col gap-2" asChild>
+                <Link to="/system-admin/contacts">
+                  <Users className="h-6 w-6" />
+                  Contacts & Leads
                 </Link>
               </Button>
             </div>

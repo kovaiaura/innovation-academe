@@ -13,14 +13,11 @@ import SuperAdminDashboard from "./pages/super-admin/Dashboard";
 import SuperAdminSystemConfig from "./pages/super-admin/SystemConfig";
 import SuperAdminAuditLogs from "./pages/super-admin/AuditLogs";
 import SystemAdminDashboard from "./pages/system-admin/Dashboard";
-import SystemAdminTenants from "./pages/system-admin/Tenants";
-import SystemAdminInstitutions from "./pages/system-admin/Institutions";
-import SystemAdminLicenses from "./pages/system-admin/Licenses";
+import InstitutionManagement from "./pages/system-admin/InstitutionManagement";
 import SystemAdminReports from "./pages/system-admin/Reports";
 import OfficerManagement from "./pages/system-admin/OfficerManagement";
 import SystemAdminOfficerAttendance from "./pages/system-admin/OfficerAttendance";
 import Contacts from "./pages/system-admin/Contacts";
-import RenewalTracker from "./pages/system-admin/RenewalTracker";
 import CommunicationLog from "./pages/system-admin/CommunicationLog";
 import PurchaseRequests from "./pages/system-admin/PurchaseRequests";
 import InventoryOverview from "./pages/system-admin/InventoryOverview";
@@ -104,26 +101,10 @@ const App = () => (
               }
             />
             <Route
-              path="/system-admin/tenants"
-              element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
-                  <SystemAdminTenants />
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/system-admin/institutions"
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
-                  <SystemAdminInstitutions />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/system-admin/licenses"
-              element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
-                  <SystemAdminLicenses />
+                  <InstitutionManagement />
                 </ProtectedRoute>
               }
             />
@@ -156,14 +137,6 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <Contacts />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/system-admin/renewal-tracker"
-              element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
-                  <RenewalTracker />
                 </ProtectedRoute>
               }
             />
