@@ -17,9 +17,7 @@ import InstitutionManagement from "./pages/system-admin/InstitutionManagement";
 import SystemAdminReports from "./pages/system-admin/Reports";
 import OfficerManagement from "./pages/system-admin/OfficerManagement";
 import SystemAdminOfficerAttendance from "./pages/system-admin/OfficerAttendance";
-import Contacts from "./pages/system-admin/Contacts";
-import CommunicationLog from "./pages/system-admin/CommunicationLog";
-import PurchaseRequests from "./pages/system-admin/PurchaseRequests";
+import CRMCommunication from "./pages/system-admin/CRMCommunication";
 import InventoryOverview from "./pages/system-admin/InventoryOverview";
 import MonthlyReports from "./pages/system-admin/MonthlyReports";
 import CustomAnalytics from "./pages/system-admin/CustomAnalytics";
@@ -133,26 +131,10 @@ const App = () => (
               }
             />
             <Route
-              path="/system-admin/contacts"
+              path="/system-admin/crm"
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
-                  <Contacts />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/system-admin/communication-log"
-              element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
-                  <CommunicationLog />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/system-admin/purchase-requests"
-              element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
-                  <PurchaseRequests />
+                  <CRMCommunication />
                 </ProtectedRoute>
               }
             />

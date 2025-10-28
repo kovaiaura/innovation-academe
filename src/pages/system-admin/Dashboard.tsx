@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Building2, Users, GraduationCap, Key, TrendingUp, AlertCircle } from 'lucide-react';
+import { Building2, Users, GraduationCap, Key, TrendingUp, AlertCircle, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Layout } from '@/components/layout/Layout';
@@ -206,9 +206,9 @@ export default function SystemAdminDashboard() {
                 </Link>
               </Button>
               <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-                <Link to="/system-admin/contacts">
-                  <Users className="h-6 w-6" />
-                  Contacts & Leads
+                <Link to="/system-admin/crm">
+                  <Phone className="h-6 w-6" />
+                  CRM & Communication
                 </Link>
               </Button>
             </div>

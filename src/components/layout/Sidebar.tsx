@@ -31,10 +31,8 @@ const menuItems: MenuItem[] = [
   { label: 'Officer Management', icon: <Users className="h-5 w-5" />, path: '/officers', roles: ['system_admin'] },
   { label: 'Attendance & Payroll', icon: <Clock className="h-5 w-5" />, path: '/officer-attendance', roles: ['system_admin'] },
   // CRM & Communication
-  { label: 'Contacts & Leads', icon: <Users className="h-5 w-5" />, path: '/contacts', roles: ['system_admin'] },
-  { label: 'Communication Log', icon: <Phone className="h-5 w-5" />, path: '/communication-log', roles: ['system_admin'] },
+  { label: 'CRM & Communication', icon: <Phone className="h-5 w-5" />, path: '/crm', roles: ['system_admin'] },
   // Inventory & Purchase
-  { label: 'Purchase Requests', icon: <ShoppingCart className="h-5 w-5" />, path: '/purchase-requests', roles: ['system_admin'] },
   { label: 'Inventory Overview', icon: <Package className="h-5 w-5" />, path: '/inventory-overview', roles: ['system_admin'] },
   // Analytics & Reports
   { label: 'Monthly Reports', icon: <FileText className="h-5 w-5" />, path: '/monthly-reports', roles: ['system_admin'] },
