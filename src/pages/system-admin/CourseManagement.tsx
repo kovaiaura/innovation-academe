@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,6 +18,7 @@ import { mockCourses, mockModules, mockContent, mockAssignments, mockQuizzes, mo
 import { ModuleBuilder } from '@/components/course/ModuleBuilder';
 
 export default function CourseManagement() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all-courses');
   const [courses, setCourses] = useState(mockCourses);
   const [searchTerm, setSearchTerm] = useState('');
@@ -226,7 +228,11 @@ export default function CourseManagement() {
                 ) : (
                   <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {filteredCourses.map((course) => (
-                      <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
+                      <Card 
+                        key={course.id} 
+                        className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer"
+                        onClick={() => navigate(`/system-admin/courses/${course.id}`)}
+                      >
                         {/* Thumbnail */}
                         <div className="relative aspect-video overflow-hidden bg-muted">
                           <img
@@ -274,14 +280,36 @@ export default function CourseManagement() {
 
                           {/* Actions */}
                           <div className="flex gap-2 pt-2">
-                            <Button variant="ghost" size="sm" className="flex-1">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="flex-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/system-admin/courses/${course.id}`);
+                              }}
+                            >
                               <Edit className="h-4 w-4 mr-1" />
-                              Edit
+                              View
                             </Button>
-                            <Button variant="ghost" size="sm">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toast.success('Course duplicated');
+                              }}
+                            >
                               <Copy className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="sm">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toast.success('Course deleted');
+                              }}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>

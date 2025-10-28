@@ -47,6 +47,7 @@ import ManagementFaculty from "./pages/management/Faculty";
 import ManagementPerformance from "./pages/management/Performance";
 import ManagementReports from "./pages/management/Reports";
 import SystemAdminCourseManagement from "./pages/system-admin/CourseManagement";
+import SystemAdminCourseDetail from "./pages/system-admin/CourseDetail";
 import OfficerCourseManagement from "./pages/officer/CourseManagement";
 import StudentCourseDetail from "./pages/student/CourseDetail";
 import InstitutionalCalendar from "./pages/system-admin/InstitutionalCalendar";
@@ -162,6 +163,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <SystemAdminCourseManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/courses/:courseId"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminCourseDetail />
                 </ProtectedRoute>
               }
             />
