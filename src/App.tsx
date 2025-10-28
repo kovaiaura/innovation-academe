@@ -10,10 +10,10 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
 import SuperAdminDashboard from "./pages/super-admin/Dashboard";
-import SuperAdminTenants from "./pages/super-admin/Tenants";
 import SuperAdminSystemConfig from "./pages/super-admin/SystemConfig";
 import SuperAdminAuditLogs from "./pages/super-admin/AuditLogs";
 import SystemAdminDashboard from "./pages/system-admin/Dashboard";
+import SystemAdminTenants from "./pages/system-admin/Tenants";
 import SystemAdminInstitutions from "./pages/system-admin/Institutions";
 import SystemAdminLicenses from "./pages/system-admin/Licenses";
 import SystemAdminReports from "./pages/system-admin/Reports";
@@ -59,20 +59,12 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
             
-            {/* Super Admin Routes */}
+            {/* Super Admin Routes - Technical Platform Oversight */}
             <Route
               path="/super-admin/dashboard"
               element={
                 <ProtectedRoute allowedRoles={['super_admin']}>
                   <SuperAdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/super-admin/tenants"
-              element={
-                <ProtectedRoute allowedRoles={['super_admin']}>
-                  <SuperAdminTenants />
                 </ProtectedRoute>
               }
             />
@@ -93,12 +85,20 @@ const App = () => (
               }
             />
 
-            {/* System Admin Routes */}
+            {/* System Admin Routes - Business Operations & Customer Onboarding */}
             <Route
               path="/system-admin/dashboard"
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <SystemAdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/tenants"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminTenants />
                 </ProtectedRoute>
               }
             />

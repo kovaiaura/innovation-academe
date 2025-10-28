@@ -21,10 +21,11 @@ interface MenuItem {
 // Role-based menu configuration
 const menuItems: MenuItem[] = [
   { label: 'Dashboard', icon: <Home className="h-5 w-5" />, path: '/dashboard', roles: ['super_admin', 'system_admin', 'institution_admin', 'management', 'officer', 'teacher', 'student'] },
-  { label: 'Tenants', icon: <Building2 className="h-5 w-5" />, path: '/tenants', roles: ['super_admin'] },
+  // Super Admin menu items - Technical oversight
   { label: 'System Config', icon: <Settings className="h-5 w-5" />, path: '/system-config', roles: ['super_admin'] },
   { label: 'Audit Logs', icon: <FileText className="h-5 w-5" />, path: '/audit-logs', roles: ['super_admin'] },
-  // System Admin menu items
+  // System Admin menu items - Business operations
+  { label: 'Tenants', icon: <Building2 className="h-5 w-5" />, path: '/tenants', roles: ['system_admin'] },
   { label: 'Institutions', icon: <Building2 className="h-5 w-5" />, path: '/institutions', roles: ['system_admin'] },
   { label: 'Licenses', icon: <Award className="h-5 w-5" />, path: '/licenses', roles: ['system_admin'] },
   { label: 'Reports', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['system_admin'] },

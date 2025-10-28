@@ -10,56 +10,56 @@ export default function SystemAdminDashboard() {
 
   const stats = [
     {
-      title: 'Total Institutions',
-      value: '48',
+      title: 'Total Tenants',
+      value: '25',
       icon: Building2,
-      description: '+5 this month',
+      description: '+3 this month',
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10',
     },
     {
-      title: 'Total Users',
-      value: '12,456',
-      icon: Users,
-      description: 'Across all institutions',
+      title: 'Active Subscriptions',
+      value: '22',
+      icon: Key,
+      description: '88% active rate',
       color: 'text-green-500',
       bgColor: 'bg-green-500/10',
     },
     {
-      title: 'Total Students',
-      value: '8,942',
-      icon: GraduationCap,
-      description: '72% of total users',
+      title: 'Total Users',
+      value: '15,420',
+      icon: Users,
+      description: 'Across all tenants',
       color: 'text-purple-500',
       bgColor: 'bg-purple-500/10',
     },
     {
-      title: 'Active Licenses',
-      value: '45',
-      icon: Key,
-      description: '3 expiring soon',
+      title: 'Expiring Licenses',
+      value: '3',
+      icon: AlertCircle,
+      description: 'Within 30 days',
       color: 'text-orange-500',
       bgColor: 'bg-orange-500/10',
     },
   ];
 
-  const recentInstitutions = [
-    { id: '1', name: 'Springfield College', type: 'College', users: 245, status: 'active' },
-    { id: '2', name: 'Tech University', type: 'University', users: 892, status: 'active' },
-    { id: '3', name: 'Innovation Institute', type: 'Institute', users: 156, status: 'active' },
+  const recentTenants = [
+    { id: '1', name: 'Delhi Public School Network', plan: 'Premium', institutions: 5, users: 2450, status: 'active' },
+    { id: '2', name: 'Ryan International Schools', plan: 'Enterprise', institutions: 8, users: 3800, status: 'active' },
+    { id: '3', name: 'Innovation Hub Chennai', plan: 'Basic', institutions: 1, users: 450, status: 'active' },
   ];
 
   const alerts = [
-    { id: '1', message: 'Springfield College license expires in 15 days', severity: 'warning' },
-    { id: '2', message: 'Tech University exceeded user limit by 10%', severity: 'error' },
-    { id: '3', message: 'New institution signup: Design Academy', severity: 'info' },
+    { id: '1', message: 'DPS Network license expires in 15 days', severity: 'warning' },
+    { id: '2', message: 'Ryan Schools exceeded storage limit by 10%', severity: 'error' },
+    { id: '3', message: 'New tenant signup: Tech Academy Network', severity: 'info' },
   ];
 
-  const topInstitutions = [
-    { name: 'Tech University', users: 892, growth: '+12%' },
-    { name: 'Engineering College', users: 654, growth: '+8%' },
-    { name: 'Medical School', users: 543, growth: '+15%' },
-    { name: 'Business Institute', users: 432, growth: '+5%' },
+  const topTenants = [
+    { name: 'Ryan International Schools', users: 3800, growth: '+12%' },
+    { name: 'Delhi Public School Network', users: 2450, growth: '+8%' },
+    { name: 'Cambridge International', users: 1890, growth: '+15%' },
+    { name: 'Oxford Schools Group', users: 1650, growth: '+5%' },
   ];
 
   return (
@@ -68,7 +68,7 @@ export default function SystemAdminDashboard() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold">System Admin Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, {user?.name}! Manage institutions across the platform</p>
+          <p className="text-muted-foreground">Welcome back, {user?.name}! Manage tenants and customer operations</p>
         </div>
 
         {/* Stats Grid */}
@@ -121,28 +121,28 @@ export default function SystemAdminDashboard() {
             </CardContent>
           </Card>
 
-          {/* Top Institutions */}
+          {/* Top Tenants */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Top Institutions</CardTitle>
+              <CardTitle>Top Tenants by Users</CardTitle>
               <Button variant="outline" size="sm" asChild>
-                <Link to="/system-admin/institutions">View All</Link>
+                <Link to="/system-admin/tenants">View All</Link>
               </Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {topInstitutions.map((inst, index) => (
-                  <div key={inst.name} className="flex items-center justify-between border-b pb-3 last:border-0">
+                {topTenants.map((tenant, index) => (
+                  <div key={tenant.name} className="flex items-center justify-between border-b pb-3 last:border-0">
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-bold">
                         {index + 1}
                       </div>
                       <div>
-                        <p className="font-medium">{inst.name}</p>
-                        <p className="text-sm text-muted-foreground">{inst.users} users</p>
+                        <p className="font-medium">{tenant.name}</p>
+                        <p className="text-sm text-muted-foreground">{tenant.users} users</p>
                       </div>
                     </div>
-                    <div className="text-sm font-medium text-green-500">{inst.growth}</div>
+                    <div className="text-sm font-medium text-green-500">{tenant.growth}</div>
                   </div>
                 ))}
               </div>
@@ -150,29 +150,29 @@ export default function SystemAdminDashboard() {
           </Card>
         </div>
 
-        {/* Recent Institutions */}
+        {/* Recent Tenants */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Recent Institutions</CardTitle>
+            <CardTitle>Recent Tenants</CardTitle>
             <Button variant="outline" size="sm" asChild>
-              <Link to="/system-admin/institutions">Manage All</Link>
+              <Link to="/system-admin/tenants">Manage All</Link>
             </Button>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentInstitutions.map((inst) => (
-                <div key={inst.id} className="flex items-center justify-between border-b pb-3 last:border-0">
+              {recentTenants.map((tenant) => (
+                <div key={tenant.id} className="flex items-center justify-between border-b pb-3 last:border-0">
                   <div className="flex items-start gap-3">
                     <div className="bg-primary/10 p-2 rounded-lg">
                       <Building2 className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium">{inst.name}</p>
-                      <p className="text-sm text-muted-foreground">{inst.type} • {inst.users} users</p>
+                      <p className="font-medium">{tenant.name}</p>
+                      <p className="text-sm text-muted-foreground">{tenant.plan} • {tenant.institutions} institutions • {tenant.users} users</p>
                     </div>
                   </div>
                   <span className="text-xs bg-green-500/10 text-green-500 px-2 py-1 rounded-full">
-                    {inst.status}
+                    {tenant.status}
                   </span>
                 </div>
               ))}
@@ -188,9 +188,9 @@ export default function SystemAdminDashboard() {
           <CardContent>
             <div className="grid gap-4 md:grid-cols-4">
               <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-                <Link to="/system-admin/institutions">
+                <Link to="/system-admin/tenants">
                   <Building2 className="h-6 w-6" />
-                  Manage Institutions
+                  Manage Tenants
                 </Link>
               </Button>
               <Button variant="outline" className="h-24 flex-col gap-2" asChild>
@@ -206,9 +206,9 @@ export default function SystemAdminDashboard() {
                 </Link>
               </Button>
               <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-                <Link to="/system-admin/analytics">
-                  <TrendingUp className="h-6 w-6" />
-                  Analytics
+                <Link to="/system-admin/institutions">
+                  <Building2 className="h-6 w-6" />
+                  Institutions
                 </Link>
               </Button>
             </div>

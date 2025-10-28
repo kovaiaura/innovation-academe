@@ -10,7 +10,7 @@ export default function SuperAdminDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Super Admin Dashboard</h1>
-            <p className="text-muted-foreground">System-wide overview and management</p>
+            <p className="text-muted-foreground">Technical platform oversight and system health</p>
           </div>
           <Button variant="outline">
             <Database className="mr-2 h-4 w-4" />
@@ -21,36 +21,34 @@ export default function SuperAdminDashboard() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Tenants</CardTitle>
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">25</div>
-              <p className="text-xs text-muted-foreground">
-                <span className="text-green-600">+3</span> from last month
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">15,420</div>
-              <p className="text-xs text-muted-foreground">Across all tenants</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">System Uptime</CardTitle>
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">99.9%</div>
               <p className="text-xs text-muted-foreground">Last 30 days</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">API Calls</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">1.25M</div>
+              <p className="text-xs text-muted-foreground">This month</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Database Size</CardTitle>
+              <Database className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">142.8 GB</div>
+              <p className="text-xs text-muted-foreground">+5.2 GB this week</p>
             </CardContent>
           </Card>
 
@@ -69,35 +67,48 @@ export default function SuperAdminDashboard() {
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Subscription Distribution</CardTitle>
+              <CardTitle>System Health</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Basic</span>
-                <span className="text-sm text-muted-foreground">10 tenants</span>
+                <span className="text-sm font-medium">Database Status</span>
+                <span className="text-xs bg-green-500/10 text-green-500 px-2 py-1 rounded-full">Healthy</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Premium</span>
-                <span className="text-sm text-muted-foreground">12 tenants</span>
+                <span className="text-sm font-medium">API Gateway</span>
+                <span className="text-xs bg-green-500/10 text-green-500 px-2 py-1 rounded-full">Operational</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Enterprise</span>
-                <span className="text-sm text-muted-foreground">3 tenants</span>
+                <span className="text-sm font-medium">Storage System</span>
+                <span className="text-xs bg-green-500/10 text-green-500 px-2 py-1 rounded-full">Operational</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Email Service</span>
+                <span className="text-xs bg-green-500/10 text-green-500 px-2 py-1 rounded-full">Operational</span>
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>API Usage This Month</CardTitle>
+              <CardTitle>Infrastructure Metrics</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-8 w-8 text-green-600" />
-                <div>
-                  <div className="text-3xl font-bold">1.25M</div>
-                  <p className="text-sm text-muted-foreground">API calls</p>
-                </div>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">CPU Usage</span>
+                <span className="text-sm text-muted-foreground">45%</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Memory Usage</span>
+                <span className="text-sm text-muted-foreground">62%</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Network I/O</span>
+                <span className="text-sm text-muted-foreground">128 MB/s</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Active Connections</span>
+                <span className="text-sm text-muted-foreground">342</span>
               </div>
             </CardContent>
           </Card>

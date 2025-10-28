@@ -1,6 +1,30 @@
 import api from './api';
 import { ApiResponse } from '@/types';
 
+// Tenant interfaces
+export interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
+  logo?: string;
+  subscription_status: 'active' | 'inactive';
+  subscription_plan: 'basic' | 'premium' | 'enterprise';
+  total_users: number;
+  total_institutions: number;
+  storage_used_gb: number;
+  created_at: string;
+}
+
+export interface CreateTenantRequest {
+  name: string;
+  slug: string;
+  logo?: string;
+  subscription_plan: string;
+  admin_email: string;
+  admin_name: string;
+  admin_password: string;
+}
+
 export interface Institution {
   id: string;
   name: string;
@@ -54,6 +78,32 @@ export interface SystemMetrics {
 }
 
 export const systemAdminService = {
+  // Tenant Management (moved from Super Admin)
+  async getTenants(params?: { 
+    page?: number; 
+    limit?: number; 
+    status?: string;
+    search?: string;
+  }): Promise<ApiResponse<{ tenants: Tenant[]; pagination: any }>> {
+    const response = await api.get('/system-admin/tenants', { params });
+    return response.data;
+  },
+
+  async createTenant(data: CreateTenantRequest): Promise<ApiResponse<any>> {
+    const response = await api.post('/system-admin/tenants', data);
+    return response.data;
+  },
+
+  async updateTenant(id: string, data: Partial<Tenant>): Promise<ApiResponse<any>> {
+    const response = await api.put(`/system-admin/tenants/${id}`, data);
+    return response.data;
+  },
+
+  async deleteTenant(id: string): Promise<ApiResponse<any>> {
+    const response = await api.delete(`/system-admin/tenants/${id}`);
+    return response.data;
+  },
+
   // Institutions
   async getInstitutions(): Promise<ApiResponse<Institution[]>> {
     const response = await api.get('/system-admin/institutions');
