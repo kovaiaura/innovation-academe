@@ -1,14 +1,26 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Users, Package, TrendingUp, Clock, CheckCircle } from 'lucide-react';
+import { Calendar, Users, Package, TrendingUp, Clock, CheckCircle, Check, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/services/auth.service';
 import { Layout } from '@/components/layout/Layout';
+import { toast } from 'sonner';
+import { useState } from 'react';
+import { format } from 'date-fns';
 
 export default function OfficerDashboard() {
   const { user } = useAuth();
   const tenant = authService.getTenant();
+  const [attendanceMarked, setAttendanceMarked] = useState(false);
+  const [attendanceTime, setAttendanceTime] = useState<string | null>(null);
+
+  const handleMarkAttendance = () => {
+    const currentTime = format(new Date(), 'hh:mm a');
+    setAttendanceMarked(true);
+    setAttendanceTime(currentTime);
+    toast.success(`Attendance marked as Present at ${currentTime}`);
+  };
 
   const stats = [
     {
@@ -87,7 +99,86 @@ export default function OfficerDashboard() {
         })}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Daily Attendance Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Daily Attendance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="text-center">
+                {!attendanceMarked ? (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Mark your attendance for {format(new Date(), 'MMMM dd, yyyy')}
+                    </p>
+                    <Button onClick={handleMarkAttendance} className="w-full">
+                      <Check className="mr-2 h-4 w-4" />
+                      Mark Present
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <div className="bg-green-500/10 p-4 rounded-lg mb-4">
+                      <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                      <p className="font-medium text-green-700">Attendance Marked</p>
+                      <p className="text-sm text-green-600">Present at {attendanceTime}</p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Last 7 Days Attendance History */}
+              <div className="pt-4 border-t">
+                <p className="text-sm font-medium mb-3">Last 7 Days</p>
+                <div className="grid grid-cols-7 gap-2">
+                  {[
+                    { day: 'M', status: 'present' },
+                    { day: 'T', status: 'present' },
+                    { day: 'W', status: 'present' },
+                    { day: 'T', status: 'leave' },
+                    { day: 'F', status: 'present' },
+                    { day: 'S', status: 'weekend' },
+                    { day: 'S', status: 'weekend' },
+                  ].map((day, i) => (
+                    <div
+                      key={i}
+                      className="flex flex-col items-center"
+                      title={
+                        day.status === 'present'
+                          ? 'Present'
+                          : day.status === 'leave'
+                          ? 'Leave'
+                          : 'Weekend'
+                      }
+                    >
+                      <span className="text-xs text-muted-foreground mb-1">{day.day}</span>
+                      <div
+                        className={`w-8 h-8 rounded flex items-center justify-center text-xs ${
+                          day.status === 'present'
+                            ? 'bg-green-500/20 text-green-700'
+                            : day.status === 'leave'
+                            ? 'bg-yellow-500/20 text-yellow-700'
+                            : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {day.status === 'present' ? (
+                          <Check className="h-3 w-3" />
+                        ) : day.status === 'leave' ? (
+                          'L'
+                        ) : (
+                          '-'
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Recent Sessions */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
