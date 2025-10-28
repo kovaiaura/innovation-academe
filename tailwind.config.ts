@@ -17,7 +17,7 @@ export default {
         // Meta-INNOVA Brand Colors
         'meta-dark': '#051c2d',
         'meta-dark-lighter': '#0a2d47',
-        'meta-accent': '#2d437f',
+        'meta-accent': '#f9c221',
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
