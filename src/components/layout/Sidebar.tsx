@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { 
   Home, Users, Settings, LogOut, ChevronLeft, 
   BookOpen, Target, Calendar, Award, BarChart,
-  Building2, FileText, Trophy
+  Building2, FileText, Trophy, Package, UserCheck
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
@@ -25,8 +25,14 @@ const menuItems: MenuItem[] = [
   { label: 'System Config', icon: <Settings className="h-5 w-5" />, path: '/system-config', roles: ['super_admin'] },
   { label: 'Audit Logs', icon: <FileText className="h-5 w-5" />, path: '/audit-logs', roles: ['super_admin'] },
   { label: 'Institutions', icon: <Building2 className="h-5 w-5" />, path: '/institutions', roles: ['system_admin'] },
+  // Officer menu items
+  { label: 'Sessions', icon: <Calendar className="h-5 w-5" />, path: '/sessions', roles: ['officer'] },
+  { label: 'Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['officer'] },
+  { label: 'Lab Inventory', icon: <Package className="h-5 w-5" />, path: '/inventory', roles: ['officer'] },
+  { label: 'Attendance', icon: <UserCheck className="h-5 w-5" />, path: '/attendance', roles: ['officer'] },
+  // Student menu items
   { label: 'My Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['student', 'teacher'] },
-  { label: 'My Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['student', 'officer'] },
+  { label: 'My Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['student'] },
   { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['student', 'teacher'] },
   { label: 'Certificates', icon: <Award className="h-5 w-5" />, path: '/certificates', roles: ['student'] },
   { label: 'Gamification', icon: <Trophy className="h-5 w-5" />, path: '/gamification', roles: ['student'] },
@@ -55,6 +61,14 @@ export function Sidebar() {
     // Super admin routes
     if (user.role === 'super_admin') {
       return `/super-admin${path}`;
+    }
+    
+    // Officer routes (with tenant path)
+    if (user.role === 'officer' && user.tenant_id) {
+      const tenantStr = localStorage.getItem('tenant');
+      const tenant = tenantStr ? JSON.parse(tenantStr) : null;
+      const tenantSlug = tenant?.slug || 'default';
+      return `/tenant/${tenantSlug}/officer${path}`;
     }
     
     // Student routes (with tenant path)

@@ -19,6 +19,11 @@ import StudentTimetable from "./pages/student/Timetable";
 import StudentCertificates from "./pages/student/Certificates";
 import StudentGamification from "./pages/student/Gamification";
 import StudentResume from "./pages/student/Resume";
+import OfficerDashboard from "./pages/officer/Dashboard";
+import OfficerSessions from "./pages/officer/Sessions";
+import OfficerProjects from "./pages/officer/Projects";
+import OfficerInventory from "./pages/officer/Inventory";
+import OfficerAttendance from "./pages/officer/Attendance";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +69,48 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['super_admin']}>
                   <SuperAdminAuditLogs />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Officer Routes (path-based multi-tenancy) */}
+            <Route
+              path="/tenant/:tenantId/officer/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <OfficerDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/officer/sessions"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <OfficerSessions />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/officer/projects"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <OfficerProjects />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/officer/inventory"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <OfficerInventory />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/officer/attendance"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <OfficerAttendance />
                 </ProtectedRoute>
               }
             />
