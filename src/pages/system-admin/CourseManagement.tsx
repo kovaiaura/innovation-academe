@@ -27,12 +27,15 @@ export default function CourseManagement() {
     title: '',
     description: '',
     category: 'ai_ml',
+    thumbnail_url: '',
     difficulty: 'beginner',
     duration_weeks: 8,
     prerequisites: '',
     learning_outcomes: [''],
     modules: [] as any[]
   });
+
+  const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
 
   const filteredCourses = courses.filter(course =>
     course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -61,13 +64,42 @@ export default function CourseManagement() {
       title: '',
       description: '',
       category: 'ai_ml',
+      thumbnail_url: '',
       difficulty: 'beginner',
       duration_weeks: 8,
       prerequisites: '',
       learning_outcomes: [''],
       modules: []
     });
+    setThumbnailPreview('');
     setActiveTab('all-courses');
+  };
+
+  const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size should be less than 5MB');
+      return;
+    }
+
+    // Generate preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setThumbnailPreview(reader.result as string);
+      setNewCourse({ ...newCourse, thumbnail_url: reader.result as string });
+    };
+    reader.readAsDataURL(file);
+
+    toast.success('Thumbnail uploaded successfully');
   };
 
   const categoryColors: Record<string, string> = {
@@ -179,6 +211,7 @@ export default function CourseManagement() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Thumbnail</TableHead>
                         <TableHead>Course Code</TableHead>
                         <TableHead>Title</TableHead>
                         <TableHead>Category</TableHead>
@@ -191,6 +224,13 @@ export default function CourseManagement() {
                     <TableBody>
                       {filteredCourses.map((course) => (
                         <TableRow key={course.id}>
+                          <TableCell>
+                            <img
+                              src={course.thumbnail_url || '/placeholder.svg'}
+                              alt={course.title}
+                              className="w-16 h-16 object-cover rounded"
+                            />
+                          </TableCell>
                           <TableCell className="font-medium">{course.course_code}</TableCell>
                           <TableCell>{course.title}</TableCell>
                           <TableCell>
@@ -267,6 +307,53 @@ export default function CourseManagement() {
                     value={newCourse.description}
                     onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Course Thumbnail</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Upload a cover image for your course (Recommended: 1280x720px, Max: 5MB)
+                  </p>
+                  
+                  {!thumbnailPreview ? (
+                    <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleThumbnailUpload}
+                        className="hidden"
+                        id="thumbnail-upload"
+                      />
+                      <label htmlFor="thumbnail-upload" className="cursor-pointer">
+                        <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                        <p className="text-sm font-medium">Click to upload or drag and drop</p>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          PNG, JPG, WEBP up to 5MB
+                        </p>
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <img
+                        src={thumbnailPreview}
+                        alt="Course thumbnail preview"
+                        className="w-full h-48 object-cover rounded-lg border"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={() => {
+                          setThumbnailPreview('');
+                          setNewCourse({ ...newCourse, thumbnail_url: '' });
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Remove
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-3">
@@ -395,12 +482,14 @@ export default function CourseManagement() {
                         title: '',
                         description: '',
                         category: 'ai_ml',
+                        thumbnail_url: '',
                         difficulty: 'beginner',
                         duration_weeks: 8,
                         prerequisites: '',
                         learning_outcomes: [''],
                         modules: []
                       });
+                      setThumbnailPreview('');
                       setActiveTab('all-courses');
                     }}
                   >
