@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import loginBg from '@/assets/login-background.svg';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,7 +47,15 @@ export default function Login() {
       setIsLoading(false);
     }
   };
-  return <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-meta-dark via-meta-dark-lighter to-slate-900 p-4">
+  return <div 
+      className="flex min-h-screen items-center justify-center p-4 relative"
+      style={{
+        backgroundImage: `linear-gradient(rgba(71, 85, 105, 0.85), rgba(51, 65, 85, 0.9)), url(${loginBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-meta-dark">
