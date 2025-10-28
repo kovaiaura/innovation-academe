@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { BookOpen, Plus, Upload, FileText, Video, Link as LinkIcon, Search, Filter, Edit, Trash2, Copy, BarChart3, Users, TrendingUp, Award, Clock } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { mockCourses, mockModules, mockContent, mockAssignments, mockQuizzes, mockCourseAssignments, mockCourseAnalytics } from '@/data/mockCourseData';
 import { ModuleBuilder } from '@/components/course/ModuleBuilder';
@@ -207,66 +208,88 @@ export default function CourseManagement() {
                   </Button>
                 </div>
 
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Thumbnail</TableHead>
-                        <TableHead>Course Code</TableHead>
-                        <TableHead>Title</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Difficulty</TableHead>
-                        <TableHead>Duration</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredCourses.map((course) => (
-                        <TableRow key={course.id}>
-                          <TableCell>
-                            <img
-                              src={course.thumbnail_url || '/placeholder.svg'}
-                              alt={course.title}
-                              className="w-16 h-16 object-cover rounded"
-                            />
-                          </TableCell>
-                          <TableCell className="font-medium">{course.course_code}</TableCell>
-                          <TableCell>{course.title}</TableCell>
-                          <TableCell>
-                            <Badge className={categoryColors[course.category] || ''}>
-                              {course.category.replace('_', ' ').toUpperCase()}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={difficultyColors[course.difficulty]}>
-                              {course.difficulty}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{course.duration_weeks} weeks</TableCell>
-                          <TableCell>
-                            <Badge variant={course.status === 'active' ? 'default' : 'secondary'}>
-                              {course.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button variant="ghost" size="sm">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm">
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+{filteredCourses.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <BookOpen className="h-16 w-16 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No courses found</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {searchTerm 
+                        ? `No courses match "${searchTerm}"`
+                        : "Get started by creating your first course"
+                      }
+                    </p>
+                    <Button onClick={() => setActiveTab('create')}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Course
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {filteredCourses.map((course) => (
+                      <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
+                        {/* Thumbnail */}
+                        <div className="relative aspect-video overflow-hidden bg-muted">
+                          <img
+                            src={course.thumbnail_url || '/placeholder.svg'}
+                            alt={course.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          <Badge 
+                            className="absolute top-2 right-2" 
+                            variant={course.status === 'active' ? 'default' : 'secondary'}
+                          >
+                            {course.status}
+                          </Badge>
+                        </div>
+
+                        {/* Card Content */}
+                        <CardContent className="p-4 space-y-3">
+                          {/* Category Badge */}
+                          <Badge className={categoryColors[course.category] || ''}>
+                            {course.category.replace('_', ' ').toUpperCase()}
+                          </Badge>
+
+                          {/* Course Info */}
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">{course.course_code}</p>
+                            <h3 className="font-semibold text-lg line-clamp-2 mb-2">{course.title}</h3>
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {course.description}
+                            </p>
+                          </div>
+
+                          {/* Stats */}
+                          <Separator />
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <div className="flex items-center gap-3">
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {course.duration_weeks}w
+                              </span>
+                              <Badge variant="outline" className={difficultyColors[course.difficulty]}>
+                                {course.difficulty}
+                              </Badge>
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex gap-2 pt-2">
+                            <Button variant="ghost" size="sm" className="flex-1">
+                              <Edit className="h-4 w-4 mr-1" />
+                              Edit
+                            </Button>
+                            <Button variant="ghost" size="sm">
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
