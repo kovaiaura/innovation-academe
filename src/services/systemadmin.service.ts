@@ -77,6 +77,110 @@ export interface SystemMetrics {
   system_uptime: number;
 }
 
+// Officer Management Interfaces
+export interface Officer {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  assigned_institutions: string[];
+  employment_type: 'full_time' | 'part_time' | 'contract';
+  salary: number;
+  join_date: string;
+  status: 'active' | 'on_leave' | 'terminated';
+}
+
+export interface OfficerAttendance {
+  officer_id: string;
+  officer_name: string;
+  month: string;
+  present_days: number;
+  absent_days: number;
+  leave_days: number;
+  salary: number;
+  salary_paid: number;
+}
+
+export interface OfficerAssignment {
+  officer_id: string;
+  officer_name: string;
+  institution_id: string;
+  institution_name: string;
+  assigned_date: string;
+  status: 'active' | 'inactive';
+}
+
+// CRM Interfaces
+export interface Contact {
+  id: string;
+  institution_id: string;
+  institution_name: string;
+  name: string;
+  designation: string;
+  email: string;
+  phone: string;
+  type: 'lead' | 'customer' | 'partner';
+  status: 'active' | 'inactive';
+}
+
+export interface RenewalContract {
+  id: string;
+  tenant_name: string;
+  contract_type: string;
+  start_date: string;
+  expiry_date: string;
+  value: number;
+  status: 'active' | 'expiring_soon' | 'expired';
+  days_until_expiry: number;
+}
+
+export interface CommunicationLog {
+  id: string;
+  contact_name: string;
+  institution_name: string;
+  type: 'call' | 'meeting' | 'email' | 'follow_up';
+  subject: string;
+  notes: string;
+  date: string;
+  next_action: string;
+  next_action_date: string;
+}
+
+// Inventory & Purchase Interfaces
+export interface PurchaseRequest {
+  id: string;
+  institution_name: string;
+  requested_by: string;
+  items: Array<{ name: string; quantity: number; unit_price: number }>;
+  total_amount: number;
+  status: 'pending' | 'approved' | 'rejected' | 'completed';
+  requested_date: string;
+  category: string;
+}
+
+export interface InventoryAudit {
+  institution_id: string;
+  institution_name: string;
+  total_items: number;
+  last_audit_date: string;
+  value: number;
+  status: 'good' | 'needs_review' | 'critical';
+  categories: Record<string, number>;
+}
+
+// Analytics Interfaces
+export interface MonthlyReport {
+  institution_id: string;
+  institution_name: string;
+  month: string;
+  students: number;
+  teachers: number;
+  attendance_rate: number;
+  revenue: number;
+  courses_active: number;
+  satisfaction_score: number;
+}
+
 export const systemAdminService = {
   // Tenant Management (moved from Super Admin)
   async getTenants(params?: { 
@@ -171,6 +275,98 @@ export const systemAdminService = {
   // Institution Analytics
   async getInstitutionAnalytics(institutionId: string): Promise<ApiResponse<any>> {
     const response = await api.get(`/system-admin/institutions/${institutionId}/analytics`);
+    return response.data;
+  },
+
+  // Officer Management
+  async getOfficers(): Promise<ApiResponse<Officer[]>> {
+    const response = await api.get('/system-admin/officers');
+    return response.data;
+  },
+
+  async createOfficer(officer: Partial<Officer>): Promise<ApiResponse<Officer>> {
+    const response = await api.post('/system-admin/officers', officer);
+    return response.data;
+  },
+
+  async updateOfficer(id: string, officer: Partial<Officer>): Promise<ApiResponse<Officer>> {
+    const response = await api.put(`/system-admin/officers/${id}`, officer);
+    return response.data;
+  },
+
+  async getOfficerAttendance(month: string): Promise<ApiResponse<OfficerAttendance[]>> {
+    const response = await api.get('/system-admin/officer-attendance', { params: { month } });
+    return response.data;
+  },
+
+  async getOfficerAssignments(): Promise<ApiResponse<OfficerAssignment[]>> {
+    const response = await api.get('/system-admin/officer-assignments');
+    return response.data;
+  },
+
+  async assignOfficer(officerId: string, institutionId: string): Promise<ApiResponse<any>> {
+    const response = await api.post('/system-admin/officer-assignments', { 
+      officer_id: officerId, 
+      institution_id: institutionId 
+    });
+    return response.data;
+  },
+
+  // CRM & Communication
+  async getContacts(): Promise<ApiResponse<Contact[]>> {
+    const response = await api.get('/system-admin/contacts');
+    return response.data;
+  },
+
+  async createContact(contact: Partial<Contact>): Promise<ApiResponse<Contact>> {
+    const response = await api.post('/system-admin/contacts', contact);
+    return response.data;
+  },
+
+  async getRenewalContracts(): Promise<ApiResponse<RenewalContract[]>> {
+    const response = await api.get('/system-admin/renewals');
+    return response.data;
+  },
+
+  async getCommunicationLogs(): Promise<ApiResponse<CommunicationLog[]>> {
+    const response = await api.get('/system-admin/communication-logs');
+    return response.data;
+  },
+
+  async createCommunicationLog(log: Partial<CommunicationLog>): Promise<ApiResponse<CommunicationLog>> {
+    const response = await api.post('/system-admin/communication-logs', log);
+    return response.data;
+  },
+
+  // Inventory & Purchase
+  async getPurchaseRequests(): Promise<ApiResponse<PurchaseRequest[]>> {
+    const response = await api.get('/system-admin/purchase-requests');
+    return response.data;
+  },
+
+  async approvePurchaseRequest(id: string): Promise<ApiResponse<any>> {
+    const response = await api.post(`/system-admin/purchase-requests/${id}/approve`);
+    return response.data;
+  },
+
+  async rejectPurchaseRequest(id: string): Promise<ApiResponse<any>> {
+    const response = await api.post(`/system-admin/purchase-requests/${id}/reject`);
+    return response.data;
+  },
+
+  async getInventoryAudits(): Promise<ApiResponse<InventoryAudit[]>> {
+    const response = await api.get('/system-admin/inventory-audits');
+    return response.data;
+  },
+
+  // Analytics & Reports
+  async getMonthlyReports(month: string): Promise<ApiResponse<MonthlyReport[]>> {
+    const response = await api.get('/system-admin/monthly-reports', { params: { month } });
+    return response.data;
+  },
+
+  async exportReport(type: 'excel' | 'pdf', reportId: string): Promise<ApiResponse<{ file_url: string }>> {
+    const response = await api.post('/system-admin/export-report', { type, report_id: reportId });
     return response.data;
   },
 };

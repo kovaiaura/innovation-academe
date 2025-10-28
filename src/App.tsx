@@ -17,6 +17,16 @@ import SystemAdminTenants from "./pages/system-admin/Tenants";
 import SystemAdminInstitutions from "./pages/system-admin/Institutions";
 import SystemAdminLicenses from "./pages/system-admin/Licenses";
 import SystemAdminReports from "./pages/system-admin/Reports";
+import Officers from "./pages/system-admin/Officers";
+import SystemAdminOfficerAttendance from "./pages/system-admin/OfficerAttendance";
+import OfficerAssignments from "./pages/system-admin/OfficerAssignments";
+import Contacts from "./pages/system-admin/Contacts";
+import RenewalTracker from "./pages/system-admin/RenewalTracker";
+import CommunicationLog from "./pages/system-admin/CommunicationLog";
+import PurchaseRequests from "./pages/system-admin/PurchaseRequests";
+import InventoryOverview from "./pages/system-admin/InventoryOverview";
+import MonthlyReports from "./pages/system-admin/MonthlyReports";
+import CustomAnalytics from "./pages/system-admin/CustomAnalytics";
 import StudentDashboard from "./pages/student/Dashboard";
 import StudentCourses from "./pages/student/Courses";
 import StudentProjects from "./pages/student/Projects";
@@ -123,6 +133,86 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <SystemAdminReports />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/officers"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <Officers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/officer-attendance"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminOfficerAttendance />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/officer-assignments"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <OfficerAssignments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/contacts"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <Contacts />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/renewal-tracker"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <RenewalTracker />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/communication-log"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <CommunicationLog />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/purchase-requests"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <PurchaseRequests />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/inventory-overview"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <InventoryOverview />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/monthly-reports"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <MonthlyReports />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/custom-analytics"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <CustomAnalytics />
                 </ProtectedRoute>
               }
             />

@@ -5,7 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { 
   Home, Users, Settings, LogOut, ChevronLeft, 
   BookOpen, Target, Calendar, Award, BarChart,
-  Building2, FileText, Trophy, Package, UserCheck, GraduationCap
+  Building2, FileText, Trophy, Package, UserCheck, GraduationCap,
+  Shield, Phone, Clock, ShoppingCart, PieChart
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
@@ -27,8 +28,22 @@ const menuItems: MenuItem[] = [
   // System Admin menu items - Business operations
   { label: 'Tenants', icon: <Building2 className="h-5 w-5" />, path: '/tenants', roles: ['system_admin'] },
   { label: 'Institutions', icon: <Building2 className="h-5 w-5" />, path: '/institutions', roles: ['system_admin'] },
-  { label: 'Licenses', icon: <Award className="h-5 w-5" />, path: '/licenses', roles: ['system_admin'] },
-  { label: 'Reports', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['system_admin'] },
+  { label: 'Licenses', icon: <Shield className="h-5 w-5" />, path: '/licenses', roles: ['system_admin'] },
+  // Officers Management
+  { label: 'Officer Directory', icon: <Users className="h-5 w-5" />, path: '/officers', roles: ['system_admin'] },
+  { label: 'Attendance & Payroll', icon: <Clock className="h-5 w-5" />, path: '/officer-attendance', roles: ['system_admin'] },
+  { label: 'Officer Assignments', icon: <UserCheck className="h-5 w-5" />, path: '/officer-assignments', roles: ['system_admin'] },
+  // CRM & Communication
+  { label: 'Contacts & Leads', icon: <Users className="h-5 w-5" />, path: '/contacts', roles: ['system_admin'] },
+  { label: 'Renewal Tracker', icon: <Calendar className="h-5 w-5" />, path: '/renewal-tracker', roles: ['system_admin'] },
+  { label: 'Communication Log', icon: <Phone className="h-5 w-5" />, path: '/communication-log', roles: ['system_admin'] },
+  // Inventory & Purchase
+  { label: 'Purchase Requests', icon: <ShoppingCart className="h-5 w-5" />, path: '/purchase-requests', roles: ['system_admin'] },
+  { label: 'Inventory Overview', icon: <Package className="h-5 w-5" />, path: '/inventory-overview', roles: ['system_admin'] },
+  // Analytics & Reports
+  { label: 'Monthly Reports', icon: <FileText className="h-5 w-5" />, path: '/monthly-reports', roles: ['system_admin'] },
+  { label: 'Custom Analytics', icon: <PieChart className="h-5 w-5" />, path: '/custom-analytics', roles: ['system_admin'] },
+  { label: 'System Reports', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['system_admin'] },
   // Institution Admin menu items
   { label: 'Faculty', icon: <Users className="h-5 w-5" />, path: '/teachers', roles: ['institution_admin'] },
   { label: 'Students', icon: <GraduationCap className="h-5 w-5" />, path: '/students', roles: ['institution_admin'] },
@@ -56,7 +71,6 @@ const menuItems: MenuItem[] = [
   { label: 'Faculty', icon: <Users className="h-5 w-5" />, path: '/faculty', roles: ['management'] },
   { label: 'Performance', icon: <BarChart className="h-5 w-5" />, path: '/performance', roles: ['management'] },
   { label: 'Reports', icon: <FileText className="h-5 w-5" />, path: '/reports', roles: ['management'] },
-  { label: 'Analytics', icon: <BarChart className="h-5 w-5" />, path: '/analytics', roles: ['super_admin', 'system_admin'] },
 ];
 
 export function Sidebar() {
