@@ -46,6 +46,9 @@ import ManagementDashboard from "./pages/management/Dashboard";
 import ManagementFaculty from "./pages/management/Faculty";
 import ManagementPerformance from "./pages/management/Performance";
 import ManagementReports from "./pages/management/Reports";
+import SystemAdminCourseManagement from "./pages/system-admin/CourseManagement";
+import OfficerCourseManagement from "./pages/officer/CourseManagement";
+import StudentCourseDetail from "./pages/student/CourseDetail";
 
 const queryClient = new QueryClient();
 
@@ -141,6 +144,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <InventoryManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/course-management"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminCourseManagement />
                 </ProtectedRoute>
               }
             />
@@ -277,6 +288,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/tenant/:tenantId/officer/course-management"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <OfficerCourseManagement />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Management Routes (path-based multi-tenancy) */}
             <Route
@@ -326,6 +345,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['student']}>
                   <StudentCourses />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/courses/:courseId"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentCourseDetail />
                 </ProtectedRoute>
               }
             />

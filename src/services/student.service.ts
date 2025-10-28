@@ -156,5 +156,77 @@ export const studentService = {
   async getResumeData(tenantId: string): Promise<ApiResponse<any>> {
     const response = await api.get(`/tenant/${tenantId}/student/resume-data`);
     return response.data;
+  },
+
+  // ========== NEW COURSE MANAGEMENT FEATURES ==========
+  // Course browsing & enrollment
+  async getAvailableCourses(tenantId: string): Promise<ApiResponse<any[]>> {
+    const response = await api.get(`/tenant/${tenantId}/student/courses/available`);
+    return response.data;
+  },
+
+  async enrollInCourse(tenantId: string, courseId: string): Promise<ApiResponse<any>> {
+    const response = await api.post(`/tenant/${tenantId}/student/courses/${courseId}/enroll`);
+    return response.data;
+  },
+
+  async getCourseContent(tenantId: string, courseId: string): Promise<ApiResponse<any>> {
+    const response = await api.get(`/tenant/${tenantId}/student/courses/${courseId}/content`);
+    return response.data;
+  },
+
+  async markContentViewed(tenantId: string, contentId: string): Promise<ApiResponse<void>> {
+    const response = await api.post(`/tenant/${tenantId}/student/content/${contentId}/mark-viewed`);
+    return response.data;
+  },
+
+  // Assignments
+  async getAssignments(tenantId: string, courseId: string): Promise<ApiResponse<any>> {
+    const response = await api.get(`/tenant/${tenantId}/student/courses/${courseId}/assignments`);
+    return response.data;
+  },
+
+  async submitAssignment(tenantId: string, assignmentId: string, data: FormData): Promise<ApiResponse<any>> {
+    const response = await api.post(
+      `/tenant/${tenantId}/student/assignments/${assignmentId}/submit`,
+      data,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  // Quizzes
+  async getQuizzes(tenantId: string, courseId: string): Promise<ApiResponse<any>> {
+    const response = await api.get(`/tenant/${tenantId}/student/courses/${courseId}/quizzes`);
+    return response.data;
+  },
+
+  async startQuizAttempt(tenantId: string, quizId: string): Promise<ApiResponse<any>> {
+    const response = await api.post(`/tenant/${tenantId}/student/quizzes/${quizId}/start-attempt`);
+    return response.data;
+  },
+
+  async submitQuiz(tenantId: string, attemptId: string, answers: any[]): Promise<ApiResponse<any>> {
+    const response = await api.post(
+      `/tenant/${tenantId}/student/quiz-attempts/${attemptId}/submit`,
+      { answers }
+    );
+    return response.data;
+  },
+
+  async getQuizResults(tenantId: string, attemptId: string): Promise<ApiResponse<any>> {
+    const response = await api.get(`/tenant/${tenantId}/student/quiz-attempts/${attemptId}/results`);
+    return response.data;
+  },
+
+  // Progress & Certificate
+  async getCourseProgress(tenantId: string, courseId: string): Promise<ApiResponse<any>> {
+    const response = await api.get(`/tenant/${tenantId}/student/courses/${courseId}/progress`);
+    return response.data;
+  },
+
+  async getCourseCertificate(tenantId: string, courseId: string): Promise<ApiResponse<{ certificate_url: string }>> {
+    const response = await api.get(`/tenant/${tenantId}/student/courses/${courseId}/certificate`);
+    return response.data;
   }
 };
