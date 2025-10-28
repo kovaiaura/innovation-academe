@@ -19,8 +19,6 @@ import OfficerManagement from "./pages/system-admin/OfficerManagement";
 import SystemAdminOfficerAttendance from "./pages/system-admin/OfficerAttendance";
 import CRMCommunication from "./pages/system-admin/CRMCommunication";
 import InventoryManagement from "./pages/system-admin/InventoryManagement";
-import MonthlyReports from "./pages/system-admin/MonthlyReports";
-import CustomAnalytics from "./pages/system-admin/CustomAnalytics";
 import StudentDashboard from "./pages/student/Dashboard";
 import StudentCourses from "./pages/student/Courses";
 import StudentProjects from "./pages/student/Projects";
@@ -146,23 +144,6 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/system-admin/monthly-reports"
-              element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
-                  <MonthlyReports />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/system-admin/custom-analytics"
-              element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
-                  <CustomAnalytics />
-                </ProtectedRoute>
-              }
-            />
-
             {/* Teacher Routes (path-based multi-tenancy) */}
             <Route
               path="/tenant/:tenantId/teacher/dashboard"

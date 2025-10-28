@@ -34,10 +34,8 @@ const menuItems: MenuItem[] = [
   { label: 'CRM & Communication', icon: <Phone className="h-5 w-5" />, path: '/crm', roles: ['system_admin'] },
   // Inventory & Purchase
   { label: 'Inventory Management', icon: <Package className="h-5 w-5" />, path: '/inventory-management', roles: ['system_admin'] },
-  // Analytics & Reports
-  { label: 'Monthly Reports', icon: <FileText className="h-5 w-5" />, path: '/monthly-reports', roles: ['system_admin'] },
-  { label: 'Custom Analytics', icon: <PieChart className="h-5 w-5" />, path: '/custom-analytics', roles: ['system_admin'] },
-  { label: 'System Reports', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['system_admin'] },
+  // Reports & Analytics
+  { label: 'Reports & Analytics', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['system_admin'] },
   // Institution Admin menu items
   { label: 'Faculty', icon: <Users className="h-5 w-5" />, path: '/teachers', roles: ['institution_admin'] },
   { label: 'Students', icon: <GraduationCap className="h-5 w-5" />, path: '/students', roles: ['institution_admin'] },
