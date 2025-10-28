@@ -27,6 +27,7 @@ const menuItems: MenuItem[] = [
   { label: 'Audit Logs', icon: <FileText className="h-5 w-5" />, path: '/audit-logs', roles: ['super_admin'] },
   // System Admin menu items - Business operations
   { label: 'Institution Management', icon: <Building2 className="h-5 w-5" />, path: '/institutions', roles: ['system_admin'] },
+  { label: 'Course Management', icon: <BookOpen className="h-5 w-5" />, path: '/course-management', roles: ['system_admin'] },
   // Officers Management
   { label: 'Officer Management', icon: <Users className="h-5 w-5" />, path: '/officers', roles: ['system_admin'] },
   { label: 'Attendance & Payroll', icon: <Clock className="h-5 w-5" />, path: '/officer-attendance', roles: ['system_admin'] },
@@ -48,6 +49,7 @@ const menuItems: MenuItem[] = [
   { label: 'Schedule', icon: <Calendar className="h-5 w-5" />, path: '/schedule', roles: ['teacher'] },
   { label: 'Materials', icon: <FileText className="h-5 w-5" />, path: '/materials', roles: ['teacher'] },
   // Officer menu items
+  { label: 'Course Management', icon: <BookOpen className="h-5 w-5" />, path: '/course-management', roles: ['officer'] },
   { label: 'Sessions', icon: <Calendar className="h-5 w-5" />, path: '/sessions', roles: ['officer'] },
   { label: 'Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['officer'] },
   { label: 'Lab Inventory', icon: <Package className="h-5 w-5" />, path: '/inventory', roles: ['officer'] },
