@@ -29,6 +29,12 @@ import InstitutionTeachers from "./pages/institution/Teachers";
 import InstitutionStudents from "./pages/institution/Students";
 import InstitutionCourses from "./pages/institution/Courses";
 import InstitutionReports from "./pages/institution/Reports";
+import TeacherDashboard from "./pages/teacher/Dashboard";
+import TeacherCourses from "./pages/teacher/Courses";
+import TeacherGrades from "./pages/teacher/Grades";
+import TeacherAttendance from "./pages/teacher/Attendance";
+import TeacherSchedule from "./pages/teacher/Schedule";
+import TeacherMaterials from "./pages/teacher/Materials";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +80,56 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['super_admin']}>
                   <SuperAdminAuditLogs />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Teacher Routes (path-based multi-tenancy) */}
+            <Route
+              path="/tenant/:tenantId/teacher/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['teacher']}>
+                  <TeacherDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/teacher/courses"
+              element={
+                <ProtectedRoute allowedRoles={['teacher']}>
+                  <TeacherCourses />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/teacher/grades"
+              element={
+                <ProtectedRoute allowedRoles={['teacher']}>
+                  <TeacherGrades />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/teacher/attendance"
+              element={
+                <ProtectedRoute allowedRoles={['teacher']}>
+                  <TeacherAttendance />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/teacher/schedule"
+              element={
+                <ProtectedRoute allowedRoles={['teacher']}>
+                  <TeacherSchedule />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/teacher/materials"
+              element={
+                <ProtectedRoute allowedRoles={['teacher']}>
+                  <TeacherMaterials />
                 </ProtectedRoute>
               }
             />

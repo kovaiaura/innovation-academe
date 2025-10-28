@@ -30,15 +30,21 @@ const menuItems: MenuItem[] = [
   { label: 'Students', icon: <GraduationCap className="h-5 w-5" />, path: '/students', roles: ['institution_admin'] },
   { label: 'Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['institution_admin'] },
   { label: 'Reports', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['institution_admin'] },
+  // Teacher menu items
+  { label: 'My Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['teacher'] },
+  { label: 'Grades', icon: <Award className="h-5 w-5" />, path: '/grades', roles: ['teacher'] },
+  { label: 'Attendance', icon: <UserCheck className="h-5 w-5" />, path: '/attendance', roles: ['teacher'] },
+  { label: 'Schedule', icon: <Calendar className="h-5 w-5" />, path: '/schedule', roles: ['teacher'] },
+  { label: 'Materials', icon: <FileText className="h-5 w-5" />, path: '/materials', roles: ['teacher'] },
   // Officer menu items
   { label: 'Sessions', icon: <Calendar className="h-5 w-5" />, path: '/sessions', roles: ['officer'] },
   { label: 'Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['officer'] },
   { label: 'Lab Inventory', icon: <Package className="h-5 w-5" />, path: '/inventory', roles: ['officer'] },
   { label: 'Attendance', icon: <UserCheck className="h-5 w-5" />, path: '/attendance', roles: ['officer'] },
   // Student menu items
-  { label: 'My Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['student', 'teacher'] },
+  { label: 'My Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['student'] },
   { label: 'My Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['student'] },
-  { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['student', 'teacher'] },
+  { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['student'] },
   { label: 'Certificates', icon: <Award className="h-5 w-5" />, path: '/certificates', roles: ['student'] },
   { label: 'Gamification', icon: <Trophy className="h-5 w-5" />, path: '/gamification', roles: ['student'] },
   { label: 'Resume', icon: <FileText className="h-5 w-5" />, path: '/resume', roles: ['student'] },
@@ -74,6 +80,14 @@ export function Sidebar() {
       const tenant = tenantStr ? JSON.parse(tenantStr) : null;
       const tenantSlug = tenant?.slug || 'default';
       return `/tenant/${tenantSlug}/institution${path}`;
+    }
+
+    // Teacher routes (with tenant path)
+    if (user.role === 'teacher' && user.tenant_id) {
+      const tenantStr = localStorage.getItem('tenant');
+      const tenant = tenantStr ? JSON.parse(tenantStr) : null;
+      const tenantSlug = tenant?.slug || 'default';
+      return `/tenant/${tenantSlug}/teacher${path}`;
     }
 
     // Officer routes (with tenant path)
