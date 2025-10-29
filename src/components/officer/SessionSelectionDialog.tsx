@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, MapPin, PlayCircle, TrendingUp } from 'lucide-react';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar, Clock, MapPin, PlayCircle, TrendingUp, Check, ChevronsUpDown } from 'lucide-react';
 import { OfficerTimetableSlot } from '@/types/officer';
 import { Course } from '@/types/course';
 import { getOfficerTimetable } from '@/data/mockOfficerTimetable';
 import { getSessionProgressByClass, createSession } from '@/utils/sessionHelpers';
+import { getStudentsByInstitution } from '@/data/mockStudentData';
+import { getUniqueClasses } from '@/utils/studentHelpers';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface SessionSelectionDialogProps {
   open: boolean;
@@ -30,6 +34,8 @@ export function SessionSelectionDialog({
 }: SessionSelectionDialogProps) {
   const [manualClassName, setManualClassName] = useState('');
   const [timetableSlots, setTimetableSlots] = useState<OfficerTimetableSlot[]>([]);
+  const [comboboxOpen, setComboboxOpen] = useState(false);
+  const [availableClasses, setAvailableClasses] = useState<Array<{ class: string; sections: string[] }>>([]);
 
   useEffect(() => {
     if (open && course && officerId) {
@@ -39,6 +45,20 @@ export function SessionSelectionDialog({
         const matchingSlots = timetable.slots.filter(slot => slot.course_id === course.id);
         setTimetableSlots(matchingSlots);
       }
+      
+      // Load available classes from student data
+      // Extract institution from officer ID (e.g., "OFC-SPRING-001" -> "springfield")
+      const institutionCode = officerId.split('-')[1]?.toLowerCase();
+      const institutionMap: Record<string, string> = {
+        'spring': 'springfield',
+        'ryan': 'ryan',
+        'innovation': 'innovation'
+      };
+      const institutionId = institutionMap[institutionCode] || 'springfield';
+      
+      const students = getStudentsByInstitution(institutionId);
+      const classes = getUniqueClasses(students);
+      setAvailableClasses(classes);
     }
   }, [open, course, officerId]);
 
@@ -184,21 +204,61 @@ export function SessionSelectionDialog({
 
           {/* Manual Entry Option */}
           <div className="space-y-3">
-            <h4 className="font-semibold text-sm">Or Enter Manually</h4>
+            <h4 className="font-semibold text-sm">Or Select Class Manually</h4>
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label htmlFor="manual-class">Class Name</Label>
-                <Input 
-                  id="manual-class"
-                  placeholder="e.g., Class 8A, Batch B"
-                  value={manualClassName}
-                  onChange={(e) => setManualClassName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleManualStart();
-                    }
-                  }}
-                />
+                <Label>Class Name</Label>
+                <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={comboboxOpen}
+                      className="w-full justify-between"
+                    >
+                      {manualClassName || "Select class..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[500px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search class..." />
+                      <CommandList>
+                        <CommandEmpty>No class found.</CommandEmpty>
+                        <CommandGroup>
+                          {availableClasses.map((classItem) => (
+                            <CommandItem
+                              key={classItem.class}
+                              value={classItem.class}
+                              onSelect={(currentValue) => {
+                                setManualClassName(currentValue === manualClassName ? "" : currentValue);
+                                setComboboxOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  manualClassName === classItem.class ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">{classItem.class}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {classItem.sections.length} section{classItem.sections.length > 1 ? 's' : ''}
+                                  </span>
+                                </div>
+                                <Badge variant="secondary" className="text-xs">
+                                  {classItem.sections.join(', ')}
+                                </Badge>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <Button 
                 onClick={handleManualStart}

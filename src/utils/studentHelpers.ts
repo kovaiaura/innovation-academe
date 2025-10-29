@@ -152,7 +152,30 @@ export const generateStudentId = (): string => {
   return `STU-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
-// Calculate age from date of birth
+// Get unique class names with their sections from student data
+export const getUniqueClasses = (students: Student[]): Array<{ class: string; sections: string[] }> => {
+  const classMap = new Map<string, Set<string>>();
+  
+  students.forEach(student => {
+    if (!classMap.has(student.class)) {
+      classMap.set(student.class, new Set());
+    }
+    classMap.get(student.class)?.add(student.section);
+  });
+  
+  return Array.from(classMap.entries())
+    .map(([className, sectionsSet]) => ({
+      class: className,
+      sections: Array.from(sectionsSet).sort()
+    }))
+    .sort((a, b) => {
+      // Sort by class number (extract number from "Class 8" -> 8)
+      const numA = parseInt(a.class.replace('Class ', ''));
+      const numB = parseInt(b.class.replace('Class ', ''));
+      return numA - numB;
+    });
+};
+
 export const calculateAge = (dateOfBirth: string): number => {
   const today = new Date();
   const birthDate = new Date(dateOfBirth);
