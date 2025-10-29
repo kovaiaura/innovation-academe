@@ -2,7 +2,6 @@
 export type UserRole = 
   | 'super_admin'
   | 'system_admin'
-  | 'institution_admin'
   | 'management'
   | 'officer'
   | 'teacher'

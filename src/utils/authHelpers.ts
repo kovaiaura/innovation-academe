@@ -4,8 +4,8 @@ export function canUploadStudents(userRole: string, userInstitutionId?: string, 
     return true;
   }
 
-  // Institution Admin can upload to their own institution
-  if (userRole === 'institution_admin' && userInstitutionId && targetInstitutionId) {
+  // Management can upload to their own institution
+  if (userRole === 'management' && userInstitutionId && targetInstitutionId) {
     return userInstitutionId === targetInstitutionId;
   }
 
@@ -13,5 +13,5 @@ export function canUploadStudents(userRole: string, userInstitutionId?: string, 
 }
 
 export function canManageInstitution(userRole: string): boolean {
-  return ['system_admin', 'institution_admin'].includes(userRole);
+  return ['system_admin', 'management'].includes(userRole);
 }

@@ -21,7 +21,7 @@ interface MenuItem {
 
 // Role-based menu configuration
 const menuItems: MenuItem[] = [
-  { label: 'Dashboard', icon: <Home className="h-5 w-5" />, path: '/dashboard', roles: ['super_admin', 'system_admin', 'institution_admin', 'management', 'officer', 'teacher', 'student'] },
+  { label: 'Dashboard', icon: <Home className="h-5 w-5" />, path: '/dashboard', roles: ['super_admin', 'system_admin', 'management', 'officer', 'teacher', 'student'] },
   // Super Admin menu items - Technical oversight
   { label: 'System Config', icon: <Settings className="h-5 w-5" />, path: '/system-config', roles: ['super_admin'] },
   { label: 'Audit Logs', icon: <FileText className="h-5 w-5" />, path: '/audit-logs', roles: ['super_admin'] },
@@ -38,11 +38,6 @@ const menuItems: MenuItem[] = [
   { label: 'Inventory Management', icon: <Package className="h-5 w-5" />, path: '/inventory-management', roles: ['system_admin'] },
   // Reports & Analytics
   { label: 'Reports & Analytics', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['system_admin'] },
-  // Institution Admin menu items
-  { label: 'Faculty', icon: <Users className="h-5 w-5" />, path: '/teachers', roles: ['institution_admin'] },
-  { label: 'Students', icon: <GraduationCap className="h-5 w-5" />, path: '/students', roles: ['institution_admin'] },
-  { label: 'Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['institution_admin'] },
-  { label: 'Reports', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['institution_admin'] },
   // Teacher menu items
   { label: 'My Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['teacher'] },
   { label: 'Grades', icon: <Award className="h-5 w-5" />, path: '/grades', roles: ['teacher'] },
@@ -62,8 +57,10 @@ const menuItems: MenuItem[] = [
   { label: 'Certificates', icon: <Award className="h-5 w-5" />, path: '/certificates', roles: ['student'] },
   { label: 'Gamification', icon: <Trophy className="h-5 w-5" />, path: '/gamification', roles: ['student'] },
   { label: 'Resume', icon: <FileText className="h-5 w-5" />, path: '/resume', roles: ['student'] },
-  // Management menu items
-  { label: 'Faculty', icon: <Users className="h-5 w-5" />, path: '/faculty', roles: ['management'] },
+  // Management menu items (merged with institution admin functionality)
+  { label: 'Faculty', icon: <Users className="h-5 w-5" />, path: '/teachers', roles: ['management'] },
+  { label: 'Students', icon: <GraduationCap className="h-5 w-5" />, path: '/students', roles: ['management'] },
+  { label: 'Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['management'] },
   { label: 'Performance', icon: <BarChart className="h-5 w-5" />, path: '/performance', roles: ['management'] },
   { label: 'Reports', icon: <FileText className="h-5 w-5" />, path: '/reports', roles: ['management'] },
 ];
@@ -95,14 +92,6 @@ export function Sidebar() {
     if (user.role === 'system_admin') {
       return `/system-admin${path}`;
     }
-    
-    // Institution Admin routes (with tenant path)
-    if (user.role === 'institution_admin' && user.tenant_id) {
-      const tenantStr = localStorage.getItem('tenant');
-      const tenant = tenantStr ? JSON.parse(tenantStr) : null;
-      const tenantSlug = tenant?.slug || 'default';
-      return `/tenant/${tenantSlug}/institution${path}`;
-    }
 
     // Teacher routes (with tenant path)
     if (user.role === 'teacher' && user.tenant_id) {
@@ -120,7 +109,7 @@ export function Sidebar() {
       return `/tenant/${tenantSlug}/officer${path}`;
     }
 
-    // Management routes (with tenant path)
+    // Management routes (with tenant path) - merged institution admin
     if (user.role === 'management' && user.tenant_id) {
       const tenantStr = localStorage.getItem('tenant');
       const tenant = tenantStr ? JSON.parse(tenantStr) : null;

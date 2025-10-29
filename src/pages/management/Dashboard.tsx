@@ -1,54 +1,74 @@
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, BookOpen, GraduationCap, TrendingUp, AlertCircle, Award } from "lucide-react";
+import { Users, BookOpen, GraduationCap, TrendingUp, AlertCircle, Award, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { authService } from "@/services/auth.service";
 
 const Dashboard = () => {
+  const { user } = useAuth();
+  const tenant = authService.getTenant();
+
   const metrics = [
-    { title: "Total Faculty", value: "45", change: "+3", icon: Users, color: "text-blue-500" },
-    { title: "Total Students", value: "1,250", change: "+85", icon: GraduationCap, color: "text-green-500" },
-    { title: "Active Courses", value: "32", change: "+2", icon: BookOpen, color: "text-purple-500" },
-    { title: "Avg. Performance", value: "87%", change: "+5%", icon: TrendingUp, color: "text-orange-500" },
+    { title: "Total Faculty", value: "186", change: "+8", icon: Users, color: "text-blue-500", bgColor: "bg-blue-500/10" },
+    { title: "Total Students", value: "2,845", change: "+12%", icon: GraduationCap, color: "text-green-500", bgColor: "bg-green-500/10" },
+    { title: "Active Courses", value: "245", change: "+15", icon: BookOpen, color: "text-purple-500", bgColor: "bg-purple-500/10" },
+    { title: "Avg. CGPA", value: "7.8", change: "+0.3", icon: TrendingUp, color: "text-orange-500", bgColor: "bg-orange-500/10" },
   ];
 
   const departmentPerformance = [
-    { name: "Computer Science", teachers: 12, students: 350, performance: 88, trend: "up" },
-    { name: "Electronics", teachers: 10, students: 280, performance: 85, trend: "up" },
-    { name: "Mechanical", teachers: 11, students: 320, performance: 82, trend: "stable" },
-    { name: "Civil", teachers: 12, students: 300, performance: 84, trend: "up" },
+    { name: "Computer Science", teachers: 28, students: 520, performance: 88, trend: "up" },
+    { name: "Electronics", teachers: 24, students: 450, performance: 85, trend: "up" },
+    { name: "Mechanical", teachers: 26, students: 480, performance: 82, trend: "stable" },
+    { name: "Civil", teachers: 22, students: 390, performance: 84, trend: "up" },
+    { name: "Electrical", teachers: 23, students: 425, performance: 86, trend: "up" },
   ];
 
   const alerts = [
     { type: "warning", message: "3 faculty members pending performance review", icon: AlertCircle },
-    { type: "info", message: "Q1 reports due in 7 days", icon: Award },
+    { type: "info", message: "Semester exam schedule due in 7 days", icon: Award },
     { type: "success", message: "All departments meeting attendance targets", icon: TrendingUp },
+  ];
+
+  const recentActivities = [
+    { id: '1', title: 'New batch enrollment completed', time: '2 hours ago', type: 'enrollment' },
+    { id: '2', title: 'Semester exam schedule published', time: '5 hours ago', type: 'academic' },
+    { id: '3', title: 'Faculty development workshop scheduled', time: '1 day ago', type: 'event' },
+    { id: '4', title: 'Student placement drive initiated', time: '2 days ago', type: 'placement' },
   ];
 
   return (
     <Layout>
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Management Dashboard</h1>
-          <p className="text-muted-foreground">Department-level overview and analytics</p>
+          <p className="text-muted-foreground">Welcome back, {user?.name}! Complete institution and department overview</p>
         </div>
 
         {/* Key Metrics */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {metrics.map((metric) => (
-            <Card key={metric.title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
-                <metric.icon className={`h-4 w-4 ${metric.color}`} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{metric.value}</div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-green-500">{metric.change}</span> from last month
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+          {metrics.map((metric) => {
+            const Icon = metric.icon;
+            return (
+              <Card key={metric.title}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
+                  <div className={`${metric.bgColor} p-2 rounded-lg`}>
+                    <Icon className={`h-4 w-4 ${metric.color}`} />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{metric.value}</div>
+                  <p className="text-xs text-muted-foreground">
+                    <span className="text-green-500">{metric.change}</span> from last semester
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {/* Alerts */}
@@ -74,32 +94,93 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Department Performance */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Department Performance Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              {departmentPerformance.map((dept) => (
-                <div key={dept.name} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-semibold">{dept.name}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {dept.teachers} Teachers • {dept.students} Students
-                      </p>
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Department Performance */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Department Performance Overview</CardTitle>
+              <Button variant="outline" size="sm">View All</Button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {departmentPerformance.map((dept) => (
+                  <div key={dept.name} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold">{dept.name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {dept.teachers} Teachers • {dept.students} Students
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <Badge variant={dept.trend === 'up' ? 'default' : 'secondary'}>
+                          {dept.trend === 'up' ? '↑' : '→'} {dept.trend}
+                        </Badge>
+                        <span className="text-xl font-bold">{dept.performance}%</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <Badge variant={dept.trend === 'up' ? 'default' : 'secondary'}>
-                        {dept.trend === 'up' ? '↑' : '→'} {dept.trend}
-                      </Badge>
-                      <span className="text-2xl font-bold">{dept.performance}%</span>
+                    <Progress value={dept.performance} className="h-2" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Activities */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Recent Activities</CardTitle>
+              <Button variant="outline" size="sm">View All</Button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentActivities.map((activity) => (
+                  <div key={activity.id} className="flex items-start gap-3 border-b pb-3 last:border-0">
+                    <div className="bg-primary/10 p-2 rounded-lg mt-1">
+                      <Calendar className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{activity.title}</p>
+                      <p className="text-xs text-muted-foreground">{activity.time}</p>
                     </div>
                   </div>
-                  <Progress value={dept.performance} className="h-2" />
-                </div>
-              ))}
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-4">
+              <Button variant="outline" className="h-24 flex-col gap-2" asChild>
+                <Link to={`/tenant/${tenant?.slug}/management/teachers`}>
+                  <Users className="h-6 w-6" />
+                  Manage Faculty
+                </Link>
+              </Button>
+              <Button variant="outline" className="h-24 flex-col gap-2" asChild>
+                <Link to={`/tenant/${tenant?.slug}/management/students`}>
+                  <GraduationCap className="h-6 w-6" />
+                  Student Management
+                </Link>
+              </Button>
+              <Button variant="outline" className="h-24 flex-col gap-2" asChild>
+                <Link to={`/tenant/${tenant?.slug}/management/courses`}>
+                  <BookOpen className="h-6 w-6" />
+                  Course Assignment
+                </Link>
+              </Button>
+              <Button variant="outline" className="h-24 flex-col gap-2" asChild>
+                <Link to={`/tenant/${tenant?.slug}/management/performance`}>
+                  <TrendingUp className="h-6 w-6" />
+                  Performance Analytics
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </Card>

@@ -260,47 +260,6 @@ const App = () => (
               }
             />
 
-            {/* Institution Admin Routes (path-based multi-tenancy) */}
-            <Route
-              path="/tenant/:tenantId/institution/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['institution_admin']}>
-                  <InstitutionDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/tenant/:tenantId/institution/teachers"
-              element={
-                <ProtectedRoute allowedRoles={['institution_admin']}>
-                  <InstitutionTeachers />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/tenant/:tenantId/institution/students"
-              element={
-                <ProtectedRoute allowedRoles={['institution_admin']}>
-                  <InstitutionStudents />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/tenant/:tenantId/institution/courses"
-              element={
-                <ProtectedRoute allowedRoles={['institution_admin']}>
-                  <InstitutionCourses />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/tenant/:tenantId/institution/reports"
-              element={
-                <ProtectedRoute allowedRoles={['institution_admin']}>
-                  <InstitutionReports />
-                </ProtectedRoute>
-              }
-            />
 
             {/* Officer Routes (path-based multi-tenancy) */}
             <Route
@@ -352,7 +311,7 @@ const App = () => (
               }
             />
 
-            {/* Management Routes (path-based multi-tenancy) */}
+            {/* Management Routes (path-based multi-tenancy) - Merged with institution admin */}
             <Route
               path="/tenant/:tenantId/management/dashboard"
               element={
@@ -362,10 +321,26 @@ const App = () => (
               }
             />
             <Route
-              path="/tenant/:tenantId/management/faculty"
+              path="/tenant/:tenantId/management/teachers"
               element={
                 <ProtectedRoute allowedRoles={['management']}>
-                  <ManagementFaculty />
+                  <InstitutionTeachers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/management/students"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <InstitutionStudents />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/management/courses"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <InstitutionCourses />
                 </ProtectedRoute>
               }
             />
