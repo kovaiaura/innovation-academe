@@ -115,6 +115,22 @@ export default function CourseContentViewer() {
   };
 
   const handleNavigate = (direction: 'prev' | 'next') => {
+    // Auto-complete current content before navigating in presentation mode
+    if (selectedContent && selectedModule && isPresentationMode) {
+      const completion = completions.find(c => c.content_id === selectedContent.id);
+      if (!completion?.completed) {
+        // Check if content should be auto-completed
+        const shouldComplete = (window as any).__checkAutoComplete?.();
+        if (shouldComplete) {
+          handleMarkComplete(selectedContent.id, selectedModule.id);
+          toast.success(`${selectedContent.title} marked as complete`, {
+            icon: <CheckCircle2 className="h-4 w-4" />,
+            duration: 2000,
+          });
+        }
+      }
+    }
+
     const allContent = courseModules.flatMap(m => 
       mockContent.filter(c => c.module_id === m.id).map(c => ({ ...c, moduleId: m.id }))
     ).sort((a, b) => a.order - b.order);
@@ -281,6 +297,7 @@ export default function CourseContentViewer() {
           onMarkComplete={handleMarkComplete}
           isCompleted={selectedContent ? completions.some(c => c.content_id === selectedContent.id && c.completed) : false}
           completedAt={selectedContent ? completions.find(c => c.content_id === selectedContent.id)?.completed_at : undefined}
+          onCheckAutoComplete={() => true}
         />
 
         {/* Right Sidebar - Student Engagement */}
@@ -294,7 +311,7 @@ export default function CourseContentViewer() {
 
       {/* Presentation Mode Controls */}
       {isPresentationMode && (
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-card border rounded-lg shadow-lg p-2 flex items-center gap-2">
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-card border rounded-lg shadow-lg p-3 flex items-center gap-3 z-50">
           <Button
             variant="ghost"
             size="sm"
@@ -302,9 +319,21 @@ export default function CourseContentViewer() {
           >
             Previous
           </Button>
-          <div className="text-sm text-muted-foreground px-4">
-            {selectedModule?.title}
+          
+          <div className="text-sm px-4 space-y-1">
+            <div className="font-medium flex items-center gap-2">
+              {selectedModule?.title}
+              {selectedContent && completions.some(c => c.content_id === selectedContent.id && c.completed) && (
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Module: {courseProgress.modules.find(m => m.module_id === selectedModuleId)?.completed_content || 0}/
+              {courseProgress.modules.find(m => m.module_id === selectedModuleId)?.total_content || 0} | 
+              Course: {Math.round(courseProgress.percentage)}%
+            </div>
           </div>
+          
           <Button
             variant="ghost"
             size="sm"

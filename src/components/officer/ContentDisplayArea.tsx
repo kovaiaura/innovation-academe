@@ -26,6 +26,7 @@ interface ContentDisplayAreaProps {
   onMarkComplete: (contentId: string, moduleId: string, watchPercentage?: number) => void;
   isCompleted: boolean;
   completedAt?: string;
+  onCheckAutoComplete?: () => boolean;
 }
 
 export function ContentDisplayArea({
@@ -36,16 +37,52 @@ export function ContentDisplayArea({
   onMarkComplete,
   isCompleted,
   completedAt,
+  onCheckAutoComplete,
 }: ContentDisplayAreaProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const viewStartTime = useRef<number>(Date.now());
   const [videoWatchPercentage, setVideoWatchPercentage] = useState(0);
   const [hasAutoCompleted, setHasAutoCompleted] = useState(false);
 
-  // Reset auto-complete flag when content changes
+  // Reset view tracking when content changes
   useEffect(() => {
     setHasAutoCompleted(false);
     setVideoWatchPercentage(0);
+    viewStartTime.current = Date.now();
   }, [content?.id]);
+
+  // Check if content should be auto-completed based on viewing time
+  const shouldAutoComplete = (): boolean => {
+    if (!content || isCompleted || hasAutoCompleted) return false;
+    
+    const viewDuration = (Date.now() - viewStartTime.current) / 1000; // in seconds
+    
+    switch (content.type) {
+      case 'video':
+        // Auto-complete if 90%+ watched OR viewed for 80%+ of duration
+        return videoWatchPercentage >= 90 || 
+               (content.duration_minutes ? viewDuration >= content.duration_minutes * 60 * 0.8 : false);
+      case 'pdf':
+        return viewDuration >= 30;
+      case 'youtube':
+        return viewDuration >= 60;
+      case 'ppt':
+        return viewDuration >= 45;
+      case 'link':
+      case 'simulation':
+        return viewDuration >= 20;
+      default:
+        return viewDuration >= 10;
+    }
+  };
+
+  // Expose auto-complete check to parent
+  useEffect(() => {
+    if (onCheckAutoComplete) {
+      // Create a function that can be called from parent
+      (window as any).__checkAutoComplete = shouldAutoComplete;
+    }
+  }, [content, isCompleted, hasAutoCompleted, videoWatchPercentage, onCheckAutoComplete]);
 
   // Track video progress
   useEffect(() => {
@@ -164,7 +201,17 @@ export function ContentDisplayArea({
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-muted/10">
+    <div className="flex-1 flex flex-col bg-muted/10 relative">
+      {/* Completion Badge in Presentation Mode */}
+      {isPresentationMode && isCompleted && (
+        <div className="absolute top-4 right-4 z-10">
+          <Badge variant="secondary" className="bg-green-500/90 text-white shadow-lg">
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            Completed
+          </Badge>
+        </div>
+      )}
+
       {/* Content Header */}
       {!isPresentationMode && (
         <div className="border-b bg-card p-4">
