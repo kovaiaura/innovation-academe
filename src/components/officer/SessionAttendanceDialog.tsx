@@ -52,8 +52,8 @@ export function SessionAttendanceDialog({
 
   const handleSelectAll = () => {
   const filteredStudents = classStudents.filter(s => 
-    s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.id.toLowerCase().includes(searchQuery.toLowerCase())
+    s.student_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.roll_number.toLowerCase().includes(searchQuery.toLowerCase())
   );
     setSelectedStudents(new Set(filteredStudents.map(s => s.id)));
   };
@@ -80,8 +80,8 @@ export function SessionAttendanceDialog({
   };
 
   const filteredStudents = classStudents.filter(s => 
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.student_id.toLowerCase().includes(searchQuery.toLowerCase())
+    s.student_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.roll_number.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const attendancePercentage = classStudents.length > 0 
@@ -161,8 +161,8 @@ export function SessionAttendanceDialog({
                         onClick={(e) => e.stopPropagation()}
                       />
                       <div className="flex-1">
-                        <p className="font-medium">{student.full_name}</p>
-                        <p className="text-sm text-muted-foreground">{student.id}</p>
+                        <p className="font-medium">{student.student_name}</p>
+                        <p className="text-sm text-muted-foreground">{student.roll_number}</p>
                       </div>
                       {isPresent && (
                         <CheckCircle2 className="h-5 w-5 text-green-500" />
