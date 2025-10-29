@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Users, Package, TrendingUp, Clock, CheckCircle, Check, X } from 'lucide-react';
+import { Calendar, Users, Package, TrendingUp, Clock, CheckCircle, Check, X, Building2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/services/auth.service';
@@ -8,12 +8,15 @@ import { Layout } from '@/components/layout/Layout';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { format } from 'date-fns';
+import { getOfficerById } from '@/data/mockOfficerData';
 
 export default function OfficerDashboard() {
   const { user } = useAuth();
   const tenant = authService.getTenant();
   const [attendanceMarked, setAttendanceMarked] = useState(false);
   const [attendanceTime, setAttendanceTime] = useState<string | null>(null);
+  
+  const officerProfile = getOfficerById(user?.id || '');
 
   const handleMarkAttendance = () => {
     const currentTime = format(new Date(), 'hh:mm a');
@@ -73,9 +76,24 @@ export default function OfficerDashboard() {
     <Layout>
       <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Innovation Officer Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back, {user?.name}!</p>
+      <div className="space-y-3">
+        <div>
+          <h1 className="text-3xl font-bold">Innovation Officer Dashboard</h1>
+          <p className="text-muted-foreground">Welcome back, {user?.name}!</p>
+        </div>
+        
+        {/* Assigned Institution Badge */}
+        {officerProfile && officerProfile.assigned_institutions.length > 0 && (
+          <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-lg w-fit">
+            <Building2 className="h-4 w-4 text-primary" />
+            <div>
+              <span className="text-sm font-medium">Assigned to:</span>
+              <span className="ml-2 text-sm text-muted-foreground">
+                {officerProfile.assigned_institutions.join(', ')}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Stats Grid */}
