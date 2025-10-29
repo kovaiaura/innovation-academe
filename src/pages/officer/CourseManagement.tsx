@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -6,10 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Users, ClipboardCheck, Award, Search } from 'lucide-react';
+import { BookOpen, Users, ClipboardCheck, Award, Search, PlayCircle } from 'lucide-react';
 import { mockCourses, mockEnrollments, mockSubmissions } from '@/data/mockCourseData';
 
 export default function OfficerCourseManagement() {
+  const { tenantId } = useParams();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('my-courses');
 
   const assignedCourses = mockCourses.slice(0, 2);
@@ -96,7 +99,15 @@ export default function OfficerCourseManagement() {
                             mockEnrollments.filter(e => e.course_id === course.id).length).toFixed(0)}%
                         </span>
                       </div>
-                      <Button className="w-full">View Details</Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          className="flex-1"
+                          onClick={() => navigate(`/tenant/${tenantId}/officer/courses/${course.id}/viewer`)}
+                        >
+                          <PlayCircle className="h-4 w-4 mr-2" />
+                          Launch Viewer
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
