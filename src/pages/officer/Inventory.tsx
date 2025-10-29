@@ -11,59 +11,13 @@ import { Layout } from '@/components/layout/Layout';
 import { CreatePurchaseRequestDialog } from '@/components/inventory/CreatePurchaseRequestDialog';
 import { PurchaseRequestDetailDialog } from '@/components/inventory/PurchaseRequestDetailDialog';
 import { PurchaseRequestStatusBadge } from '@/components/inventory/PurchaseRequestStatusBadge';
-import { mockPurchaseRequests, updateMockPurchaseRequest, getPurchaseRequestsByOfficer } from '@/data/mockInventoryData';
-import { PurchaseRequest } from '@/types/inventory';
+import { mockPurchaseRequests, updateMockPurchaseRequest, getPurchaseRequestsByOfficer, mockInventoryItems } from '@/data/mockInventoryData';
+import { PurchaseRequest, InventoryItem } from '@/types/inventory';
 import { format } from 'date-fns';
 
-const mockEquipment = [
-  {
-    id: '1',
-    name: '3D Printer',
-    category: 'Manufacturing',
-    quantity: 5,
-    available: 3,
-    location: 'Innovation Lab A',
-    status: 'available' as const,
-    last_maintenance: '2024-11-15',
-    next_maintenance: '2025-02-15',
-  },
-  {
-    id: '2',
-    name: 'Arduino Starter Kit',
-    category: 'Electronics',
-    quantity: 20,
-    available: 15,
-    location: 'Electronics Lab',
-    status: 'available' as const,
-    last_maintenance: '2024-10-01',
-    next_maintenance: '2025-01-01',
-  },
-  {
-    id: '3',
-    name: 'VR Headset',
-    category: 'Virtual Reality',
-    quantity: 8,
-    available: 0,
-    location: 'Innovation Lab B',
-    status: 'in_use' as const,
-    last_maintenance: '2024-11-01',
-    next_maintenance: '2025-02-01',
-  },
-  {
-    id: '4',
-    name: 'Laser Cutter',
-    category: 'Manufacturing',
-    quantity: 2,
-    available: 0,
-    location: 'Fabrication Lab',
-    status: 'maintenance' as const,
-    last_maintenance: '2024-12-01',
-    next_maintenance: '2024-12-20',
-  },
-];
-
 export default function Inventory() {
-  const [equipment, setEquipment] = useState(mockEquipment);
+  // Use shared inventory data from mockInventoryData
+  const [equipment, setEquipment] = useState<InventoryItem[]>(mockInventoryItems['springfield'] || []);
   const [filterCategory, setFilterCategory] = useState('all');
   const [isCreateRequestOpen, setIsCreateRequestOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<PurchaseRequest | null>(null);
@@ -71,18 +25,21 @@ export default function Inventory() {
   const [requestFilter, setRequestFilter] = useState('all');
 
   const handleDeleteEquipment = (id: string) => {
-    setEquipment(equipment.filter((e) => e.id !== id));
+    const updatedEquipment = equipment.filter((e) => e.id !== id);
+    setEquipment(updatedEquipment);
+    // Update shared data source
+    mockInventoryItems['springfield'] = updatedEquipment;
     toast.success('Equipment deleted successfully!');
   };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { className: string; label: string }> = {
-      available: { className: 'bg-green-500/10 text-green-500', label: 'Available' },
-      in_use: { className: 'bg-blue-500/10 text-blue-500', label: 'In Use' },
-      maintenance: { className: 'bg-yellow-500/10 text-yellow-500', label: 'Maintenance' },
+      active: { className: 'bg-green-500/10 text-green-500', label: 'Active' },
+      under_maintenance: { className: 'bg-yellow-500/10 text-yellow-500', label: 'Maintenance' },
       damaged: { className: 'bg-red-500/10 text-red-500', label: 'Damaged' },
+      retired: { className: 'bg-gray-500/10 text-gray-500', label: 'Retired' },
     };
-    return variants[status] || variants.available;
+    return variants[status] || variants.active;
   };
 
   const handleCreatePurchaseRequest = (data: any) => {
@@ -111,6 +68,10 @@ export default function Inventory() {
   const filteredEquipment = filterCategory === 'all' 
     ? equipment 
     : equipment.filter(e => e.category === filterCategory);
+
+  const totalQuantity = equipment.reduce((sum, e) => sum + e.quantity, 0);
+  const activeItems = equipment.filter(e => e.status === 'active').length;
+  const maintenanceItems = equipment.filter(e => e.status === 'under_maintenance').length;
 
   const filteredRequests = requestFilter === 'all'
     ? purchaseRequests
@@ -159,40 +120,34 @@ export default function Inventory() {
             <div className="grid gap-4 md:grid-cols-4">
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Total Equipment</CardTitle>
+                  <CardTitle className="text-sm font-medium">Total Items</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{equipment.reduce((sum, e) => sum + e.quantity, 0)}</div>
+                  <div className="text-2xl font-bold">{equipment.length}</div>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Available</CardTitle>
+                  <CardTitle className="text-sm font-medium">Total Quantity</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-500">
-                    {equipment.reduce((sum, e) => sum + e.available, 0)}
-                  </div>
+                  <div className="text-2xl font-bold">{totalQuantity}</div>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">In Use</CardTitle>
+                  <CardTitle className="text-sm font-medium">Active</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-blue-500">
-                    {equipment.reduce((sum, e) => sum + (e.quantity - e.available), 0)}
-                  </div>
+                  <div className="text-2xl font-bold text-green-500">{activeItems}</div>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Maintenance Due</CardTitle>
+                  <CardTitle className="text-sm font-medium">Under Maintenance</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-yellow-500">
-                    {equipment.filter(e => e.status === 'maintenance').length}
-                  </div>
+                  <div className="text-2xl font-bold text-yellow-500">{maintenanceItems}</div>
                 </CardContent>
               </Card>
             </div>
@@ -201,7 +156,6 @@ export default function Inventory() {
             <div className="grid gap-4 md:grid-cols-2">
               {filteredEquipment.map((item) => {
                 const statusInfo = getStatusBadge(item.status);
-                const needsMaintenance = new Date(item.next_maintenance) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
                 
                 return (
                   <Card key={item.id}>
@@ -238,25 +192,27 @@ export default function Inventory() {
                     <CardContent className="space-y-3">
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <p className="text-muted-foreground">Total Quantity</p>
-                          <p className="font-medium">{item.quantity}</p>
+                          <p className="text-muted-foreground">Quantity</p>
+                          <p className="font-medium">{item.quantity} {item.unit}</p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground">Available</p>
-                          <p className="font-medium text-green-500">{item.available}</p>
+                          <p className="text-muted-foreground">Condition</p>
+                          <p className="font-medium capitalize">{item.condition}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
                         <MapPin className="h-4 w-4 text-muted-foreground" />
                         <span>{item.location}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>Next maintenance: {new Date(item.next_maintenance).toLocaleDateString()}</span>
-                        {needsMaintenance && (
-                          <AlertCircle className="h-4 w-4 text-yellow-500" />
-                        )}
-                      </div>
+                      {item.last_audited && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span>Last audited: {new Date(item.last_audited).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                      {item.description && (
+                        <p className="text-sm text-muted-foreground">{item.description}</p>
+                      )}
                     </CardContent>
                   </Card>
                 );

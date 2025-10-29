@@ -4,78 +4,101 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Package, ShoppingCart, FileText, AlertTriangle, CheckCircle } from "lucide-react";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { PurchaseRequestStatusBadge } from "@/components/inventory/PurchaseRequestStatusBadge";
 import { PurchaseRequestDetailDialog } from "@/components/inventory/PurchaseRequestDetailDialog";
 import { ApproveRejectDialog } from "@/components/inventory/ApproveRejectDialog";
-import { getPurchaseRequestsByInstitution, updateMockPurchaseRequest } from "@/data/mockInventoryData";
-import { PurchaseRequest } from "@/types/inventory";
+import { getPurchaseRequestsByInstitution, updateMockPurchaseRequest, mockInventoryItems } from "@/data/mockInventoryData";
+import { PurchaseRequest, InventoryItem } from "@/types/inventory";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
+// Stock Overview Tab Component - Read-only view of Officer's inventory
 const StockOverviewTab = () => {
-  const inventory = [
-    { id: "1", name: "Arduino Uno Boards", category: "Microcontrollers", quantity: 45, minStock: 20, status: "sufficient" },
-    { id: "2", name: "Raspberry Pi 4", category: "SBC", quantity: 12, minStock: 15, status: "low" },
-    { id: "3", name: "Sensors Kit", category: "Components", quantity: 8, minStock: 10, status: "critical" },
-    { id: "4", name: "3D Printer Filament", category: "Materials", quantity: 35, minStock: 20, status: "sufficient" },
-  ];
+  // Pull inventory data from shared source (Officer's data)
+  const inventory: InventoryItem[] = mockInventoryItems['springfield'] || [];
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      sufficient: "default",
-      low: "secondary",
-      critical: "destructive",
-    } as const;
-    return variants[status as keyof typeof variants] || "secondary";
+      active: 'bg-green-500/10 text-green-500',
+      under_maintenance: 'bg-yellow-500/10 text-yellow-500',
+      damaged: 'bg-red-500/10 text-red-500',
+      retired: 'bg-gray-500/10 text-gray-500',
+    };
+    return variants[status as keyof typeof variants] || variants.active;
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels = {
+      active: 'Active',
+      under_maintenance: 'Under Maintenance',
+      damaged: 'Damaged',
+      retired: 'Retired',
+    };
+    return labels[status as keyof typeof labels] || status;
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Stock Overview</h2>
+      <div className="flex justify-between items-center">
+        <div>
+          <h3 className="text-lg font-semibold">Stock Overview</h3>
+          <p className="text-sm text-muted-foreground">View lab inventory managed by Innovation Officers</p>
+        </div>
         <Button variant="outline">
           <FileText className="h-4 w-4 mr-2" />
           Export Report
         </Button>
       </div>
 
-      <div className="grid gap-4">
-        {inventory.map((item) => (
-          <Card key={item.id}>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-start gap-4 flex-1">
-                  <Package className="h-10 w-10 text-blue-500" />
-                  <div className="space-y-2 flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-lg">{item.name}</h3>
-                      <Badge variant={getStatusBadge(item.status)}>
-                        {item.status}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{item.category}</p>
-                    <div className="flex items-center gap-6 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Current Stock: </span>
-                        <span className="font-medium">{item.quantity} units</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Min Stock: </span>
-                        <span className="font-medium">{item.minStock} units</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm">
-                  Update Stock
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {inventory.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground">No inventory items found</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Item Name</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Current Stock</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead>Condition</TableHead>
+                <TableHead>Last Audited</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {inventory.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableCell className="capitalize">{item.category}</TableCell>
+                  <TableCell>{item.quantity} {item.unit}</TableCell>
+                  <TableCell>{item.location}</TableCell>
+                  <TableCell className="capitalize">{item.condition}</TableCell>
+                  <TableCell>
+                    {item.last_audited 
+                      ? new Date(item.last_audited).toLocaleDateString()
+                      : 'N/A'
+                    }
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getStatusBadge(item.status)}>
+                      {getStatusLabel(item.status)}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 };
