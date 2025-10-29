@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { BookOpen, Users, ClipboardCheck, Award, Search, PlayCircle } from 'lucide-react';
 import { mockCourses, mockEnrollments, mockSubmissions } from '@/data/mockCourseData';
 import { CourseContentTab } from '@/components/officer/CourseContentTab';
+import { AssignmentsAndQuizzesTab } from '@/components/officer/AssignmentsAndQuizzesTab';
 
 export default function OfficerCourseManagement() {
   const { tenantId } = useParams();
@@ -122,46 +123,7 @@ export default function OfficerCourseManagement() {
           </TabsContent>
 
           <TabsContent value="grading" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Assignment Submissions</CardTitle>
-                <CardDescription>Grade pending assignments</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Student</TableHead>
-                      <TableHead>Assignment</TableHead>
-                      <TableHead>Submitted</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Grade</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mockSubmissions.map((sub) => (
-                      <TableRow key={sub.id}>
-                        <TableCell>{sub.student_name}</TableCell>
-                        <TableCell>{sub.assignment_title}</TableCell>
-                        <TableCell>{new Date(sub.submitted_at).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <Badge variant={sub.status === 'graded' ? 'default' : 'secondary'}>
-                            {sub.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{sub.grade ? `${sub.grade}/${sub.total_points}` : '-'}</TableCell>
-                        <TableCell className="text-right">
-                          <Button size="sm" disabled={sub.status === 'graded'}>
-                            {sub.status === 'graded' ? 'Graded' : 'Grade'}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <AssignmentsAndQuizzesTab />
           </TabsContent>
 
           <TabsContent value="enrollments" className="space-y-6">
