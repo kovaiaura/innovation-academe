@@ -110,9 +110,35 @@ export interface OfficerDetails extends Officer {
   emergency_contact_phone?: string;
   employee_id?: string;
   department?: string;
+  
+  // Bank Details
   bank_account_number?: string;
   bank_name?: string;
   bank_ifsc?: string;
+  bank_branch?: string;
+  
+  // Statutory Information
+  statutory_info?: {
+    pf_number?: string;
+    uan_number?: string;
+    esi_number?: string;
+    pan_number?: string;
+    pt_registration?: string;
+    pf_applicable: boolean;
+    esi_applicable: boolean;
+    pt_applicable: boolean;
+  };
+  
+  // Salary Structure
+  salary_structure?: {
+    basic_pay: number;
+    hra: number;
+    da: number;
+    transport_allowance: number;
+    special_allowance: number;
+    medical_allowance: number;
+  };
+  
   qualifications?: string[];
   certifications?: string[];
   skills?: string[];

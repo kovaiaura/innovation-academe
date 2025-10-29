@@ -4,15 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, CheckCircle, Send } from 'lucide-react';
+import { DollarSign, CheckCircle, Send, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { PayrollRecord, PayrollStatus } from '@/types/attendance';
 import { mockPayrollData } from '@/data/mockAttendanceData';
 import { formatCurrency } from '@/utils/attendanceHelpers';
+import { PayrollBreakdownDialog } from './PayrollBreakdownDialog';
 
 export function PayrollManagementTab() {
   const [selectedMonth, setSelectedMonth] = useState('2024-01');
   const [payrollData, setPayrollData] = useState<PayrollRecord[]>(mockPayrollData);
+  const [selectedPayroll, setSelectedPayroll] = useState<PayrollRecord | null>(null);
+  const [isBreakdownOpen, setIsBreakdownOpen] = useState(false);
 
   const filteredData = payrollData.filter(record => record.month === selectedMonth);
 
@@ -170,33 +173,41 @@ export function PayrollManagementTab() {
                   <TableCell>{record.employee_id}</TableCell>
                   <TableCell className="text-right">{record.working_days}</TableCell>
                   <TableCell className="text-right">
-                    {formatCurrency(record.salary_monthly)}
+                    {formatCurrency(record.salary_monthly || record.gross_salary)}
                   </TableCell>
                   <TableCell className="text-right">
-                    {formatCurrency(record.calculated_pay)}
+                    {formatCurrency(record.calculated_pay || record.gross_salary)}
                   </TableCell>
                   <TableCell className="text-right text-red-600">
-                    {record.deductions > 0 ? formatCurrency(record.deductions) : '-'}
+                    {record.total_deductions > 0 ? formatCurrency(record.total_deductions) : '-'}
                   </TableCell>
                   <TableCell className="text-right font-bold">
                     {formatCurrency(record.net_pay)}
                   </TableCell>
                   <TableCell>{getStatusBadge(record.status)}</TableCell>
                   <TableCell className="text-right">
-                    {(record.status === 'pending' || record.status === 'draft') && (
+                    <div className="flex justify-end gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleApprove(record.officer_id)}
+                        onClick={() => {
+                          setSelectedPayroll(record);
+                          setIsBreakdownOpen(true);
+                        }}
                       >
-                        Approve
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
                       </Button>
-                    )}
-                    {record.status === 'approved' && (
-                      <span className="text-sm text-muted-foreground">
-                        Approved by {record.approved_by}
-                      </span>
-                    )}
+                      {(record.status === 'pending' || record.status === 'draft') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleApprove(record.officer_id)}
+                        >
+                          Approve
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -204,6 +215,12 @@ export function PayrollManagementTab() {
           </Table>
         </CardContent>
       </Card>
+
+      <PayrollBreakdownDialog
+        isOpen={isBreakdownOpen}
+        onOpenChange={setIsBreakdownOpen}
+        payroll={selectedPayroll}
+      />
     </div>
   );
 }

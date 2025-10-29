@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
 import { OfficerDetails } from '@/services/systemadmin.service';
 
 interface EditOfficerDialogProps {
@@ -196,6 +198,151 @@ export default function EditOfficerDialog({
                     <SelectItem value="terminated">Terminated</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Banking Information Section */}
+          <Separator />
+          <div className="space-y-4">
+            <h3 className="font-semibold text-sm text-muted-foreground">Banking Information</h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="bank_account_number">Bank Account Number</Label>
+                <Input
+                  id="bank_account_number"
+                  value={formData.bank_account_number || ''}
+                  onChange={(e) => handleChange('bank_account_number', e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="bank_name">Bank Name</Label>
+                <Input
+                  id="bank_name"
+                  value={formData.bank_name || ''}
+                  onChange={(e) => handleChange('bank_name', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="bank_ifsc">IFSC Code</Label>
+                <Input
+                  id="bank_ifsc"
+                  value={formData.bank_ifsc || ''}
+                  onChange={(e) => handleChange('bank_ifsc', e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="bank_branch">Branch</Label>
+                <Input
+                  id="bank_branch"
+                  value={formData.bank_branch || ''}
+                  onChange={(e) => handleChange('bank_branch', e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Statutory Information Section */}
+          <Separator />
+          <div className="space-y-4">
+            <h3 className="font-semibold text-sm text-muted-foreground">Statutory Information</h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="pf_number">PF Number</Label>
+                <Input
+                  id="pf_number"
+                  value={formData.statutory_info?.pf_number || ''}
+                  onChange={(e) => handleChange('statutory_info', {
+                    ...(formData.statutory_info || { pf_applicable: true, esi_applicable: false, pt_applicable: true }),
+                    pf_number: e.target.value
+                  })}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="uan_number">UAN Number</Label>
+                <Input
+                  id="uan_number"
+                  value={formData.statutory_info?.uan_number || ''}
+                  onChange={(e) => handleChange('statutory_info', {
+                    ...(formData.statutory_info || { pf_applicable: true, esi_applicable: false, pt_applicable: true }),
+                    uan_number: e.target.value
+                  })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="esi_number">ESI Number</Label>
+                <Input
+                  id="esi_number"
+                  value={formData.statutory_info?.esi_number || ''}
+                  onChange={(e) => handleChange('statutory_info', {
+                    ...(formData.statutory_info || { pf_applicable: true, esi_applicable: false, pt_applicable: true }),
+                    esi_number: e.target.value
+                  })}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="pan_number">PAN Number</Label>
+                <Input
+                  id="pan_number"
+                  value={formData.statutory_info?.pan_number || ''}
+                  onChange={(e) => handleChange('statutory_info', {
+                    ...(formData.statutory_info || { pf_applicable: true, esi_applicable: false, pt_applicable: true }),
+                    pan_number: e.target.value
+                  })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Applicability</Label>
+              <div className="flex gap-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="pf_applicable"
+                    checked={formData.statutory_info?.pf_applicable ?? true}
+                    onCheckedChange={(checked) => handleChange('statutory_info', {
+                      ...(formData.statutory_info || { esi_applicable: false, pt_applicable: true }),
+                      pf_applicable: checked as boolean
+                    })}
+                  />
+                  <Label htmlFor="pf_applicable" className="font-normal">PF Applicable</Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="esi_applicable"
+                    checked={formData.statutory_info?.esi_applicable ?? false}
+                    onCheckedChange={(checked) => handleChange('statutory_info', {
+                      ...(formData.statutory_info || { pf_applicable: true, pt_applicable: true }),
+                      esi_applicable: checked as boolean
+                    })}
+                  />
+                  <Label htmlFor="esi_applicable" className="font-normal">ESI Applicable</Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="pt_applicable"
+                    checked={formData.statutory_info?.pt_applicable ?? true}
+                    onCheckedChange={(checked) => handleChange('statutory_info', {
+                      ...(formData.statutory_info || { pf_applicable: true, esi_applicable: false }),
+                      pt_applicable: checked as boolean
+                    })}
+                  />
+                  <Label htmlFor="pt_applicable" className="font-normal">PT Applicable</Label>
+                </div>
               </div>
             </div>
           </div>

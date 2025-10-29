@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OfficerAttendanceTab } from '@/components/attendance/OfficerAttendanceTab';
 import { PayrollManagementTab } from '@/components/attendance/PayrollManagementTab';
 import { PayrollReportsTab } from '@/components/attendance/PayrollReportsTab';
+import { ComplianceReportsTab } from '@/components/attendance/ComplianceReportsTab';
 
 export default function OfficerAttendance() {
   return (
@@ -20,6 +21,7 @@ export default function OfficerAttendance() {
             <TabsTrigger value="attendance">Officer Attendance</TabsTrigger>
             <TabsTrigger value="payroll">Payroll Management</TabsTrigger>
             <TabsTrigger value="reports">Payroll Reports</TabsTrigger>
+            <TabsTrigger value="compliance">Statutory Compliance</TabsTrigger>
           </TabsList>
 
           <TabsContent value="attendance" className="space-y-6">
@@ -32,6 +34,10 @@ export default function OfficerAttendance() {
 
           <TabsContent value="reports" className="space-y-6">
             <PayrollReportsTab />
+          </TabsContent>
+
+          <TabsContent value="compliance" className="space-y-6">
+            <ComplianceReportsTab />
           </TabsContent>
         </Tabs>
       </div>

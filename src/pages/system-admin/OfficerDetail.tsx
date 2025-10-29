@@ -65,6 +65,25 @@ const mockOfficerDetails: Record<string, OfficerDetails> = {
     bank_account_number: '****1234',
     bank_name: 'Chase Bank',
     bank_ifsc: 'CHAS0001234',
+    bank_branch: 'Springfield Branch',
+    statutory_info: {
+      pf_number: 'PF123456789',
+      uan_number: 'UAN987654321',
+      esi_number: '',
+      pan_number: 'ABCDE1234F',
+      pt_registration: 'PT12345',
+      pf_applicable: true,
+      esi_applicable: false,
+      pt_applicable: true,
+    },
+    salary_structure: {
+      basic_pay: 26000,
+      hra: 13000,
+      da: 6500,
+      transport_allowance: 3250,
+      special_allowance: 13000,
+      medical_allowance: 3250,
+    },
     qualifications: ['MBA in Innovation Management', 'BS in Computer Science'],
     certifications: ['PMP', 'Agile Scrum Master'],
     skills: ['Project Management', 'Innovation Strategy', 'Team Leadership'],
@@ -533,12 +552,135 @@ export default function OfficerDetail() {
                       <DollarSign className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <p className="text-sm text-muted-foreground">Annual Salary</p>
-                        <p className="font-medium">${officer.salary.toLocaleString()}</p>
+                        <p className="font-medium">₹{officer.salary.toLocaleString('en-IN')}</p>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Bank Details */}
+              {(officer.bank_account_number || officer.bank_name) && (
+                <Card>
+                  <CardContent className="pt-6 space-y-4">
+                    <h3 className="font-semibold text-lg mb-4">Banking Information</h3>
+                    <div className="space-y-3">
+                      {officer.bank_account_number && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Account Number</p>
+                          <p className="font-medium">{officer.bank_account_number}</p>
+                        </div>
+                      )}
+                      {officer.bank_name && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Bank Name</p>
+                          <p className="font-medium">{officer.bank_name}</p>
+                        </div>
+                      )}
+                      {officer.bank_ifsc && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">IFSC Code</p>
+                          <p className="font-medium">{officer.bank_ifsc}</p>
+                        </div>
+                      )}
+                      {officer.bank_branch && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Branch</p>
+                          <p className="font-medium">{officer.bank_branch}</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Statutory Information */}
+              {officer.statutory_info && (
+                <Card>
+                  <CardContent className="pt-6 space-y-4">
+                    <h3 className="font-semibold text-lg mb-4">Statutory Information</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      {officer.statutory_info.pf_number && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">PF Number</p>
+                          <p className="font-medium">{officer.statutory_info.pf_number}</p>
+                        </div>
+                      )}
+                      {officer.statutory_info.uan_number && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">UAN Number</p>
+                          <p className="font-medium">{officer.statutory_info.uan_number}</p>
+                        </div>
+                      )}
+                      {officer.statutory_info.esi_number && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">ESI Number</p>
+                          <p className="font-medium">{officer.statutory_info.esi_number}</p>
+                        </div>
+                      )}
+                      {officer.statutory_info.pan_number && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">PAN Number</p>
+                          <p className="font-medium">{officer.statutory_info.pan_number}</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="pt-2 space-y-2">
+                      <p className="text-sm font-medium">Applicability:</p>
+                      <div className="flex gap-4">
+                        <Badge variant={officer.statutory_info.pf_applicable ? "default" : "outline"}>
+                          PF {officer.statutory_info.pf_applicable ? "Applicable" : "Not Applicable"}
+                        </Badge>
+                        <Badge variant={officer.statutory_info.esi_applicable ? "default" : "outline"}>
+                          ESI {officer.statutory_info.esi_applicable ? "Applicable" : "Not Applicable"}
+                        </Badge>
+                        <Badge variant={officer.statutory_info.pt_applicable ? "default" : "outline"}>
+                          PT {officer.statutory_info.pt_applicable ? "Applicable" : "Not Applicable"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Salary Structure */}
+              {officer.salary_structure && (
+                <Card>
+                  <CardContent className="pt-6 space-y-4">
+                    <h3 className="font-semibold text-lg mb-4">Salary Structure</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-sm text-muted-foreground">Basic Pay</span>
+                        <span className="font-medium">₹{officer.salary_structure.basic_pay.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-sm text-muted-foreground">HRA</span>
+                        <span className="font-medium">₹{officer.salary_structure.hra.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-sm text-muted-foreground">DA</span>
+                        <span className="font-medium">₹{officer.salary_structure.da.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-sm text-muted-foreground">Transport Allowance</span>
+                        <span className="font-medium">₹{officer.salary_structure.transport_allowance.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-sm text-muted-foreground">Special Allowance</span>
+                        <span className="font-medium">₹{officer.salary_structure.special_allowance.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-sm text-muted-foreground">Medical Allowance</span>
+                        <span className="font-medium">₹{officer.salary_structure.medical_allowance.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between py-3 border-t-2 mt-2">
+                        <span className="font-bold">Total (CTC)</span>
+                        <span className="font-bold text-lg">₹{officer.salary.toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Emergency Contact */}
               {(officer.emergency_contact_name || officer.emergency_contact_phone) && (
