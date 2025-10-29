@@ -3,17 +3,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
-import { mockAttendanceData } from "@/data/mockAttendanceData";
+import { getAttendanceByInstitution } from "@/data/mockAttendanceData";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { useParams } from "react-router-dom";
 import { generateMonthCalendarDays, getAttendanceForDate, calculateAttendancePercentage, exportToCSV } from "@/utils/attendanceHelpers";
 
 const Attendance = () => {
-  const [selectedOfficerId, setSelectedOfficerId] = useState('1');
+  const { tenantId } = useParams<{ tenantId: string }>();
+  
+  // Get attendance data filtered by institution
+  const institutionAttendanceData = getAttendanceByInstitution(tenantId || 'springfield');
+  
+  const [selectedOfficerId, setSelectedOfficerId] = useState(
+    institutionAttendanceData[0]?.officer_id || ''
+  );
   const [currentMonth, setCurrentMonth] = useState('2024-01');
 
   // Get selected officer's data
-  const selectedOfficer = mockAttendanceData.find(
+  const selectedOfficer = institutionAttendanceData.find(
     (officer) => officer.officer_id === selectedOfficerId
   );
 
@@ -117,7 +125,7 @@ const Attendance = () => {
                 <SelectValue placeholder="Select Officer" />
               </SelectTrigger>
               <SelectContent>
-                {mockAttendanceData.map((officer) => (
+                {institutionAttendanceData.map((officer) => (
                   <SelectItem key={officer.officer_id} value={officer.officer_id}>
                     {officer.officer_name} ({officer.employee_id})
                   </SelectItem>

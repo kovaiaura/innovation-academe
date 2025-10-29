@@ -1,4 +1,5 @@
 import { OfficerAttendanceRecord, PayrollRecord, DailyAttendance } from '@/types/attendance';
+import { mockOfficerProfiles } from './mockOfficerData';
 
 const generateDailyRecords = (
   month: string,
@@ -73,10 +74,10 @@ const generateDailyRecords = (
 
 export const mockAttendanceData: OfficerAttendanceRecord[] = [
   {
-    officer_id: '1',
-    officer_name: 'John Smith',
-    employee_id: 'EMP001',
-    department: 'Innovation Labs',
+    officer_id: 'off-001',
+    officer_name: 'Dr. Rajesh Kumar',
+    employee_id: 'EMP-IOF-001',
+    department: 'Innovation & Research',
     month: '2024-01',
     daily_records: generateDailyRecords('2024-01', 'regular'),
     present_days: 22,
@@ -86,10 +87,10 @@ export const mockAttendanceData: OfficerAttendanceRecord[] = [
     last_marked_date: '2024-01-31',
   },
   {
-    officer_id: '2',
-    officer_name: 'Sarah Johnson',
-    employee_id: 'EMP002',
-    department: 'Innovation Labs',
+    officer_id: '3',
+    officer_name: 'Innovation Officer',
+    employee_id: 'EMP-IOF-003',
+    department: 'Innovation & Research',
     month: '2024-01',
     daily_records: generateDailyRecords('2024-01', 'some_absences'),
     present_days: 20,
@@ -99,23 +100,10 @@ export const mockAttendanceData: OfficerAttendanceRecord[] = [
     last_marked_date: '2024-01-30',
   },
   {
-    officer_id: '3',
-    officer_name: 'Michael Chen',
-    employee_id: 'EMP003',
-    department: 'Innovation Labs',
-    month: '2024-01',
-    daily_records: generateDailyRecords('2024-01', 'frequent_absences'),
-    present_days: 18,
-    absent_days: 3,
-    leave_days: 2,
-    total_hours_worked: 152,
-    last_marked_date: '2024-01-29',
-  },
-  {
-    officer_id: '4',
-    officer_name: 'Emily Rodriguez',
-    employee_id: 'EMP004',
-    department: 'Innovation Labs',
+    officer_id: 'off-002',
+    officer_name: 'Prof. Anita Sharma',
+    employee_id: 'EMP-IOF-002',
+    department: 'Innovation & Research',
     month: '2024-01',
     daily_records: generateDailyRecords('2024-01', 'regular'),
     present_days: 21,
@@ -124,20 +112,20 @@ export const mockAttendanceData: OfficerAttendanceRecord[] = [
     total_hours_worked: 176,
     last_marked_date: '2024-01-31',
   },
-  {
-    officer_id: '5',
-    officer_name: 'David Park',
-    employee_id: 'EMP005',
-    department: 'Innovation Labs',
-    month: '2024-01',
-    daily_records: generateDailyRecords('2024-01', 'some_absences'),
-    present_days: 19,
-    absent_days: 2,
-    leave_days: 2,
-    total_hours_worked: 160,
-    last_marked_date: '2024-01-30',
-  },
 ];
+
+// Helper function to filter attendance by institution
+export const getAttendanceByInstitution = (tenantSlug: string): OfficerAttendanceRecord[] => {
+  // Get officers assigned to this institution
+  const institutionOfficers = mockOfficerProfiles
+    .filter(officer => officer.assigned_institutions.includes(tenantSlug))
+    .map(officer => officer.id);
+  
+  // Return only attendance records for those officers
+  return mockAttendanceData.filter(attendance => 
+    institutionOfficers.includes(attendance.officer_id)
+  );
+};
 
 export const mockPayrollData: PayrollRecord[] = [
   {
