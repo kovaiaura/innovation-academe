@@ -53,3 +53,60 @@ export interface AuditRecord {
   notes: string;
   status: 'completed' | 'in_progress' | 'pending_review';
 }
+
+export interface PurchaseRequestItem {
+  item_name: string;
+  category: 'technology' | 'tools' | 'furniture' | 'equipment' | 'consumables' | 'other';
+  quantity: number;
+  unit: string;
+  estimated_unit_price: number;
+  estimated_total: number;
+  justification?: string;
+}
+
+export interface PurchaseRequest {
+  id: string;
+  request_code: string;
+  
+  // Who requested
+  officer_id: string;
+  officer_name: string;
+  institution_id: string;
+  institution_name: string;
+  
+  // What is being requested
+  items: PurchaseRequestItem[];
+  total_estimated_cost: number;
+  justification: string;
+  priority: 'urgent' | 'normal' | 'low';
+  
+  // Approval workflow status
+  status: 
+    | 'pending_institution_approval'
+    | 'approved_by_institution'
+    | 'rejected_by_institution'
+    | 'pending_system_admin'
+    | 'in_progress'
+    | 'fulfilled'
+    | 'rejected_by_system_admin';
+  
+  // Institution approval details
+  institution_approved_by?: string;
+  institution_approved_by_name?: string;
+  institution_approved_at?: string;
+  institution_comments?: string;
+  institution_rejection_reason?: string;
+  
+  // System Admin processing details
+  system_admin_processed_by?: string;
+  system_admin_processed_by_name?: string;
+  system_admin_processed_at?: string;
+  system_admin_comments?: string;
+  fulfillment_details?: string;
+  fulfillment_date?: string;
+  system_admin_rejection_reason?: string;
+  
+  // Tracking
+  created_at: string;
+  updated_at: string;
+}

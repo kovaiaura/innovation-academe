@@ -1,4 +1,4 @@
-import { InventoryItem, StockLocation, AuditRecord } from '@/types/inventory';
+import { InventoryItem, StockLocation, AuditRecord, PurchaseRequest } from '@/types/inventory';
 
 export const mockInventoryItems: Record<string, InventoryItem[]> = {
   '1': [
@@ -407,4 +407,260 @@ export const mockAuditRecords: Record<string, AuditRecord[]> = {
       status: 'completed',
     },
   ],
+};
+
+export const mockPurchaseRequests: PurchaseRequest[] = [
+  // Pending Institution Approval (Officer Created)
+  {
+    id: 'pr-001',
+    request_code: 'PR-001',
+    officer_id: 'off-001',
+    officer_name: 'Dr. Rajesh Kumar',
+    institution_id: 'springfield',
+    institution_name: 'Springfield University',
+    items: [
+      {
+        item_name: '3D Printer Filament (PLA)',
+        category: 'consumables',
+        quantity: 10,
+        unit: 'rolls',
+        estimated_unit_price: 500,
+        estimated_total: 5000,
+        justification: 'Required for upcoming robotics workshop with Class 8A and 8B',
+      },
+    ],
+    total_estimated_cost: 5000,
+    justification: 'Current stock depleted. Essential for planned workshops this month.',
+    priority: 'normal',
+    status: 'pending_institution_approval',
+    created_at: '2024-03-10T10:00:00Z',
+    updated_at: '2024-03-10T10:00:00Z',
+  },
+  {
+    id: 'pr-002',
+    request_code: 'PR-002',
+    officer_id: 'off-001',
+    officer_name: 'Dr. Rajesh Kumar',
+    institution_id: 'springfield',
+    institution_name: 'Springfield University',
+    items: [
+      {
+        item_name: 'Arduino Mega Boards',
+        category: 'technology',
+        quantity: 15,
+        unit: 'units',
+        estimated_unit_price: 1200,
+        estimated_total: 18000,
+      },
+      {
+        item_name: 'Motor Driver Shields',
+        category: 'technology',
+        quantity: 15,
+        unit: 'units',
+        estimated_unit_price: 350,
+        estimated_total: 5250,
+      },
+    ],
+    total_estimated_cost: 23250,
+    justification: 'Expanding IoT course capacity. Current Arduino Uno kits insufficient for advanced projects.',
+    priority: 'urgent',
+    status: 'pending_institution_approval',
+    created_at: '2024-03-12T14:30:00Z',
+    updated_at: '2024-03-12T14:30:00Z',
+  },
+
+  // Approved by Institution (Waiting for System Admin)
+  {
+    id: 'pr-003',
+    request_code: 'PR-003',
+    officer_id: 'off-001',
+    officer_name: 'Dr. Rajesh Kumar',
+    institution_id: 'springfield',
+    institution_name: 'Springfield University',
+    items: [
+      {
+        item_name: 'Ultrasonic Sensors (HC-SR04)',
+        category: 'equipment',
+        quantity: 25,
+        unit: 'units',
+        estimated_unit_price: 150,
+        estimated_total: 3750,
+      },
+      {
+        item_name: 'Breadboards',
+        category: 'equipment',
+        quantity: 25,
+        unit: 'units',
+        estimated_unit_price: 200,
+        estimated_total: 5000,
+      },
+    ],
+    total_estimated_cost: 8750,
+    justification: 'Robotics project requirements for semester-end exhibition.',
+    priority: 'normal',
+    status: 'approved_by_institution',
+    institution_approved_by: 'mgmt-001',
+    institution_approved_by_name: 'Dr. Sarah Williams',
+    institution_approved_at: '2024-03-08T11:00:00Z',
+    institution_comments: 'Approved. Essential for upcoming projects.',
+    created_at: '2024-03-05T09:00:00Z',
+    updated_at: '2024-03-08T11:00:00Z',
+  },
+
+  // In Progress (System Admin Processing)
+  {
+    id: 'pr-004',
+    request_code: 'PR-004',
+    officer_id: 'off-001',
+    officer_name: 'Dr. Rajesh Kumar',
+    institution_id: 'springfield',
+    institution_name: 'Springfield University',
+    items: [
+      {
+        item_name: 'Raspberry Pi 4 Model B (8GB)',
+        category: 'technology',
+        quantity: 10,
+        unit: 'units',
+        estimated_unit_price: 7500,
+        estimated_total: 75000,
+      },
+    ],
+    total_estimated_cost: 75000,
+    justification: 'AI/ML course requires edge computing devices for hands-on projects.',
+    priority: 'normal',
+    status: 'in_progress',
+    institution_approved_by: 'mgmt-001',
+    institution_approved_by_name: 'Dr. Sarah Williams',
+    institution_approved_at: '2024-03-02T10:00:00Z',
+    institution_comments: 'Approved for AI/ML course expansion.',
+    system_admin_processed_by: 'sysadmin-001',
+    system_admin_processed_by_name: 'John Doe',
+    system_admin_processed_at: '2024-03-04T14:00:00Z',
+    system_admin_comments: 'Order placed with supplier. Expected delivery in 7-10 days.',
+    created_at: '2024-03-01T08:00:00Z',
+    updated_at: '2024-03-04T14:00:00Z',
+  },
+
+  // Fulfilled
+  {
+    id: 'pr-005',
+    request_code: 'PR-005',
+    officer_id: 'off-001',
+    officer_name: 'Dr. Rajesh Kumar',
+    institution_id: 'springfield',
+    institution_name: 'Springfield University',
+    items: [
+      {
+        item_name: 'Safety Goggles',
+        category: 'consumables',
+        quantity: 50,
+        unit: 'pieces',
+        estimated_unit_price: 350,
+        estimated_total: 17500,
+      },
+    ],
+    total_estimated_cost: 17500,
+    justification: 'Mandatory safety equipment for all lab activities.',
+    priority: 'urgent',
+    status: 'fulfilled',
+    institution_approved_by: 'mgmt-001',
+    institution_approved_by_name: 'Dr. Sarah Williams',
+    institution_approved_at: '2024-02-20T09:00:00Z',
+    system_admin_processed_by: 'sysadmin-001',
+    system_admin_processed_by_name: 'John Doe',
+    system_admin_processed_at: '2024-02-21T10:00:00Z',
+    fulfillment_details: 'Items delivered and added to Springfield inventory. Stock updated.',
+    fulfillment_date: '2024-02-25T15:00:00Z',
+    created_at: '2024-02-18T10:00:00Z',
+    updated_at: '2024-02-25T15:00:00Z',
+  },
+
+  // Rejected by Institution
+  {
+    id: 'pr-006',
+    request_code: 'PR-006',
+    officer_id: 'off-001',
+    officer_name: 'Dr. Rajesh Kumar',
+    institution_id: 'springfield',
+    institution_name: 'Springfield University',
+    items: [
+      {
+        item_name: 'VR Headsets (Meta Quest 3)',
+        category: 'technology',
+        quantity: 5,
+        unit: 'units',
+        estimated_unit_price: 45000,
+        estimated_total: 225000,
+      },
+    ],
+    total_estimated_cost: 225000,
+    justification: 'Upgrade existing VR equipment for immersive learning experiences.',
+    priority: 'low',
+    status: 'rejected_by_institution',
+    institution_rejection_reason: 'Budget constraints. Current VR headsets are sufficient. Re-evaluate next fiscal year.',
+    created_at: '2024-02-10T11:00:00Z',
+    updated_at: '2024-02-12T14:00:00Z',
+  },
+
+  // Rejected by System Admin
+  {
+    id: 'pr-007',
+    request_code: 'PR-007',
+    officer_id: 'off-001',
+    officer_name: 'Dr. Rajesh Kumar',
+    institution_id: 'springfield',
+    institution_name: 'Springfield University',
+    items: [
+      {
+        item_name: 'CNC Router (Industrial Grade)',
+        category: 'equipment',
+        quantity: 1,
+        unit: 'unit',
+        estimated_unit_price: 750000,
+        estimated_total: 750000,
+      },
+    ],
+    total_estimated_cost: 750000,
+    justification: 'Advanced fabrication capabilities for engineering projects.',
+    priority: 'normal',
+    status: 'rejected_by_system_admin',
+    institution_approved_by: 'mgmt-001',
+    institution_approved_by_name: 'Dr. Sarah Williams',
+    institution_approved_at: '2024-01-15T10:00:00Z',
+    system_admin_processed_by: 'sysadmin-001',
+    system_admin_processed_by_name: 'John Doe',
+    system_admin_processed_at: '2024-01-20T11:00:00Z',
+    system_admin_rejection_reason: 'Central procurement policy requires tendering process for equipment above ₹500,000. Please submit formal tender request.',
+    created_at: '2024-01-10T09:00:00Z',
+    updated_at: '2024-01-20T11:00:00Z',
+  },
+];
+
+// Helper function to get requests by institution
+export const getPurchaseRequestsByInstitution = (institutionId: string): PurchaseRequest[] => {
+  return mockPurchaseRequests.filter(req => req.institution_id === institutionId);
+};
+
+// Helper function to get requests by officer
+export const getPurchaseRequestsByOfficer = (officerId: string): PurchaseRequest[] => {
+  return mockPurchaseRequests.filter(req => req.officer_id === officerId);
+};
+
+// Helper function to get requests by status
+export const getPurchaseRequestsByStatus = (status: PurchaseRequest['status']): PurchaseRequest[] => {
+  return mockPurchaseRequests.filter(req => req.status === status);
+};
+
+// Helper function to update request (for mock testing)
+export const updateMockPurchaseRequest = (requestId: string, updates: Partial<PurchaseRequest>): PurchaseRequest | null => {
+  const index = mockPurchaseRequests.findIndex(req => req.id === requestId);
+  if (index !== -1) {
+    mockPurchaseRequests[index] = {
+      ...mockPurchaseRequests[index],
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+    return mockPurchaseRequests[index];
+  }
+  return null;
 };
