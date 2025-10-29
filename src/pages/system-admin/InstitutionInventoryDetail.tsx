@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
+import { useInstitutionData } from '@/contexts/InstitutionDataContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,19 +18,12 @@ import { InventoryItem } from '@/types/inventory';
 import { AddItemDialog } from '@/components/inventory/AddItemDialog';
 import { toast } from 'sonner';
 
-// Mock institution data (in real app, this would come from the API)
-const mockInstitutions: Record<string, { id: string; name: string }> = {
-  'inst1': { id: 'inst1', name: 'Springfield University' },
-  'inst2': { id: 'inst2', name: 'River College' },
-  'inst3': { id: 'inst3', name: 'Oakwood Institute' },
-  'inst4': { id: 'inst4', name: 'Tech Valley School' },
-};
-
 export default function InstitutionInventoryDetail() {
   const { institutionId } = useParams<{ institutionId: string }>();
   const navigate = useNavigate();
+  const { institutions } = useInstitutionData();
   
-  const institution = institutionId ? mockInstitutions[institutionId] : null;
+  const institution = institutions.find(inst => inst.id === institutionId);
   const inventoryItems = institutionId ? (mockInventoryItems[institutionId] || []) : [];
   const stockLocations = institutionId ? (mockStockLocations[institutionId] || []) : [];
   const auditRecords = institutionId ? (mockAuditRecords[institutionId] || []) : [];
@@ -43,17 +37,21 @@ export default function InstitutionInventoryDetail() {
   if (!institution) {
     return (
       <Layout>
-        <div className="flex items-center justify-center h-96">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold">Institution Not Found</h2>
-            <Button onClick={() => navigate(-1)} className="mt-4">
-              Go Back
-            </Button>
-          </div>
+        <div className="flex flex-col items-center justify-center h-96">
+          <Package className="h-16 w-16 text-muted-foreground mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Institution Not Found</h2>
+          <p className="text-muted-foreground mb-4">The requested institution could not be found.</p>
+          <Button onClick={() => navigate('/system-admin/inventory-management')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Inventory Management
+          </Button>
         </div>
       </Layout>
     );
   }
+
+  // Check if this is a new institution with no inventory
+  const hasNoInventory = !inventoryItems || inventoryItems.length === 0;
 
   // Calculate stats
   const totalItems = inventoryItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -267,7 +265,22 @@ export default function InstitutionInventoryDetail() {
 
           {/* Lab Inventory Tab */}
           <TabsContent value="inventory" className="space-y-6">
-            <Card>
+            {hasNoInventory ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <Package className="h-16 w-16 text-muted-foreground mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">No Inventory Items Yet</h3>
+                  <p className="text-muted-foreground mb-4 text-center max-w-md">
+                    This is a new institution with no inventory items added yet. Click the "Add Item" button above to start tracking inventory.
+                  </p>
+                  <Button onClick={() => setIsAddItemOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Your First Item
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
               <CardHeader>
                 <CardTitle>Lab Inventory</CardTitle>
                 <CardDescription>Complete list of items in the lab</CardDescription>
@@ -409,6 +422,7 @@ export default function InstitutionInventoryDetail() {
                 </div>
               </CardContent>
             </Card>
+            )}
           </TabsContent>
 
           {/* Stock Management Tab */}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useInstitutionData, InventorySummary } from '@/contexts/InstitutionDataContext';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,25 +13,6 @@ import { Package, AlertTriangle, CheckCircle, TrendingUp, Search, Clock, DollarS
 import { toast } from 'sonner';
 
 // Data Types
-interface InventorySummary {
-  institution_id: string;
-  institution_name: string;
-  total_items: number;
-  missing_items: number;
-  damaged_items: number;
-  last_audit_date: string;
-  value: number;
-  status: 'good' | 'needs_review' | 'critical';
-  categories: {
-    technology: { count: number; value: number };
-    tools: { count: number; value: number };
-    furniture: { count: number; value: number };
-    equipment: { count: number; value: number };
-    consumables: { count: number; value: number };
-    other: { count: number; value: number };
-  };
-}
-
 interface PurchaseRequest {
   id: string;
   institution_id: string;
@@ -45,82 +27,7 @@ interface PurchaseRequest {
   notes?: string;
 }
 
-// Mock Data
-const mockInventory: InventorySummary[] = [
-  {
-    institution_id: 'inst1',
-    institution_name: 'Springfield University',
-    total_items: 342,
-    missing_items: 5,
-    damaged_items: 8,
-    last_audit_date: '2024-01-10',
-    value: 145000,
-    status: 'good',
-    categories: {
-      technology: { count: 80, value: 45000 },
-      tools: { count: 50, value: 15000 },
-      furniture: { count: 120, value: 35000 },
-      equipment: { count: 72, value: 28000 },
-      consumables: { count: 15, value: 4000 },
-      other: { count: 5, value: 18000 },
-    },
-  },
-  {
-    institution_id: 'inst2',
-    institution_name: 'River College',
-    total_items: 218,
-    missing_items: 12,
-    damaged_items: 15,
-    last_audit_date: '2023-11-25',
-    value: 89000,
-    status: 'needs_review',
-    categories: {
-      technology: { count: 60, value: 28000 },
-      tools: { count: 35, value: 10000 },
-      furniture: { count: 80, value: 25000 },
-      equipment: { count: 28, value: 15000 },
-      consumables: { count: 10, value: 3000 },
-      other: { count: 5, value: 8000 },
-    },
-  },
-  {
-    institution_id: 'inst3',
-    institution_name: 'Oakwood Institute',
-    total_items: 156,
-    missing_items: 25,
-    damaged_items: 18,
-    last_audit_date: '2023-09-15',
-    value: 62000,
-    status: 'critical',
-    categories: {
-      technology: { count: 40, value: 20000 },
-      tools: { count: 25, value: 8000 },
-      furniture: { count: 60, value: 18000 },
-      equipment: { count: 20, value: 10000 },
-      consumables: { count: 8, value: 2000 },
-      other: { count: 3, value: 4000 },
-    },
-  },
-  {
-    institution_id: 'inst4',
-    institution_name: 'Tech Valley School',
-    total_items: 289,
-    missing_items: 3,
-    damaged_items: 6,
-    last_audit_date: '2024-01-15',
-    value: 112000,
-    status: 'good',
-    categories: {
-      technology: { count: 70, value: 38000 },
-      tools: { count: 45, value: 12000 },
-      furniture: { count: 100, value: 30000 },
-      equipment: { count: 55, value: 22000 },
-      consumables: { count: 12, value: 3000 },
-      other: { count: 7, value: 7000 },
-    },
-  },
-];
-
+// Mock Data for Purchase Requests
 const mockPurchaseRequests: PurchaseRequest[] = [
   {
     id: '1',
@@ -185,7 +92,8 @@ const mockPurchaseRequests: PurchaseRequest[] = [
 
 export default function InventoryManagement() {
   const navigate = useNavigate();
-  const [inventory] = useState<InventorySummary[]>(mockInventory);
+  const { inventorySummaries } = useInstitutionData();
+  const inventory = Object.values(inventorySummaries);
   const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>(mockPurchaseRequests);
   
   const [searchTerm, setSearchTerm] = useState('');

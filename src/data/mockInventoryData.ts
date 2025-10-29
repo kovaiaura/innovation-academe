@@ -1,7 +1,7 @@
 import { InventoryItem, StockLocation, AuditRecord } from '@/types/inventory';
 
 export const mockInventoryItems: Record<string, InventoryItem[]> = {
-  'inst1': [
+  '1': [
     {
       id: 'item_001',
       item_code: 'TECH-001',
@@ -166,7 +166,7 @@ export const mockInventoryItems: Record<string, InventoryItem[]> = {
       status: 'active',
     },
   ],
-  'inst2': [
+  '2': [
     {
       id: 'item_101',
       item_code: 'TECH-101',
@@ -213,7 +213,7 @@ export const mockInventoryItems: Record<string, InventoryItem[]> = {
       notes: 'One unit needs calibration',
     },
   ],
-  'inst3': [
+  '3': [
     {
       id: 'item_201',
       item_code: 'TECH-201',
@@ -238,7 +238,7 @@ export const mockInventoryItems: Record<string, InventoryItem[]> = {
       notes: 'Spindle motor needs replacement',
     },
   ],
-  'inst4': [
+  '4': [
     {
       id: 'item_301',
       item_code: 'TECH-301',
@@ -264,7 +264,7 @@ export const mockInventoryItems: Record<string, InventoryItem[]> = {
 };
 
 export const mockStockLocations: Record<string, StockLocation[]> = {
-  'inst1': [
+  '1': [
     {
       location_id: 'loc_001',
       location_name: 'Innovation Lab A',
@@ -298,7 +298,7 @@ export const mockStockLocations: Record<string, StockLocation[]> = {
       responsible_person: 'Mr. Verma',
     },
   ],
-  'inst2': [
+  '2': [
     {
       location_id: 'loc_101',
       location_name: 'Fabrication Lab',
@@ -316,7 +316,7 @@ export const mockStockLocations: Record<string, StockLocation[]> = {
       responsible_person: 'Ms. Khan',
     },
   ],
-  'inst3': [
+  '3': [
     {
       location_id: 'loc_201',
       location_name: 'Workshop',
@@ -326,7 +326,7 @@ export const mockStockLocations: Record<string, StockLocation[]> = {
       responsible_person: 'Ms. Rodriguez',
     },
   ],
-  'inst4': [
+  '4': [
     {
       location_id: 'loc_301',
       location_name: 'Innovation Lab',
@@ -339,7 +339,7 @@ export const mockStockLocations: Record<string, StockLocation[]> = {
 };
 
 export const mockAuditRecords: Record<string, AuditRecord[]> = {
-  'inst1': [
+  '1': [
     {
       audit_id: 'audit_001',
       audit_date: '2024-01-10',
@@ -365,7 +365,7 @@ export const mockAuditRecords: Record<string, AuditRecord[]> = {
       status: 'completed',
     },
   ],
-  'inst2': [
+  '2': [
     {
       audit_id: 'audit_101',
       audit_date: '2023-11-25',
@@ -379,7 +379,7 @@ export const mockAuditRecords: Record<string, AuditRecord[]> = {
       status: 'completed',
     },
   ],
-  'inst3': [
+  '3': [
     {
       audit_id: 'audit_201',
       audit_date: '2023-09-15',
@@ -393,7 +393,7 @@ export const mockAuditRecords: Record<string, AuditRecord[]> = {
       status: 'completed',
     },
   ],
-  'inst4': [
+  '4': [
     {
       audit_id: 'audit_301',
       audit_date: '2024-01-15',

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useInstitutionData, Institution } from '@/contexts/InstitutionDataContext';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,130 +15,9 @@ import { Progress } from '@/components/ui/progress';
 import { Search, Plus, Building2, Upload, Calendar, FileText, AlertCircle, CheckCircle, Clock, DollarSign, Users, Shield, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface Institution {
-  id: string;
-  name: string;
-  slug: string;
-  code: string;
-  type: 'university' | 'college' | 'school' | 'institute';
-  location: string;
-  established_year: number;
-  contact_email: string;
-  contact_phone: string;
-  admin_name: string;
-  admin_email: string;
-  total_students: number;
-  total_faculty: number;
-  total_users: number;
-  storage_used_gb: number;
-  subscription_status: 'active' | 'inactive' | 'suspended';
-  subscription_plan: 'basic' | 'standard' | 'premium' | 'enterprise';
-  license_type: 'basic' | 'standard' | 'premium' | 'enterprise';
-  license_expiry: string;
-  max_users: number;
-  current_users: number;
-  features: string[];
-  contract_type: string;
-  contract_start_date: string;
-  contract_expiry_date: string;
-  contract_value: number;
-  created_at: string;
-}
-
-// Mock data
-const mockInstitutions: Institution[] = [
-  {
-    id: '1',
-    name: 'Delhi Public School - Vasant Kunj',
-    slug: 'dps-vk',
-    code: 'DPS-VK-001',
-    type: 'school',
-    location: 'New Delhi, India',
-    established_year: 1995,
-    contact_email: 'admin@dpsvk.edu.in',
-    contact_phone: '+91-11-2345-6789',
-    admin_name: 'Dr. Rajesh Kumar',
-    admin_email: 'rajesh.kumar@dpsvk.edu.in',
-    total_students: 2450,
-    total_faculty: 180,
-    total_users: 2630,
-    storage_used_gb: 125,
-    subscription_status: 'active',
-    subscription_plan: 'premium',
-    license_type: 'premium',
-    license_expiry: '2025-12-31',
-    max_users: 3000,
-    current_users: 2630,
-    features: ['Innovation Lab', 'Project Management', 'Advanced Analytics', 'Priority Support'],
-    contract_type: 'Annual MoU',
-    contract_start_date: '2025-01-01',
-    contract_expiry_date: '2025-12-31',
-    contract_value: 500000,
-    created_at: '2024-01-15'
-  },
-  {
-    id: '2',
-    name: 'Ryan International School',
-    slug: 'ryan-int',
-    code: 'RIS-MUM-002',
-    type: 'school',
-    location: 'Mumbai, India',
-    established_year: 1989,
-    contact_email: 'info@ryanmumbai.edu.in',
-    contact_phone: '+91-22-3456-7890',
-    admin_name: 'Mrs. Priya Sharma',
-    admin_email: 'priya.sharma@ryanmumbai.edu.in',
-    total_students: 3800,
-    total_faculty: 250,
-    total_users: 4050,
-    storage_used_gb: 180,
-    subscription_status: 'active',
-    subscription_plan: 'enterprise',
-    license_type: 'enterprise',
-    license_expiry: '2026-03-15',
-    max_users: 5000,
-    current_users: 4050,
-    features: ['All Premium Features', 'Custom Integrations', 'Dedicated Account Manager', 'SLA Guarantee'],
-    contract_type: 'Multi-Year Agreement',
-    contract_start_date: '2024-03-15',
-    contract_expiry_date: '2026-03-15',
-    contract_value: 1200000,
-    created_at: '2024-02-01'
-  },
-  {
-    id: '3',
-    name: 'Innovation Hub Chennai',
-    slug: 'innohub-chennai',
-    code: 'IHC-CHN-003',
-    type: 'institute',
-    location: 'Chennai, India',
-    established_year: 2020,
-    contact_email: 'contact@innohubchennai.org',
-    contact_phone: '+91-44-4567-8901',
-    admin_name: 'Mr. Arjun Patel',
-    admin_email: 'arjun.patel@innohubchennai.org',
-    total_students: 450,
-    total_faculty: 35,
-    total_users: 485,
-    storage_used_gb: 45,
-    subscription_status: 'active',
-    subscription_plan: 'basic',
-    license_type: 'basic',
-    license_expiry: '2025-06-30',
-    max_users: 500,
-    current_users: 485,
-    features: ['Innovation Lab', 'Basic Analytics', 'Email Support'],
-    contract_type: 'Annual Contract',
-    contract_start_date: '2024-07-01',
-    contract_expiry_date: '2025-06-30',
-    contract_value: 150000,
-    created_at: '2024-06-15'
-  }
-];
-
 export default function InstitutionManagement() {
   const navigate = useNavigate();
-  const [institutions, setInstitutions] = useState<Institution[]>(mockInstitutions);
+  const { institutions, addInstitution, updateInstitution } = useInstitutionData();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -238,8 +118,8 @@ export default function InstitutionManagement() {
       created_at: new Date().toISOString().split('T')[0]
     };
 
-    setInstitutions([...institutions, newInstitution]);
-    toast.success('Institution added successfully');
+    addInstitution(newInstitution);
+    toast.success('Institution added successfully with inventory tracking enabled');
     setFormData({
       name: '',
       slug: '',
@@ -259,12 +139,9 @@ export default function InstitutionManagement() {
 
   const handleRenewLicense = () => {
     if (selectedInstitution) {
-      const updatedInstitutions = institutions.map(inst => 
-        inst.id === selectedInstitution.id 
-          ? { ...inst, license_expiry: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0] }
-          : inst
-      );
-      setInstitutions(updatedInstitutions);
+      updateInstitution(selectedInstitution.id, {
+        license_expiry: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
+      });
       toast.success(`License renewed for ${selectedInstitution.name}`);
       setIsRenewDialogOpen(false);
       setSelectedInstitution(null);
