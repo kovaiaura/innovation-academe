@@ -119,15 +119,12 @@ export default function CourseContentViewer() {
     if (selectedContent && selectedModule && isPresentationMode) {
       const completion = completions.find(c => c.content_id === selectedContent.id);
       if (!completion?.completed) {
-        // Check if content should be auto-completed
-        const shouldComplete = (window as any).__checkAutoComplete?.();
-        if (shouldComplete) {
-          handleMarkComplete(selectedContent.id, selectedModule.id);
-          toast.success(`${selectedContent.title} marked as complete`, {
-            icon: <CheckCircle2 className="h-4 w-4" />,
-            duration: 2000,
-          });
-        }
+        // Always mark as complete when navigating in presentation mode
+        handleMarkComplete(selectedContent.id, selectedModule.id);
+        toast.success(`${selectedContent.title} marked as complete`, {
+          icon: <CheckCircle2 className="h-4 w-4" />,
+          duration: 2000,
+        });
       }
     }
 
