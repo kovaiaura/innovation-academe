@@ -6,8 +6,9 @@ const generateDailyRecords = (
   pattern: 'regular' | 'some_absences' | 'frequent_absences'
 ): DailyAttendance[] => {
   const records: DailyAttendance[] = [];
-  const year = 2024;
-  const monthNum = parseInt(month.split('-')[1]);
+  const [yearStr, monthStr] = month.split('-');
+  const year = parseInt(yearStr);
+  const monthNum = parseInt(monthStr);
   const daysInMonth = new Date(year, monthNum, 0).getDate();
   
   for (let day = 1; day <= daysInMonth; day++) {
@@ -111,6 +112,86 @@ export const mockAttendanceData: OfficerAttendanceRecord[] = [
     leave_days: 1,
     total_hours_worked: 176,
     last_marked_date: '2024-01-31',
+  },
+  // September 2025 records
+  {
+    officer_id: 'off-001',
+    officer_name: 'Dr. Rajesh Kumar',
+    employee_id: 'EMP-IOF-001',
+    department: 'Innovation & Research',
+    month: '2025-09',
+    daily_records: generateDailyRecords('2025-09', 'regular'),
+    present_days: 22,
+    absent_days: 0,
+    leave_days: 0,
+    total_hours_worked: 184,
+    last_marked_date: '2025-09-30',
+  },
+  {
+    officer_id: '3',
+    officer_name: 'Innovation Officer',
+    employee_id: 'EMP-IOF-003',
+    department: 'Innovation & Research',
+    month: '2025-09',
+    daily_records: generateDailyRecords('2025-09', 'regular'),
+    present_days: 21,
+    absent_days: 1,
+    leave_days: 0,
+    total_hours_worked: 176,
+    last_marked_date: '2025-09-30',
+  },
+  {
+    officer_id: 'off-002',
+    officer_name: 'Prof. Anita Sharma',
+    employee_id: 'EMP-IOF-002',
+    department: 'Innovation & Research',
+    month: '2025-09',
+    daily_records: generateDailyRecords('2025-09', 'regular'),
+    present_days: 22,
+    absent_days: 0,
+    leave_days: 0,
+    total_hours_worked: 184,
+    last_marked_date: '2025-09-30',
+  },
+  // October 2025 records
+  {
+    officer_id: 'off-001',
+    officer_name: 'Dr. Rajesh Kumar',
+    employee_id: 'EMP-IOF-001',
+    department: 'Innovation & Research',
+    month: '2025-10',
+    daily_records: generateDailyRecords('2025-10', 'regular'),
+    present_days: 20,
+    absent_days: 0,
+    leave_days: 1,
+    total_hours_worked: 168,
+    last_marked_date: '2025-10-29',
+  },
+  {
+    officer_id: '3',
+    officer_name: 'Innovation Officer',
+    employee_id: 'EMP-IOF-003',
+    department: 'Innovation & Research',
+    month: '2025-10',
+    daily_records: generateDailyRecords('2025-10', 'regular'),
+    present_days: 19,
+    absent_days: 0,
+    leave_days: 2,
+    total_hours_worked: 160,
+    last_marked_date: '2025-10-29',
+  },
+  {
+    officer_id: 'off-002',
+    officer_name: 'Prof. Anita Sharma',
+    employee_id: 'EMP-IOF-002',
+    department: 'Innovation & Research',
+    month: '2025-10',
+    daily_records: generateDailyRecords('2025-10', 'regular'),
+    present_days: 21,
+    absent_days: 0,
+    leave_days: 0,
+    total_hours_worked: 176,
+    last_marked_date: '2025-10-29',
   },
 ];
 
