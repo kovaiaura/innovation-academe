@@ -52,6 +52,7 @@ import OfficerCourseManagement from "./pages/officer/CourseManagement";
 import StudentCourseDetail from "./pages/student/CourseDetail";
 import InstitutionalCalendar from "./pages/system-admin/InstitutionalCalendar";
 import InstitutionDetail from "./pages/system-admin/InstitutionDetail";
+import OfficerDetail from "./pages/system-admin/OfficerDetail";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -118,14 +119,22 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/system-admin/institutions/:institutionId"
-              element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
-                  <InstitutionDetail />
-                </ProtectedRoute>
-              }
-            />
+          <Route
+            path="/system-admin/institutions/:institutionId"
+            element={
+              <ProtectedRoute allowedRoles={['system_admin']}>
+                <InstitutionDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/system-admin/officers/:officerId"
+            element={
+              <ProtectedRoute allowedRoles={['system_admin']}>
+                <OfficerDetail />
+              </ProtectedRoute>
+            }
+          />
             <Route
               path="/system-admin/reports"
               element={

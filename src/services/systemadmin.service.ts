@@ -90,6 +90,45 @@ export interface Officer {
   status: 'active' | 'on_leave' | 'terminated';
 }
 
+export interface OfficerDocument {
+  id: string;
+  officer_id: string;
+  document_type: 'appointment_letter' | 'certificate' | 'id_card' | 'contract' | 'other';
+  document_name: string;
+  file_url: string;
+  file_size_mb: number;
+  file_type: string;
+  uploaded_by: string;
+  uploaded_date: string;
+  description?: string;
+}
+
+export interface OfficerDetails extends Officer {
+  date_of_birth?: string;
+  address?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  employee_id?: string;
+  department?: string;
+  bank_account_number?: string;
+  bank_name?: string;
+  bank_ifsc?: string;
+  qualifications?: string[];
+  certifications?: string[];
+  skills?: string[];
+  profile_photo_url?: string;
+}
+
+export interface OfficerActivityLog {
+  id: string;
+  officer_id: string;
+  action_type: 'profile_update' | 'assignment' | 'document_upload' | 'status_change' | 'salary_update';
+  action_description: string;
+  performed_by: string;
+  performed_at: string;
+  changes?: Record<string, { old: any; new: any }>;
+}
+
 export interface OfficerAttendance {
   officer_id: string;
   officer_name: string;
@@ -309,6 +348,69 @@ export const systemAdminService = {
       officer_id: officerId, 
       institution_id: institutionId 
     });
+    return response.data;
+  },
+
+  async getOfficerById(id: string): Promise<ApiResponse<OfficerDetails>> {
+    const response = await api.get(`/system-admin/officers/${id}`);
+    return response.data;
+  },
+
+  async updateOfficerProfile(id: string, data: Partial<OfficerDetails>): Promise<ApiResponse<OfficerDetails>> {
+    const response = await api.put(`/system-admin/officers/${id}/profile`, data);
+    return response.data;
+  },
+
+  async uploadOfficerDocument(
+    officerId: string, 
+    file: File, 
+    documentType: string, 
+    documentName: string,
+    description?: string
+  ): Promise<ApiResponse<OfficerDocument>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('document_type', documentType);
+    formData.append('document_name', documentName);
+    if (description) formData.append('description', description);
+    
+    const response = await api.post(
+      `/system-admin/officers/${officerId}/documents`, 
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  async getOfficerDocuments(officerId: string): Promise<ApiResponse<OfficerDocument[]>> {
+    const response = await api.get(`/system-admin/officers/${officerId}/documents`);
+    return response.data;
+  },
+
+  async deleteOfficerDocument(officerId: string, documentId: string): Promise<ApiResponse<void>> {
+    const response = await api.delete(`/system-admin/officers/${officerId}/documents/${documentId}`);
+    return response.data;
+  },
+
+  async getOfficerActivityLog(officerId: string): Promise<ApiResponse<OfficerActivityLog[]>> {
+    const response = await api.get(`/system-admin/officers/${officerId}/activity-log`);
+    return response.data;
+  },
+
+  async uploadOfficerPhoto(officerId: string, file: File): Promise<ApiResponse<{ photo_url: string }>> {
+    const formData = new FormData();
+    formData.append('photo', file);
+    
+    const response = await api.post(
+      `/system-admin/officers/${officerId}/photo`, 
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  async removeOfficerAssignment(officerId: string, institutionId: string): Promise<ApiResponse<void>> {
+    const response = await api.delete(`/system-admin/officers/${officerId}/assignments/${institutionId}`);
     return response.data;
   },
 

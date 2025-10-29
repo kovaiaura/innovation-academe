@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -105,6 +106,7 @@ const mockInstitutions = [
 ];
 
 export default function OfficerManagement() {
+  const navigate = useNavigate();
   const [officers, setOfficers] = useState<Officer[]>(mockOfficersData);
   const [assignments, setAssignments] = useState<Assignment[]>(mockAssignmentsData);
   const [searchTerm, setSearchTerm] = useState('');
@@ -329,7 +331,11 @@ export default function OfficerManagement() {
                   </TableHeader>
                   <TableBody>
                     {filteredOfficers.map((officer) => (
-                      <TableRow key={officer.id}>
+                      <TableRow 
+                        key={officer.id}
+                        className="cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => navigate(`/system-admin/officers/${officer.id}`)}
+                      >
                         <TableCell className="font-medium">{officer.name}</TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1 text-sm">
