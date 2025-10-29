@@ -7,18 +7,34 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Users, ClipboardCheck, Award, Search, PlayCircle } from 'lucide-react';
+import { BookOpen, Users, ClipboardCheck, Award, Search, PlayCircle, TrendingUp } from 'lucide-react';
 import { mockCourses, mockEnrollments, mockSubmissions } from '@/data/mockCourseData';
 import { CourseContentTab } from '@/components/officer/CourseContentTab';
 import { AssignmentsAndQuizzesTab } from '@/components/officer/AssignmentsAndQuizzesTab';
+import { SessionSelectionDialog } from '@/components/officer/SessionSelectionDialog';
+import { getAllSessionProgressForCourse } from '@/utils/sessionHelpers';
+import { Course } from '@/types/course';
+import { format } from 'date-fns';
 
 export default function OfficerCourseManagement() {
   const { tenantId } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('my-courses');
+  const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
   const assignedCourses = mockCourses.slice(0, 2);
   const pendingGrades = mockSubmissions.filter(s => s.status === 'pending').length;
+  const officerId = 'off-001'; // In real app, get from auth context
+
+  const handleLaunchCourse = (course: Course) => {
+    setSelectedCourse(course);
+    setSessionDialogOpen(true);
+  };
+
+  const handleSessionStart = (sessionId: string, className: string, slotId?: string) => {
+    navigate(`/tenant/${tenantId}/officer/courses/${selectedCourse?.id}/viewer?session_id=${sessionId}&class=${encodeURIComponent(className)}${slotId ? `&slot_id=${slotId}` : ''}`);
+  };
 
   return (
     <Layout>
@@ -85,40 +101,65 @@ export default function OfficerCourseManagement() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
-              {assignedCourses.map((course) => (
-                <Card key={course.id}>
-                  <CardHeader>
-                    <CardTitle>{course.title}</CardTitle>
-                    <CardDescription>{course.course_code}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Enrollments</span>
-                        <span className="font-medium">
-                          {mockEnrollments.filter(e => e.course_id === course.id).length}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Avg Progress</span>
-                        <span className="font-medium">
-                          {(mockEnrollments.filter(e => e.course_id === course.id).reduce((sum, e) => sum + e.progress_percentage, 0) / 
-                            mockEnrollments.filter(e => e.course_id === course.id).length).toFixed(0)}%
-                        </span>
-                      </div>
-                      <div className="flex gap-2">
+              {assignedCourses.map((course) => {
+                const sessionProgress = getAllSessionProgressForCourse(course.id);
+                
+                return (
+                  <Card key={course.id}>
+                    <CardHeader>
+                      <CardTitle>{course.title}</CardTitle>
+                      <CardDescription>{course.course_code}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {/* Per-Class Progress */}
+                        {sessionProgress.length > 0 && (
+                          <div className="space-y-2">
+                            <h4 className="font-semibold text-sm flex items-center gap-2">
+                              <TrendingUp className="h-4 w-4" />
+                              Class Progress
+                            </h4>
+                            <div className="space-y-2">
+                              {sessionProgress.map(progress => (
+                                <div 
+                                  key={progress.class_name}
+                                  className="flex justify-between items-center p-2 border rounded-lg hover:bg-muted/50 transition-colors"
+                                >
+                                  <div className="flex-1">
+                                    <p className="font-medium text-sm">{progress.class_name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Module {progress.completed_modules}/{progress.total_modules} • 
+                                      Last: {format(new Date(progress.last_session_date), 'MMM dd')}
+                                    </p>
+                                  </div>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {progress.total_sessions} sessions
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex justify-between text-sm pt-2 border-t">
+                          <span className="text-muted-foreground">Total Enrollments</span>
+                          <span className="font-medium">
+                            {mockEnrollments.filter(e => e.course_id === course.id).length}
+                          </span>
+                        </div>
+                        
                         <Button 
-                          className="flex-1"
-                          onClick={() => navigate(`/tenant/${tenantId}/officer/courses/${course.id}/viewer`)}
+                          className="w-full"
+                          onClick={() => handleLaunchCourse(course)}
                         >
                           <PlayCircle className="h-4 w-4 mr-2" />
-                          Launch Viewer
+                          Start New Session
                         </Button>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </TabsContent>
 
@@ -163,6 +204,15 @@ export default function OfficerCourseManagement() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Session Selection Dialog */}
+        <SessionSelectionDialog
+          open={sessionDialogOpen}
+          onOpenChange={setSessionDialogOpen}
+          course={selectedCourse}
+          officerId={officerId}
+          onSessionStart={handleSessionStart}
+        />
       </div>
     </Layout>
   );

@@ -18,6 +18,8 @@ export const mockOfficerTimetables: OfficerTimetable[] = [
         room: 'Innovation Lab 1',
         type: 'workshop',
         batch: 'Batch A',
+        course_id: 'STEM-101',
+        current_module_id: 'mod-stem-1',
       },
       {
         id: 'slot-2',
@@ -30,6 +32,8 @@ export const mockOfficerTimetables: OfficerTimetable[] = [
         room: 'Electronics Lab',
         type: 'lab',
         batch: 'Batch B',
+        course_id: 'IoT-202',
+        current_module_id: 'mod-iot-1',
       },
       {
         id: 'slot-3',

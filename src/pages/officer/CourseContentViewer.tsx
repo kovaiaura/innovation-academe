@@ -1,26 +1,38 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Maximize2, Minimize2, Calendar, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Maximize2, Minimize2, Calendar, CheckCircle2, Users as UsersIcon } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { ModuleNavigationSidebar } from '@/components/officer/ModuleNavigationSidebar';
 import { ContentDisplayArea } from '@/components/officer/ContentDisplayArea';
 import { StudentEngagementPanel } from '@/components/officer/StudentEngagementPanel';
 import { CompletionTimelineDialog } from '@/components/officer/CompletionTimelineDialog';
+import { SessionAttendanceDialog } from '@/components/officer/SessionAttendanceDialog';
 import { mockCourses, mockModules, mockContent } from '@/data/mockCourseData';
 import { toast } from 'sonner';
 import type { ContentCompletion, CompletionTimelineItem, CourseProgress } from '@/types/contentCompletion';
+import { getSessionDelivery, updateSessionProgress, getSessionProgressByClass } from '@/utils/sessionHelpers';
+import { format } from 'date-fns';
 
 export default function CourseContentViewer() {
   const { tenantId, courseId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [selectedContentId, setSelectedContentId] = useState<string | null>(null);
   const [isPresentationMode, setIsPresentationMode] = useState(false);
   const [showStudentPanel, setShowStudentPanel] = useState(true);
   const [showTimelineDialog, setShowTimelineDialog] = useState(false);
+  const [showAttendanceDialog, setShowAttendanceDialog] = useState(false);
   const [completions, setCompletions] = useState<ContentCompletion[]>([]);
+  
+  // Extract session context from URL
+  const searchParams = new URLSearchParams(location.search);
+  const sessionId = searchParams.get('session_id');
+  const className = searchParams.get('class');
+  const slotId = searchParams.get('slot_id');
 
   // Get course data
   const course = mockCourses.find(c => c.id === courseId);
@@ -31,28 +43,51 @@ export default function CourseContentViewer() {
     : [];
   const selectedContent = moduleContent.find(c => c.id === selectedContentId);
 
-  // Load completions from localStorage
+  // Load completions - either from session or from localStorage
   useEffect(() => {
-    const officerId = 'officer-1'; // In real app, get from auth context
-    const storageKey = `officer_content_progress_${officerId}_${courseId}`;
-    const stored = localStorage.getItem(storageKey);
-    if (stored) {
-      try {
-        setCompletions(JSON.parse(stored));
-      } catch (e) {
-        console.error('Failed to parse completions:', e);
+    if (sessionId) {
+      // Load completions from session
+      const session = getSessionDelivery(sessionId);
+      if (session) {
+        const sessionCompletions: ContentCompletion[] = session.content_completed.map(contentId => ({
+          content_id: contentId,
+          module_id: session.current_module_id,
+          course_id: courseId!,
+          officer_id: session.officer_id,
+          completed: true,
+          completed_at: session.created_at,
+        }));
+        setCompletions(sessionCompletions);
       }
-    }
-  }, [courseId]);
-
-  // Save completions to localStorage
-  useEffect(() => {
-    if (courseId) {
+    } else {
+      // Fallback to localStorage for backward compatibility
       const officerId = 'officer-1';
       const storageKey = `officer_content_progress_${officerId}_${courseId}`;
-      localStorage.setItem(storageKey, JSON.stringify(completions));
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        try {
+          setCompletions(JSON.parse(stored));
+        } catch (e) {
+          console.error('Failed to parse completions:', e);
+        }
+      }
     }
-  }, [completions, courseId]);
+  }, [courseId, sessionId]);
+
+  // Save completions - to session if available, otherwise localStorage
+  useEffect(() => {
+    if (courseId) {
+      if (sessionId) {
+        // Session mode - completions are saved via updateSessionProgress
+        // No need to save to localStorage
+      } else {
+        // Fallback mode - save to localStorage
+        const officerId = 'officer-1';
+        const storageKey = `officer_content_progress_${officerId}_${courseId}`;
+        localStorage.setItem(storageKey, JSON.stringify(completions));
+      }
+    }
+  }, [completions, courseId, sessionId]);
 
   // Auto-select first module and content on load
   useEffect(() => {
@@ -107,6 +142,11 @@ export default function CourseContentViewer() {
         watch_percentage: watchPercentage,
       };
       setCompletions(prev => [...prev, newCompletion]);
+    }
+    
+    // If in session mode, update session progress
+    if (sessionId) {
+      updateSessionProgress(sessionId, contentId, moduleId);
     }
     
     toast.success('Content marked as complete!', {
@@ -214,6 +254,38 @@ export default function CourseContentViewer() {
 
   return (
     <div className={`${isPresentationMode ? 'fixed inset-0 z-50 bg-background' : 'min-h-screen'} flex flex-col`}>
+      {/* Session Context Banner */}
+      {className && sessionId && !isPresentationMode && (
+        <div className="bg-primary/10 border-b px-6 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4 text-sm">
+              <Badge variant="secondary" className="text-base">
+                {className}
+              </Badge>
+              <span className="text-muted-foreground">
+                {format(new Date(), 'EEEE, MMM dd, yyyy')}
+              </span>
+              {(() => {
+                const progress = getSessionProgressByClass(courseId!, className);
+                return progress && (
+                  <span className="text-muted-foreground">
+                    Module {progress.completed_modules + 1}/{progress.total_modules}
+                  </span>
+                );
+              })()}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAttendanceDialog(true)}
+            >
+              <UsersIcon className="h-4 w-4 mr-2" />
+              Take Attendance
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       {!isPresentationMode && (
         <header className="border-b bg-card">
@@ -356,6 +428,14 @@ export default function CourseContentViewer() {
         onOpenChange={setShowTimelineDialog}
         completions={timelineItems}
         courseTitle={course?.title || ''}
+      />
+
+      {/* Attendance Dialog */}
+      <SessionAttendanceDialog
+        open={showAttendanceDialog}
+        onOpenChange={setShowAttendanceDialog}
+        sessionId={sessionId}
+        className={className || ''}
       />
     </div>
   );

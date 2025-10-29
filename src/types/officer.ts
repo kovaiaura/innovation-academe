@@ -9,6 +9,8 @@ export interface OfficerTimetableSlot {
   room: string;        // 'Innovation Lab 1'
   type: 'workshop' | 'lab' | 'mentoring' | 'project_review';
   batch?: string;      // 'Batch A' (optional)
+  course_id?: string;  // Links to Course
+  current_module_id?: string; // Tracks which module you're on for this class
 }
 
 export interface OfficerTimetable {

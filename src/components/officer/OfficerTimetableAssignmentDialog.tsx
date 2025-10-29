@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import { Clock, AlertCircle, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { mockCourses } from "@/data/mockCourseData";
 
 interface OfficerTimetableAssignmentDialogProps {
   open: boolean;
@@ -66,12 +67,16 @@ export function OfficerTimetableAssignmentDialog({
     room: string;
     type: 'workshop' | 'lab' | 'mentoring' | 'project_review';
     batch: string;
+    course_id: string;
+    current_module_id: string;
   }>({
     class: '',
     subject: '',
     room: '',
     type: 'workshop',
     batch: '',
+    course_id: '',
+    current_module_id: '',
   });
 
   useEffect(() => {
@@ -89,6 +94,8 @@ export function OfficerTimetableAssignmentDialog({
       room: '',
       type: 'workshop',
       batch: '',
+      course_id: '',
+      current_module_id: '',
     });
   };
 
@@ -105,6 +112,8 @@ export function OfficerTimetableAssignmentDialog({
         room: existing.room,
         type: existing.type,
         batch: existing.batch || '',
+        course_id: existing.course_id || '',
+        current_module_id: existing.current_module_id || '',
       });
     } else {
       resetForm();
@@ -134,6 +143,8 @@ export function OfficerTimetableAssignmentDialog({
       room: formData.room,
       type: formData.type,
       batch: formData.batch || undefined,
+      course_id: formData.course_id || undefined,
+      current_module_id: formData.current_module_id || undefined,
     };
 
     setSlots(prev => {
@@ -339,6 +350,22 @@ export function OfficerTimetableAssignmentDialog({
                       <SelectItem value="Batch A">Batch A</SelectItem>
                       <SelectItem value="Batch B">Batch B</SelectItem>
                       <SelectItem value="Batch C">Batch C</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Linked Course (Optional)</Label>
+                  <Select value={formData.course_id} onValueChange={(v) => setFormData({...formData, course_id: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select course" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">No Course</SelectItem>
+                      {mockCourses.slice(0, 5).map(course => (
+                        <SelectItem key={course.id} value={course.id}>
+                          {course.title}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
