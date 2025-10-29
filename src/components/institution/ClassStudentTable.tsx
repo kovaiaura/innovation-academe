@@ -131,7 +131,11 @@ export function ClassStudentTable({ students, onEditStudent, institutionCode, cl
               </TableRow>
             ) : (
               displayedStudents.map((student) => (
-                <TableRow key={student.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onEditStudent(student)}>
+                <TableRow 
+                  key={student.id} 
+                  className="cursor-pointer hover:bg-muted/50 transition-colors" 
+                  onClick={() => onEditStudent(student)}
+                >
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
