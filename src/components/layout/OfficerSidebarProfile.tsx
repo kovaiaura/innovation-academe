@@ -1,6 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
-import { Building2 } from 'lucide-react';
 import { OfficerDetails } from '@/services/systemadmin.service';
 
 interface OfficerSidebarProfileProps {
@@ -38,7 +37,7 @@ export function OfficerSidebarProfile({ officer, collapsed }: OfficerSidebarProf
       <Card className="bg-meta-dark-lighter border-meta-dark-lighter">
         <CardContent className="p-4">
           {/* Header with Avatar and Name */}
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-3">
             <Avatar className="h-12 w-12">
               <AvatarImage src={officer.profile_photo_url} alt={officer.name} />
               <AvatarFallback className="bg-meta-accent text-meta-dark font-semibold">
@@ -51,17 +50,6 @@ export function OfficerSidebarProfile({ officer, collapsed }: OfficerSidebarProf
               </p>
               <p className="text-xs text-gray-400">{officer.employee_id}</p>
             </div>
-          </div>
-
-          {/* Assigned Institution */}
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Building2 className="h-3 w-3 text-meta-accent" />
-              <span className="text-xs font-medium text-gray-300">Assigned To</span>
-            </div>
-            <p className="text-xs text-white ml-5 capitalize">
-              {officer.assigned_institutions.join(', ')}
-            </p>
           </div>
         </CardContent>
       </Card>
