@@ -6,45 +6,31 @@ import { Input } from "@/components/ui/input";
 import { Search, UserCheck, Calendar, BookOpen } from "lucide-react";
 import { useState } from "react";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
+import { OfficerDetailsDialog } from "@/components/officer/OfficerDetailsDialog";
+import { OfficerScheduleDialog } from "@/components/officer/OfficerScheduleDialog";
+import { mockOfficerProfiles, getOfficerById } from "@/data/mockOfficerData";
+import { OfficerDetails } from "@/services/systemadmin.service";
 
 const Officers = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedOfficer, setSelectedOfficer] = useState<OfficerDetails | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
 
-  const officers = [
-    {
-      id: "1",
-      name: "Dr. Rajesh Kumar",
-      email: "rajesh.kumar@metainnova.com",
-      assignedInstitution: "Engineering College - Main Campus",
-      coursesAssigned: 5,
-      sessionsThisMonth: 12,
-      status: "active" as const,
-      expertise: "Robotics & IoT",
-      lastActive: "2024-02-10",
-    },
-    {
-      id: "2",
-      name: "Ms. Priya Sharma",
-      email: "priya.sharma@metainnova.com",
-      assignedInstitution: "Engineering College - Main Campus",
-      coursesAssigned: 4,
-      sessionsThisMonth: 10,
-      status: "active" as const,
-      expertise: "AI & Machine Learning",
-      lastActive: "2024-02-10",
-    },
-    {
-      id: "3",
-      name: "Mr. Amit Patel",
-      email: "amit.patel@metainnova.com",
-      assignedInstitution: "Engineering College - Main Campus",
-      coursesAssigned: 3,
-      sessionsThisMonth: 8,
-      status: "on_leave" as const,
-      expertise: "Web Development",
-      lastActive: "2024-02-05",
-    },
-  ];
+  // Transform mockOfficerProfiles to match display format
+  const officers = mockOfficerProfiles
+    .filter(officer => officer.assigned_institutions.includes('springfield'))
+    .map(officer => ({
+      id: officer.id,
+      name: officer.name,
+      email: officer.email,
+      assignedInstitution: officer.assigned_institutions[0],
+      coursesAssigned: 5, // Will be dynamic later
+      sessionsThisMonth: 12, // Will be dynamic later
+      status: officer.status,
+      expertise: officer.skills.join(', '),
+      lastActive: new Date().toISOString().split('T')[0],
+    }));
 
   const filteredOfficers = officers.filter((officer) =>
     officer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -131,10 +117,30 @@ const Officers = () => {
                       </div>
 
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            const fullOfficer = getOfficerById(officer.id);
+                            if (fullOfficer) {
+                              setSelectedOfficer(fullOfficer);
+                              setDetailsDialogOpen(true);
+                            }
+                          }}
+                        >
                           View Details
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            const fullOfficer = getOfficerById(officer.id);
+                            if (fullOfficer) {
+                              setSelectedOfficer(fullOfficer);
+                              setScheduleDialogOpen(true);
+                            }
+                          }}
+                        >
                           View Schedule
                         </Button>
                       </div>
@@ -153,6 +159,18 @@ const Officers = () => {
           </CardContent>
         </Card>
       </div>
+
+      <OfficerDetailsDialog
+        officer={selectedOfficer}
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+      />
+
+      <OfficerScheduleDialog
+        officer={selectedOfficer}
+        open={scheduleDialogOpen}
+        onOpenChange={setScheduleDialogOpen}
+      />
     </Layout>
   );
 };

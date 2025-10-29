@@ -27,9 +27,11 @@ export const mockOfficerProfiles: OfficerDetails[] = [
       'Scrum Master Certification'
     ],
     skills: [
+      'STEM Education',
+      'Robotics & Automation',
+      'IoT Implementation',
       'AI/ML Implementation',
-      'IoT Development',
-      'Innovation Management',
+      'Innovation Coaching',
       'Mentorship & Training'
     ],
     profile_photo_url: '/placeholder.svg',
@@ -59,10 +61,12 @@ export const mockOfficerProfiles: OfficerDetails[] = [
       'Google Cloud Professional'
     ],
     skills: [
+      'STEM Education',
+      'Electronics Projects',
       'Embedded Systems',
       'Robotics',
-      'Project Management',
-      'Innovation Coaching'
+      'Maker Space Management',
+      'Student Mentorship'
     ],
     profile_photo_url: '/placeholder.svg',
   },
