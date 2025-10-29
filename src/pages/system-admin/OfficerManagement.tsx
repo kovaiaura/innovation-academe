@@ -353,7 +353,7 @@ export default function OfficerManagement() {
                           <div className="flex flex-col gap-1">
                             {getEmploymentBadge(officer.employment_type)}
                             <span className="text-sm text-muted-foreground">
-                              ${officer.salary.toLocaleString()}/yr
+                              ₹{officer.salary.toLocaleString('en-IN')}/yr
                             </span>
                           </div>
                         </TableCell>

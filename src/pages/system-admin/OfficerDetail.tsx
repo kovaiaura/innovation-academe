@@ -447,7 +447,7 @@ export default function OfficerDetail() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Annual Salary</p>
-                    <p className="font-semibold">${officer.salary.toLocaleString()}</p>
+                    <p className="font-semibold">₹{officer.salary.toLocaleString('en-IN')}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Institutions</p>
