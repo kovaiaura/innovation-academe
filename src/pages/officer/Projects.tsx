@@ -1,259 +1,333 @@
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { TrendingUp, Users, DollarSign, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { toast } from 'sonner';
-import { Layout } from '@/components/layout/Layout';
-
-const mockProjects = [
-  {
-    id: '1',
-    title: 'Smart Campus System',
-    description: 'IoT-based system for campus resource management',
-    team_lead: 'John Doe',
-    team_members: ['Jane Smith', 'Bob Wilson', 'Alice Brown'],
-    status: 'proposal' as const,
-    category: 'IoT',
-    funding_required: 50000,
-    progress: 0,
-    start_date: '2024-01-15',
-  },
-  {
-    id: '2',
-    title: 'Eco-Friendly Transportation App',
-    description: 'Mobile app for sustainable campus transportation',
-    team_lead: 'Sarah Johnson',
-    team_members: ['Mike Davis', 'Emily Chen'],
-    status: 'in_progress' as const,
-    category: 'Mobile App',
-    funding_required: 30000,
-    funding_approved: 30000,
-    progress: 45,
-    start_date: '2024-01-01',
-  },
-];
+import { useState } from "react";
+import { Layout } from "@/components/layout/Layout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Eye, Upload, Award, Edit } from "lucide-react";
+import { toast } from "sonner";
+import { 
+  mockProjects, 
+  getProjectsByInstitution, 
+  updateProject,
+  addProject,
+  addProgressUpdate,
+  Project 
+} from "@/data/mockProjectData";
+import { CreateProjectDialog } from "@/components/project/CreateProjectDialog";
+import { ProgressUpdateDialog } from "@/components/project/ProgressUpdateDialog";
+import { ProjectDetailsDialog } from "@/components/project/ProjectDetailsDialog";
+import { MarkAsShowcaseDialog } from "@/components/project/MarkAsShowcaseDialog";
 
 export default function OfficerProjects() {
-  const [projects, setProjects] = useState(mockProjects);
-  const [selectedProject, setSelectedProject] = useState<any>(null);
-  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('all');
+  const institutionId = 'springfield';
+  const officerId = 'off1';
+  const officerName = 'Dr. Rajesh Kumar';
 
-  const handleApprove = () => {
-    toast.success('Project approved successfully!');
-    setIsReviewDialogOpen(false);
+  const [projects, setProjects] = useState(getProjectsByInstitution(institutionId));
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isProgressDialogOpen, setIsProgressDialogOpen] = useState(false);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [isShowcaseDialogOpen, setIsShowcaseDialogOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+
+  const filteredProjects = projects.filter(project => 
+    filterStatus === "all" || project.status === filterStatus
+  );
+
+  const handleCreateProject = (newProject: Omit<Project, 'id'>) => {
+    const project: Project = {
+      ...newProject,
+      id: `proj-${Date.now()}`
+    };
+    addProject(institutionId, project);
+    setProjects(getProjectsByInstitution(institutionId));
+    toast.success("Project created successfully");
   };
 
-  const handleReject = () => {
-    toast.success('Project rejected');
-    setIsReviewDialogOpen(false);
+  const handleProgressUpdate = (notes: string, progress: number) => {
+    if (!selectedProject) return;
+
+    const update = {
+      date: new Date().toISOString().split('T')[0],
+      notes,
+      updated_by: officerName
+    };
+
+    addProgressUpdate(institutionId, selectedProject.id, update);
+    updateProject(institutionId, selectedProject.id, { progress });
+    setProjects(getProjectsByInstitution(institutionId));
+    toast.success("Progress updated successfully");
+  };
+
+  const handleMarkAsShowcase = (achievements: string[], awards: string[]) => {
+    if (!selectedProject) return;
+
+    updateProject(institutionId, selectedProject.id, {
+      is_showcase: true,
+      achievements,
+      awards
+    });
+    setProjects(getProjectsByInstitution(institutionId));
+  };
+
+  const handleApprove = (projectId: string) => {
+    updateProject(institutionId, projectId, { 
+      status: 'approved',
+      funding_approved: projects.find(p => p.id === projectId)?.funding_required 
+    });
+    setProjects(getProjectsByInstitution(institutionId));
+    toast.success("Project approved successfully");
+  };
+
+  const handleReject = (projectId: string) => {
+    updateProject(institutionId, projectId, { status: 'rejected' });
+    setProjects(getProjectsByInstitution(institutionId));
+    toast.error("Project rejected");
   };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { className: string; label: string }> = {
-      proposal: { className: 'bg-yellow-500/10 text-yellow-500', label: 'Proposal' },
-      approved: { className: 'bg-green-500/10 text-green-500', label: 'Approved' },
-      in_progress: { className: 'bg-blue-500/10 text-blue-500', label: 'In Progress' },
-      completed: { className: 'bg-purple-500/10 text-purple-500', label: 'Completed' },
-      rejected: { className: 'bg-red-500/10 text-red-500', label: 'Rejected' },
+      'proposal': { className: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', label: 'Pending Review' },
+      'approved': { className: 'bg-purple-500/10 text-purple-500 border-purple-500/20', label: 'Approved' },
+      'in_progress': { className: 'bg-blue-500/10 text-blue-500 border-blue-500/20', label: 'In Progress' },
+      'completed': { className: 'bg-green-500/10 text-green-500 border-green-500/20', label: 'Completed' },
+      'rejected': { className: 'bg-red-500/10 text-red-500 border-red-500/20', label: 'Rejected' }
     };
-    return variants[status] || variants.proposal;
+    return variants[status] || { className: '', label: status };
   };
 
-  const filteredProjects = filterStatus === 'all' 
-    ? projects 
-    : projects.filter(p => p.status === filterStatus);
+  const activeProjects = projects.filter(p => p.status === 'in_progress');
+  const completedProjects = projects.filter(p => p.status === 'completed');
+  const pendingProposals = projects.filter(p => p.status === 'proposal');
 
   return (
     <Layout>
-      <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="space-y-8">
+        {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold">Innovation Projects</h1>
-          <p className="text-muted-foreground">Review and manage student innovation projects</p>
+          <h1 className="text-3xl font-bold mb-2">Innovation Projects</h1>
+          <p className="text-muted-foreground">
+            Create, manage, and mentor student innovation projects
+          </p>
         </div>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Projects</SelectItem>
-            <SelectItem value="proposal">Proposals</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
 
-      <div className="grid gap-4">
-        {filteredProjects.map((project) => {
-          const statusInfo = getStatusBadge(project.status);
-          return (
-            <Card key={project.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2">
-                      <CardTitle>{project.title}</CardTitle>
-                      <Badge className={statusInfo.className}>{statusInfo.label}</Badge>
-                      <Badge variant="outline">{project.category}</Badge>
+        {/* Stats */}
+        <div className="grid md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{activeProjects.length}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Completed Projects</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{completedProjects.length}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{pendingProposals.length}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center justify-between">
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Projects</SelectItem>
+              <SelectItem value="proposal">Pending Review</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create New Project
+          </Button>
+        </div>
+
+        {/* Projects List */}
+        <div className="grid gap-4">
+          {filteredProjects.map((project) => {
+            const statusInfo = getStatusBadge(project.status);
+            
+            return (
+              <Card key={project.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="flex items-center gap-2">
+                        {project.title}
+                        {project.is_showcase && (
+                          <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+                            ⭐ Showcase
+                          </Badge>
+                        )}
+                      </CardTitle>
+                      <CardDescription>{project.description}</CardDescription>
                     </div>
-                    <p className="text-sm text-muted-foreground">{project.description}</p>
+                    <Badge className={statusInfo.className}>
+                      {statusInfo.label}
+                    </Badge>
                   </div>
-                  {project.status === 'proposal' && (
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Progress Bar */}
+                  {project.status !== 'proposal' && project.status !== 'rejected' && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Progress</span>
+                        <span className="font-medium">{project.progress}%</span>
+                      </div>
+                      <Progress value={project.progress} />
+                    </div>
+                  )}
+
+                  {/* Project Info */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Category</span>
+                      <p className="font-medium">{project.category}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Team Size</span>
+                      <p className="font-medium">{project.team_members.length} students</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Class</span>
+                      <p className="font-medium">{project.class}</p>
+                    </div>
+                    {project.funding_required && (
+                      <div>
+                        <span className="text-muted-foreground">Funding</span>
+                        <p className="font-medium">₹{project.funding_required.toLocaleString()}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-wrap gap-2">
                     <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => {
                         setSelectedProject(project);
-                        setIsReviewDialogOpen(true);
+                        setIsDetailsDialogOpen(true);
                       }}
                     >
-                      Review
+                      <Eye className="h-4 w-4 mr-2" />
+                      View Details
                     </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{project.team_lead}</p>
-                      <p className="text-muted-foreground">Team Lead</p>
-                    </div>
+
+                    {project.status === 'proposal' && (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => handleApprove(project.id)}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleReject(project.id)}
+                        >
+                          Reject
+                        </Button>
+                      </>
+                    )}
+
+                    {(project.status === 'approved' || project.status === 'in_progress') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedProject(project);
+                          setIsProgressDialogOpen(true);
+                        }}
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload Progress
+                      </Button>
+                    )}
+
+                    {project.status === 'completed' && !project.is_showcase && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedProject(project);
+                          setIsShowcaseDialogOpen(true);
+                        }}
+                      >
+                        <Award className="h-4 w-4 mr-2" />
+                        Mark as Showcase
+                      </Button>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{project.team_members.length + 1}</p>
-                      <p className="text-muted-foreground">Team Size</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">₹{project.funding_required.toLocaleString()}</p>
-                      <p className="text-muted-foreground">Funding Required</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{project.progress}%</p>
-                      <p className="text-muted-foreground">Progress</p>
-                    </div>
-                  </div>
-                </div>
-                {project.status === 'in_progress' && (
-                  <div className="mt-4">
-                    <div className="w-full bg-secondary rounded-full h-2">
-                      <div
-                        className="bg-primary h-2 rounded-full transition-all"
-                        style={{ width: `${project.progress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          {filteredProjects.length === 0 && (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <p className="text-muted-foreground">No projects found for the selected filter</p>
               </CardContent>
             </Card>
-          );
-        })}
+          )}
+        </div>
       </div>
 
-      {/* Review Dialog */}
-      <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Review Project: {selectedProject?.title}</DialogTitle>
-            <DialogDescription>Review and approve or reject this innovation project</DialogDescription>
-          </DialogHeader>
-          {selectedProject && (
-            <div className="space-y-4 py-4">
-              <div className="grid gap-4">
-                <div>
-                  <h4 className="font-semibold mb-2">Project Details</h4>
-                  <p className="text-sm text-muted-foreground">{selectedProject.description}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-muted-foreground">Team Lead</Label>
-                    <p className="font-medium">{selectedProject.team_lead}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Category</Label>
-                    <p className="font-medium">{selectedProject.category}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Funding Required</Label>
-                    <p className="font-medium">₹{selectedProject.funding_required.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Team Members</Label>
-                    <p className="font-medium">{selectedProject.team_members.length + 1}</p>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="font-semibold mb-2">Team Members</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedProject.team_members.map((member: string, index: number) => (
-                      <Badge key={index} variant="outline">
-                        {member}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="funding_approved">Approved Funding Amount (₹)</Label>
-                  <Input
-                    id="funding_approved"
-                    type="number"
-                    placeholder={selectedProject.funding_required.toString()}
-                    defaultValue={selectedProject.funding_required}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="comments">Comments/Feedback</Label>
-                  <Textarea id="comments" placeholder="Add your review comments..." rows={4} />
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setIsReviewDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleReject}>
-              <XCircle className="mr-2 h-4 w-4" />
-              Reject
-            </Button>
-            <Button onClick={handleApprove}>
-              <CheckCircle className="mr-2 h-4 w-4" />
-              Approve
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      </div>
+      {/* Dialogs */}
+      <CreateProjectDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onCreateProject={handleCreateProject}
+        officerId={officerId}
+        officerName={officerName}
+        institutionId={institutionId}
+      />
+
+      <ProgressUpdateDialog
+        open={isProgressDialogOpen}
+        onOpenChange={setIsProgressDialogOpen}
+        projectTitle={selectedProject?.title || ""}
+        currentProgress={selectedProject?.progress || 0}
+        onSubmit={handleProgressUpdate}
+      />
+
+      <ProjectDetailsDialog
+        open={isDetailsDialogOpen}
+        onOpenChange={setIsDetailsDialogOpen}
+        project={selectedProject}
+      />
+
+      <MarkAsShowcaseDialog
+        open={isShowcaseDialogOpen}
+        onOpenChange={setIsShowcaseDialogOpen}
+        projectTitle={selectedProject?.title || ""}
+        onSubmit={handleMarkAsShowcase}
+      />
     </Layout>
   );
 }

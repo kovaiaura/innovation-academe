@@ -1,10 +1,28 @@
+import { useState } from "react";
 import { Layout } from "@/components/layout/Layout";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Target, Award, Users, Calendar, TrendingUp } from "lucide-react";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Eye, FileDown, Award, Lock, Target, Users, Calendar, TrendingUp } from "lucide-react";
+import { getProjectsByInstitution, getShowcaseProjects, Project } from "@/data/mockProjectData";
+import { ProjectDetailsDialog } from "@/components/project/ProjectDetailsDialog";
+
+const sdgNames: Record<number, string> = {
+  1: 'No Poverty',
+  2: 'Zero Hunger',
+  3: 'Good Health',
+  4: 'Quality Education',
+  6: 'Clean Water',
+  7: 'Affordable Energy',
+  8: 'Economic Growth',
+  9: 'Industry Innovation',
+  11: 'Sustainable Cities',
+  12: 'Responsible Consumption',
+  13: 'Climate Action',
+};
 
 const ProjectRegistryTab = () => {
   const projects = [
@@ -142,110 +160,163 @@ const ProjectRegistryTab = () => {
   );
 };
 
-const ProjectGalleryTab = () => {
-  const showcaseProjects = [
-    {
-      id: "1",
-      title: "Smart Agriculture System",
-      description: "IoT-based automated irrigation and crop monitoring",
-      students: "Team AgriTech",
-      achievements: ["Best Innovation Award 2024", "State Level Winner"],
-      image: "🌾",
-      completedDate: "2024-01-30",
-    },
-    {
-      id: "2",
-      title: "Healthcare Chatbot",
-      description: "AI-powered symptom checker and health advisor",
-      students: "Team HealthAI",
-      achievements: ["National Hackathon Finalist"],
-      image: "🏥",
-      completedDate: "2024-01-25",
-    },
-  ];
+function ProjectGalleryTab() {
+  const institutionId = 'springfield';
+  const showcaseProjects = getShowcaseProjects(institutionId);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Project Gallery</h2>
-        <Button variant="outline">
-          <Award className="h-4 w-4 mr-2" />
-          Export Showcase
-        </Button>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        {showcaseProjects.map((project) => (
-          <Card key={project.id} className="overflow-hidden">
-            <div className="bg-gradient-to-br from-primary/10 to-accent/10 p-12 text-center">
-              <span className="text-6xl">{project.image}</span>
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CardTitle>Project Gallery</CardTitle>
+              <Badge variant="outline" className="text-xs">
+                <Lock className="h-3 w-3 mr-1" />
+                Read Only
+              </Badge>
             </div>
-            <CardHeader>
-              <CardTitle>{project.title}</CardTitle>
-              <p className="text-sm text-muted-foreground">{project.description}</p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Team</p>
-                <p className="font-medium">{project.students}</p>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Award className="h-4 w-4 text-yellow-500" />
-                  <p className="text-sm font-medium">Achievements</p>
+            <Button variant="outline" size="sm">
+              <FileDown className="h-4 w-4 mr-2" />
+              Export Showcase
+            </Button>
+          </div>
+          <CardDescription>
+            Award-winning and showcase projects (Managed by innovation officers)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-2 gap-6">
+            {showcaseProjects.map((project) => (
+              <Card key={project.id} className="overflow-hidden">
+                <div className="aspect-video bg-muted relative">
+                  <img 
+                    src={project.showcase_image || '/placeholder.svg'} 
+                    alt={project.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <Badge className="absolute top-4 right-4 bg-yellow-500 text-white">
+                    <Award className="h-3 w-3 mr-1" />
+                    Showcase
+                  </Badge>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {project.achievements.map((achievement, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
-                      {achievement}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
+                <CardHeader>
+                  <CardTitle>{project.title}</CardTitle>
+                  <CardDescription>{project.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Achievements */}
+                  {project.achievements && project.achievements.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Achievements:</h4>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                        {project.achievements.map((achievement, index) => (
+                          <li key={index}>{achievement}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
-              <div className="flex items-center justify-between pt-4 border-t">
-                <p className="text-sm text-muted-foreground">
-                  Completed: {project.completedDate}
-                </p>
-                <Button variant="outline" size="sm">
-                  View Full Details
-                </Button>
+                  {/* Awards */}
+                  {project.awards && project.awards.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Awards:</h4>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                        {project.awards.map((award, index) => (
+                          <li key={index}>{award}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Metadata */}
+                  <div className="pt-4 border-t space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Officer:</span>
+                      <span className="font-medium">{project.created_by_officer_name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Completed:</span>
+                      <span className="font-medium">
+                        {project.completion_date ? new Date(project.completion_date).toLocaleDateString() : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* SDG Goals */}
+                  {project.sdg_goals.length > 0 && (
+                    <div>
+                      <span className="text-sm font-semibold mb-2 block">SDG Goals:</span>
+                      <div className="flex flex-wrap gap-2">
+                        {project.sdg_goals.map((goal) => (
+                          <Badge key={goal} variant="outline" className="text-xs">
+                            SDG {goal}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      setSelectedProject(project);
+                      setIsDetailsDialogOpen(true);
+                    }}
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Full Details
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+
+            {showcaseProjects.length === 0 && (
+              <div className="col-span-2 text-center py-12">
+                <p className="text-muted-foreground">No showcase projects available yet</p>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <ProjectDetailsDialog
+        open={isDetailsDialogOpen}
+        onOpenChange={setIsDetailsDialogOpen}
+        project={selectedProject}
+      />
+    </>
   );
-};
+}
 
-const ProjectsAndCertificates = () => {
+export default function ProjectsAndCertificates() {
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-8">
         <InstitutionHeader />
-        
         <div>
           <h1 className="text-3xl font-bold">Projects & Certificates</h1>
-          <p className="text-muted-foreground">Manage student projects and showcase achievements</p>
+          <p className="text-muted-foreground">View innovation projects and certificates managed by officers</p>
         </div>
 
-        <Tabs defaultValue="registry" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+        <Tabs defaultValue="registry" className="space-y-6">
+          <TabsList>
             <TabsTrigger value="registry">Project Registry</TabsTrigger>
             <TabsTrigger value="gallery">Project Gallery</TabsTrigger>
           </TabsList>
-          <TabsContent value="registry" className="mt-6">
+
+          <TabsContent value="registry">
             <ProjectRegistryTab />
           </TabsContent>
-          <TabsContent value="gallery" className="mt-6">
+
+          <TabsContent value="gallery">
             <ProjectGalleryTab />
           </TabsContent>
         </Tabs>
       </div>
     </Layout>
   );
-};
-
-export default ProjectsAndCertificates;
+}
