@@ -255,3 +255,36 @@ export const addProgressUpdate = (
     project.last_updated = update.date;
   }
 };
+
+// Get all projects across all institutions with institution ID
+export const getAllProjects = (): Array<Project & { institutionId: string }> => {
+  return Object.entries(mockProjects).flatMap(([institutionId, projects]) =>
+    projects.map(p => ({ ...p, institutionId }))
+  );
+};
+
+// Get projects by multiple institutions
+export const getProjectsByInstitutions = (institutionIds: string[]): Project[] => {
+  return institutionIds.flatMap(id => mockProjects[id] || []);
+};
+
+// Get project statistics across all institutions
+export const getProjectStatistics = () => {
+  const allProjects = getAllProjects();
+  return {
+    total: allProjects.length,
+    byStatus: {
+      proposal: allProjects.filter(p => p.status === 'proposal').length,
+      approved: allProjects.filter(p => p.status === 'approved').length,
+      in_progress: allProjects.filter(p => p.status === 'in_progress').length,
+      completed: allProjects.filter(p => p.status === 'completed').length,
+      rejected: allProjects.filter(p => p.status === 'rejected').length,
+    },
+    totalStudents: allProjects.reduce((sum, p) => sum + p.team_members.length, 0),
+    uniqueOfficers: new Set(allProjects.map(p => p.created_by_officer_id)).size,
+    showcaseCount: allProjects.filter(p => p.is_showcase).length,
+    avgProgress: allProjects.length > 0 
+      ? Math.round(allProjects.reduce((sum, p) => sum + p.progress, 0) / allProjects.length)
+      : 0,
+  };
+};

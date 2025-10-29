@@ -37,6 +37,8 @@ const menuItems: MenuItem[] = [
   { label: 'Institutional Calendar', icon: <Calendar className="h-5 w-5" />, path: '/institutional-calendar', roles: ['system_admin'] },
   // CRM & Communication
   { label: 'CRM & Communication', icon: <Phone className="h-5 w-5" />, path: '/crm', roles: ['system_admin'] },
+  // Project Management
+  { label: 'Project Management', icon: <Target className="h-5 w-5" />, path: '/project-management', roles: ['system_admin'] },
   // Inventory & Purchase
   { label: 'Inventory Management', icon: <Package className="h-5 w-5" />, path: '/inventory-management', roles: ['system_admin'] },
   // Reports & Analytics

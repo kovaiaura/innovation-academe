@@ -63,6 +63,7 @@ import StudentCourseDetail from "./pages/student/CourseDetail";
 import InstitutionalCalendar from "./pages/system-admin/InstitutionalCalendar";
 import InstitutionDetail from "./pages/system-admin/InstitutionDetail";
 import OfficerDetail from "./pages/system-admin/OfficerDetail";
+import ProjectManagement from "./pages/system-admin/ProjectManagement";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -215,6 +216,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <InstitutionalCalendar />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/project-management"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <ProjectManagement />
                 </ProtectedRoute>
               }
             />
