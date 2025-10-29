@@ -1,14 +1,18 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Users, Calendar, TrendingUp, Clock, CheckCircle } from 'lucide-react';
+import { BookOpen, Users, Calendar, TrendingUp, Clock, CheckCircle, ClipboardCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/services/auth.service';
 import { Layout } from '@/components/layout/Layout';
+import { MarkAttendanceDialog } from '@/components/teacher/MarkAttendanceDialog';
 
 export default function TeacherDashboard() {
   const { user } = useAuth();
   const tenant = authService.getTenant();
+  const [isAttendanceDialogOpen, setIsAttendanceDialogOpen] = useState(false);
+  const [attendanceMarked, setAttendanceMarked] = useState(false);
 
   const stats = [
     {
@@ -89,6 +93,33 @@ export default function TeacherDashboard() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
+          {/* Mark Attendance Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Today's Attendance</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between p-6 border-2 border-dashed rounded-lg">
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    {attendanceMarked ? 'Attendance marked' : 'Have you marked your attendance today?'}
+                  </p>
+                  {attendanceMarked ? (
+                    <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="font-medium">Present - {new Date().toLocaleTimeString()}</span>
+                    </div>
+                  ) : (
+                    <Button onClick={() => setIsAttendanceDialogOpen(true)}>
+                      <ClipboardCheck className="h-4 w-4 mr-2" />
+                      Mark Attendance
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Today's Classes */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -189,6 +220,15 @@ export default function TeacherDashboard() {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Mark Attendance Dialog */}
+      <MarkAttendanceDialog
+        open={isAttendanceDialogOpen}
+        onOpenChange={(open) => {
+          setIsAttendanceDialogOpen(open);
+          if (!open) setAttendanceMarked(true);
+        }}
+      />
     </Layout>
   );
 }
