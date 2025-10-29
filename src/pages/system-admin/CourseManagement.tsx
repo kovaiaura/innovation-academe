@@ -22,7 +22,7 @@ export default function CourseManagement() {
   const [activeTab, setActiveTab] = useState('all-courses');
   const [courses, setCourses] = useState(mockCourses);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCourse, setSelectedCourse] = useState<string>('');
+  
   
   // Course creation form state
   const [newCourse, setNewCourse] = useState({
@@ -130,10 +130,10 @@ export default function CourseManagement() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="all-courses">All Courses</TabsTrigger>
             <TabsTrigger value="create">Create Course</TabsTrigger>
-            <TabsTrigger value="content">Content Library</TabsTrigger>
+            
             <TabsTrigger value="assessments">Assessments</TabsTrigger>
             <TabsTrigger value="assignments">Assignments</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
@@ -551,119 +551,6 @@ export default function CourseManagement() {
             </Card>
           </TabsContent>
 
-          {/* Tab 3: Content Library */}
-          <TabsContent value="content" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Content Library</CardTitle>
-                    <CardDescription>Upload and manage course materials</CardDescription>
-                  </div>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Upload Content
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Upload Course Content</DialogTitle>
-                        <DialogDescription>
-                          Upload files, videos, or add external links
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label>Select Course</Label>
-                          <Select value={selectedCourse} onValueChange={setSelectedCourse}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Choose a course" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {courses.map((course) => (
-                                <SelectItem key={course.id} value={course.id}>
-                                  {course.course_code} - {course.title}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Content Type</Label>
-                          <Select>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pdf">PDF Document</SelectItem>
-                              <SelectItem value="ppt">PowerPoint</SelectItem>
-                              <SelectItem value="video">Video Upload</SelectItem>
-                              <SelectItem value="youtube">YouTube Link</SelectItem>
-                              <SelectItem value="link">External Link</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Title</Label>
-                          <Input placeholder="Content title" />
-                        </div>
-                        <Button className="w-full">Upload</Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Title</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Course</TableHead>
-                        <TableHead>Views</TableHead>
-                        <TableHead>Size</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {mockContent.map((content) => {
-                        const course = courses.find(c => c.id === content.course_id);
-                        return (
-                          <TableRow key={content.id}>
-                            <TableCell className="font-medium">{content.title}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {content.type === 'pdf' && <FileText className="h-4 w-4" />}
-                                {content.type === 'video' && <Video className="h-4 w-4" />}
-                                {content.type === 'youtube' && <Video className="h-4 w-4 text-red-500" />}
-                                <span className="capitalize">{content.type}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>{course?.course_code}</TableCell>
-                            <TableCell>{content.views_count}</TableCell>
-                            <TableCell>{content.file_size_mb ? `${content.file_size_mb} MB` : '-'}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button variant="ghost" size="sm">
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           {/* Tab 4: Assessments */}
           <TabsContent value="assessments" className="space-y-6">
