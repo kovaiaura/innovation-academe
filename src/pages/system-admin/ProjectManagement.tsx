@@ -25,6 +25,25 @@ export default function ProjectManagement() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
+  // Helper functions (must be defined before useMemo hooks that use them)
+  const getInstitutionName = (institutionId: string) => {
+    const institutionNames: Record<string, string> = {
+      springfield: "Springfield Institute of Innovation",
+    };
+    return institutionNames[institutionId] || institutionId;
+  };
+
+  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      proposal: "outline",
+      approved: "default",
+      in_progress: "default",
+      completed: "secondary",
+      rejected: "destructive"
+    };
+    return variants[status] || "outline";
+  };
+
   // Get all projects from all institutions
   const allProjects = useMemo(() => getAllProjects(), []);
 
@@ -110,26 +129,6 @@ export default function ProjectManagement() {
       };
     }).filter(group => group.totalProjects > 0); // Only show institutions with matching projects
   }, [allProjects, statusFilter, categoryFilter, searchQuery]);
-
-  // Get status badge variant
-  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      proposal: "outline",
-      approved: "default",
-      in_progress: "default",
-      completed: "secondary",
-      rejected: "destructive"
-    };
-    return variants[status] || "outline";
-  };
-
-  // Get institution name from ID
-  const getInstitutionName = (institutionId: string) => {
-    const institutionNames: Record<string, string> = {
-      springfield: "Springfield Institute of Innovation",
-    };
-    return institutionNames[institutionId] || institutionId;
-  };
 
   // Toggle institution expansion
   const toggleInstitution = (institutionId: string) => {
