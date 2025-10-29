@@ -22,6 +22,7 @@ import { generateTemplate } from "@/utils/csvParser";
 import { Download, Upload, Search, Users, UserCheck, UserX, GraduationCap, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { useParams } from "react-router-dom";
+import { Layout } from "@/components/layout/Layout";
 
 export default function Students() {
   const { tenantId } = useParams();
@@ -132,7 +133,8 @@ export default function Students() {
   const sections = [...new Set(students.map(s => s.section))].sort();
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <Layout>
+      <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
@@ -412,6 +414,7 @@ export default function Students() {
         institutionId={institutionId}
         onUploadComplete={handleBulkUploadComplete}
       />
-    </div>
+      </div>
+    </Layout>
   );
 }
