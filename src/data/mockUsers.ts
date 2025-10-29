@@ -4,6 +4,20 @@ export interface MockUser extends User {
   password: string;
 }
 
+// Create a properly formatted mock JWT token that can be decoded
+const createMockJWT = (userId: string, role: string, tenantId?: string) => {
+  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const payload = btoa(JSON.stringify({
+    sub: userId,
+    role: role,
+    tenant_id: tenantId,
+    exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24), // 24 hours from now
+    iat: Math.floor(Date.now() / 1000)
+  }));
+  const signature = btoa('mock-signature');
+  return `${header}.${payload}.${signature}`;
+};
+
 export const mockUsers: MockUser[] = [
   {
     id: '1',
@@ -114,7 +128,7 @@ export const mockAuthService = {
 
         resolve({
           success: true,
-          token: `mock-jwt-token-${user.id}`,
+          token: createMockJWT(user.id, user.role, user.tenant_id),
           user: userWithoutPassword,
           tenant,
         });

@@ -70,7 +70,12 @@ export const authService = {
         return false;
       }
       return true;
-    } catch {
+    } catch (error) {
+      // If decode fails in mock mode, still consider authenticated if token exists
+      if (USE_MOCK_AUTH) {
+        console.warn('Mock token decode failed, but allowing authentication in mock mode');
+        return true;
+      }
       return false;
     }
   },

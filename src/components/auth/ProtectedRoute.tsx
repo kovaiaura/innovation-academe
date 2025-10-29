@@ -24,13 +24,24 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (!isAuthenticated) {
+    console.log('ProtectedRoute: User not authenticated, redirecting to login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // Check if user's role is allowed
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+    console.log('ProtectedRoute: Access denied', {
+      userRole: user.role,
+      allowedRoles,
+      path: location.pathname
+    });
     return <Navigate to="/unauthorized" replace />;
   }
+
+  console.log('ProtectedRoute: Access granted', {
+    userRole: user?.role,
+    path: location.pathname
+  });
 
   return <>{children}</>;
 };
