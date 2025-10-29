@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -183,6 +184,7 @@ const mockPurchaseRequests: PurchaseRequest[] = [
 ];
 
 export default function InventoryManagement() {
+  const navigate = useNavigate();
   const [inventory] = useState<InventorySummary[]>(mockInventory);
   const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>(mockPurchaseRequests);
   
@@ -270,6 +272,10 @@ export default function InventoryManagement() {
       req.id === id ? { ...req, status: 'rejected' as const } : req
     ));
     toast.error('Purchase request rejected');
+  };
+
+  const handleRowClick = (institutionId: string) => {
+    navigate(`/system-admin/inventory-management/${institutionId}`);
   };
 
   return (
@@ -404,7 +410,11 @@ export default function InventoryManagement() {
                     {filteredInventory.map((inv) => {
                       const daysSinceAudit = getDaysSinceAudit(inv.last_audit_date);
                       return (
-                        <TableRow key={inv.institution_id}>
+                        <TableRow 
+                          key={inv.institution_id}
+                          onClick={() => handleRowClick(inv.institution_id)}
+                          className="cursor-pointer hover:bg-accent/50 transition-colors"
+                        >
                           <TableCell className="font-medium">{inv.institution_name}</TableCell>
                           <TableCell className="text-right">{inv.total_items}</TableCell>
                           <TableCell className="text-right">
