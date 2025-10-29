@@ -9,6 +9,64 @@ import { toast } from 'sonner';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { getOfficerById } from '@/data/mockOfficerData';
+import { getOfficerTimetable } from '@/data/mockOfficerTimetable';
+import { OfficerTimetableSlot } from '@/types/officer';
+
+// Helper functions
+const getDayName = (date: Date) => {
+  return date.toLocaleDateString('en-US', { weekday: 'long' });
+};
+
+const getTodaySchedule = (slots: OfficerTimetableSlot[]) => {
+  const today = getDayName(new Date());
+  return slots
+    .filter(slot => slot.day === today)
+    .sort((a, b) => a.start_time.localeCompare(b.start_time));
+};
+
+const getUpcomingSlots = (slots: OfficerTimetableSlot[], count: number) => {
+  const today = getDayName(new Date());
+  const currentTime = new Date().toTimeString().slice(0, 5);
+  const daysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const todayIndex = daysOrder.indexOf(today);
+  
+  // Get future slots from today onwards
+  const futureSlots = slots
+    .filter(slot => {
+      const slotDayIndex = daysOrder.indexOf(slot.day);
+      if (slotDayIndex === todayIndex) {
+        return slot.start_time > currentTime;
+      }
+      return slotDayIndex > todayIndex;
+    })
+    .sort((a, b) => {
+      const dayCompare = daysOrder.indexOf(a.day) - daysOrder.indexOf(b.day);
+      if (dayCompare !== 0) return dayCompare;
+      return a.start_time.localeCompare(b.start_time);
+    });
+  
+  return futureSlots.slice(0, count);
+};
+
+const getActivityIcon = (type: string) => {
+  switch(type) {
+    case 'workshop': return '🔧';
+    case 'lab': return '🧪';
+    case 'mentoring': return '👥';
+    case 'project_review': return '📋';
+    default: return '📚';
+  }
+};
+
+const getActivityColor = (type: string) => {
+  switch(type) {
+    case 'workshop': return 'text-blue-500 bg-blue-500/10';
+    case 'lab': return 'text-green-500 bg-green-500/10';
+    case 'mentoring': return 'text-yellow-500 bg-yellow-500/10';
+    case 'project_review': return 'text-purple-500 bg-purple-500/10';
+    default: return 'text-primary bg-primary/10';
+  }
+};
 
 export default function OfficerDashboard() {
   const { user } = useAuth();
@@ -17,6 +75,9 @@ export default function OfficerDashboard() {
   const [attendanceTime, setAttendanceTime] = useState<string | null>(null);
   
   const officerProfile = getOfficerById(user?.id || '');
+  const officerTimetable = getOfficerTimetable(user?.id || '');
+  const todaySlots = getTodaySchedule(officerTimetable?.slots || []);
+  const upcomingSlots = getUpcomingSlots(officerTimetable?.slots || [], 3);
 
   const handleMarkAttendance = () => {
     const currentTime = format(new Date(), 'hh:mm a');
@@ -28,9 +89,9 @@ export default function OfficerDashboard() {
   const stats = [
     {
       title: 'Upcoming Sessions',
-      value: '12',
+      value: officerTimetable ? officerTimetable.total_hours.toString() : '0',
       icon: Calendar,
-      description: '3 this week',
+      description: `${upcomingSlots.length} upcoming this week`,
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10',
     },
@@ -58,12 +119,6 @@ export default function OfficerDashboard() {
       color: 'text-orange-500',
       bgColor: 'bg-orange-500/10',
     },
-  ];
-
-  const recentSessions = [
-    { id: '1', title: 'AI & Machine Learning Workshop', time: '10:00 AM', date: 'Today', attendees: 45 },
-    { id: '2', title: 'Startup Pitch Session', time: '2:00 PM', date: 'Tomorrow', attendees: 30 },
-    { id: '3', title: 'IoT Hackathon', time: '9:00 AM', date: 'Dec 20', attendees: 60 },
   ];
 
   const pendingProjects = [
@@ -197,36 +252,93 @@ export default function OfficerDashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent Sessions */}
+        {/* My Schedule / Timetable */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Upcoming Sessions</CardTitle>
+            <CardTitle>My Schedule</CardTitle>
             <Button variant="outline" size="sm" asChild>
-              <Link to={`/tenant/${tenant?.slug}/officer/sessions`}>View All</Link>
+              <Link to={`/tenant/${tenant?.slug}/officer/sessions`}>View Full Timetable</Link>
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentSessions.map((session) => (
-                <div key={session.id} className="flex items-center justify-between border-b pb-3 last:border-0">
-                  <div className="flex items-start gap-3">
-                    <div className="bg-primary/10 p-2 rounded-lg">
-                      <Clock className="h-4 w-4 text-primary" />
+            {!officerTimetable || officerTimetable.slots.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p className="font-medium">No schedule assigned yet</p>
+                <p className="text-sm">Contact management to get your timetable assigned</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Today's Classes Section */}
+                {todaySlots.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="h-1 w-1 rounded-full bg-green-500 animate-pulse" />
+                      <span className="text-sm font-semibold text-green-700">Today's Classes</span>
                     </div>
-                    <div>
-                      <p className="font-medium">{session.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {session.date} at {session.time}
-                      </p>
-                    </div>
+                    {todaySlots.map((slot) => (
+                      <div 
+                        key={slot.id} 
+                        className="flex items-center justify-between border-b pb-3 mb-3 last:border-0"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`p-2 rounded-lg ${getActivityColor(slot.type)}`}>
+                            <span className="text-lg">{getActivityIcon(slot.type)}</span>
+                          </div>
+                          <div>
+                            <p className="font-medium">{slot.subject}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {slot.class} • {slot.room}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Clock className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground">
+                                {slot.start_time} - {slot.end_time}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to={`/tenant/${tenant?.slug}/officer/sessions`}>Start</Link>
+                        </Button>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    {session.attendees}
+                )}
+                
+                {/* Upcoming Classes */}
+                {upcomingSlots.length > 0 && (
+                  <div>
+                    <p className="text-sm font-semibold text-muted-foreground mb-3">Upcoming This Week</p>
+                    {upcomingSlots.map((slot) => (
+                      <div 
+                        key={slot.id} 
+                        className="flex items-center justify-between border-b pb-3 mb-3 last:border-0"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`p-2 rounded-lg ${getActivityColor(slot.type)}`}>
+                            <span className="text-lg">{getActivityIcon(slot.type)}</span>
+                          </div>
+                          <div>
+                            <p className="font-medium">{slot.subject}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {slot.day}, {slot.start_time} • {slot.class}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted-foreground">{slot.room}</div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ))}
-            </div>
+                )}
+                
+                {todaySlots.length === 0 && upcomingSlots.length === 0 && (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <p className="text-sm">No upcoming classes scheduled</p>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -271,7 +383,7 @@ export default function OfficerDashboard() {
             <Button variant="outline" className="h-24 flex-col gap-2" asChild>
               <Link to={`/tenant/${tenant?.slug}/officer/sessions`}>
                 <Calendar className="h-6 w-6" />
-                Schedule Session
+                View My Timetable
               </Link>
             </Button>
             <Button variant="outline" className="h-24 flex-col gap-2" asChild>
