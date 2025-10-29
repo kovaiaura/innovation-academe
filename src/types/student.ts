@@ -28,3 +28,12 @@ export interface ClassSummary {
   sections: string[];
   average_attendance: number;
 }
+
+export interface BulkUploadResult {
+  imported: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  duplicates?: string[];
+  errors?: Array<{ row: number; roll_number: string; error: string }>;
+}

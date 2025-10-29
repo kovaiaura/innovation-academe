@@ -154,4 +154,41 @@ export const institutionService = {
     const response = await api.delete(`/institution/students/${studentId}`);
     return response.data;
   },
+
+  // Bulk Upload
+  async bulkUploadStudents(
+    institutionId: string,
+    data: {
+      class: string;
+      section: string;
+      students: Partial<Student>[];
+      options: {
+        skipDuplicates: boolean;
+        updateExisting: boolean;
+        sendWelcomeEmails: boolean;
+      }
+    }
+  ): Promise<ApiResponse<any>> {
+    const formData = new FormData();
+    formData.append('class', data.class);
+    formData.append('section', data.section);
+    formData.append('students', JSON.stringify(data.students));
+    formData.append('options', JSON.stringify(data.options));
+
+    const response = await api.post(
+      `/institutions/${institutionId}/students/bulk-upload`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      }
+    );
+    return response.data;
+  },
+
+  async downloadStudentTemplate(): Promise<Blob> {
+    const response = await api.get('/institutions/students/template', {
+      responseType: 'blob'
+    });
+    return response.data;
+  },
 };

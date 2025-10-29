@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { BulkUploadDialog, BulkUploadResult } from '@/components/student/BulkUploadDialog';
+import { generateTemplate } from '@/utils/csvParser';
 import {
   Dialog,
   DialogContent,
@@ -29,7 +31,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Plus, Edit, Trash2, Search, Download } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { Layout } from '@/components/layout/Layout';
 
@@ -78,6 +80,7 @@ const mockStudents = [
 export default function Students() {
   const [students, setStudents] = useState(mockStudents);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('all');
@@ -91,6 +94,28 @@ export default function Students() {
   const handleDeleteStudent = (id: string) => {
     setStudents(students.filter((s) => s.id !== id));
     toast.success('Student removed successfully!');
+  };
+
+  const handleBulkUploadComplete = (result: BulkUploadResult) => {
+    toast.success(`Successfully imported ${result.imported} students!`);
+    if (result.failed > 0) {
+      toast.warning(`${result.failed} students failed to import. Check logs.`);
+    }
+    setIsBulkUploadOpen(false);
+    // In real implementation, refetch students list here
+  };
+
+  const handleDownloadTemplate = () => {
+    const blob = generateTemplate();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'student_bulk_upload_template.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success('Template downloaded');
   };
 
   const getStatusBadge = (status: string) => {
@@ -122,6 +147,14 @@ export default function Students() {
             <p className="text-muted-foreground">Manage student enrollments and records</p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={handleDownloadTemplate}>
+              <Download className="mr-2 h-4 w-4" />
+              Template
+            </Button>
+            <Button variant="outline" onClick={() => setIsBulkUploadOpen(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              Bulk Upload
+            </Button>
             <Button variant="outline">
               <Download className="mr-2 h-4 w-4" />
               Export
@@ -327,6 +360,14 @@ export default function Students() {
             </Table>
           </CardContent>
         </Card>
+
+        {/* Bulk Upload Dialog */}
+        <BulkUploadDialog
+          isOpen={isBulkUploadOpen}
+          onOpenChange={setIsBulkUploadOpen}
+          institutionId="1" // Replace with actual institution ID from context
+          onUploadComplete={handleBulkUploadComplete}
+        />
       </div>
     </Layout>
   );

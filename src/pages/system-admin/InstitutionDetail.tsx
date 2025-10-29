@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
-import { ArrowLeft, Users, GraduationCap, Building2, Mail, Phone, Calendar, MapPin } from 'lucide-react';
+import { ArrowLeft, Users, GraduationCap, Building2, Mail, Phone, Calendar, MapPin, Download, Upload } from 'lucide-react';
 import { ClassStudentTable } from '@/components/institution/ClassStudentTable';
 import { StudentEditDialog } from '@/components/institution/StudentEditDialog';
+import { BulkUploadDialog, BulkUploadResult } from '@/components/student/BulkUploadDialog';
 import { Student } from '@/types/student';
 import { getStudentsByInstitution, getStudentsByClass } from '@/data/mockStudentData';
 import { calculateClassStatistics } from '@/utils/studentHelpers';
+import { generateTemplate } from '@/utils/csvParser';
 import { toast } from 'sonner';
 
 // Mock institution data (in real app, fetch from API)
@@ -69,6 +71,7 @@ export default function InstitutionDetail() {
   const [classStudents, setClassStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
 
   const institution = mockInstitutions.find(inst => inst.id === institutionId);
 
@@ -117,6 +120,34 @@ export default function InstitutionDetail() {
     setClassStudents(updatedClassStudents);
     
     toast.success('Student details updated successfully');
+  };
+
+  const handleBulkUploadComplete = (result: BulkUploadResult) => {
+    toast.success(`Successfully imported ${result.imported} students!`);
+    if (result.failed > 0) {
+      toast.warning(`${result.failed} students failed to import. Check logs.`);
+    }
+    setIsBulkUploadOpen(false);
+    // Refresh student data
+    if (institutionId) {
+      const allStudents = getStudentsByInstitution(institutionId);
+      setStudents(allStudents);
+      const filtered = getStudentsByClass(institutionId, selectedClass);
+      setClassStudents(filtered);
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    const blob = generateTemplate();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'student_bulk_upload_template.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success('Template downloaded');
   };
 
   return (
@@ -275,18 +306,28 @@ export default function InstitutionDetail() {
                     <CardTitle>Students by Class</CardTitle>
                     <CardDescription>View and manage students organized by class</CardDescription>
                   </div>
-                  <Select value={selectedClass} onValueChange={setSelectedClass}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {classes.map(className => (
-                        <SelectItem key={className} value={className}>
-                          {className}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={handleDownloadTemplate}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Download Template
+                    </Button>
+                    <Button variant="outline" onClick={() => setIsBulkUploadOpen(true)}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Bulk Upload Students
+                    </Button>
+                    <Select value={selectedClass} onValueChange={setSelectedClass}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {classes.map(className => (
+                          <SelectItem key={className} value={className}>
+                            {className}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -352,6 +393,14 @@ export default function InstitutionDetail() {
           open={isEditDialogOpen}
           onOpenChange={setIsEditDialogOpen}
           onSave={handleSaveStudent}
+        />
+
+        {/* Bulk Upload Dialog */}
+        <BulkUploadDialog
+          isOpen={isBulkUploadOpen}
+          onOpenChange={setIsBulkUploadOpen}
+          institutionId={institutionId || '1'}
+          onUploadComplete={handleBulkUploadComplete}
         />
       </div>
     </Layout>
