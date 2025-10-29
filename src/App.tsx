@@ -45,8 +45,14 @@ import TeacherAttendance from "./pages/teacher/Attendance";
 import TeacherSchedule from "./pages/teacher/Schedule";
 import TeacherMaterials from "./pages/teacher/Materials";
 import ManagementDashboard from "./pages/management/Dashboard";
-import ManagementFaculty from "./pages/management/Faculty";
-import ManagementPerformance from "./pages/management/Performance";
+import ManagementTeachers from "./pages/management/Teachers";
+import ManagementOfficers from "./pages/management/Officers";
+import ManagementTeam from "./pages/management/ManagementTeam";
+import CoursesAndSessions from "./pages/management/CoursesAndSessions";
+import InventoryAndPurchase from "./pages/management/InventoryAndPurchase";
+import ProjectsAndCertificates from "./pages/management/ProjectsAndCertificates";
+import ManagementSettings from "./pages/management/Settings";
+import AttendanceAndPayroll from "./pages/management/AttendanceAndPayroll";
 import ManagementReports from "./pages/management/Reports";
 import SystemAdminCourseManagement from "./pages/system-admin/CourseManagement";
 import SystemAdminCourseDetail from "./pages/system-admin/CourseDetail";
@@ -320,11 +326,12 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            {/* People Management Routes */}
             <Route
               path="/tenant/:tenantId/management/teachers"
               element={
                 <ProtectedRoute allowedRoles={['management']}>
-                  <InstitutionTeachers />
+                  <ManagementTeachers />
                 </ProtectedRoute>
               }
             />
@@ -337,18 +344,43 @@ const App = () => (
               }
             />
             <Route
-              path="/tenant/:tenantId/management/courses"
+              path="/tenant/:tenantId/management/officers"
               element={
                 <ProtectedRoute allowedRoles={['management']}>
-                  <InstitutionCourses />
+                  <ManagementOfficers />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/tenant/:tenantId/management/performance"
+              path="/tenant/:tenantId/management/management-team"
               element={
                 <ProtectedRoute allowedRoles={['management']}>
-                  <ManagementPerformance />
+                  <ManagementTeam />
+                </ProtectedRoute>
+              }
+            />
+            {/* Combined Functionality Routes */}
+            <Route
+              path="/tenant/:tenantId/management/courses-sessions"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <CoursesAndSessions />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/management/inventory-purchase"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <InventoryAndPurchase />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/management/projects-certificates"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <ProjectsAndCertificates />
                 </ProtectedRoute>
               }
             />
@@ -357,6 +389,22 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['management']}>
                   <ManagementReports />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/management/settings"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <ManagementSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/management/attendance-payroll"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <AttendanceAndPayroll />
                 </ProtectedRoute>
               }
             />

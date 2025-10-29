@@ -160,25 +160,25 @@ const Dashboard = () => {
               <Button variant="outline" className="h-24 flex-col gap-2" asChild>
                 <Link to={`/tenant/${tenant?.slug}/management/teachers`}>
                   <Users className="h-6 w-6" />
-                  Manage Faculty
+                  People Management
                 </Link>
               </Button>
               <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-                <Link to={`/tenant/${tenant?.slug}/management/students`}>
-                  <GraduationCap className="h-6 w-6" />
-                  Student Management
-                </Link>
-              </Button>
-              <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-                <Link to={`/tenant/${tenant?.slug}/management/courses`}>
+                <Link to={`/tenant/${tenant?.slug}/management/courses-sessions`}>
                   <BookOpen className="h-6 w-6" />
-                  Course Assignment
+                  Courses & Sessions
                 </Link>
               </Button>
               <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-                <Link to={`/tenant/${tenant?.slug}/management/performance`}>
+                <Link to={`/tenant/${tenant?.slug}/management/inventory-purchase`}>
                   <TrendingUp className="h-6 w-6" />
-                  Performance Analytics
+                  Inventory & Purchase
+                </Link>
+              </Button>
+              <Button variant="outline" className="h-24 flex-col gap-2" asChild>
+                <Link to={`/tenant/${tenant?.slug}/management/reports`}>
+                  <TrendingUp className="h-6 w-6" />
+                  Reports
                 </Link>
               </Button>
             </div>

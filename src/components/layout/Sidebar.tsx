@@ -6,11 +6,16 @@ import {
   Home, Users, Settings, LogOut, ChevronLeft, 
   BookOpen, Target, Calendar, Award, BarChart,
   Building2, FileText, Trophy, Package, UserCheck, GraduationCap,
-  Shield, Phone, Clock, ShoppingCart, PieChart
+  Shield, Phone, Clock, ShoppingCart, PieChart, ChevronDown, Briefcase
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { UserRole } from '@/types';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface MenuItem {
   label: string;
@@ -58,15 +63,21 @@ const menuItems: MenuItem[] = [
   { label: 'Gamification', icon: <Trophy className="h-5 w-5" />, path: '/gamification', roles: ['student'] },
   { label: 'Resume', icon: <FileText className="h-5 w-5" />, path: '/resume', roles: ['student'] },
   // Management menu items (merged with institution admin functionality)
-  { label: 'Faculty', icon: <Users className="h-5 w-5" />, path: '/teachers', roles: ['management'] },
+  { label: 'Teachers', icon: <Users className="h-5 w-5" />, path: '/teachers', roles: ['management'] },
   { label: 'Students', icon: <GraduationCap className="h-5 w-5" />, path: '/students', roles: ['management'] },
-  { label: 'Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['management'] },
-  { label: 'Performance', icon: <BarChart className="h-5 w-5" />, path: '/performance', roles: ['management'] },
+  { label: 'Innovation Officers', icon: <UserCheck className="h-5 w-5" />, path: '/officers', roles: ['management'] },
+  { label: 'Management Team', icon: <Briefcase className="h-5 w-5" />, path: '/management-team', roles: ['management'] },
+  { label: 'Courses & Sessions', icon: <BookOpen className="h-5 w-5" />, path: '/courses-sessions', roles: ['management'] },
+  { label: 'Inventory & Purchase', icon: <Package className="h-5 w-5" />, path: '/inventory-purchase', roles: ['management'] },
+  { label: 'Projects & Certificates', icon: <Target className="h-5 w-5" />, path: '/projects-certificates', roles: ['management'] },
   { label: 'Reports', icon: <FileText className="h-5 w-5" />, path: '/reports', roles: ['management'] },
+  { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['management'] },
+  { label: 'Attendance & Payroll', icon: <Clock className="h-5 w-5" />, path: '/attendance-payroll', roles: ['management'] },
 ];
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const [peopleManagementOpen, setPeopleManagementOpen] = useState(false);
   const { user, logout } = useAuth();
   const location = useLocation();
 
@@ -160,25 +171,159 @@ export function Sidebar() {
       {/* Navigation */}
       <ScrollArea className="flex-1 px-2 py-4">
         <div className="space-y-1">
-          {visibleMenuItems.map((item) => {
-            const fullPath = getFullPath(item.path);
-            const isActive = location.pathname.includes(item.path);
-            return (
-              <Link key={item.path} to={fullPath}>
+          {user?.role === 'management' ? (
+            <>
+              {/* Dashboard */}
+              <Link to={getFullPath('/dashboard')}>
                 <Button
                   variant="ghost"
                   className={cn(
                     'w-full justify-start text-white hover:bg-meta-dark-lighter hover:text-meta-accent',
-                    isActive && 'bg-meta-accent text-meta-dark hover:bg-meta-accent hover:text-meta-dark',
+                    location.pathname.includes('/dashboard') && 'bg-meta-accent text-meta-dark hover:bg-meta-accent hover:text-meta-dark',
                     collapsed && 'justify-center px-2'
                   )}
                 >
-                  {item.icon}
-                  {!collapsed && <span className="ml-3">{item.label}</span>}
+                  <Home className="h-5 w-5" />
+                  {!collapsed && <span className="ml-3">Dashboard</span>}
                 </Button>
               </Link>
-            );
-          })}
+
+              {/* People Management - Collapsible Group */}
+              <Collapsible open={peopleManagementOpen} onOpenChange={setPeopleManagementOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      'w-full justify-start text-white hover:bg-meta-dark-lighter hover:text-meta-accent',
+                      (location.pathname.includes('/teachers') || 
+                       location.pathname.includes('/students') || 
+                       location.pathname.includes('/officers') || 
+                       location.pathname.includes('/management-team')) && 
+                      'bg-meta-dark-lighter',
+                      collapsed && 'justify-center px-2'
+                    )}
+                  >
+                    <Users className="h-5 w-5" />
+                    {!collapsed && (
+                      <>
+                        <span className="ml-3 flex-1 text-left">People Management</span>
+                        <ChevronDown className={cn(
+                          "h-4 w-4 transition-transform",
+                          peopleManagementOpen && "rotate-180"
+                        )} />
+                      </>
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                {!collapsed && (
+                  <CollapsibleContent className="pl-4 space-y-1">
+                    <Link to={getFullPath('/teachers')}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          'w-full justify-start text-white hover:bg-meta-dark-lighter hover:text-meta-accent',
+                          location.pathname.includes('/teachers') && 'bg-meta-accent text-meta-dark hover:bg-meta-accent hover:text-meta-dark'
+                        )}
+                      >
+                        <Users className="h-4 w-4 mr-2" />
+                        Teachers
+                      </Button>
+                    </Link>
+                    <Link to={getFullPath('/students')}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          'w-full justify-start text-white hover:bg-meta-dark-lighter hover:text-meta-accent',
+                          location.pathname.includes('/students') && 'bg-meta-accent text-meta-dark hover:bg-meta-accent hover:text-meta-dark'
+                        )}
+                      >
+                        <GraduationCap className="h-4 w-4 mr-2" />
+                        Students
+                      </Button>
+                    </Link>
+                    <Link to={getFullPath('/officers')}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          'w-full justify-start text-white hover:bg-meta-dark-lighter hover:text-meta-accent',
+                          location.pathname.includes('/officers') && 'bg-meta-accent text-meta-dark hover:bg-meta-accent hover:text-meta-dark'
+                        )}
+                      >
+                        <UserCheck className="h-4 w-4 mr-2" />
+                        Innovation Officers
+                      </Button>
+                    </Link>
+                    <Link to={getFullPath('/management-team')}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          'w-full justify-start text-white hover:bg-meta-dark-lighter hover:text-meta-accent',
+                          location.pathname.includes('/management-team') && 'bg-meta-accent text-meta-dark hover:bg-meta-accent hover:text-meta-dark'
+                        )}
+                      >
+                        <Briefcase className="h-4 w-4 mr-2" />
+                        Management Team
+                      </Button>
+                    </Link>
+                  </CollapsibleContent>
+                )}
+              </Collapsible>
+
+              {/* Rest of Management Menu Items */}
+              {visibleMenuItems
+                .filter(item => 
+                  item.path !== '/dashboard' && 
+                  item.path !== '/teachers' && 
+                  item.path !== '/students' &&
+                  item.path !== '/officers' &&
+                  item.path !== '/management-team'
+                )
+                .map((item) => {
+                  const fullPath = getFullPath(item.path);
+                  const isActive = location.pathname.includes(item.path);
+                  return (
+                    <Link key={item.path} to={fullPath}>
+                      <Button
+                        variant="ghost"
+                        className={cn(
+                          'w-full justify-start text-white hover:bg-meta-dark-lighter hover:text-meta-accent',
+                          isActive && 'bg-meta-accent text-meta-dark hover:bg-meta-accent hover:text-meta-dark',
+                          collapsed && 'justify-center px-2'
+                        )}
+                      >
+                        {item.icon}
+                        {!collapsed && <span className="ml-3">{item.label}</span>}
+                      </Button>
+                    </Link>
+                  );
+                })}
+            </>
+          ) : (
+            // For other roles, display menu items normally
+            visibleMenuItems.map((item) => {
+              const fullPath = getFullPath(item.path);
+              const isActive = location.pathname.includes(item.path);
+              return (
+                <Link key={item.path} to={fullPath}>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      'w-full justify-start text-white hover:bg-meta-dark-lighter hover:text-meta-accent',
+                      isActive && 'bg-meta-accent text-meta-dark hover:bg-meta-accent hover:text-meta-dark',
+                      collapsed && 'justify-center px-2'
+                    )}
+                  >
+                    {item.icon}
+                    {!collapsed && <span className="ml-3">{item.label}</span>}
+                  </Button>
+                </Link>
+              );
+            })
+          )}
         </div>
       </ScrollArea>
 

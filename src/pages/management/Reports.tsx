@@ -1,8 +1,9 @@
 import { Layout } from "@/components/layout/Layout";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, Calendar, Filter, Plus } from "lucide-react";
+import { FileText, Download, Calendar, Filter, Plus, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import {
   Select,
@@ -22,7 +23,82 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
-const Reports = () => {
+// Import Performance component content
+const PerformanceAnalyticsTab = () => {
+  const [period, setPeriod] = useState("monthly");
+
+  const performanceMetrics = [
+    {
+      id: "1",
+      metricName: "Student Pass Rate",
+      category: "academic" as const,
+      currentValue: 87,
+      targetValue: 90,
+      trend: "up" as const,
+      period: "January 2024",
+    },
+    {
+      id: "2",
+      metricName: "Average Attendance",
+      category: "attendance" as const,
+      currentValue: 92,
+      targetValue: 95,
+      trend: "stable" as const,
+      period: "January 2024",
+    },
+    {
+      id: "3",
+      metricName: "Student Engagement Score",
+      category: "engagement" as const,
+      currentValue: 78,
+      targetValue: 85,
+      trend: "up" as const,
+      period: "January 2024",
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Performance Analytics</h2>
+        <Select value={period} onValueChange={setPeriod}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Select period" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="weekly">Weekly</SelectItem>
+            <SelectItem value="monthly">Monthly</SelectItem>
+            <SelectItem value="quarterly">Quarterly</SelectItem>
+            <SelectItem value="annual">Annual</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {performanceMetrics.map((metric) => (
+          <Card key={metric.id}>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">{metric.metricName}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex items-baseline justify-between">
+                <span className="text-3xl font-bold">{metric.currentValue}%</span>
+                <span className="text-sm text-muted-foreground">
+                  Target: {metric.targetValue}%
+                </span>
+              </div>
+              <Badge variant="outline" className="capitalize">
+                {metric.category}
+              </Badge>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const MonthlyReportsTab = () => {
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -77,13 +153,9 @@ const Reports = () => {
   };
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Department Reports</h1>
-            <p className="text-muted-foreground">Generate and manage department reports</p>
-          </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Monthly Reports</h2>
           <Dialog>
             <DialogTrigger asChild>
               <Button>
@@ -220,6 +292,97 @@ const Reports = () => {
             </div>
           </CardContent>
         </Card>
+      </div>
+    </div>
+  );
+};
+
+const ExportDataTab = () => {
+  const exportOptions = [
+    {
+      id: "1",
+      title: "Student Data Export",
+      description: "Export all student records with attendance and grades",
+      formats: ["PDF", "CSV", "Excel"],
+    },
+    {
+      id: "2",
+      title: "Faculty Performance Export",
+      description: "Export faculty performance metrics and evaluations",
+      formats: ["PDF", "Excel"],
+    },
+    {
+      id: "3",
+      title: "Course Analytics Export",
+      description: "Export course completion rates and engagement data",
+      formats: ["PDF", "CSV", "Excel"],
+    },
+    {
+      id: "4",
+      title: "Financial Reports Export",
+      description: "Export budget allocation and expenditure reports",
+      formats: ["PDF", "Excel"],
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Export Data</h2>
+          <p className="text-muted-foreground">Download reports in PDF, CSV, or Excel format</p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {exportOptions.map((option) => (
+          <Card key={option.id}>
+            <CardHeader>
+              <CardTitle className="text-lg">{option.title}</CardTitle>
+              <p className="text-sm text-muted-foreground">{option.description}</p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {option.formats.map((format) => (
+                  <Button key={format} variant="outline" size="sm">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export as {format}
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const Reports = () => {
+  return (
+    <Layout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Reports</h1>
+          <p className="text-muted-foreground">Performance analytics, reports, and data exports</p>
+        </div>
+
+        <Tabs defaultValue="analytics" className="w-full">
+          <TabsList className="grid w-full max-w-2xl grid-cols-3">
+            <TabsTrigger value="analytics">Performance Analytics</TabsTrigger>
+            <TabsTrigger value="reports">Monthly Reports</TabsTrigger>
+            <TabsTrigger value="export">Export Data</TabsTrigger>
+          </TabsList>
+          <TabsContent value="analytics" className="mt-6">
+            <PerformanceAnalyticsTab />
+          </TabsContent>
+          <TabsContent value="reports" className="mt-6">
+            <MonthlyReportsTab />
+          </TabsContent>
+          <TabsContent value="export" className="mt-6">
+            <ExportDataTab />
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
