@@ -8,8 +8,11 @@ import { useState } from "react";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { OfficerDetailsDialog } from "@/components/officer/OfficerDetailsDialog";
 import { OfficerScheduleDialog } from "@/components/officer/OfficerScheduleDialog";
+import { OfficerTimetableSlot } from "@/types/officer";
+import { updateMockOfficerTimetable } from "@/data/mockOfficerTimetable";
 import { mockOfficerProfiles, getOfficerById } from "@/data/mockOfficerData";
 import { OfficerDetails } from "@/services/systemadmin.service";
+import { toast } from "sonner";
 
 const Officers = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,6 +48,12 @@ const Officers = () => {
       inactive: "outline",
     } as const;
     return variants[status as keyof typeof variants] || "secondary";
+  };
+
+  const handleScheduleSave = (officerId: string, slots: OfficerTimetableSlot[]) => {
+    updateMockOfficerTimetable(officerId, slots);
+    const totalHours = slots.length;
+    toast.success(`Schedule updated: ${totalHours} hours/week`);
   };
 
   return (
@@ -171,6 +180,7 @@ const Officers = () => {
         officer={selectedOfficer}
         open={scheduleDialogOpen}
         onOpenChange={setScheduleDialogOpen}
+        onSave={handleScheduleSave}
       />
     </Layout>
   );

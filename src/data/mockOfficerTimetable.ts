@@ -233,3 +233,24 @@ export const mockOfficerTimetables: OfficerTimetable[] = [
 export const getOfficerTimetable = (officerId: string): OfficerTimetable | undefined => {
   return mockOfficerTimetables.find(t => t.officer_id === officerId);
 };
+
+export const updateMockOfficerTimetable = (
+  officerId: string, 
+  slots: OfficerTimetableSlot[]
+) => {
+  const index = mockOfficerTimetables.findIndex(t => t.officer_id === officerId);
+  const totalHours = slots.length;
+  const updatedTimetable: OfficerTimetable = {
+    officer_id: officerId,
+    slots,
+    total_hours: totalHours,
+    status: totalHours > 0 ? 'assigned' : 'not_assigned',
+    last_updated: new Date().toISOString(),
+  };
+
+  if (index !== -1) {
+    mockOfficerTimetables[index] = updatedTimetable;
+  } else {
+    mockOfficerTimetables.push(updatedTimetable);
+  }
+};

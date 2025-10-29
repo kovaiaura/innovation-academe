@@ -4,27 +4,58 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { OfficerDetails } from "@/services/systemadmin.service";
 import { getOfficerTimetable } from "@/data/mockOfficerTimetable";
 import { OfficerTimetablePreview } from "./OfficerTimetablePreview";
+import { OfficerTimetableAssignmentDialog } from "./OfficerTimetableAssignmentDialog";
+import { OfficerTimetableSlot } from "@/types/officer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock } from "lucide-react";
+import { Calendar, Clock, Edit } from "lucide-react";
+import { useState } from "react";
 
 interface OfficerScheduleDialogProps {
   officer: OfficerDetails | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSave?: (officerId: string, slots: OfficerTimetableSlot[]) => void;
 }
 
 export function OfficerScheduleDialog({
   officer,
   open,
   onOpenChange,
+  onSave,
 }: OfficerScheduleDialogProps) {
+  const [editMode, setEditMode] = useState(false);
+
   if (!officer) return null;
 
   const timetable = getOfficerTimetable(officer.id);
+
+  const handleSave = (slots: OfficerTimetableSlot[]) => {
+    if (officer && onSave) {
+      onSave(officer.id, slots);
+    }
+    setEditMode(false);
+  };
+
+  // If in edit mode, show the assignment dialog
+  if (editMode) {
+    return (
+      <OfficerTimetableAssignmentDialog
+        open={open}
+        onOpenChange={(open) => {
+          if (!open) setEditMode(false);
+          onOpenChange(open);
+        }}
+        officer={officer}
+        existingSlots={timetable?.slots || []}
+        onSave={handleSave}
+      />
+    );
+  }
 
   if (!timetable || timetable.slots.length === 0) {
     return (
@@ -71,6 +102,14 @@ export function OfficerScheduleDialog({
               <Badge variant={getStatusColor(timetable.status)}>
                 {timetable.status.replace('_', ' ')}
               </Badge>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setEditMode(true)}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Schedule
+              </Button>
             </div>
           </DialogTitle>
         </DialogHeader>
