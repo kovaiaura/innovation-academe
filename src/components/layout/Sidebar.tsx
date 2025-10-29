@@ -9,8 +9,11 @@ import {
   Shield, Phone, Clock, ShoppingCart, PieChart, Briefcase
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { UserRole } from '@/types';
+import { OfficerSidebarProfile } from './OfficerSidebarProfile';
+import { getOfficerByEmail } from '@/data/mockOfficerData';
+import { OfficerDetails } from '@/services/systemadmin.service';
 
 interface MenuItem {
   label: string;
@@ -74,6 +77,15 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const { user, logout } = useAuth();
   const location = useLocation();
+  const [officerProfile, setOfficerProfile] = useState<OfficerDetails | null>(null);
+
+  useEffect(() => {
+    // Fetch officer profile if user is an officer
+    if (user?.role === 'officer' && user?.email) {
+      const profile = getOfficerByEmail(user.email);
+      setOfficerProfile(profile || null);
+    }
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -188,24 +200,35 @@ export function Sidebar() {
       </ScrollArea>
 
       {/* User Section */}
-      <div className="border-t border-meta-dark-lighter p-4">
-        {!collapsed && user && (
-          <div className="mb-3">
-            <p className="text-sm font-medium">{user.name}</p>
-            <p className="text-xs text-gray-400">{user.role.replace('_', ' ')}</p>
+      <div className="border-t border-meta-dark-lighter">
+        {user?.role === 'officer' && officerProfile ? (
+          <OfficerSidebarProfile officer={officerProfile} collapsed={collapsed} />
+        ) : (
+          // Default user section for non-officers
+          <div className="p-4">
+            {!collapsed && user && (
+              <div className="mb-3">
+                <p className="text-sm font-medium">{user.name}</p>
+                <p className="text-xs text-gray-400">{user.role.replace('_', ' ')}</p>
+              </div>
+            )}
           </div>
         )}
-        <Button
-          variant="ghost"
-          onClick={handleLogout}
-          className={cn(
-            'w-full justify-start text-white hover:bg-red-600 hover:text-white',
-            collapsed && 'justify-center px-2'
-          )}
-        >
-          <LogOut className="h-5 w-5" />
-          {!collapsed && <span className="ml-3">Logout</span>}
-        </Button>
+        
+        {/* Logout Button (always visible) */}
+        <div className="px-4 pb-4">
+          <Button
+            variant="ghost"
+            onClick={handleLogout}
+            className={cn(
+              'w-full justify-start text-white hover:bg-red-600 hover:text-white',
+              collapsed && 'justify-center px-2'
+            )}
+          >
+            <LogOut className="h-5 w-5" />
+            {!collapsed && <span className="ml-3">Logout</span>}
+          </Button>
+        </div>
       </div>
     </div>
   );
