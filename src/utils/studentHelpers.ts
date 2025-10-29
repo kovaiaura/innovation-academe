@@ -128,3 +128,54 @@ export const calculateClassStatistics = (students: Student[]) => {
     sections: sections.sort()
   };
 };
+
+// Generate roll number: "5-A-003"
+export const generateRollNumber = (classValue: string, section: string, existingStudents: Student[]): string => {
+  const classNum = classValue.replace('Class ', '');
+  const sameClassSection = existingStudents.filter(
+    s => s.class === classValue && s.section === section
+  );
+  const nextNum = (sameClassSection.length + 1).toString().padStart(3, '0');
+  return `${classNum}-${section}-${nextNum}`;
+};
+
+// Generate admission number: "ADM-2025-1-001"
+export const generateAdmissionNumber = (existingStudents: Student[], institutionId: string = '1'): string => {
+  const year = new Date().getFullYear();
+  const instNum = institutionId.replace(/\D/g, '').slice(-1) || '1';
+  const sequence = (existingStudents.length + 1).toString().padStart(3, '0');
+  return `ADM-${year}-${instNum}-${sequence}`;
+};
+
+// Generate unique student ID
+export const generateStudentId = (): string => {
+  return `STU-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+};
+
+// Calculate age from date of birth
+export const calculateAge = (dateOfBirth: string): number => {
+  const today = new Date();
+  const birthDate = new Date(dateOfBirth);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+};
+
+// Validate phone number (Indian format)
+export const validatePhoneNumber = (phone: string): boolean => {
+  // Accepts: +91-XXXXXXXXXX, +91 XXXXXXXXXX, XXXXXXXXXX
+  const pattern = /^(\+91[\-\s]?)?[6-9]\d{9}$/;
+  return pattern.test(phone.replace(/\s/g, ''));
+};
+
+// Format phone number for display
+export const formatPhoneNumber = (phone: string): string => {
+  const cleaned = phone.replace(/\D/g, '');
+  if (cleaned.length === 10) {
+    return `+91-${cleaned}`;
+  }
+  return phone;
+};

@@ -36,6 +36,7 @@ import OfficerAttendance from "./pages/officer/Attendance";
 import InstitutionDashboard from "./pages/institution/Dashboard";
 import InstitutionTeachers from "./pages/institution/Teachers";
 import InstitutionStudents from "./pages/institution/Students";
+import ManagementStudents from "./pages/management/Students";
 import InstitutionCourses from "./pages/institution/Courses";
 import InstitutionReports from "./pages/institution/Reports";
 import TeacherDashboard from "./pages/teacher/Dashboard";
@@ -339,7 +340,7 @@ const App = () => (
               path="/tenant/:tenantId/management/students"
               element={
                 <ProtectedRoute allowedRoles={['management']}>
-                  <InstitutionStudents />
+                  <ManagementStudents />
                 </ProtectedRoute>
               }
             />
