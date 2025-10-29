@@ -77,11 +77,11 @@ const generateStudentsForInstitution = (institutionId: string): Student[] => {
   return students;
 };
 
-// Generate students for all 3 institutions
+// Generate students for all 3 institutions using tenant slugs
 export const mockStudents: Student[] = [
-  ...generateStudentsForInstitution('1'), // DPS-VK
-  ...generateStudentsForInstitution('2'), // Ryan International
-  ...generateStudentsForInstitution('3'), // Innovation Hub
+  ...generateStudentsForInstitution('springfield'), // Springfield Elementary
+  ...generateStudentsForInstitution('ryan'), // Ryan International
+  ...generateStudentsForInstitution('innovation'), // Innovation Hub
 ];
 
 // Helper functions

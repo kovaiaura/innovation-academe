@@ -148,10 +148,6 @@ export default function Students() {
             <Download className="h-4 w-4 mr-2" />
             Export Students
           </Button>
-          <Button onClick={() => setBulkUploadDialogOpen(true)}>
-            <Upload className="h-4 w-4 mr-2" />
-            Bulk Upload
-          </Button>
         </div>
       </div>
 
