@@ -1,13 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Users, Package, TrendingUp, Clock, CheckCircle, Check, X, Building2 } from 'lucide-react';
+import { Calendar, Users, Package, TrendingUp, Clock, CheckCircle, Check, X, Building2, LogOut, Timer } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/services/auth.service';
 import { Layout } from '@/components/layout/Layout';
 import { toast } from 'sonner';
-import { useState } from 'react';
-import { format } from 'date-fns';
+import { useState, useEffect } from 'react';
+import { format, differenceInMinutes, parse } from 'date-fns';
 import { getOfficerById } from '@/data/mockOfficerData';
 import { getOfficerTimetable } from '@/data/mockOfficerTimetable';
 import { OfficerTimetableSlot } from '@/types/officer';
@@ -71,19 +71,106 @@ const getActivityColor = (type: string) => {
 export default function OfficerDashboard() {
   const { user } = useAuth();
   const { tenantId } = useParams();
-  const [attendanceMarked, setAttendanceMarked] = useState(false);
-  const [attendanceTime, setAttendanceTime] = useState<string | null>(null);
+  const todayKey = format(new Date(), 'yyyy-MM-dd');
+  
+  // Enhanced attendance state
+  const [checkInTime, setCheckInTime] = useState<string | null>(null);
+  const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
+  const [isCheckedIn, setIsCheckedIn] = useState(false);
+  const [isCheckedOut, setIsCheckedOut] = useState(false);
+  const [hoursWorked, setHoursWorked] = useState<number>(0);
+  const [elapsedTime, setElapsedTime] = useState<string>('0h 0m');
   
   const officerProfile = getOfficerById(user?.id || '');
   const officerTimetable = getOfficerTimetable(user?.id || '');
   const todaySlots = getTodaySchedule(officerTimetable?.slots || []);
   const upcomingSlots = getUpcomingSlots(officerTimetable?.slots || [], 3);
 
-  const handleMarkAttendance = () => {
+  // Load attendance from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(`attendance-${todayKey}`);
+    if (stored) {
+      const data = JSON.parse(stored);
+      setCheckInTime(data.checkInTime);
+      setCheckOutTime(data.checkOutTime);
+      setIsCheckedIn(data.isCheckedIn);
+      setIsCheckedOut(data.isCheckedOut);
+      setHoursWorked(data.hoursWorked);
+    }
+  }, [todayKey]);
+
+  // Save attendance to localStorage whenever state changes
+  useEffect(() => {
+    if (isCheckedIn || isCheckedOut) {
+      localStorage.setItem(`attendance-${todayKey}`, JSON.stringify({
+        checkInTime,
+        checkOutTime,
+        isCheckedIn,
+        isCheckedOut,
+        hoursWorked,
+      }));
+    }
+  }, [checkInTime, checkOutTime, isCheckedIn, isCheckedOut, hoursWorked, todayKey]);
+
+  // Live timer for elapsed time
+  useEffect(() => {
+    if (isCheckedIn && !isCheckedOut && checkInTime) {
+      const interval = setInterval(() => {
+        try {
+          const checkIn = parse(checkInTime, 'hh:mm a', new Date());
+          const now = new Date();
+          const minutes = differenceInMinutes(now, checkIn);
+          const hours = Math.floor(minutes / 60);
+          const mins = minutes % 60;
+          setElapsedTime(`${hours}h ${mins}m`);
+        } catch (error) {
+          console.error('Error calculating elapsed time:', error);
+        }
+      }, 60000); // Update every minute
+      
+      // Initial calculation
+      try {
+        const checkIn = parse(checkInTime, 'hh:mm a', new Date());
+        const now = new Date();
+        const minutes = differenceInMinutes(now, checkIn);
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        setElapsedTime(`${hours}h ${mins}m`);
+      } catch (error) {
+        console.error('Error calculating elapsed time:', error);
+      }
+      
+      return () => clearInterval(interval);
+    }
+  }, [isCheckedIn, isCheckedOut, checkInTime]);
+
+  const handleCheckIn = () => {
     const currentTime = format(new Date(), 'hh:mm a');
-    setAttendanceMarked(true);
-    setAttendanceTime(currentTime);
-    toast.success(`Attendance marked as Present at ${currentTime}`);
+    setCheckInTime(currentTime);
+    setIsCheckedIn(true);
+    toast.success(`Checked in at ${currentTime}`);
+  };
+
+  const handleCheckOut = () => {
+    if (!checkInTime) return;
+    
+    const currentTime = format(new Date(), 'hh:mm a');
+    setCheckOutTime(currentTime);
+    setIsCheckedOut(true);
+    
+    // Calculate hours worked
+    try {
+      const checkIn = parse(checkInTime, 'hh:mm a', new Date());
+      const checkOut = parse(currentTime, 'hh:mm a', new Date());
+      const minutes = differenceInMinutes(checkOut, checkIn);
+      const hours = Math.round((minutes / 60) * 100) / 100;
+      setHoursWorked(hours);
+      
+      toast.success(`Checked out at ${currentTime}. Total hours: ${hours.toFixed(2)}h`);
+    } catch (error) {
+      console.error('Error calculating hours:', error);
+      toast.error('Error calculating work hours');
+    }
   };
 
   const stats = [
@@ -181,24 +268,52 @@ export default function OfficerDashboard() {
           <CardContent>
             <div className="space-y-4">
               <div className="text-center">
-                {!attendanceMarked ? (
+                {!isCheckedIn ? (
                   <>
                     <p className="text-sm text-muted-foreground mb-4">
                       Mark your attendance for {format(new Date(), 'MMMM dd, yyyy')}
                     </p>
-                    <Button onClick={handleMarkAttendance} className="w-full">
+                    <Button onClick={handleCheckIn} className="w-full">
                       <Check className="mr-2 h-4 w-4" />
-                      Mark Present
+                      Check In
                     </Button>
                   </>
-                ) : (
-                  <>
-                    <div className="bg-green-500/10 p-4 rounded-lg mb-4">
-                      <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                      <p className="font-medium text-green-700">Attendance Marked</p>
-                      <p className="text-sm text-green-600">Present at {attendanceTime}</p>
+                ) : !isCheckedOut ? (
+                  <div className="space-y-4">
+                    <div className="bg-blue-500/10 p-4 rounded-lg border border-blue-500/20">
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <Timer className="h-6 w-6 text-blue-500 animate-pulse" />
+                        <p className="font-semibold text-blue-700 text-lg">Working</p>
+                      </div>
+                      <p className="text-sm text-blue-600 mb-1">Checked in at {checkInTime}</p>
+                      <div className="flex items-center justify-center gap-2 mt-3 pt-3 border-t border-blue-500/20">
+                        <Clock className="h-4 w-4 text-blue-500" />
+                        <p className="text-sm font-medium text-blue-700">
+                          Time elapsed: {elapsedTime}
+                        </p>
+                      </div>
                     </div>
-                  </>
+                    <Button 
+                      onClick={handleCheckOut} 
+                      className="w-full" 
+                      variant="outline"
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Check Out
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/20">
+                    <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                    <p className="font-semibold text-green-700 text-lg mb-3">Attendance Complete</p>
+                    <div className="text-sm text-green-600 space-y-1">
+                      <p>Check-in: {checkInTime}</p>
+                      <p>Check-out: {checkOutTime}</p>
+                      <div className="pt-2 mt-2 border-t border-green-500/20">
+                        <p className="font-semibold text-base">Hours Worked: {hoursWorked.toFixed(2)}h</p>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
 
