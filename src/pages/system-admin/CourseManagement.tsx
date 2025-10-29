@@ -16,13 +16,23 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { mockCourses, mockModules, mockContent, mockAssignments, mockQuizzes, mockCourseAssignments, mockCourseAnalytics } from '@/data/mockCourseData';
 import { ModuleBuilder } from '@/components/course/ModuleBuilder';
+import { CreateAssignmentDialog } from '@/components/course/CreateAssignmentDialog';
+import { CreateQuizDialog } from '@/components/course/CreateQuizDialog';
+import { AssignCourseDialog } from '@/components/course/AssignCourseDialog';
+import { courseService } from '@/services/course.service';
+import { Assignment, Quiz, CourseAssignmentRequest } from '@/types/course';
 
 export default function CourseManagement() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all-courses');
   const [courses, setCourses] = useState(mockCourses);
   const [searchTerm, setSearchTerm] = useState('');
-  
+  const [assignments, setAssignments] = useState(mockAssignments);
+  const [quizzes, setQuizzes] = useState(mockQuizzes);
+  const [courseAssignments, setCourseAssignments] = useState(mockCourseAssignments);
+  const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
+  const [quizDialogOpen, setQuizDialogOpen] = useState(false);
+  const [assignCourseDialogOpen, setAssignCourseDialogOpen] = useState(false);
   
   // Course creation form state
   const [newCourse, setNewCourse] = useState({
@@ -76,6 +86,48 @@ export default function CourseManagement() {
     });
     setThumbnailPreview('');
     setActiveTab('all-courses');
+  };
+
+  const handleCreateAssignment = async (data: Partial<Assignment>) => {
+    try {
+      const response = await courseService.createAssignment(data.course_id!, data);
+      if (response.success) {
+        setAssignments([...assignments, response.data]);
+        toast.success('Assignment created successfully!');
+        setAssignmentDialogOpen(false);
+      }
+    } catch (error) {
+      toast.error('Failed to create assignment');
+      console.error(error);
+    }
+  };
+
+  const handleCreateQuiz = async (data: Partial<Quiz>) => {
+    try {
+      const response = await courseService.createQuiz(data.course_id!, data);
+      if (response.success) {
+        setQuizzes([...quizzes, response.data]);
+        toast.success('Quiz created successfully!');
+        setQuizDialogOpen(false);
+      }
+    } catch (error) {
+      toast.error('Failed to create quiz');
+      console.error(error);
+    }
+  };
+
+  const handleAssignCourse = async (data: CourseAssignmentRequest) => {
+    try {
+      const response = await courseService.assignCourse(data);
+      if (response.success) {
+        setCourseAssignments([...courseAssignments, response.data]);
+        toast.success('Course assigned successfully!');
+        setAssignCourseDialogOpen(false);
+      }
+    } catch (error) {
+      toast.error('Failed to assign course');
+      console.error(error);
+    }
   };
 
   const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -790,6 +842,29 @@ export default function CourseManagement() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <CreateAssignmentDialog
+        open={assignmentDialogOpen}
+        onOpenChange={setAssignmentDialogOpen}
+        courses={courses}
+        modules={mockModules}
+        onSubmit={handleCreateAssignment}
+      />
+
+      <CreateQuizDialog
+        open={quizDialogOpen}
+        onOpenChange={setQuizDialogOpen}
+        courses={courses}
+        modules={mockModules}
+        onSubmit={handleCreateQuiz}
+      />
+
+      <AssignCourseDialog
+        open={assignCourseDialogOpen}
+        onOpenChange={setAssignCourseDialogOpen}
+        courses={courses}
+        onSubmit={handleAssignCourse}
+      />
     </Layout>
   );
 }
