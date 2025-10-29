@@ -1,6 +1,8 @@
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -8,8 +10,11 @@ import {
   ExternalLink,
   FileText,
   Video,
-  Link as LinkIcon
+  Link as LinkIcon,
+  CheckCircle2,
+  Circle
 } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 import type { CourseContent, CourseModule } from '@/types/course';
 
 interface ContentDisplayAreaProps {
@@ -18,6 +23,9 @@ interface ContentDisplayAreaProps {
   isPresentationMode: boolean;
   onNavigate: (direction: 'prev' | 'next') => void;
   onExitPresentation?: () => void;
+  onMarkComplete: (contentId: string, moduleId: string, watchPercentage?: number) => void;
+  isCompleted: boolean;
+  completedAt?: string;
 }
 
 export function ContentDisplayArea({
@@ -25,7 +33,39 @@ export function ContentDisplayArea({
   module,
   isPresentationMode,
   onNavigate,
+  onMarkComplete,
+  isCompleted,
+  completedAt,
 }: ContentDisplayAreaProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoWatchPercentage, setVideoWatchPercentage] = useState(0);
+  const [hasAutoCompleted, setHasAutoCompleted] = useState(false);
+
+  // Reset auto-complete flag when content changes
+  useEffect(() => {
+    setHasAutoCompleted(false);
+    setVideoWatchPercentage(0);
+  }, [content?.id]);
+
+  // Track video progress
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || content?.type !== 'video') return;
+
+    const handleTimeUpdate = () => {
+      const percentage = (video.currentTime / video.duration) * 100;
+      setVideoWatchPercentage(percentage);
+
+      // Auto-complete at 90%
+      if (percentage >= 90 && !isCompleted && !hasAutoCompleted && content && module) {
+        setHasAutoCompleted(true);
+        onMarkComplete(content.id, module.id, percentage);
+      }
+    };
+
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    return () => video.removeEventListener('timeupdate', handleTimeUpdate);
+  }, [content, module, isCompleted, hasAutoCompleted, onMarkComplete]);
   if (!content) {
     return (
       <div className="flex-1 flex items-center justify-center bg-muted/20">
@@ -61,6 +101,7 @@ export function ContentDisplayArea({
         return (
           <div className="w-full aspect-video bg-black rounded-lg">
             <video
+              ref={videoRef}
               src={content.file_url}
               controls
               className="w-full h-full rounded-lg"
@@ -127,12 +168,28 @@ export function ContentDisplayArea({
       {/* Content Header */}
       {!isPresentationMode && (
         <div className="border-b bg-card p-4">
+          {/* Completion Status */}
+          {isCompleted && completedAt && (
+            <Alert className="mb-4 bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-900">
+              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <AlertDescription className="text-green-800 dark:text-green-300">
+                Completed on {format(parseISO(completedAt), 'MMMM d, yyyy \'at\' h:mm a')}
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <Badge variant="outline" className="capitalize">
                   {content.type}
                 </Badge>
+                {isCompleted && (
+                  <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Completed
+                  </Badge>
+                )}
               </div>
               <h2 className="text-xl font-semibold mb-1">{content.title}</h2>
               {module && (
@@ -180,7 +237,7 @@ export function ContentDisplayArea({
       {/* Navigation Footer */}
       {!isPresentationMode && (
         <div className="border-t bg-card p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <Button
               variant="outline"
               onClick={() => onNavigate('prev')}
@@ -188,9 +245,25 @@ export function ContentDisplayArea({
               <ChevronLeft className="h-4 w-4 mr-2" />
               Previous
             </Button>
-            <div className="text-sm text-muted-foreground">
-              {content.duration_minutes && `${content.duration_minutes} min`}
+            
+            <div className="flex items-center gap-3">
+              {content.duration_minutes && (
+                <span className="text-sm text-muted-foreground">
+                  {content.duration_minutes} min
+                </span>
+              )}
+              {!isCompleted && content && module && (
+                <Button
+                  onClick={() => onMarkComplete(content.id, module.id, videoWatchPercentage || undefined)}
+                  variant="default"
+                  size="sm"
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Mark as Complete
+                </Button>
+              )}
             </div>
+
             <Button
               variant="outline"
               onClick={() => onNavigate('next')}

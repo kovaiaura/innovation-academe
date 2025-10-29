@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, Maximize2, Minimize2, Calendar, CheckCircle2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { ModuleNavigationSidebar } from '@/components/officer/ModuleNavigationSidebar';
 import { ContentDisplayArea } from '@/components/officer/ContentDisplayArea';
 import { StudentEngagementPanel } from '@/components/officer/StudentEngagementPanel';
+import { CompletionTimelineDialog } from '@/components/officer/CompletionTimelineDialog';
 import { mockCourses, mockModules, mockContent } from '@/data/mockCourseData';
 import { toast } from 'sonner';
+import type { ContentCompletion, CompletionTimelineItem, CourseProgress } from '@/types/contentCompletion';
 
 export default function CourseContentViewer() {
   const { tenantId, courseId } = useParams();
@@ -16,6 +19,8 @@ export default function CourseContentViewer() {
   const [selectedContentId, setSelectedContentId] = useState<string | null>(null);
   const [isPresentationMode, setIsPresentationMode] = useState(false);
   const [showStudentPanel, setShowStudentPanel] = useState(true);
+  const [showTimelineDialog, setShowTimelineDialog] = useState(false);
+  const [completions, setCompletions] = useState<ContentCompletion[]>([]);
 
   // Get course data
   const course = mockCourses.find(c => c.id === courseId);
@@ -25,6 +30,29 @@ export default function CourseContentViewer() {
     ? mockContent.filter(c => c.module_id === selectedModuleId)
     : [];
   const selectedContent = moduleContent.find(c => c.id === selectedContentId);
+
+  // Load completions from localStorage
+  useEffect(() => {
+    const officerId = 'officer-1'; // In real app, get from auth context
+    const storageKey = `officer_content_progress_${officerId}_${courseId}`;
+    const stored = localStorage.getItem(storageKey);
+    if (stored) {
+      try {
+        setCompletions(JSON.parse(stored));
+      } catch (e) {
+        console.error('Failed to parse completions:', e);
+      }
+    }
+  }, [courseId]);
+
+  // Save completions to localStorage
+  useEffect(() => {
+    if (courseId) {
+      const officerId = 'officer-1';
+      const storageKey = `officer_content_progress_${officerId}_${courseId}`;
+      localStorage.setItem(storageKey, JSON.stringify(completions));
+    }
+  }, [completions, courseId]);
 
   // Auto-select first module and content on load
   useEffect(() => {
@@ -56,6 +84,36 @@ export default function CourseContentViewer() {
     setSelectedContentId(contentId);
   };
 
+  const handleMarkComplete = (contentId: string, moduleId: string, watchPercentage?: number) => {
+    const officerId = 'officer-1';
+    const existing = completions.find(c => c.content_id === contentId);
+    
+    if (existing) {
+      // Update existing completion
+      setCompletions(prev => prev.map(c => 
+        c.content_id === contentId 
+          ? { ...c, completed: true, completed_at: new Date().toISOString(), watch_percentage: watchPercentage }
+          : c
+      ));
+    } else {
+      // Add new completion
+      const newCompletion: ContentCompletion = {
+        content_id: contentId,
+        module_id: moduleId,
+        course_id: courseId!,
+        officer_id: officerId,
+        completed: true,
+        completed_at: new Date().toISOString(),
+        watch_percentage: watchPercentage,
+      };
+      setCompletions(prev => [...prev, newCompletion]);
+    }
+    
+    toast.success('Content marked as complete!', {
+      icon: <CheckCircle2 className="h-4 w-4" />,
+    });
+  };
+
   const handleNavigate = (direction: 'prev' | 'next') => {
     const allContent = courseModules.flatMap(m => 
       mockContent.filter(c => c.module_id === m.id).map(c => ({ ...c, moduleId: m.id }))
@@ -82,6 +140,53 @@ export default function CourseContentViewer() {
       setShowStudentPanel(true);
     }
   };
+
+  // Calculate course progress
+  const courseProgress: CourseProgress = useMemo(() => {
+    const allCourseContent = courseModules.flatMap(m =>
+      mockContent.filter(c => c.module_id === m.id)
+    );
+    const completedCount = allCourseContent.filter(c =>
+      completions.some(comp => comp.content_id === c.id && comp.completed)
+    ).length;
+
+    const modules = courseModules.map(m => {
+      const moduleContent = mockContent.filter(c => c.module_id === m.id);
+      const completed = moduleContent.filter(c =>
+        completions.some(comp => comp.content_id === c.id && comp.completed)
+      ).length;
+      return {
+        module_id: m.id,
+        total_content: moduleContent.length,
+        completed_content: completed,
+        percentage: moduleContent.length > 0 ? (completed / moduleContent.length) * 100 : 0,
+      };
+    });
+
+    return {
+      course_id: courseId!,
+      total_content: allCourseContent.length,
+      completed_content: completedCount,
+      percentage: allCourseContent.length > 0 ? (completedCount / allCourseContent.length) * 100 : 0,
+      modules,
+    };
+  }, [courseModules, completions, courseId]);
+
+  // Get timeline items
+  const timelineItems: CompletionTimelineItem[] = useMemo(() => {
+    return completions
+      .filter(c => c.completed)
+      .map(c => {
+        const content = mockContent.find(mc => mc.id === c.content_id);
+        const module = courseModules.find(m => m.id === c.module_id);
+        return {
+          ...c,
+          content_title: content?.title || 'Unknown',
+          module_title: module?.title || 'Unknown',
+          content_type: content?.type || 'unknown',
+        };
+      });
+  }, [completions, courseModules]);
 
   // Handle ESC key to exit presentation mode
   useEffect(() => {
@@ -113,14 +218,31 @@ export default function CourseContentViewer() {
                 <p className="text-sm text-muted-foreground">{course.course_code}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Progress:</span>
+                <div className="w-32">
+                  <Progress value={courseProgress.percentage} className="h-2" />
+                </div>
+                <span className="text-sm font-medium">
+                  {Math.round(courseProgress.percentage)}%
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTimelineDialog(true)}
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Timeline ({timelineItems.length})
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={togglePresentationMode}
               >
                 <Maximize2 className="h-4 w-4 mr-2" />
-                Presentation Mode
+                Presentation
               </Button>
               <Button
                 variant="ghost"
@@ -144,6 +266,8 @@ export default function CourseContentViewer() {
             selectedContentId={selectedContentId}
             onModuleSelect={setSelectedModuleId}
             onContentSelect={handleContentSelect}
+            completions={completions}
+            courseProgress={courseProgress}
           />
         )}
 
@@ -154,6 +278,9 @@ export default function CourseContentViewer() {
           isPresentationMode={isPresentationMode}
           onNavigate={handleNavigate}
           onExitPresentation={isPresentationMode ? togglePresentationMode : undefined}
+          onMarkComplete={handleMarkComplete}
+          isCompleted={selectedContent ? completions.some(c => c.content_id === selectedContent.id && c.completed) : false}
+          completedAt={selectedContent ? completions.find(c => c.content_id === selectedContent.id)?.completed_at : undefined}
         />
 
         {/* Right Sidebar - Student Engagement */}
@@ -196,6 +323,14 @@ export default function CourseContentViewer() {
           </Button>
         </div>
       )}
+
+      {/* Completion Timeline Dialog */}
+      <CompletionTimelineDialog
+        open={showTimelineDialog}
+        onOpenChange={setShowTimelineDialog}
+        completions={timelineItems}
+        courseTitle={course?.title || ''}
+      />
     </div>
   );
 }
