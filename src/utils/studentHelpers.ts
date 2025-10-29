@@ -152,27 +152,31 @@ export const generateStudentId = (): string => {
   return `STU-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
-// Get unique class names with their sections from student data
-export const getUniqueClasses = (students: Student[]): Array<{ class: string; sections: string[] }> => {
-  const classMap = new Map<string, Set<string>>();
+// Get unique class-section combinations from student data
+export const getUniqueClasses = (students: Student[]): Array<{ displayName: string; class: string; section: string }> => {
+  const classSectionSet = new Set<string>();
   
   students.forEach(student => {
-    if (!classMap.has(student.class)) {
-      classMap.set(student.class, new Set());
-    }
-    classMap.get(student.class)?.add(student.section);
+    const key = `${student.class}|${student.section}`;
+    classSectionSet.add(key);
   });
   
-  return Array.from(classMap.entries())
-    .map(([className, sectionsSet]) => ({
-      class: className,
-      sections: Array.from(sectionsSet).sort()
-    }))
+  return Array.from(classSectionSet)
+    .map(key => {
+      const [className, section] = key.split('|');
+      return {
+        displayName: `${className} ${section}`,
+        class: className,
+        section: section
+      };
+    })
     .sort((a, b) => {
-      // Sort by class number (extract number from "Class 8" -> 8)
+      // Sort by class number first
       const numA = parseInt(a.class.replace('Class ', ''));
       const numB = parseInt(b.class.replace('Class ', ''));
-      return numA - numB;
+      if (numA !== numB) return numA - numB;
+      // Then by section
+      return a.section.localeCompare(b.section);
     });
 };
 

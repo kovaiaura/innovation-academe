@@ -35,7 +35,7 @@ export function SessionSelectionDialog({
   const [manualClassName, setManualClassName] = useState('');
   const [timetableSlots, setTimetableSlots] = useState<OfficerTimetableSlot[]>([]);
   const [comboboxOpen, setComboboxOpen] = useState(false);
-  const [availableClasses, setAvailableClasses] = useState<Array<{ class: string; sections: string[] }>>([]);
+  const [availableClasses, setAvailableClasses] = useState<Array<{ displayName: string; class: string; section: string }>>([]);
 
   useEffect(() => {
     if (open && course && officerId) {
@@ -228,8 +228,8 @@ export function SessionSelectionDialog({
                         <CommandGroup>
                           {availableClasses.map((classItem) => (
                             <CommandItem
-                              key={classItem.class}
-                              value={classItem.class}
+                              key={classItem.displayName}
+                              value={classItem.displayName}
                               onSelect={(currentValue) => {
                                 setManualClassName(currentValue === manualClassName ? "" : currentValue);
                                 setComboboxOpen(false);
@@ -238,20 +238,10 @@ export function SessionSelectionDialog({
                               <Check
                                 className={cn(
                                   "mr-2 h-4 w-4",
-                                  manualClassName === classItem.class ? "opacity-100" : "opacity-0"
+                                  manualClassName === classItem.displayName ? "opacity-100" : "opacity-0"
                                 )}
                               />
-                              <div className="flex items-center justify-between w-full">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">{classItem.class}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {classItem.sections.length} section{classItem.sections.length > 1 ? 's' : ''}
-                                  </span>
-                                </div>
-                                <Badge variant="secondary" className="text-xs">
-                                  {classItem.sections.join(', ')}
-                                </Badge>
-                              </div>
+                              <span className="font-medium">{classItem.displayName}</span>
                             </CommandItem>
                           ))}
                         </CommandGroup>
