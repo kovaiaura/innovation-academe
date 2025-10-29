@@ -27,12 +27,14 @@ interface OfficerDetailsDialogProps {
   officer: OfficerDetails | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  viewerRole?: string; // Role of the person viewing (management, system_admin, super_admin)
 }
 
 export function OfficerDetailsDialog({
   officer,
   open,
   onOpenChange,
+  viewerRole,
 }: OfficerDetailsDialogProps) {
   if (!officer) return null;
 
@@ -201,10 +203,13 @@ export function OfficerDetailsDialog({
                         {new Date(officer.join_date).toLocaleDateString()}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Salary</p>
-                      <p className="font-medium">₹{officer.salary.toLocaleString()}/month</p>
-                    </div>
+                    {/* Only show salary to System Admin and Super Admin */}
+                    {(viewerRole === 'system_admin' || viewerRole === 'super_admin') && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Salary</p>
+                        <p className="font-medium">₹{officer.salary.toLocaleString()}/month</p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -227,7 +232,9 @@ export function OfficerDetailsDialog({
                 </CardContent>
               </Card>
 
-              {officer.salary_structure && (
+              {/* Salary Structure - Only visible to System Admin and Super Admin */}
+              {(viewerRole === 'system_admin' || viewerRole === 'super_admin') && 
+                officer.salary_structure && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Salary Structure</CardTitle>

@@ -164,6 +164,7 @@ const Officers = () => {
         officer={selectedOfficer}
         open={detailsDialogOpen}
         onOpenChange={setDetailsDialogOpen}
+        viewerRole="management"
       />
 
       <OfficerScheduleDialog
