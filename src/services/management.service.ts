@@ -52,6 +52,18 @@ export interface ResourceAllocation {
   unit: string;
 }
 
+export interface CriticalActionData {
+  id: string;
+  type: 'purchase' | 'payroll' | 'deadline' | 'approval';
+  title: string;
+  description: string;
+  count: number;
+  urgency: 'high' | 'medium' | 'low';
+  deadline?: string;
+  amount?: number;
+  link: string;
+}
+
 export const managementService = {
   async getDepartmentMetrics(): Promise<DepartmentMetrics[]> {
     const response = await api.get('/management/metrics');
@@ -84,6 +96,11 @@ export const managementService = {
 
   async generateReport(reportType: string, parameters: any): Promise<DepartmentReport> {
     const response = await api.post('/management/reports/generate', { reportType, parameters });
+    return response.data;
+  },
+
+  async getCriticalActions(): Promise<CriticalActionData[]> {
+    const response = await api.get('/management/critical-actions');
     return response.data;
   },
 };

@@ -8,6 +8,8 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { authService } from "@/services/auth.service";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
+import { CriticalActionsCard } from "@/components/management/CriticalActionsCard";
+import { mockCriticalActions } from "@/data/mockManagementData";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -49,6 +51,21 @@ const Dashboard = () => {
         <div>
           <h1 className="text-3xl font-bold">Management Dashboard</h1>
           <p className="text-muted-foreground">Welcome back, {user?.name}! Complete institution and department overview</p>
+        </div>
+
+        {/* Critical Actions Section */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-2xl font-bold">Critical Actions</h2>
+              <p className="text-sm text-muted-foreground">Items requiring immediate attention</p>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {mockCriticalActions.map((action) => (
+              <CriticalActionsCard key={action.id} action={action} />
+            ))}
+          </div>
         </div>
 
         {/* Key Metrics */}
