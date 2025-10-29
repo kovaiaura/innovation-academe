@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar, Users, Package, TrendingUp, Clock, CheckCircle, Check, X, Building2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/services/auth.service';
 import { Layout } from '@/components/layout/Layout';
@@ -70,7 +70,7 @@ const getActivityColor = (type: string) => {
 
 export default function OfficerDashboard() {
   const { user } = useAuth();
-  const tenant = authService.getTenant();
+  const { tenantId } = useParams();
   const [attendanceMarked, setAttendanceMarked] = useState(false);
   const [attendanceTime, setAttendanceTime] = useState<string | null>(null);
   
@@ -257,7 +257,7 @@ export default function OfficerDashboard() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>My Schedule</CardTitle>
             <Button variant="outline" size="sm" asChild>
-              <Link to={`/tenant/${tenant?.slug}/officer/sessions`}>View Full Timetable</Link>
+              <Link to={`/tenant/${tenantId}/officer/sessions`}>View Full Timetable</Link>
             </Button>
           </CardHeader>
           <CardContent>
@@ -299,7 +299,7 @@ export default function OfficerDashboard() {
                           </div>
                         </div>
                         <Button size="sm" variant="outline" asChild>
-                          <Link to={`/tenant/${tenant?.slug}/officer/sessions`}>Start</Link>
+                          <Link to={`/tenant/${tenantId}/officer/sessions`}>Start</Link>
                         </Button>
                       </div>
                     ))}
@@ -347,7 +347,7 @@ export default function OfficerDashboard() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Projects Pending Review</CardTitle>
             <Button variant="outline" size="sm" asChild>
-              <Link to={`/tenant/${tenant?.slug}/officer/projects`}>View All</Link>
+              <Link to={`/tenant/${tenantId}/officer/projects`}>View All</Link>
             </Button>
           </CardHeader>
           <CardContent>
@@ -381,25 +381,25 @@ export default function OfficerDashboard() {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
             <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-              <Link to={`/tenant/${tenant?.slug}/officer/sessions`}>
+              <Link to={`/tenant/${tenantId}/officer/sessions`}>
                 <Calendar className="h-6 w-6" />
                 View My Timetable
               </Link>
             </Button>
             <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-              <Link to={`/tenant/${tenant?.slug}/officer/projects`}>
+              <Link to={`/tenant/${tenantId}/officer/projects`}>
                 <CheckCircle className="h-6 w-6" />
                 Review Projects
               </Link>
             </Button>
             <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-              <Link to={`/tenant/${tenant?.slug}/officer/inventory`}>
+              <Link to={`/tenant/${tenantId}/officer/inventory`}>
                 <Package className="h-6 w-6" />
                 Manage Inventory
               </Link>
             </Button>
             <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-              <Link to={`/tenant/${tenant?.slug}/officer/attendance`}>
+              <Link to={`/tenant/${tenantId}/officer/attendance`}>
                 <Users className="h-6 w-6" />
                 Mark Attendance
               </Link>
