@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, Users, ClipboardCheck, Award, Search, PlayCircle } from 'lucide-react';
 import { mockCourses, mockEnrollments, mockSubmissions } from '@/data/mockCourseData';
+import { CourseContentTab } from '@/components/officer/CourseContentTab';
 
 export default function OfficerCourseManagement() {
   const { tenantId } = useParams();
@@ -34,6 +35,11 @@ export default function OfficerCourseManagement() {
             <TabsTrigger value="grading">Grading</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
           </TabsList>
+
+          {/* Course Content Tab - Enhanced View */}
+          <TabsContent value="content" className="space-y-6">
+            <CourseContentTab />
+          </TabsContent>
 
           <TabsContent value="my-courses" className="space-y-6">
             <div className="grid gap-4 md:grid-cols-4">
