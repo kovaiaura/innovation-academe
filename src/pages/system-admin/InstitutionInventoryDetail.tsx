@@ -14,6 +14,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { ArrowLeft, Download, Plus, Package, TrendingUp, AlertTriangle, CheckCircle, MoreVertical, Search } from 'lucide-react';
 import { mockInventoryItems, mockStockLocations, mockAuditRecords } from '@/data/mockInventoryData';
 import { InventoryItem } from '@/types/inventory';
+import { AddItemDialog } from '@/components/inventory/AddItemDialog';
+import { toast } from 'sonner';
 
 // Mock institution data (in real app, this would come from the API)
 const mockInstitutions: Record<string, { id: string; name: string }> = {
@@ -36,6 +38,7 @@ export default function InstitutionInventoryDetail() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [conditionFilter, setConditionFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
+  const [isAddItemOpen, setIsAddItemOpen] = useState(false);
 
   if (!institution) {
     return (
@@ -107,6 +110,53 @@ export default function InstitutionInventoryDetail() {
     });
   };
 
+  const handleExportReport = () => {
+    toast.loading('Generating report...', { id: 'export' });
+    
+    // CSV header
+    const headers = ['Item Code', 'Name', 'Category', 'Quantity', 'Unit', 'Location', 'Condition', 'Unit Price', 'Total Value', 'Purchase Date', 'Last Audited', 'Status'];
+    
+    // Convert filtered items to CSV rows
+    const rows = filteredItems.map(item => [
+      item.item_code,
+      item.name,
+      item.category,
+      item.quantity,
+      item.unit,
+      item.location,
+      item.condition,
+      item.unit_price,
+      item.total_value,
+      item.purchase_date,
+      item.last_audited,
+      item.status,
+    ]);
+    
+    // Combine header and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+    
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${institution.name.replace(/\s+/g, '_')}_inventory_report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success('Report exported successfully', { id: 'export' });
+  };
+
+  const handleAddItemSuccess = () => {
+    setIsAddItemOpen(false);
+    toast.success('Item added successfully');
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -122,16 +172,16 @@ export default function InstitutionInventoryDetail() {
             </div>
           </div>
           
-          <div className="flex gap-2">
-            <Button variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Export Report
-            </Button>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Item
-            </Button>
-          </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportReport}>
+            <Download className="mr-2 h-4 w-4" />
+            Export Report
+          </Button>
+          <Button onClick={() => setIsAddItemOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Item
+          </Button>
+        </div>
         </div>
 
         {/* Stats Cards */}
@@ -531,6 +581,12 @@ export default function InstitutionInventoryDetail() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <AddItemDialog
+        isOpen={isAddItemOpen}
+        onOpenChange={setIsAddItemOpen}
+        onItemAdded={handleAddItemSuccess}
+      />
     </Layout>
   );
 }
