@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { authService } from "@/services/auth.service";
+import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -43,6 +44,8 @@ const Dashboard = () => {
   return (
     <Layout>
       <div className="space-y-6">
+        <InstitutionHeader />
+        
         <div>
           <h1 className="text-3xl font-bold">Management Dashboard</h1>
           <p className="text-muted-foreground">Welcome back, {user?.name}! Complete institution and department overview</p>

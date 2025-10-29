@@ -22,6 +22,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 
 // Import Performance component content
 const PerformanceAnalyticsTab = () => {
@@ -361,6 +362,8 @@ const Reports = () => {
   return (
     <Layout>
       <div className="space-y-6">
+        <InstitutionHeader />
+        
         <div>
           <h1 className="text-3xl font-bold">Reports</h1>
           <p className="text-muted-foreground">Performance analytics, reports, and data exports</p>

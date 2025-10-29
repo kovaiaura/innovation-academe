@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, UserCheck, Calendar, BookOpen } from "lucide-react";
 import { useState } from "react";
+import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 
 const Officers = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -63,6 +64,8 @@ const Officers = () => {
   return (
     <Layout>
       <div className="space-y-6">
+        <InstitutionHeader />
+        
         <div>
           <h1 className="text-3xl font-bold">Innovation Officers</h1>
           <p className="text-muted-foreground">View assigned innovation officers and their activities</p>

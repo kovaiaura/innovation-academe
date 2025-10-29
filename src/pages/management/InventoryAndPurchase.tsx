@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Package, ShoppingCart, FileText, CheckCircle, XCircle, Clock } from "lucide-react";
+import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 
 const StockOverviewTab = () => {
   const inventory = [
@@ -270,6 +271,8 @@ const InventoryAndPurchase = () => {
   return (
     <Layout>
       <div className="space-y-6">
+        <InstitutionHeader />
+        
         <div>
           <h1 className="text-3xl font-bold">Inventory & Purchase</h1>
           <p className="text-muted-foreground">Manage lab inventory and purchase requisitions</p>

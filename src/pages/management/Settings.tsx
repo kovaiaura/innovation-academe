@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Building2, Award, Mail, Save } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 
 const InstitutionProfileTab = () => {
   return (
@@ -219,6 +220,8 @@ const Settings = () => {
   return (
     <Layout>
       <div className="space-y-6">
+        <InstitutionHeader />
+        
         <div>
           <h1 className="text-3xl font-bold">Settings</h1>
           <p className="text-muted-foreground">Manage institution profile, branding, and integrations</p>

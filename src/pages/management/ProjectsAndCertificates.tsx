@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Target, Award, Users, Calendar, TrendingUp } from "lucide-react";
+import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 
 const ProjectRegistryTab = () => {
   const projects = [
@@ -223,6 +224,8 @@ const ProjectsAndCertificates = () => {
   return (
     <Layout>
       <div className="space-y-6">
+        <InstitutionHeader />
+        
         <div>
           <h1 className="text-3xl font-bold">Projects & Certificates</h1>
           <p className="text-muted-foreground">Manage student projects and showcase achievements</p>

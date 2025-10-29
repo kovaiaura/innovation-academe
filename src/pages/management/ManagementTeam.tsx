@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Briefcase, Mail, Phone, Shield } from "lucide-react";
 import { useState } from "react";
+import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 
 const ManagementTeam = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,6 +65,8 @@ const ManagementTeam = () => {
   return (
     <Layout>
       <div className="space-y-6">
+        <InstitutionHeader />
+        
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Management Team</h1>

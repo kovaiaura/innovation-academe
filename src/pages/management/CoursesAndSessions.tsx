@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Plus, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 
 const TimetableTab = () => {
   const sessions = [
@@ -122,6 +123,8 @@ const CoursesAndSessions = () => {
   return (
     <Layout>
       <div className="space-y-6">
+        <InstitutionHeader />
+        
         <div>
           <h1 className="text-3xl font-bold">Courses & Sessions</h1>
           <p className="text-muted-foreground">Manage course catalog and session schedule</p>

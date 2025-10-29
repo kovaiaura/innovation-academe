@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, Clock, Calendar, DollarSign, Send } from "lucide-react";
+import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 
 const OfficerAttendanceTab = () => {
   const attendanceRecords = [
@@ -306,6 +307,8 @@ const AttendanceAndPayroll = () => {
   return (
     <Layout>
       <div className="space-y-6">
+        <InstitutionHeader />
+        
         <div>
           <h1 className="text-3xl font-bold">Attendance & Payroll</h1>
           <p className="text-muted-foreground">Verify officer attendance and review payrolls</p>
