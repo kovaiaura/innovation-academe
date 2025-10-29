@@ -292,7 +292,6 @@ const MonthlyReportsTab = () => {
             </div>
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 };
