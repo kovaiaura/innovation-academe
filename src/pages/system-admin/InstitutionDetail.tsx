@@ -7,73 +7,31 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
-import { ArrowLeft, Users, GraduationCap, Building2, Mail, Phone, Calendar, MapPin, Download, Upload } from 'lucide-react';
+import { ArrowLeft, Users, GraduationCap, Building2, Mail, Phone, Calendar, MapPin, Download, Upload, Pencil } from 'lucide-react';
 import { ClassStudentTable } from '@/components/institution/ClassStudentTable';
 import { StudentEditDialog } from '@/components/institution/StudentEditDialog';
+import { EditInstitutionDialog } from '@/components/institution/EditInstitutionDialog';
 import { BulkUploadDialog, BulkUploadResult } from '@/components/student/BulkUploadDialog';
 import { Student } from '@/types/student';
 import { getStudentsByInstitution, getStudentsByClass } from '@/data/mockStudentData';
 import { calculateClassStatistics } from '@/utils/studentHelpers';
 import { generateTemplate } from '@/utils/csvParser';
 import { toast } from 'sonner';
-
-// Mock institution data (in real app, fetch from API)
-const mockInstitutions = [
-  {
-    id: '1',
-    name: 'Delhi Public School - Vasant Kunj',
-    code: 'DPS-VK-001',
-    type: 'school',
-    location: 'New Delhi, India',
-    established_year: 1995,
-    contact_email: 'admin@dpsvk.edu.in',
-    contact_phone: '+91-11-2345-6789',
-    admin_name: 'Dr. Rajesh Kumar',
-    admin_email: 'rajesh.kumar@dpsvk.edu.in',
-    total_students: 2450,
-    total_faculty: 180,
-  },
-  {
-    id: '2',
-    name: 'Ryan International School',
-    code: 'RIS-MUM-002',
-    type: 'school',
-    location: 'Mumbai, India',
-    established_year: 1989,
-    contact_email: 'info@ryanmumbai.edu.in',
-    contact_phone: '+91-22-3456-7890',
-    admin_name: 'Mrs. Priya Sharma',
-    admin_email: 'priya.sharma@ryanmumbai.edu.in',
-    total_students: 3800,
-    total_faculty: 250,
-  },
-  {
-    id: '3',
-    name: 'Innovation Hub Chennai',
-    code: 'IHC-CHN-003',
-    type: 'institute',
-    location: 'Chennai, India',
-    established_year: 2020,
-    contact_email: 'contact@innohubchennai.org',
-    contact_phone: '+91-44-4567-8901',
-    admin_name: 'Mr. Arjun Patel',
-    admin_email: 'arjun.patel@innohubchennai.org',
-    total_students: 450,
-    total_faculty: 35,
-  }
-];
+import { useInstitutionData } from '@/contexts/InstitutionDataContext';
 
 export default function InstitutionDetail() {
   const { institutionId } = useParams();
   const navigate = useNavigate();
+  const { institutions, updateInstitution } = useInstitutionData();
   const [selectedClass, setSelectedClass] = useState('Class 1');
   const [students, setStudents] = useState<Student[]>([]);
   const [classStudents, setClassStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isEditInstitutionOpen, setIsEditInstitutionOpen] = useState(false);
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
 
-  const institution = mockInstitutions.find(inst => inst.id === institutionId);
+  const institution = institutions.find(inst => inst.id === institutionId);
 
   useEffect(() => {
     if (institutionId) {
@@ -148,6 +106,14 @@ export default function InstitutionDetail() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     toast.success('Template downloaded');
+  };
+
+  const handleSaveInstitution = (updatedInstitution: Partial<any>) => {
+    if (institutionId) {
+      updateInstitution(institutionId, updatedInstitution);
+      toast.success('Institution details updated successfully');
+      setIsEditInstitutionOpen(false);
+    }
   };
 
   return (
@@ -254,8 +220,20 @@ export default function InstitutionDetail() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Institution Information</CardTitle>
-                <CardDescription>Basic details and contact information</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Institution Information</CardTitle>
+                    <CardDescription>Basic details and contact information</CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditInstitutionOpen(true)}
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
@@ -386,6 +364,14 @@ export default function InstitutionDetail() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Edit Institution Dialog */}
+        <EditInstitutionDialog
+          institution={institution || null}
+          open={isEditInstitutionOpen}
+          onOpenChange={setIsEditInstitutionOpen}
+          onSave={handleSaveInstitution}
+        />
 
         {/* Edit Student Dialog */}
         <StudentEditDialog
