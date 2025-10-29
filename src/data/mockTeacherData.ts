@@ -1,4 +1,4 @@
-import { SchoolTeacher } from '@/types/teacher';
+import { SchoolTeacher, TeacherTimetable, TimetableSlot } from '@/types/teacher';
 
 export const mockTeachers: SchoolTeacher[] = [
   {
@@ -288,5 +288,90 @@ export const mockTeachers: SchoolTeacher[] = [
     total_students: 205,
     average_attendance: 96,
     last_active: '2024-01-14',
+  },
+];
+
+// Mock timetable data for some teachers
+export const mockTimetables: TeacherTimetable[] = [
+  {
+    teacher_id: '1',
+    slots: [
+      { id: '1-mon-09', teacher_id: '1', day: 'Monday', start_time: '09:00', end_time: '10:00', class: 'Class 5A', subject: 'Mathematics', room: 'Room 201', type: 'lecture' },
+      { id: '1-mon-11', teacher_id: '1', day: 'Monday', start_time: '11:00', end_time: '12:00', class: 'Class 6A', subject: 'Computer Science', room: 'Lab-A', type: 'lab' },
+      { id: '1-tue-09', teacher_id: '1', day: 'Tuesday', start_time: '09:00', end_time: '10:00', class: 'Class 5B', subject: 'Mathematics', room: 'Room 202', type: 'lecture' },
+      { id: '1-tue-13', teacher_id: '1', day: 'Tuesday', start_time: '13:00', end_time: '14:00', class: 'Class 6A', subject: 'Computer Science', room: 'Lab-A', type: 'lab' },
+      { id: '1-wed-10', teacher_id: '1', day: 'Wednesday', start_time: '10:00', end_time: '11:00', class: 'Class 5A', subject: 'Mathematics', room: 'Room 201', type: 'lecture' },
+      { id: '1-thu-09', teacher_id: '1', day: 'Thursday', start_time: '09:00', end_time: '10:00', class: 'Class 5B', subject: 'Mathematics', room: 'Room 202', type: 'lecture' },
+      { id: '1-fri-09', teacher_id: '1', day: 'Friday', start_time: '09:00', end_time: '10:00', class: 'Class 5A', subject: 'Mathematics', room: 'Room 201', type: 'lecture' },
+      { id: '1-fri-14', teacher_id: '1', day: 'Friday', start_time: '14:00', end_time: '15:00', class: 'Class 6A', subject: 'Computer Science', room: 'Lab-A', type: 'tutorial' },
+    ],
+    total_hours: 8,
+    status: 'partial',
+    last_updated: '2024-01-15',
+  },
+  {
+    teacher_id: '2',
+    slots: [
+      { id: '2-mon-09', teacher_id: '2', day: 'Monday', start_time: '09:00', end_time: '10:00', class: 'Class 8A', subject: 'Science', room: 'Room 301', type: 'lecture' },
+      { id: '2-mon-10', teacher_id: '2', day: 'Monday', start_time: '10:00', end_time: '11:00', class: 'Class 8B', subject: 'Science', room: 'Room 302', type: 'lecture' },
+      { id: '2-mon-14', teacher_id: '2', day: 'Monday', start_time: '14:00', end_time: '15:00', class: 'Class 9A', subject: 'Mathematics', room: 'Room 303', type: 'lecture' },
+      { id: '2-tue-09', teacher_id: '2', day: 'Tuesday', start_time: '09:00', end_time: '10:00', class: 'Class 8A', subject: 'Science', room: 'Lab-B', type: 'practical' },
+      { id: '2-tue-13', teacher_id: '2', day: 'Tuesday', start_time: '13:00', end_time: '14:00', class: 'Class 9A', subject: 'Mathematics', room: 'Room 303', type: 'lecture' },
+      { id: '2-wed-09', teacher_id: '2', day: 'Wednesday', start_time: '09:00', end_time: '10:00', class: 'Class 8B', subject: 'Science', room: 'Room 302', type: 'lecture' },
+      { id: '2-wed-14', teacher_id: '2', day: 'Wednesday', start_time: '14:00', end_time: '15:00', class: 'Class 9A', subject: 'Mathematics', room: 'Room 303', type: 'tutorial' },
+      { id: '2-thu-09', teacher_id: '2', day: 'Thursday', start_time: '09:00', end_time: '10:00', class: 'Class 8A', subject: 'Science', room: 'Room 301', type: 'lecture' },
+      { id: '2-thu-10', teacher_id: '2', day: 'Thursday', start_time: '10:00', end_time: '11:00', class: 'Class 8B', subject: 'Science', room: 'Room 302', type: 'lecture' },
+      { id: '2-fri-09', teacher_id: '2', day: 'Friday', start_time: '09:00', end_time: '10:00', class: 'Class 9A', subject: 'Mathematics', room: 'Room 303', type: 'lecture' },
+    ],
+    total_hours: 10,
+    status: 'partial',
+    last_updated: '2024-01-15',
+  },
+  {
+    teacher_id: '3',
+    slots: [
+      { id: '3-mon-09', teacher_id: '3', day: 'Monday', start_time: '09:00', end_time: '10:00', class: 'Class 3A', subject: 'English', room: 'Room 101', type: 'lecture' },
+      { id: '3-mon-10', teacher_id: '3', day: 'Monday', start_time: '10:00', end_time: '11:00', class: 'Class 3B', subject: 'English', room: 'Room 102', type: 'lecture' },
+      { id: '3-mon-13', teacher_id: '3', day: 'Monday', start_time: '13:00', end_time: '14:00', class: 'Class 4A', subject: 'Hindi', room: 'Room 103', type: 'lecture' },
+      { id: '3-mon-14', teacher_id: '3', day: 'Monday', start_time: '14:00', end_time: '15:00', class: 'Class 4B', subject: 'Hindi', room: 'Room 104', type: 'lecture' },
+      { id: '3-tue-09', teacher_id: '3', day: 'Tuesday', start_time: '09:00', end_time: '10:00', class: 'Class 3A', subject: 'English', room: 'Room 101', type: 'lecture' },
+      { id: '3-tue-10', teacher_id: '3', day: 'Tuesday', start_time: '10:00', end_time: '11:00', class: 'Class 3B', subject: 'English', room: 'Room 102', type: 'lecture' },
+      { id: '3-tue-13', teacher_id: '3', day: 'Tuesday', start_time: '13:00', end_time: '14:00', class: 'Class 4A', subject: 'Hindi', room: 'Room 103', type: 'lecture' },
+      { id: '3-wed-09', teacher_id: '3', day: 'Wednesday', start_time: '09:00', end_time: '10:00', class: 'Class 3A', subject: 'English', room: 'Room 101', type: 'lecture' },
+      { id: '3-wed-10', teacher_id: '3', day: 'Wednesday', start_time: '10:00', end_time: '11:00', class: 'Class 3B', subject: 'English', room: 'Room 102', type: 'lecture' },
+      { id: '3-wed-13', teacher_id: '3', day: 'Wednesday', start_time: '13:00', end_time: '14:00', class: 'Class 4B', subject: 'Hindi', room: 'Room 104', type: 'lecture' },
+      { id: '3-thu-09', teacher_id: '3', day: 'Thursday', start_time: '09:00', end_time: '10:00', class: 'Class 3A', subject: 'English', room: 'Room 101', type: 'lecture' },
+      { id: '3-thu-10', teacher_id: '3', day: 'Thursday', start_time: '10:00', end_time: '11:00', class: 'Class 3B', subject: 'English', room: 'Room 102', type: 'lecture' },
+      { id: '3-thu-13', teacher_id: '3', day: 'Thursday', start_time: '13:00', end_time: '14:00', class: 'Class 4A', subject: 'Hindi', room: 'Room 103', type: 'lecture' },
+      { id: '3-fri-09', teacher_id: '3', day: 'Friday', start_time: '09:00', end_time: '10:00', class: 'Class 3A', subject: 'English', room: 'Room 101', type: 'lecture' },
+      { id: '3-fri-13', teacher_id: '3', day: 'Friday', start_time: '13:00', end_time: '14:00', class: 'Class 4A', subject: 'Hindi', room: 'Room 103', type: 'lecture' },
+    ],
+    total_hours: 15,
+    status: 'partial',
+    last_updated: '2024-01-15',
+  },
+  {
+    teacher_id: '9',
+    slots: [
+      { id: '9-mon-09', teacher_id: '9', day: 'Monday', start_time: '09:00', end_time: '10:00', class: 'Class 11 Science', subject: 'Mathematics', room: 'Room 401', type: 'lecture' },
+      { id: '9-mon-10', teacher_id: '9', day: 'Monday', start_time: '10:00', end_time: '11:00', class: 'Class 12 Science', subject: 'Mathematics', room: 'Room 402', type: 'lecture' },
+      { id: '9-mon-13', teacher_id: '9', day: 'Monday', start_time: '13:00', end_time: '14:00', class: 'Class 11 Science', subject: 'Mathematics', room: 'Room 401', type: 'tutorial' },
+      { id: '9-mon-14', teacher_id: '9', day: 'Monday', start_time: '14:00', end_time: '15:00', class: 'Class 12 Science', subject: 'Mathematics', room: 'Room 402', type: 'tutorial' },
+      { id: '9-tue-09', teacher_id: '9', day: 'Tuesday', start_time: '09:00', end_time: '10:00', class: 'Class 11 Science', subject: 'Mathematics', room: 'Room 401', type: 'lecture' },
+      { id: '9-tue-10', teacher_id: '9', day: 'Tuesday', start_time: '10:00', end_time: '11:00', class: 'Class 12 Science', subject: 'Mathematics', room: 'Room 402', type: 'lecture' },
+      { id: '9-wed-09', teacher_id: '9', day: 'Wednesday', start_time: '09:00', end_time: '10:00', class: 'Class 11 Science', subject: 'Mathematics', room: 'Room 401', type: 'lecture' },
+      { id: '9-wed-10', teacher_id: '9', day: 'Wednesday', start_time: '10:00', end_time: '11:00', class: 'Class 12 Science', subject: 'Mathematics', room: 'Room 402', type: 'lecture' },
+      { id: '9-wed-14', teacher_id: '9', day: 'Wednesday', start_time: '14:00', end_time: '15:00', class: 'Class 11 Science', subject: 'Mathematics', room: 'Room 401', type: 'tutorial' },
+      { id: '9-thu-09', teacher_id: '9', day: 'Thursday', start_time: '09:00', end_time: '10:00', class: 'Class 11 Science', subject: 'Mathematics', room: 'Room 401', type: 'lecture' },
+      { id: '9-thu-10', teacher_id: '9', day: 'Thursday', start_time: '10:00', end_time: '11:00', class: 'Class 12 Science', subject: 'Mathematics', room: 'Room 402', type: 'lecture' },
+      { id: '9-fri-09', teacher_id: '9', day: 'Friday', start_time: '09:00', end_time: '10:00', class: 'Class 11 Science', subject: 'Mathematics', room: 'Room 401', type: 'lecture' },
+      { id: '9-fri-10', teacher_id: '9', day: 'Friday', start_time: '10:00', end_time: '11:00', class: 'Class 12 Science', subject: 'Mathematics', room: 'Room 402', type: 'lecture' },
+      { id: '9-fri-13', teacher_id: '9', day: 'Friday', start_time: '13:00', end_time: '14:00', class: 'Class 12 Science', subject: 'Mathematics', room: 'Room 402', type: 'tutorial' },
+      { id: '9-sat-09', teacher_id: '9', day: 'Saturday', start_time: '09:00', end_time: '10:00', class: 'Class 11 Science', subject: 'Mathematics', room: 'Room 401', type: 'lecture' },
+      { id: '9-sat-10', teacher_id: '9', day: 'Saturday', start_time: '10:00', end_time: '11:00', class: 'Class 12 Science', subject: 'Mathematics', room: 'Room 402', type: 'lecture' },
+    ],
+    total_hours: 16,
+    status: 'partial',
+    last_updated: '2024-01-15',
   },
 ];

@@ -13,18 +13,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { mockTeachers } from "@/data/mockTeacherData";
-import { SCHOOL_SUBJECTS, SchoolTeacher } from "@/types/teacher";
+import { mockTeachers, mockTimetables } from "@/data/mockTeacherData";
+import { SCHOOL_SUBJECTS, SchoolTeacher, TeacherTimetable, TimetableSlot } from "@/types/teacher";
 import { TeacherDetailsDialog } from "@/components/teacher/TeacherDetailsDialog";
 import { AddEditTeacherDialog } from "@/components/teacher/AddEditTeacherDialog";
 import { DeleteTeacherDialog } from "@/components/teacher/DeleteTeacherDialog";
+import { TimetableManagementTab } from "@/components/teacher/TimetableManagementTab";
 import { toast } from "sonner";
 
 const Teachers = () => {
   const [teachers, setTeachers] = useState(mockTeachers);
+  const [timetables, setTimetables] = useState<TeacherTimetable[]>(mockTimetables);
   const [searchQuery, setSearchQuery] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("list");
+  const [highlightedTeacherId, setHighlightedTeacherId] = useState<string | undefined>();
   
   // Dialog states
   const [selectedTeacher, setSelectedTeacher] = useState<SchoolTeacher | null>(null);
@@ -111,6 +114,29 @@ const Teachers = () => {
     setDeleteDialogOpen(true);
   };
 
+  const handleSaveTimetable = (teacherId: string, slots: TimetableSlot[]) => {
+    const existingIndex = timetables.findIndex(t => t.teacher_id === teacherId);
+    const newTimetable: TeacherTimetable = {
+      teacher_id: teacherId,
+      slots,
+      total_hours: slots.length,
+      status: slots.length >= 20 ? 'assigned' : slots.length > 0 ? 'partial' : 'not_assigned',
+      last_updated: new Date().toISOString().split('T')[0],
+    };
+
+    if (existingIndex >= 0) {
+      setTimetables(prev => prev.map((t, idx) => idx === existingIndex ? newTimetable : t));
+    } else {
+      setTimetables(prev => [...prev, newTimetable]);
+    }
+  };
+
+  const handleTimetableButtonClick = (teacherId: string) => {
+    setActiveTab('timetables');
+    setHighlightedTeacherId(teacherId);
+    setTimeout(() => setHighlightedTeacherId(undefined), 3000);
+  };
+
   // Calculate summary statistics
   const totalTeachers = teachers.length;
   const teachersOnLeave = teachers.filter(t => t.status === 'on_leave').length;
@@ -183,9 +209,10 @@ const Teachers = () => {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full md:w-[400px] grid-cols-2">
+              <TabsList className="grid w-full md:w-[600px] grid-cols-3">
                 <TabsTrigger value="list">List Teachers</TabsTrigger>
                 <TabsTrigger value="add">Add Teacher</TabsTrigger>
+                <TabsTrigger value="timetables">Manage Timetables</TabsTrigger>
               </TabsList>
 
               <TabsContent value="list" className="space-y-4 mt-6">
@@ -315,6 +342,15 @@ const Teachers = () => {
                     </Button>
                   </div>
                 </div>
+              </TabsContent>
+
+              <TabsContent value="timetables" className="mt-6">
+                <TimetableManagementTab 
+                  teachers={teachers}
+                  timetables={timetables}
+                  onSaveTimetable={handleSaveTimetable}
+                  highlightTeacherId={highlightedTeacherId}
+                />
               </TabsContent>
             </Tabs>
           </CardContent>

@@ -36,3 +36,23 @@ export const CLASS_LEVELS = {
   SECONDARY: 'Secondary (9-10)',
   SENIOR_SECONDARY: 'Senior Secondary (11-12)',
 } as const;
+
+export interface TimetableSlot {
+  id: string;
+  teacher_id: string;
+  day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
+  start_time: string; // '09:00'
+  end_time: string;   // '10:00'
+  class: string;      // 'Class 5A'
+  subject: string;    // 'Mathematics'
+  room: string;       // 'Room 201'
+  type: 'lecture' | 'lab' | 'tutorial' | 'practical';
+}
+
+export interface TeacherTimetable {
+  teacher_id: string;
+  slots: TimetableSlot[];
+  total_hours: number;
+  status: 'assigned' | 'partial' | 'not_assigned';
+  last_updated: string;
+}
