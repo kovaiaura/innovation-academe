@@ -53,7 +53,7 @@ import CoursesAndSessions from "./pages/management/CoursesAndSessions";
 import InventoryAndPurchase from "./pages/management/InventoryAndPurchase";
 import ProjectsAndCertificates from "./pages/management/ProjectsAndCertificates";
 import ManagementSettings from "./pages/management/Settings";
-import AttendanceAndPayroll from "./pages/management/AttendanceAndPayroll";
+import Attendance from "./pages/management/Attendance";
 import ManagementReports from "./pages/management/Reports";
 import SystemAdminCourseManagement from "./pages/system-admin/CourseManagement";
 import SystemAdminCourseDetail from "./pages/system-admin/CourseDetail";
@@ -402,10 +402,10 @@ const App = () => (
               }
             />
             <Route
-              path="/tenant/:tenantId/management/attendance-payroll"
+              path="/tenant/:tenantId/management/attendance"
               element={
                 <ProtectedRoute allowedRoles={['management']}>
-                  <AttendanceAndPayroll />
+                  <Attendance />
                 </ProtectedRoute>
               }
             />

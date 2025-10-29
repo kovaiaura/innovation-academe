@@ -70,7 +70,7 @@ const menuItems: MenuItem[] = [
   { label: 'Projects & Certificates', icon: <Target className="h-5 w-5" />, path: '/projects-certificates', roles: ['management'] },
   { label: 'Reports', icon: <FileText className="h-5 w-5" />, path: '/reports', roles: ['management'] },
   { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['management'] },
-  { label: 'Attendance & Payroll', icon: <Clock className="h-5 w-5" />, path: '/attendance-payroll', roles: ['management'] },
+  { label: 'Attendance', icon: <Clock className="h-5 w-5" />, path: '/attendance', roles: ['management'] },
 ];
 
 export function Sidebar() {
