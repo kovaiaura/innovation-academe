@@ -222,130 +222,146 @@ export const mockQuizQuestions: QuizQuestion[] = [
 
 // Mock Course Assignments
 export const mockCourseAssignments: CourseAssignment[] = [
+  // Springfield Institution - AI Course
   {
-    id: 'ca-1',
+    id: 'ca-springfield-1',
     course_id: 'course-1',
-    institution_id: 'inst-1',
-    institution_name: 'Tech University',
-    class_level: 'Year 2',
-    officer_ids: ['officer-1'],
-    officer_names: ['John Smith'],
-    primary_officer_id: 'officer-1',
+    institution_id: 'springfield',
+    institution_name: 'Springfield University',
+    class_level: 'Class 8A',
+    officer_ids: ['off-001'],
+    officer_names: ['Dr. Rajesh Kumar'],
+    primary_officer_id: 'off-001',
     start_date: '2024-02-01T00:00:00Z',
     end_date: '2024-05-31T23:59:00Z',
     max_enrollments: 50,
-    current_enrollments: 35,
+    current_enrollments: 15,
     status: 'ongoing',
     created_at: '2024-01-20T10:00:00Z'
   },
   {
-    id: 'ca-2',
+    id: 'ca-springfield-2',
+    course_id: 'course-1',
+    institution_id: 'springfield',
+    institution_name: 'Springfield University',
+    class_level: 'Class 8B',
+    officer_ids: ['off-001'],
+    officer_names: ['Dr. Rajesh Kumar'],
+    primary_officer_id: 'off-001',
+    start_date: '2024-02-01T00:00:00Z',
+    end_date: '2024-05-31T23:59:00Z',
+    max_enrollments: 50,
+    current_enrollments: 12,
+    status: 'ongoing',
+    created_at: '2024-01-20T10:00:00Z'
+  },
+  // Springfield - Web Dev Course
+  {
+    id: 'ca-springfield-3',
     course_id: 'course-2',
-    institution_id: 'inst-1',
-    institution_name: 'Tech University',
-    class_level: 'Year 3',
-    officer_ids: ['officer-2'],
-    officer_names: ['Sarah Johnson'],
-    primary_officer_id: 'officer-2',
+    institution_id: 'springfield',
+    institution_name: 'Springfield University',
+    class_level: 'Class 9A',
+    officer_ids: ['off-002'],
+    officer_names: ['Ms. Priya Sharma'],
+    primary_officer_id: 'off-002',
     start_date: '2024-02-15T00:00:00Z',
     end_date: '2024-06-15T23:59:00Z',
     max_enrollments: 40,
-    current_enrollments: 28,
+    current_enrollments: 18,
     status: 'ongoing',
     created_at: '2024-01-25T10:00:00Z'
+  },
+  // Springfield - IoT Course
+  {
+    id: 'ca-springfield-4',
+    course_id: 'course-3',
+    institution_id: 'springfield',
+    institution_name: 'Springfield University',
+    class_level: 'Class 10A',
+    officer_ids: ['off-001'],
+    officer_names: ['Dr. Rajesh Kumar'],
+    primary_officer_id: 'off-001',
+    start_date: '2024-02-01T00:00:00Z',
+    end_date: '2024-05-31T23:59:00Z',
+    max_enrollments: 30,
+    current_enrollments: 10,
+    status: 'ongoing',
+    created_at: '2024-01-20T10:00:00Z'
+  },
+  // Springfield - Data Science Course
+  {
+    id: 'ca-springfield-5',
+    course_id: 'course-5',
+    institution_id: 'springfield',
+    institution_name: 'Springfield University',
+    class_level: 'Class 9B',
+    officer_ids: ['off-002'],
+    officer_names: ['Ms. Priya Sharma'],
+    primary_officer_id: 'off-002',
+    start_date: '2024-02-10T00:00:00Z',
+    end_date: '2024-06-10T23:59:00Z',
+    max_enrollments: 35,
+    current_enrollments: 14,
+    status: 'ongoing',
+    created_at: '2024-01-28T10:00:00Z'
   }
 ];
 
 // Mock Enrollments
 export const mockEnrollments: CourseEnrollment[] = [
-  {
-    id: 'enroll-1',
-    course_id: 'course-1',
-    course_title: 'Introduction to Artificial Intelligence',
-    course_code: 'AI101',
-    student_id: 'student-1',
-    student_name: 'Alice Williams',
-    institution_id: 'inst-1',
-    class_level: 'Year 2',
-    enrolled_at: '2024-02-02T10:00:00Z',
-    progress_percentage: 65,
-    status: 'active',
-    last_activity_at: '2024-03-10T14:30:00Z',
-    certificate_issued: false
-  },
-  {
-    id: 'enroll-2',
-    course_id: 'course-1',
-    course_title: 'Introduction to Artificial Intelligence',
-    course_code: 'AI101',
-    student_id: 'student-2',
-    student_name: 'Bob Chen',
-    institution_id: 'inst-1',
-    class_level: 'Year 2',
-    enrolled_at: '2024-02-03T10:00:00Z',
-    progress_percentage: 45,
-    status: 'active',
-    last_activity_at: '2024-03-05T09:15:00Z',
-    certificate_issued: false
-  }
+  // Springfield - AI Course - Class 8A
+  { id: 'enroll-sp-1', course_id: 'course-1', course_title: 'Introduction to Artificial Intelligence', course_code: 'AI101', student_id: 'springfield-801', student_name: 'Rajesh Kumar', institution_id: 'springfield', class_level: 'Class 8A', enrolled_at: '2024-02-02T10:00:00Z', progress_percentage: 72, status: 'active', last_activity_at: '2024-03-12T14:30:00Z', certificate_issued: false },
+  { id: 'enroll-sp-2', course_id: 'course-1', course_title: 'Introduction to Artificial Intelligence', course_code: 'AI101', student_id: 'springfield-802', student_name: 'Priya Sharma', institution_id: 'springfield', class_level: 'Class 8A', enrolled_at: '2024-02-02T10:00:00Z', progress_percentage: 85, status: 'active', last_activity_at: '2024-03-13T16:20:00Z', certificate_issued: false },
+  { id: 'enroll-sp-3', course_id: 'course-1', course_title: 'Introduction to Artificial Intelligence', course_code: 'AI101', student_id: 'springfield-803', student_name: 'Amit Patel', institution_id: 'springfield', class_level: 'Class 8A', enrolled_at: '2024-02-02T10:00:00Z', progress_percentage: 45, status: 'active', last_activity_at: '2024-03-08T09:15:00Z', certificate_issued: false },
+  { id: 'enroll-sp-4', course_id: 'course-1', course_title: 'Introduction to Artificial Intelligence', course_code: 'AI101', student_id: 'springfield-804', student_name: 'Sneha Reddy', institution_id: 'springfield', class_level: 'Class 8A', enrolled_at: '2024-02-02T10:00:00Z', progress_percentage: 68, status: 'active', last_activity_at: '2024-03-11T11:45:00Z', certificate_issued: false },
+  { id: 'enroll-sp-5', course_id: 'course-1', course_title: 'Introduction to Artificial Intelligence', course_code: 'AI101', student_id: 'springfield-805', student_name: 'Vikram Singh', institution_id: 'springfield', class_level: 'Class 8A', enrolled_at: '2024-02-02T10:00:00Z', progress_percentage: 92, status: 'active', last_activity_at: '2024-03-14T15:30:00Z', certificate_issued: false },
+  { id: 'enroll-sp-6', course_id: 'course-1', course_title: 'Introduction to Artificial Intelligence', course_code: 'AI101', student_id: 'springfield-806', student_name: 'Ananya Desai', institution_id: 'springfield', class_level: 'Class 8A', enrolled_at: '2024-02-02T10:00:00Z', progress_percentage: 28, status: 'active', last_activity_at: '2024-02-28T08:20:00Z', certificate_issued: false },
+  
+  // Springfield - AI Course - Class 8B
+  { id: 'enroll-sp-7', course_id: 'course-1', course_title: 'Introduction to Artificial Intelligence', course_code: 'AI101', student_id: 'springfield-821', student_name: 'Rohan Mehta', institution_id: 'springfield', class_level: 'Class 8B', enrolled_at: '2024-02-03T10:00:00Z', progress_percentage: 55, status: 'active', last_activity_at: '2024-03-10T13:15:00Z', certificate_issued: false },
+  { id: 'enroll-sp-8', course_id: 'course-1', course_title: 'Introduction to Artificial Intelligence', course_code: 'AI101', student_id: 'springfield-822', student_name: 'Kavya Iyer', institution_id: 'springfield', class_level: 'Class 8B', enrolled_at: '2024-02-03T10:00:00Z', progress_percentage: 78, status: 'active', last_activity_at: '2024-03-13T10:30:00Z', certificate_issued: false },
+  { id: 'enroll-sp-9', course_id: 'course-1', course_title: 'Introduction to Artificial Intelligence', course_code: 'AI101', student_id: 'springfield-823', student_name: 'Arjun Nair', institution_id: 'springfield', class_level: 'Class 8B', enrolled_at: '2024-02-03T10:00:00Z', progress_percentage: 62, status: 'active', last_activity_at: '2024-03-12T14:00:00Z', certificate_issued: false },
+  
+  // Springfield - Web Dev Course - Class 9A
+  { id: 'enroll-sp-10', course_id: 'course-2', course_title: 'Full Stack Web Development', course_code: 'WEB201', student_id: 'springfield-901', student_name: 'Divya Krishnan', institution_id: 'springfield', class_level: 'Class 9A', enrolled_at: '2024-02-16T10:00:00Z', progress_percentage: 48, status: 'active', last_activity_at: '2024-03-11T09:20:00Z', certificate_issued: false },
+  { id: 'enroll-sp-11', course_id: 'course-2', course_title: 'Full Stack Web Development', course_code: 'WEB201', student_id: 'springfield-902', student_name: 'Karthik Rao', institution_id: 'springfield', class_level: 'Class 9A', enrolled_at: '2024-02-16T10:00:00Z', progress_percentage: 65, status: 'active', last_activity_at: '2024-03-13T11:45:00Z', certificate_issued: false },
+  { id: 'enroll-sp-12', course_id: 'course-2', course_title: 'Full Stack Web Development', course_code: 'WEB201', student_id: 'springfield-903', student_name: 'Meera Shah', institution_id: 'springfield', class_level: 'Class 9A', enrolled_at: '2024-02-16T10:00:00Z', progress_percentage: 82, status: 'active', last_activity_at: '2024-03-14T15:10:00Z', certificate_issued: false },
+  
+  // Springfield - IoT Course - Class 10A
+  { id: 'enroll-sp-13', course_id: 'course-3', course_title: 'Internet of Things & Smart Devices', course_code: 'IOT301', student_id: 'springfield-1001', student_name: 'Aditya Gupta', institution_id: 'springfield', class_level: 'Class 10A', enrolled_at: '2024-02-02T10:00:00Z', progress_percentage: 58, status: 'active', last_activity_at: '2024-03-12T12:30:00Z', certificate_issued: false },
+  { id: 'enroll-sp-14', course_id: 'course-3', course_title: 'Internet of Things & Smart Devices', course_code: 'IOT301', student_id: 'springfield-1002', student_name: 'Neha Joshi', institution_id: 'springfield', class_level: 'Class 10A', enrolled_at: '2024-02-02T10:00:00Z', progress_percentage: 75, status: 'active', last_activity_at: '2024-03-13T14:20:00Z', certificate_issued: false },
+  
+  // Springfield - Data Science Course - Class 9B
+  { id: 'enroll-sp-15', course_id: 'course-5', course_title: 'Data Science Fundamentals', course_code: 'DS201', student_id: 'springfield-921', student_name: 'Rahul Verma', institution_id: 'springfield', class_level: 'Class 9B', enrolled_at: '2024-02-11T10:00:00Z', progress_percentage: 42, status: 'active', last_activity_at: '2024-03-09T10:15:00Z', certificate_issued: false },
+  { id: 'enroll-sp-16', course_id: 'course-5', course_title: 'Data Science Fundamentals', course_code: 'DS201', student_id: 'springfield-922', student_name: 'Pooja Menon', institution_id: 'springfield', class_level: 'Class 9B', enrolled_at: '2024-02-11T10:00:00Z', progress_percentage: 70, status: 'active', last_activity_at: '2024-03-13T16:40:00Z', certificate_issued: false }
 ];
 
 // Mock Submissions
 export const mockSubmissions: AssignmentSubmission[] = [
-  {
-    id: 'sub-1',
-    assignment_id: 'assign-1',
-    assignment_title: 'Build a Linear Regression Model',
-    student_id: 'student-1',
-    student_name: 'Alice Williams',
-    submission_type: 'file',
-    file_url: '/submissions/alice-lr-model.zip',
-    submitted_at: '2024-03-14T18:30:00Z',
-    is_late: false,
-    late_penalty_applied: 0,
-    total_points: 100,
-    grade: 92,
-    graded_by: 'officer-1',
-    graded_at: '2024-03-16T10:00:00Z',
-    feedback: 'Excellent work! Clean code and good documentation. Consider edge cases for better robustness.',
-    status: 'graded'
-  },
-  {
-    id: 'sub-2',
-    assignment_id: 'assign-1',
-    assignment_title: 'Build a Linear Regression Model',
-    student_id: 'student-2',
-    student_name: 'Bob Chen',
-    submission_type: 'file',
-    file_url: '/submissions/bob-lr-model.zip',
-    submitted_at: '2024-03-15T22:45:00Z',
-    is_late: false,
-    late_penalty_applied: 0,
-    total_points: 100,
-    status: 'pending'
-  }
+  // AI Course submissions
+  { id: 'sub-sp-1', assignment_id: 'assign-1', assignment_title: 'Build a Linear Regression Model', student_id: 'springfield-801', student_name: 'Rajesh Kumar', submission_type: 'file', file_url: '/submissions/rajesh-lr.zip', submitted_at: '2024-03-14T18:30:00Z', is_late: false, late_penalty_applied: 0, total_points: 100, grade: 85, graded_by: 'off-001', graded_at: '2024-03-16T10:00:00Z', feedback: 'Good work!', status: 'graded' },
+  { id: 'sub-sp-2', assignment_id: 'assign-1', assignment_title: 'Build a Linear Regression Model', student_id: 'springfield-802', student_name: 'Priya Sharma', submission_type: 'file', file_url: '/submissions/priya-lr.zip', submitted_at: '2024-03-14T16:20:00Z', is_late: false, late_penalty_applied: 0, total_points: 100, grade: 95, graded_by: 'off-001', graded_at: '2024-03-16T11:00:00Z', feedback: 'Excellent!', status: 'graded' },
+  { id: 'sub-sp-3', assignment_id: 'assign-1', assignment_title: 'Build a Linear Regression Model', student_id: 'springfield-803', student_name: 'Amit Patel', submission_type: 'file', file_url: '/submissions/amit-lr.zip', submitted_at: '2024-03-15T22:45:00Z', is_late: false, late_penalty_applied: 0, total_points: 100, grade: 65, graded_by: 'off-001', graded_at: '2024-03-17T09:00:00Z', feedback: 'Needs improvement', status: 'graded' },
+  { id: 'sub-sp-4', assignment_id: 'assign-1', assignment_title: 'Build a Linear Regression Model', student_id: 'springfield-804', student_name: 'Sneha Reddy', submission_type: 'file', file_url: '/submissions/sneha-lr.zip', submitted_at: '2024-03-14T20:10:00Z', is_late: false, late_penalty_applied: 0, total_points: 100, grade: 88, graded_by: 'off-001', graded_at: '2024-03-16T14:00:00Z', feedback: 'Very good', status: 'graded' },
+  { id: 'sub-sp-5', assignment_id: 'assign-1', assignment_title: 'Build a Linear Regression Model', student_id: 'springfield-805', student_name: 'Vikram Singh', submission_type: 'file', file_url: '/submissions/vikram-lr.zip', submitted_at: '2024-03-14T15:30:00Z', is_late: false, late_penalty_applied: 0, total_points: 100, grade: 98, graded_by: 'off-001', graded_at: '2024-03-16T12:00:00Z', feedback: 'Outstanding!', status: 'graded' },
+  
+  // Web Dev submissions
+  { id: 'sub-sp-6', assignment_id: 'assign-2', assignment_title: 'Build a React Todo App', student_id: 'springfield-901', student_name: 'Divya Krishnan', submission_type: 'url', url_content: 'https://github.com/divya/todo', submitted_at: '2024-03-19T14:20:00Z', is_late: false, late_penalty_applied: 0, total_points: 100, grade: 75, graded_by: 'off-002', graded_at: '2024-03-21T10:00:00Z', feedback: 'Good effort', status: 'graded' },
+  { id: 'sub-sp-7', assignment_id: 'assign-2', assignment_title: 'Build a React Todo App', student_id: 'springfield-902', student_name: 'Karthik Rao', submission_type: 'url', url_content: 'https://github.com/karthik/todo', submitted_at: '2024-03-19T16:45:00Z', is_late: false, late_penalty_applied: 0, total_points: 100, grade: 82, graded_by: 'off-002', graded_at: '2024-03-21T11:00:00Z', feedback: 'Well done', status: 'graded' },
+  { id: 'sub-sp-8', assignment_id: 'assign-2', assignment_title: 'Build a React Todo App', student_id: 'springfield-903', student_name: 'Meera Shah', submission_type: 'url', url_content: 'https://github.com/meera/todo', submitted_at: '2024-03-19T18:10:00Z', is_late: false, late_penalty_applied: 0, total_points: 100, grade: 92, graded_by: 'off-002', graded_at: '2024-03-21T12:00:00Z', feedback: 'Excellent work!', status: 'graded' }
 ];
 
 // Mock Quiz Attempts
 export const mockQuizAttempts: QuizAttempt[] = [
-  {
-    id: 'attempt-1',
-    quiz_id: 'quiz-1',
-    quiz_title: 'AI Fundamentals Quiz',
-    student_id: 'student-1',
-    student_name: 'Alice Williams',
-    attempt_number: 1,
-    started_at: '2024-02-15T10:00:00Z',
-    submitted_at: '2024-02-15T10:25:00Z',
-    time_taken_minutes: 25,
-    score: 18,
-    percentage: 90,
-    status: 'graded',
-    answers: [
-      { question_id: 'q-1', student_answer: 0, is_correct: true, points_earned: 10 },
-      { question_id: 'q-2', student_answer: 0, is_correct: true, points_earned: 10 }
-    ]
-  }
+  { id: 'qa-sp-1', quiz_id: 'quiz-1', quiz_title: 'AI Fundamentals Quiz', student_id: 'springfield-801', student_name: 'Rajesh Kumar', attempt_number: 1, started_at: '2024-02-15T10:00:00Z', submitted_at: '2024-02-15T10:25:00Z', time_taken_minutes: 25, score: 18, percentage: 90, status: 'graded', answers: [{ question_id: 'q-1', student_answer: 0, is_correct: true, points_earned: 10 }, { question_id: 'q-2', student_answer: 0, is_correct: true, points_earned: 10 }] },
+  { id: 'qa-sp-2', quiz_id: 'quiz-1', quiz_title: 'AI Fundamentals Quiz', student_id: 'springfield-802', student_name: 'Priya Sharma', attempt_number: 1, started_at: '2024-02-15T11:00:00Z', submitted_at: '2024-02-15T11:22:00Z', time_taken_minutes: 22, score: 20, percentage: 100, status: 'graded', answers: [{ question_id: 'q-1', student_answer: 0, is_correct: true, points_earned: 10 }, { question_id: 'q-2', student_answer: 0, is_correct: true, points_earned: 10 }] },
+  { id: 'qa-sp-3', quiz_id: 'quiz-1', quiz_title: 'AI Fundamentals Quiz', student_id: 'springfield-803', student_name: 'Amit Patel', attempt_number: 1, started_at: '2024-02-15T14:00:00Z', submitted_at: '2024-02-15T14:28:00Z', time_taken_minutes: 28, score: 13, percentage: 65, status: 'graded', answers: [{ question_id: 'q-1', student_answer: 0, is_correct: true, points_earned: 10 }, { question_id: 'q-2', student_answer: 1, is_correct: false, points_earned: 0 }] },
+  { id: 'qa-sp-4', quiz_id: 'quiz-1', quiz_title: 'AI Fundamentals Quiz', student_id: 'springfield-804', student_name: 'Sneha Reddy', attempt_number: 1, started_at: '2024-02-15T15:00:00Z', submitted_at: '2024-02-15T15:24:00Z', time_taken_minutes: 24, score: 17, percentage: 85, status: 'graded', answers: [{ question_id: 'q-1', student_answer: 0, is_correct: true, points_earned: 10 }, { question_id: 'q-2', student_answer: 0, is_correct: true, points_earned: 10 }] },
+  { id: 'qa-sp-5', quiz_id: 'quiz-1', quiz_title: 'AI Fundamentals Quiz', student_id: 'springfield-805', student_name: 'Vikram Singh', attempt_number: 1, started_at: '2024-02-15T16:00:00Z', submitted_at: '2024-02-15T16:20:00Z', time_taken_minutes: 20, score: 20, percentage: 100, status: 'graded', answers: [{ question_id: 'q-1', student_answer: 0, is_correct: true, points_earned: 10 }, { question_id: 'q-2', student_answer: 0, is_correct: true, points_earned: 10 }] },
+  { id: 'qa-sp-6', quiz_id: 'quiz-1', quiz_title: 'AI Fundamentals Quiz', student_id: 'springfield-821', student_name: 'Rohan Mehta', attempt_number: 1, started_at: '2024-02-16T10:00:00Z', submitted_at: '2024-02-16T10:27:00Z', time_taken_minutes: 27, score: 16, percentage: 80, status: 'graded', answers: [{ question_id: 'q-1', student_answer: 0, is_correct: true, points_earned: 10 }, { question_id: 'q-2', student_answer: 0, is_correct: true, points_earned: 10 }] },
+  { id: 'qa-sp-7', quiz_id: 'quiz-1', quiz_title: 'AI Fundamentals Quiz', student_id: 'springfield-822', student_name: 'Kavya Iyer', attempt_number: 1, started_at: '2024-02-16T11:00:00Z', submitted_at: '2024-02-16T11:23:00Z', time_taken_minutes: 23, score: 19, percentage: 95, status: 'graded', answers: [{ question_id: 'q-1', student_answer: 0, is_correct: true, points_earned: 10 }, { question_id: 'q-2', student_answer: 0, is_correct: true, points_earned: 10 }] },
+  { id: 'qa-sp-8', quiz_id: 'quiz-1', quiz_title: 'AI Fundamentals Quiz', student_id: 'springfield-823', student_name: 'Arjun Nair', attempt_number: 1, started_at: '2024-02-16T14:00:00Z', submitted_at: '2024-02-16T14:26:00Z', time_taken_minutes: 26, score: 15, percentage: 75, status: 'graded', answers: [{ question_id: 'q-1', student_answer: 0, is_correct: true, points_earned: 10 }, { question_id: 'q-2', student_answer: 1, is_correct: false, points_earned: 0 }] }
 ];
 
 // Mock Analytics

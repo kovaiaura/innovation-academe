@@ -1,7 +1,7 @@
 import { Layout } from "@/components/layout/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import InstitutionCourses from "@/pages/institution/Courses";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ManagementCoursesView } from "@/components/management/ManagementCoursesView";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Plus, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -132,11 +132,11 @@ const CoursesAndSessions = () => {
 
         <Tabs defaultValue="courses" className="w-full">
           <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="courses">Courses</TabsTrigger>
-            <TabsTrigger value="timetable">Timetable</TabsTrigger>
+            <TabsTrigger value="courses">STEM Course Catalog</TabsTrigger>
+            <TabsTrigger value="timetable">STEM Class Schedule</TabsTrigger>
           </TabsList>
           <TabsContent value="courses" className="mt-6">
-            <InstitutionCourses />
+            <ManagementCoursesView institutionId="springfield" />
           </TabsContent>
           <TabsContent value="timetable" className="mt-6">
             <TimetableTab />
