@@ -29,9 +29,11 @@ import {
 } from '@/components/ui/dialog';
 import type { LeaveApplication, LeaveBalance, LeaveType } from '@/types/attendance';
 import type { DateRange } from 'react-day-picker';
+import { useNotifications } from '@/hooks/useNotifications';
 
 export default function LeaveManagement() {
   const { user } = useAuth();
+  const { notifications, markAsRead } = useNotifications(user?.id || '', 'officer');
   const [leaveBalance, setLeaveBalance] = useState<LeaveBalance | null>(null);
   const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>([]);
   const [approvedLeaveDates, setApprovedLeaveDates] = useState<string[]>([]);
@@ -58,12 +60,17 @@ export default function LeaveManagement() {
       const balance = getLeaveBalance(user.id, currentYear);
       const applications = getLeaveApplicationsByOfficer(user.id);
       const approvedDates = getApprovedLeaveDates(user.id);
-
+      
       setLeaveBalance(balance);
       setLeaveApplications(applications);
       setApprovedLeaveDates(approvedDates);
+      
+      // Mark leave-related notifications as read when visiting this page
+      notifications
+        .filter(n => !n.read && (n.type === 'leave_application_approved' || n.type === 'leave_application_rejected'))
+        .forEach(n => markAsRead(n.id));
     }
-  }, [user?.id]);
+  }, [user]);
 
   const calculateWorkingDays = (from: Date | undefined, to: Date | undefined): number => {
     if (!from || !to) return 0;

@@ -85,6 +85,24 @@ export const addLeaveApplication = (application: LeaveApplication): void => {
   const applications = getLeaveApplicationsByOfficer(officerId);
   applications.push(application);
   localStorage.setItem(`leave_applications_${officerId}`, JSON.stringify(applications));
+  
+  // Create notification for system admin
+  const { createNotificationForSystemAdmin } = require('@/hooks/useNotifications');
+  createNotificationForSystemAdmin(
+    'leave_application_submitted',
+    'New Leave Application',
+    `${application.officer_name} has applied for ${application.leave_type} leave (${application.total_days} days)`,
+    '/system-admin/leave-approvals',
+    {
+      leave_application_id: application.id,
+      officer_id: application.officer_id,
+      officer_name: application.officer_name,
+      leave_type: application.leave_type,
+      start_date: application.start_date,
+      end_date: application.end_date,
+      total_days: application.total_days,
+    }
+  );
 };
 
 export const isDateOnLeave = (officerId: string, date: string): boolean => {
@@ -179,6 +197,23 @@ export const approveLeaveApplication = (
       officerApps[officerAppIndex] = allApps[appIndex];
       localStorage.setItem(`leave_applications_${officerId}`, JSON.stringify(officerApps));
     }
+    
+    // Notify the officer
+    const { createNotification } = require('@/hooks/useNotifications');
+    createNotification(
+      allApps[appIndex].officer_id,
+      'officer',
+      'leave_application_approved',
+      'Leave Application Approved',
+      `Your ${allApps[appIndex].leave_type} leave application has been approved by ${reviewerName}`,
+      '/officer/leave-management',
+      {
+        leave_application_id: id,
+        leave_type: allApps[appIndex].leave_type,
+        start_date: allApps[appIndex].start_date,
+        end_date: allApps[appIndex].end_date,
+      }
+    );
   }
 };
 
@@ -207,6 +242,22 @@ export const rejectLeaveApplication = (
       officerApps[officerAppIndex] = allApps[appIndex];
       localStorage.setItem(`leave_applications_${officerId}`, JSON.stringify(officerApps));
     }
+    
+    // Notify the officer
+    const { createNotification } = require('@/hooks/useNotifications');
+    createNotification(
+      allApps[appIndex].officer_id,
+      'officer',
+      'leave_application_rejected',
+      'Leave Application Rejected',
+      `Your ${allApps[appIndex].leave_type} leave application has been rejected by ${reviewerName}`,
+      '/officer/leave-management',
+      {
+        leave_application_id: id,
+        leave_type: allApps[appIndex].leave_type,
+        rejection_reason: rejectionReason,
+      }
+    );
   }
 };
 

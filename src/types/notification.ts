@@ -7,12 +7,16 @@ export type NotificationType =
   | 'event_application_submitted'
   | 'event_application_reviewed'
   | 'event_published'
-  | 'event_reminder';
+  | 'event_reminder'
+  | 'leave_application_submitted'
+  | 'leave_application_cancelled'
+  | 'leave_application_approved'
+  | 'leave_application_rejected';
 
 export interface Notification {
   id: string;
   recipient_id: string;
-  recipient_role: 'officer' | 'student';
+  recipient_role: 'officer' | 'student' | 'system_admin';
   type: NotificationType;
   title: string;
   message: string;
@@ -23,6 +27,13 @@ export interface Notification {
     submission_id?: string;
     quiz_id?: string;
     course_id?: string;
+    leave_application_id?: string;
+    officer_id?: string;
+    officer_name?: string;
+    leave_type?: string;
+    start_date?: string;
+    end_date?: string;
+    total_days?: number;
     [key: string]: any;
   };
   read: boolean;

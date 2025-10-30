@@ -38,9 +38,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { LeaveApprovalTimeline } from "@/components/officer/LeaveApprovalTimeline";
+import { useNotifications } from "@/hooks/useNotifications";
 
 export default function LeaveApprovals() {
   const { user } = useAuth();
+  const { notifications, markAsRead } = useNotifications(user?.id || 'system_admin_001', 'system_admin');
   const [applications, setApplications] = useState<LeaveApplication[]>([]);
   const [filteredApplications, setFilteredApplications] = useState<LeaveApplication[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -52,6 +54,11 @@ export default function LeaveApprovals() {
 
   useEffect(() => {
     loadApplications();
+    
+    // Mark leave-related notifications as read when visiting this page
+    notifications
+      .filter(n => !n.read && n.type === 'leave_application_submitted')
+      .forEach(n => markAsRead(n.id));
   }, []);
 
   useEffect(() => {

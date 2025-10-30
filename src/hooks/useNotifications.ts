@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Notification, NotificationType } from '@/types/notification';
 
-export function useNotifications(userId: string, userRole: 'officer' | 'student') {
+export function useNotifications(userId: string, userRole: 'officer' | 'student' | 'system_admin') {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const loadNotifications = () => {
@@ -56,7 +56,7 @@ export function useNotifications(userId: string, userRole: 'officer' | 'student'
 
 export function createNotification(
   recipientId: string,
-  recipientRole: 'officer' | 'student',
+  recipientRole: 'officer' | 'student' | 'system_admin',
   type: NotificationType,
   title: string,
   message: string,
@@ -82,4 +82,17 @@ export function createNotification(
   localStorage.setItem(key, JSON.stringify(existing));
   
   return notification;
+}
+
+export function createNotificationForSystemAdmin(
+  type: NotificationType,
+  title: string,
+  message: string,
+  link: string,
+  metadata?: any
+): void {
+  // For now, use a hardcoded system admin ID
+  // In a real system, this would fetch all system admin user IDs
+  const systemAdminId = 'system_admin_001';
+  createNotification(systemAdminId, 'system_admin', type, title, message, link, metadata);
 }

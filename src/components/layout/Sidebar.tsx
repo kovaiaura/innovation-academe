@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import logoImage from '@/assets/logo.png';
 import { 
@@ -19,6 +20,8 @@ import { OfficerDetails } from '@/services/systemadmin.service';
 import { TeacherSidebarProfile } from '@/components/teacher/TeacherSidebarProfile';
 import { getTeacherByEmail } from '@/data/mockTeacherData';
 import { SchoolTeacher } from '@/types/teacher';
+import { getPendingLeaveCount } from '@/data/mockLeaveData';
+import { NotificationBell } from './NotificationBell';
 
 interface MenuItem {
   label: string;
@@ -93,6 +96,7 @@ export function Sidebar() {
   const location = useLocation();
   const [officerProfile, setOfficerProfile] = useState<OfficerDetails | null>(null);
   const [teacherProfile, setTeacherProfile] = useState<SchoolTeacher | null>(null);
+  const [pendingLeaveCount, setPendingLeaveCount] = useState(0);
 
   useEffect(() => {
     // Fetch officer profile if user is an officer
@@ -105,6 +109,16 @@ export function Sidebar() {
     if (user?.role === 'teacher' && user?.email) {
       const profile = getTeacherByEmail(user.email);
       setTeacherProfile(profile || null);
+    }
+    
+    // Load pending leave count for system admin
+    if (user?.role === 'system_admin') {
+      setPendingLeaveCount(getPendingLeaveCount());
+      // Refresh every 30 seconds
+      const interval = setInterval(() => {
+        setPendingLeaveCount(getPendingLeaveCount());
+      }, 30000);
+      return () => clearInterval(interval);
     }
   }, [user]);
 
@@ -185,14 +199,19 @@ export function Sidebar() {
             <span className="text-xl font-bold">Meta-INNOVA</span>
           </div>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setCollapsed(!collapsed)}
-          className="text-white hover:bg-meta-dark-lighter hover:text-meta-accent"
-        >
-          <ChevronLeft className={cn('h-5 w-5 transition-transform', collapsed && 'rotate-180')} />
-        </Button>
+        <div className="flex items-center gap-2">
+          {user?.role === 'system_admin' && user.id && (
+            <NotificationBell userId={user.id} userRole="system_admin" />
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCollapsed(!collapsed)}
+            className="text-white hover:bg-meta-dark-lighter hover:text-meta-accent"
+          >
+            <ChevronLeft className={cn('h-5 w-5 transition-transform', collapsed && 'rotate-180')} />
+          </Button>
+        </div>
       </div>
 
       {/* Navigation */}
@@ -201,6 +220,8 @@ export function Sidebar() {
           {visibleMenuItems.map((item) => {
             const fullPath = getFullPath(item.path);
             const isActive = location.pathname.includes(item.path);
+            const showBadge = item.label === 'Leave Approvals' && pendingLeaveCount > 0;
+            
             return (
               <Link key={item.path} to={fullPath}>
                 <Button
@@ -212,7 +233,16 @@ export function Sidebar() {
                   )}
                 >
                   {item.icon}
-                  {!collapsed && <span className="ml-3">{item.label}</span>}
+                  {!collapsed && (
+                    <>
+                      <span className="ml-3">{item.label}</span>
+                      {showBadge && (
+                        <Badge variant="destructive" className="ml-auto">
+                          {pendingLeaveCount}
+                        </Badge>
+                      )}
+                    </>
+                  )}
                 </Button>
               </Link>
             );
