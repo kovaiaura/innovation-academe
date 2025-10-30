@@ -15,8 +15,8 @@ interface TeacherDetailsDialogProps {
   teacher: SchoolTeacher | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 export function TeacherDetailsDialog({
@@ -168,14 +168,18 @@ export function TeacherDetailsDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close
             </Button>
-            <Button variant="destructive" onClick={onDelete}>
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </Button>
-            <Button onClick={onEdit}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Teacher
-            </Button>
+            {onDelete && (
+              <Button variant="destructive" onClick={onDelete}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            )}
+            {onEdit && (
+              <Button onClick={onEdit}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Teacher
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

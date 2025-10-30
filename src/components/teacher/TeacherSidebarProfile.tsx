@@ -54,8 +54,6 @@ export function TeacherSidebarProfile({ teacher, collapsed }: TeacherSidebarProf
           teacher={teacher}
           open={dialogOpen}
           onOpenChange={setDialogOpen}
-          onEdit={() => {}}
-          onDelete={() => {}}
         />
       </>
     );
@@ -110,8 +108,6 @@ export function TeacherSidebarProfile({ teacher, collapsed }: TeacherSidebarProf
       teacher={teacher}
       open={dialogOpen}
       onOpenChange={setDialogOpen}
-      onEdit={() => {}}
-      onDelete={() => {}}
     />
   </>
   );
