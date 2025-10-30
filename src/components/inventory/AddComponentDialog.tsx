@@ -224,12 +224,12 @@ export const AddComponentDialog = ({ isOpen, onOpenChange, onSubmit, projects }:
           {/* Link to Project */}
           <div>
             <Label htmlFor="project">Link to Project (Optional)</Label>
-            <Select value={formData.project_id} onValueChange={(val) => handleChange('project_id', val)}>
+            <Select value={formData.project_id || 'none'} onValueChange={(val) => handleChange('project_id', val === 'none' ? '' : val)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a project" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No Project</SelectItem>
+                <SelectItem value="none">No Project</SelectItem>
                 {projects.map(project => (
                   <SelectItem key={project.id} value={project.id}>
                     {project.title}
