@@ -21,7 +21,6 @@ const quizSchema = z.object({
   module_id: z.string().min(1, 'Module is required'),
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().min(1, 'Description is required'),
-  time_limit_minutes: z.number().min(1, 'Time limit must be greater than 0'),
   attempts_allowed: z.number().min(1, 'At least 1 attempt is required'),
   randomize_questions: z.boolean().default(false),
   show_correct_answers: z.boolean().default(true),
@@ -166,35 +165,25 @@ export function CreateQuizDialog({ open, onOpenChange, courses, modules, onSubmi
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="time_limit_minutes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Time Limit (minutes)</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="60" {...field} onChange={e => field.onChange(parseInt(e.target.value))} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="attempts_allowed"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Attempts Allowed</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="1" {...field} onChange={e => field.onChange(parseInt(e.target.value))} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4">
+              <p className="text-sm text-blue-800">
+                ℹ️ <strong>Note:</strong> Time limits are set individually for each question when you add them to the quiz.
+              </p>
             </div>
+
+            <FormField
+              control={form.control}
+              name="attempts_allowed"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Attempts Allowed</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="1" {...field} onChange={e => field.onChange(parseInt(e.target.value))} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

@@ -204,6 +204,7 @@ export const mockQuizQuestions: QuizQuestion[] = [
     options: ['Artificial Intelligence', 'Automated Integration', 'Advanced Interface', 'Algorithmic Implementation'],
     correct_answer: 0,
     points: 10,
+    time_limit_seconds: 60,
     explanation: 'AI stands for Artificial Intelligence, the simulation of human intelligence by machines.',
     order: 1
   },
@@ -215,6 +216,7 @@ export const mockQuizQuestions: QuizQuestion[] = [
     options: ['True', 'False'],
     correct_answer: 0,
     points: 10,
+    time_limit_seconds: 45,
     explanation: 'True. Machine Learning is indeed a subset of Artificial Intelligence.',
     order: 2
   }

@@ -14,6 +14,15 @@ export function autoGradeQuiz(
     
     totalPoints += question.points;
 
+    // Auto-skipped questions get 0 points automatically
+    if (answer.auto_skipped) {
+      return {
+        ...answer,
+        is_correct: false,
+        points_earned: 0
+      };
+    }
+
     // Auto-grade MCQ and True/False questions
     if (question.question_type === 'mcq' || question.question_type === 'true_false') {
       const isCorrect = String(answer.student_answer).trim().toLowerCase() === 

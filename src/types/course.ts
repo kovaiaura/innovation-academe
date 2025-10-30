@@ -78,7 +78,7 @@ export interface Quiz {
   module_id: string;
   title: string;
   description: string;
-  time_limit_minutes: number;
+  time_limit_minutes?: number; // Deprecated - kept for backward compatibility
   attempts_allowed: number;
   randomize_questions: boolean;
   show_correct_answers: boolean;
@@ -96,6 +96,7 @@ export interface QuizQuestion {
   options?: string[];
   correct_answer: string | number;
   points: number;
+  time_limit_seconds: number; // Time limit for this specific question
   explanation?: string;
   order: number;
 }
@@ -182,6 +183,8 @@ export interface QuizAnswer {
   is_correct?: boolean;
   points_earned?: number;
   graded_by?: string;
+  time_spent_seconds?: number; // Time spent on this question
+  auto_skipped?: boolean; // True if question was skipped due to timeout
 }
 
 // Content Progress Tracking

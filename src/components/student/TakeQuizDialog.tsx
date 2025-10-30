@@ -7,8 +7,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Quiz, QuizQuestion, QuizAttempt, QuizAnswer } from '@/types/course';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Clock, ChevronRight, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import { autoGradeQuiz } from '@/utils/quizGrading';
+import { Progress } from '@/components/ui/progress';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +21,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { createNotification } from '@/hooks/useNotifications';
+import { cn } from '@/lib/utils';
 
 interface TakeQuizDialogProps {
   open: boolean;
@@ -48,28 +50,49 @@ export function TakeQuizDialog({
 }: TakeQuizDialogProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Map<string, string | number>>(new Map());
-  const [timeRemaining, setTimeRemaining] = useState(quiz.time_limit_minutes * 60);
+  const [questionTimeRemaining, setQuestionTimeRemaining] = useState(0);
+  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
+  const [completedQuestions, setCompletedQuestions] = useState<Set<string>>(new Set());
+  const [timedOutQuestions, setTimedOutQuestions] = useState<Set<string>>(new Set());
+  const [questionTimings, setQuestionTimings] = useState<Map<string, number>>(new Map());
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(true);
   const [gradedAttempt, setGradedAttempt] = useState<QuizAttempt | null>(null);
 
+  const currentQuestion = questions[currentQuestionIndex];
+  const totalEstimatedTime = questions.reduce((sum, q) => sum + q.time_limit_seconds, 0);
+
+  // Reset everything when dialog opens
   useEffect(() => {
     if (open) {
-      setTimeRemaining(quiz.time_limit_minutes * 60);
       setAnswers(new Map());
       setCurrentQuestionIndex(0);
+      setCompletedQuestions(new Set());
+      setTimedOutQuestions(new Set());
+      setQuestionTimings(new Map());
       setShowResults(false);
+      setShowInstructions(true);
       setGradedAttempt(null);
     }
-  }, [open, quiz.time_limit_minutes]);
+  }, [open]);
 
+  // Initialize timer for current question
   useEffect(() => {
-    if (!open || showResults) return;
+    if (open && !showResults && !showInstructions && currentQuestion) {
+      setQuestionTimeRemaining(currentQuestion.time_limit_seconds);
+      setQuestionStartTime(Date.now());
+    }
+  }, [open, showResults, showInstructions, currentQuestionIndex, currentQuestion]);
+
+  // Per-question countdown timer
+  useEffect(() => {
+    if (!open || showResults || showInstructions || !currentQuestion) return;
 
     const timer = setInterval(() => {
-      setTimeRemaining((prev) => {
+      setQuestionTimeRemaining((prev) => {
         if (prev <= 1) {
-          handleAutoSubmit();
+          handleQuestionTimeout();
           return 0;
         }
         return prev - 1;
@@ -77,9 +100,7 @@ export function TakeQuizDialog({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [open, showResults]);
-
-  const currentQuestion = questions[currentQuestionIndex];
+  }, [open, showResults, showInstructions, currentQuestionIndex]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -87,22 +108,80 @@ export function TakeQuizDialog({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const handleQuestionTimeout = () => {
+    const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
+    const newTimings = new Map(questionTimings);
+    newTimings.set(currentQuestion.id, timeSpent);
+    setQuestionTimings(newTimings);
+
+    const newCompleted = new Set(completedQuestions);
+    newCompleted.add(currentQuestion.id);
+    setCompletedQuestions(newCompleted);
+
+    // If no answer selected, mark as timed out
+    if (!answers.has(currentQuestion.id)) {
+      const newTimedOut = new Set(timedOutQuestions);
+      newTimedOut.add(currentQuestion.id);
+      setTimedOutQuestions(newTimedOut);
+      toast.warning(`Time's up for question ${currentQuestionIndex + 1}!`);
+    }
+
+    // Move to next question or submit
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    } else {
+      handleAutoSubmit();
+    }
+  };
+
   const handleAnswerChange = (questionId: string, answer: string | number) => {
     setAnswers(new Map(answers).set(questionId, answer));
   };
 
+  const handleNextQuestion = () => {
+    // Save time spent on current question
+    const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
+    const newTimings = new Map(questionTimings);
+    newTimings.set(currentQuestion.id, timeSpent);
+    setQuestionTimings(newTimings);
+
+    // Mark current question as completed
+    const newCompleted = new Set(completedQuestions);
+    newCompleted.add(currentQuestion.id);
+    setCompletedQuestions(newCompleted);
+
+    // Move to next
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    } else {
+      setShowSubmitConfirm(true);
+    }
+  };
+
   const handleAutoSubmit = () => {
-    toast.info('Time\'s up! Submitting quiz automatically...');
+    toast.info('Quiz completed! Submitting...');
     handleSubmit();
   };
 
   const handleSubmit = () => {
+    // Calculate time spent on last question if not already saved
+    if (!questionTimings.has(currentQuestion.id)) {
+      const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
+      const newTimings = new Map(questionTimings);
+      newTimings.set(currentQuestion.id, timeSpent);
+      setQuestionTimings(newTimings);
+    }
+
     const quizAnswers: QuizAnswer[] = questions.map(q => ({
       question_id: q.id,
       student_answer: answers.get(q.id) || '',
       is_correct: undefined,
-      points_earned: undefined
+      points_earned: undefined,
+      time_spent_seconds: questionTimings.get(q.id) || 0,
+      auto_skipped: timedOutQuestions.has(q.id)
     }));
+
+    const totalTimeSpent = Array.from(questionTimings.values()).reduce((sum, t) => sum + t, 0);
 
     const attempt: QuizAttempt = {
       id: `attempt-${Date.now()}`,
@@ -111,9 +190,9 @@ export function TakeQuizDialog({
       student_id: studentId,
       student_name: studentName,
       attempt_number: attemptNumber,
-      started_at: new Date(Date.now() - (quiz.time_limit_minutes * 60 - timeRemaining) * 1000).toISOString(),
+      started_at: new Date(Date.now() - totalTimeSpent * 1000).toISOString(),
       submitted_at: new Date().toISOString(),
-      time_taken_minutes: Math.round((quiz.time_limit_minutes * 60 - timeRemaining) / 60),
+      time_taken_minutes: Math.round(totalTimeSpent / 60),
       status: 'submitted',
       answers: quizAnswers
     };
@@ -151,17 +230,115 @@ export function TakeQuizDialog({
     onSubmit(graded);
     
     const passed = (graded.percentage || 0) >= quiz.pass_percentage;
-    toast.success(passed ? 'Quiz passed! 🎉' : 'Quiz submitted!');
+    const skippedCount = timedOutQuestions.size;
+    
+    if (skippedCount > 0) {
+      toast.success(
+        passed ? `Quiz passed! ${skippedCount} question(s) were auto-skipped.` : `Quiz submitted! ${skippedCount} question(s) were auto-skipped.`
+      );
+    } else {
+      toast.success(passed ? 'Quiz passed! 🎉' : 'Quiz submitted!');
+    }
   };
 
   const isQuestionAnswered = (questionId: string) => {
     return answers.has(questionId) && answers.get(questionId) !== '';
   };
 
-  const answeredCount = questions.filter(q => isQuestionAnswered(q.id)).length;
+  const getQuestionStatus = (questionId: string, index: number) => {
+    if (index === currentQuestionIndex) return 'current';
+    if (completedQuestions.has(questionId)) {
+      if (timedOutQuestions.has(questionId)) return 'timed-out';
+      if (isQuestionAnswered(questionId)) return 'answered';
+      return 'skipped';
+    }
+    return 'upcoming';
+  };
 
+  const getTimerColor = () => {
+    if (!currentQuestion) return 'text-foreground';
+    const percentage = (questionTimeRemaining / currentQuestion.time_limit_seconds) * 100;
+    if (percentage < 20) return 'text-destructive';
+    if (percentage < 50) return 'text-yellow-600';
+    return 'text-green-600';
+  };
+
+  const getTimerProgress = () => {
+    if (!currentQuestion) return 0;
+    return (questionTimeRemaining / currentQuestion.time_limit_seconds) * 100;
+  };
+
+  // Instructions screen
+  if (showInstructions && !showResults) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{quiz.title} - Instructions</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h3 className="font-semibold mb-2">⏱️ Per-Question Timer System</h3>
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>Each question has its own time limit</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>When time expires, you automatically move to the next question</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span><strong>You cannot return to previous questions</strong></span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>Unanswered questions will be skipped if time runs out</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 border rounded-lg">
+                <p className="text-sm text-muted-foreground">Total Questions</p>
+                <p className="text-2xl font-bold">{questions.length}</p>
+              </div>
+              <div className="p-4 border rounded-lg">
+                <p className="text-sm text-muted-foreground">Estimated Time</p>
+                <p className="text-2xl font-bold">{formatTime(totalEstimatedTime)}</p>
+              </div>
+              <div className="p-4 border rounded-lg">
+                <p className="text-sm text-muted-foreground">Pass Percentage</p>
+                <p className="text-2xl font-bold">{quiz.pass_percentage}%</p>
+              </div>
+              <div className="p-4 border rounded-lg">
+                <p className="text-sm text-muted-foreground">Attempts Allowed</p>
+                <p className="text-2xl font-bold">{quiz.attempts_allowed}</p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                <strong>⚠️ Important:</strong> Make sure you have a stable internet connection and won't be interrupted during the quiz.
+              </p>
+            </div>
+
+            <Button onClick={() => setShowInstructions(false)} className="w-full" size="lg">
+              Start Quiz
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Results screen
   if (showResults && gradedAttempt) {
     const passed = (gradedAttempt.percentage || 0) >= quiz.pass_percentage;
+    const skippedCount = timedOutQuestions.size;
+    
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl">
@@ -170,7 +347,10 @@ export function TakeQuizDialog({
           </DialogHeader>
 
           <div className="space-y-6">
-            <div className={`p-6 rounded-lg ${passed ? 'bg-green-50 border-2 border-green-500' : 'bg-red-50 border-2 border-red-500'}`}>
+            <div className={cn(
+              "p-6 rounded-lg",
+              passed ? 'bg-green-50 border-2 border-green-500' : 'bg-red-50 border-2 border-red-500'
+            )}>
               <h3 className="text-2xl font-bold mb-2">
                 {passed ? '✅ Passed!' : '❌ Not Passed'}
               </h3>
@@ -197,6 +377,14 @@ export function TakeQuizDialog({
               </div>
             </div>
 
+            {skippedCount > 0 && (
+              <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <p className="text-sm text-orange-800">
+                  ⏱️ {skippedCount} question(s) were auto-skipped due to timeout
+                </p>
+              </div>
+            )}
+
             {gradedAttempt.status === 'submitted' && (
               <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-800">
@@ -220,6 +408,9 @@ export function TakeQuizDialog({
     );
   }
 
+  // Quiz taking interface
+  const answeredCount = questions.filter(q => isQuestionAnswered(q.id)).length;
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -231,33 +422,80 @@ export function TakeQuizDialog({
                 <span className="text-muted-foreground">
                   Question {currentQuestionIndex + 1} of {questions.length}
                 </span>
-                <div className={`flex items-center gap-1 font-mono ${timeRemaining < 60 ? 'text-destructive' : ''}`}>
-                  <Clock className="h-4 w-4" />
-                  {formatTime(timeRemaining)}
-                </div>
               </div>
             </DialogTitle>
           </DialogHeader>
+
+          {/* Per-question timer */}
+          <div className="space-y-2">
+            <div className={cn("flex items-center justify-between font-mono text-lg", getTimerColor())}>
+              <span className="text-sm text-muted-foreground">Time Remaining:</span>
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                {formatTime(questionTimeRemaining)}
+              </div>
+            </div>
+            <Progress value={getTimerProgress()} className="h-2" />
+          </div>
 
           <div className="flex-1 flex gap-4 overflow-hidden">
             {/* Question navigation sidebar */}
             <div className="w-48 border-r pr-4 overflow-y-auto">
               <p className="text-sm font-medium mb-2">Questions</p>
               <div className="grid grid-cols-4 gap-2">
-                {questions.map((q, idx) => (
-                  <Button
-                    key={q.id}
-                    size="sm"
-                    variant={idx === currentQuestionIndex ? 'default' : isQuestionAnswered(q.id) ? 'secondary' : 'outline'}
-                    className="w-full"
-                    onClick={() => setCurrentQuestionIndex(idx)}
-                  >
-                    {idx + 1}
-                  </Button>
-                ))}
+                {questions.map((q, idx) => {
+                  const status = getQuestionStatus(q.id, idx);
+                  const isCompleted = completedQuestions.has(q.id);
+                  
+                  return (
+                    <Button
+                      key={q.id}
+                      size="sm"
+                      variant={
+                        status === 'current' ? 'default' : 
+                        status === 'answered' ? 'secondary' : 
+                        status === 'timed-out' ? 'destructive' : 
+                        'outline'
+                      }
+                      className={cn(
+                        "w-full relative",
+                        isCompleted && "opacity-50 cursor-not-allowed"
+                      )}
+                      disabled={isCompleted}
+                      onClick={() => !isCompleted && setCurrentQuestionIndex(idx)}
+                      title={
+                        isCompleted ? "Time expired - Cannot return" : 
+                        status === 'answered' ? "Answered" :
+                        status === 'timed-out' ? "Timed out" :
+                        ""
+                      }
+                    >
+                      {idx + 1}
+                      {status === 'answered' && <CheckCircle className="absolute -top-1 -right-1 h-3 w-3" />}
+                      {status === 'timed-out' && <XCircle className="absolute -top-1 -right-1 h-3 w-3" />}
+                    </Button>
+                  );
+                })}
               </div>
-              <div className="mt-4 text-xs text-muted-foreground">
-                <p>{answeredCount} of {questions.length} answered</p>
+              
+              {/* Legend */}
+              <div className="mt-4 space-y-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-primary" />
+                  <span>Current</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-secondary" />
+                  <span>Answered</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-destructive" />
+                  <span>Timed out</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded border" />
+                  <span>Upcoming</span>
+                </div>
               </div>
             </div>
 
@@ -272,7 +510,7 @@ export function TakeQuizDialog({
                       </span>
                       <span className="text-xs font-semibold">{currentQuestion.points} points</span>
                     </div>
-                    <p className="font-medium">{currentQuestion.question_text}</p>
+                    <p className="font-medium text-lg">{currentQuestion.question_text}</p>
                   </div>
 
                   {/* MCQ */}
@@ -337,32 +575,18 @@ export function TakeQuizDialog({
 
           {/* Navigation */}
           <div className="flex justify-between items-center pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
-              disabled={currentQuestionIndex === 0}
-            >
-              <ChevronLeft className="mr-2 h-4 w-4" />
-              Previous
-            </Button>
-
             <div className="text-sm text-muted-foreground">
               {answeredCount} / {questions.length} answered
             </div>
 
             {currentQuestionIndex < questions.length - 1 ? (
-              <Button
-                onClick={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
-              >
-                Next
+              <Button onClick={handleNextQuestion}>
+                Next Question
                 <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             ) : (
-              <Button
-                onClick={() => setShowSubmitConfirm(true)}
-                variant="default"
-              >
-                Submit Quiz
+              <Button onClick={() => setShowSubmitConfirm(true)} variant="default">
+                Finish Quiz
               </Button>
             )}
           </div>
@@ -379,11 +603,16 @@ export function TakeQuizDialog({
                   You have answered {answeredCount} of {questions.length} questions.
                 </p>
               )}
+              {timedOutQuestions.size > 0 && (
+                <p className="text-orange-600 mb-2">
+                  {timedOutQuestions.size} question(s) were auto-skipped due to timeout.
+                </p>
+              )}
               Once submitted, you cannot change your answers. Are you sure you want to submit?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Continue Quiz</AlertDialogCancel>
+            <AlertDialogCancel>Go Back</AlertDialogCancel>
             <AlertDialogAction onClick={handleSubmit}>
               Submit Quiz
             </AlertDialogAction>
