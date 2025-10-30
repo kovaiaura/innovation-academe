@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import loginBg from '@/assets/login-background.svg';
+import logoImage from '@/assets/logo.png';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -58,8 +59,8 @@ export default function Login() {
     >
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-meta-dark">
-            <span className="text-3xl font-bold text-white">MI</span>
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full overflow-hidden" style={{ backgroundColor: '#2d437f' }}>
+            <img src={logoImage} alt="CR Logo" className="h-full w-full object-contain p-2" />
           </div>
           <CardTitle className="text-2xl font-bold">Meta-INNOVA LMS</CardTitle>
           <CardDescription>
