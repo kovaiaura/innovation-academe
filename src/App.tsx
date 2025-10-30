@@ -67,6 +67,7 @@ import InstitutionDetail from "./pages/system-admin/InstitutionDetail";
 import OfficerDetail from "./pages/system-admin/OfficerDetail";
 import ProjectManagement from "./pages/system-admin/ProjectManagement";
 import SystemAdminLeaveApprovals from "./pages/system-admin/LeaveApprovals";
+import Performance from "./pages/management/Performance";
 import EventManagement from "./pages/system-admin/EventManagement";
 
 const queryClient = new QueryClient({
