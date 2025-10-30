@@ -3,7 +3,11 @@ export type NotificationType =
   | 'quiz_completion' 
   | 'project_update'
   | 'certificate_issued'
-  | 'grade_received';
+  | 'grade_received'
+  | 'event_application_submitted'
+  | 'event_application_reviewed'
+  | 'event_published'
+  | 'event_reminder';
 
 export interface Notification {
   id: string;

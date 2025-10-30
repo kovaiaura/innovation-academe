@@ -38,6 +38,7 @@ import {
 } from '@/data/mockLeaveData';
 import type { LeaveApplication } from '@/types/attendance';
 import { getRoleBasePath } from '@/utils/roleHelpers';
+import { mockEventApplications } from '@/data/mockEventsData';
 
 // Helper functions
 const getDayName = (date: Date) => {
@@ -95,6 +96,10 @@ const getActivityColor = (type: string) => {
 };
 
 export default function OfficerDashboard() {
+  // Mock: Get pending event applications for officer's institution
+  const pendingApplications = mockEventApplications.filter(
+    app => app.institution_id === 'springfield-high' && app.status === 'pending'
+  ).slice(0, 5);
   const { user } = useAuth();
   const { tenantId } = useParams();
   const navigate = useNavigate();
