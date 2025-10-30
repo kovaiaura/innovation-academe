@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import loginBg from '@/assets/login-background.svg';
 import logoImage from '@/assets/logo.png';
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -50,7 +51,10 @@ export default function Login() {
   return <div 
       className="flex min-h-screen items-center justify-center p-4 relative"
       style={{
-        backgroundColor: '#051c2d'
+        backgroundImage: `linear-gradient(rgba(5, 28, 45, 0.85), rgba(5, 28, 45, 0.95)), url(${loginBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
       }}
     >
       <Card className="w-full max-w-md">
