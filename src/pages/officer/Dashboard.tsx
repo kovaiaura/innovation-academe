@@ -264,52 +264,6 @@ export default function OfficerDashboard() {
     }
   };
 
-  const handleLeaveApplied = () => {
-    if (user?.id) {
-      const applications = getLeaveApplicationsByOfficer(user.id);
-      const approvedDates = getApprovedLeaveDates(user.id);
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const todayLeave = getTodayLeaveDetails(user.id, today);
-
-      setLeaveApplications(applications);
-      setApprovedLeaveDates(approvedDates);
-      setIsOnLeaveToday(approvedDates.includes(today));
-      setTodayLeaveDetails(todayLeave);
-
-      // Refresh 7-day history
-      const days = [];
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const dateStr = format(date, 'yyyy-MM-dd');
-        const dayStr = format(date, 'EEE');
-        const dayOfWeek = date.getDay();
-
-        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-        const isOnLeave = approvedDates.includes(dateStr);
-        const leaveDetails = getTodayLeaveDetails(user.id, dateStr);
-
-        const status = isWeekend
-          ? ('weekend' as const)
-          : isOnLeave
-          ? ('leave' as const)
-          : i === 0
-          ? null
-          : i % 3 === 0
-          ? ('absent' as const)
-          : ('present' as const);
-
-        days.push({
-          date: dateStr,
-          day: dayStr,
-          status,
-          leaveType: leaveDetails?.leave_type,
-        });
-      }
-      setLast7Days(days);
-    }
-  };
-
   const stats = [
     {
       title: 'Upcoming Sessions',
