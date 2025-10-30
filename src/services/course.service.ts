@@ -5,6 +5,7 @@ import {
   CourseModule,
   CourseContent,
   Assignment,
+  AssignmentQuestion,
   Quiz,
   QuizQuestion,
   CourseAssignment,
@@ -146,6 +147,27 @@ export const courseService = {
 
   async getQuizQuestions(quizId: string): Promise<ApiResponse<QuizQuestion[]>> {
     const response = await api.get(`/system-admin/quizzes/${quizId}/questions`);
+    return response.data;
+  },
+
+  // ========== ASSIGNMENT QUESTIONS ==========
+  async addAssignmentQuestion(assignmentId: string, data: Partial<AssignmentQuestion>): Promise<ApiResponse<AssignmentQuestion>> {
+    const response = await api.post(`/system-admin/assignments/${assignmentId}/questions`, data);
+    return response.data;
+  },
+
+  async getAssignmentQuestions(assignmentId: string): Promise<ApiResponse<AssignmentQuestion[]>> {
+    const response = await api.get(`/system-admin/assignments/${assignmentId}/questions`);
+    return response.data;
+  },
+
+  async updateAssignmentQuestion(assignmentId: string, questionId: string, data: Partial<AssignmentQuestion>): Promise<ApiResponse<AssignmentQuestion>> {
+    const response = await api.put(`/system-admin/assignments/${assignmentId}/questions/${questionId}`, data);
+    return response.data;
+  },
+
+  async deleteAssignmentQuestion(assignmentId: string, questionId: string): Promise<ApiResponse<void>> {
+    const response = await api.delete(`/system-admin/assignments/${assignmentId}/questions/${questionId}`);
     return response.data;
   },
 

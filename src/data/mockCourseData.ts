@@ -2,7 +2,8 @@ import {
   Course, 
   CourseModule, 
   CourseContent, 
-  Assignment, 
+  Assignment,
+  AssignmentQuestion,
   Quiz, 
   QuizQuestion,
   CourseAssignment,
@@ -152,6 +153,7 @@ export const mockAssignments: Assignment[] = [
     module_id: 'mod-2',
     title: 'Build a Linear Regression Model',
     description: 'Implement a linear regression algorithm from scratch using Python. Test it on the provided dataset.',
+    assignment_type: 'traditional',
     due_date: '2024-03-15T23:59:00Z',
     total_points: 100,
     submission_type: 'file',
@@ -166,6 +168,7 @@ export const mockAssignments: Assignment[] = [
     module_id: 'mod-4',
     title: 'Build a React Todo App',
     description: 'Create a fully functional todo application with React. Include add, delete, and mark complete features.',
+    assignment_type: 'traditional',
     due_date: '2024-03-20T23:59:00Z',
     total_points: 100,
     submission_type: 'url',
@@ -173,6 +176,11 @@ export const mockAssignments: Assignment[] = [
     late_penalty_percent: 15,
     created_at: '2024-02-20T10:00:00Z'
   }
+];
+
+// Mock Assignment Questions
+export const mockAssignmentQuestions: AssignmentQuestion[] = [
+  // Will be populated when system admin creates timed assignments
 ];
 
 // Mock Quizzes

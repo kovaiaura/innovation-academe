@@ -61,14 +61,38 @@ export interface Assignment {
   module_id: string;
   title: string;
   description: string;
-  due_date: string;
+  assignment_type: 'traditional' | 'timed_questions'; // New field
+  due_date?: string; // Optional for timed assignments
   total_points: number;
-  submission_type: SubmissionType;
-  allow_late_submission: boolean;
-  late_penalty_percent: number;
+  submission_type?: SubmissionType; // Optional for timed assignments
+  allow_late_submission?: boolean;
+  late_penalty_percent?: number;
   rubric?: string;
   attachment_urls?: string[];
+  has_questions?: boolean; // Indicates if this assignment has timed questions
+  total_time_seconds?: number; // Auto-calculated from question timers
   created_at: string;
+}
+
+// Assignment Questions
+export interface AssignmentQuestion {
+  id: string;
+  assignment_id: string;
+  question_text: string;
+  question_type: QuestionType;
+  options?: string[];
+  correct_answer?: string | number; // Optional for subjective questions
+  points: number;
+  time_limit_seconds: number; // Individual question timer
+  explanation?: string;
+  order: number;
+}
+
+export interface AssignmentAnswer {
+  question_id: string;
+  answer: string | number;
+  time_spent_seconds: number;
+  auto_skipped: boolean;
 }
 
 // Quizzes
@@ -144,13 +168,13 @@ export interface AssignmentSubmission {
   assignment_title: string;
   student_id: string;
   student_name: string;
-  submission_type: SubmissionType;
+  submission_type?: SubmissionType;
   file_url?: string;
   text_content?: string;
   url_content?: string;
   submitted_at: string;
-  is_late: boolean;
-  late_penalty_applied: number;
+  is_late?: boolean;
+  late_penalty_applied?: number;
   grade?: number;
   total_points: number;
   graded_by?: string;
@@ -158,6 +182,8 @@ export interface AssignmentSubmission {
   feedback?: string;
   feedback_file_url?: string;
   status: 'pending' | 'graded';
+  answers?: AssignmentAnswer[]; // For question-based submissions
+  time_spent_seconds?: number; // Total time spent on timed assignments
 }
 
 // Quiz Attempts
