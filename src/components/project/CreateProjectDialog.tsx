@@ -64,7 +64,6 @@ export function CreateProjectDialog({
   const [selectedSdgs, setSelectedSdgs] = useState<number[]>([]);
   const [teamLeader, setTeamLeader] = useState<Student | null>(null);
   const [teamMembers, setTeamMembers] = useState<Student[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
 
   // Get all students for this institution
   const allStudents = useMemo(() => 
@@ -105,15 +104,6 @@ export function CreateProjectDialog({
     ).filter(s => s.status === 'active');
   }, [institutionId, selectedClass, selectedSection]);
 
-  // Filter students by search term
-  const filteredStudents = useMemo(() => {
-    if (!searchTerm) return availableStudents;
-    const term = searchTerm.toLowerCase();
-    return availableStudents.filter(s => 
-      s.student_name.toLowerCase().includes(term) || 
-      s.roll_number.toLowerCase().includes(term)
-    );
-  }, [availableStudents, searchTerm]);
 
   const handleSubmit = () => {
     if (!title || !description || !category || !selectedClass || !selectedSection || !teamLeader) {
@@ -161,7 +151,6 @@ export function CreateProjectDialog({
     setSelectedSdgs([]);
     setTeamLeader(null);
     setTeamMembers([]);
-    setSearchTerm("");
     
     toast.success("Project created successfully");
     onOpenChange(false);
@@ -177,7 +166,6 @@ export function CreateProjectDialog({
       return;
     }
     setTeamMembers([...teamMembers, student]);
-    setSearchTerm("");
   };
 
   const removeTeamMember = (studentId: string) => {
@@ -377,37 +365,31 @@ export function CreateProjectDialog({
                   ))}
                 </div>
               )}
-              <div className="space-y-2">
-                <Input
-                  placeholder={
+              <Select
+                value=""
+                onValueChange={(val) => {
+                  const student = availableStudents.find(s => s.id === val);
+                  if (student) addTeamMember(student);
+                }}
+                disabled={!selectedClass || !selectedSection}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={
                     !selectedClass || !selectedSection 
                       ? "Select class and section first" 
-                      : "Search students by name or roll number..."
-                  }
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  disabled={!selectedClass || !selectedSection}
-                />
-                {searchTerm && filteredStudents.length > 0 && (
-                  <div className="border rounded-md max-h-48 overflow-y-auto">
-                    {filteredStudents
-                      .filter(s => s.id !== teamLeader?.id && !teamMembers.some(m => m.id === s.id))
-                      .map(student => (
-                        <button
-                          key={student.id}
-                          type="button"
-                          onClick={() => addTeamMember(student)}
-                          className="w-full text-left px-3 py-2 hover:bg-muted flex justify-between items-center"
-                        >
-                          <span>{student.student_name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {student.roll_number}
-                          </span>
-                        </button>
-                      ))}
-                  </div>
-                )}
-              </div>
+                      : "Add team member"
+                  } />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableStudents
+                    .filter(s => s.id !== teamLeader?.id && !teamMembers.some(m => m.id === s.id))
+                    .map(student => (
+                      <SelectItem key={student.id} value={student.id}>
+                        {student.student_name} - {student.roll_number}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
