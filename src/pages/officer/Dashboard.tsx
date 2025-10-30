@@ -1,16 +1,43 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import { format, differenceInMinutes, parse } from 'date-fns';
+import {
+  Calendar,
+  Clock,
+  FileText,
+  BookOpen,
+  Users,
+  Package,
+  ArrowRight,
+  CheckCircle2,
+  School,
+  Briefcase,
+  CalendarCheck,
+  AlertCircle,
+  CheckCircle,
+  Check,
+  X,
+  Building2,
+  LogOut,
+  Timer,
+  TrendingUp,
+} from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Users, Package, TrendingUp, Clock, CheckCircle, Check, X, Building2, LogOut, Timer } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
-import { authService } from '@/services/auth.service';
 import { Layout } from '@/components/layout/Layout';
 import { toast } from 'sonner';
-import { useState, useEffect } from 'react';
-import { format, differenceInMinutes, parse } from 'date-fns';
 import { getOfficerById } from '@/data/mockOfficerData';
-import { getOfficerTimetable } from '@/data/mockOfficerTimetable';
-import { OfficerTimetableSlot } from '@/types/officer';
+import { getOfficerTimetable as getOfficerTimetableData } from '@/data/mockOfficerTimetable';
+import type { OfficerTimetableSlot } from '@/types/officer';
+import { LeaveApplicationDialog } from '@/components/officer/LeaveApplicationDialog';
+import {
+  getLeaveApplicationsByOfficer,
+  getApprovedLeaveDates,
+  getTodayLeaveDetails,
+} from '@/data/mockLeaveData';
+import type { LeaveApplication } from '@/types/attendance';
 
 // Helper functions
 const getDayName = (date: Date) => {
@@ -30,7 +57,6 @@ const getUpcomingSlots = (slots: OfficerTimetableSlot[], count: number) => {
   const daysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const todayIndex = daysOrder.indexOf(today);
   
-  // Get future slots from today onwards
   const futureSlots = slots
     .filter(slot => {
       const slotDayIndex = daysOrder.indexOf(slot.day);
@@ -73,21 +99,32 @@ export default function OfficerDashboard() {
   const { tenantId } = useParams();
   const todayKey = format(new Date(), 'yyyy-MM-dd');
   
-  // Enhanced attendance state
+  // Attendance state
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [isCheckedOut, setIsCheckedOut] = useState(false);
   const [hoursWorked, setHoursWorked] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState<string>('0h 0m');
+
+  // Leave state
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
+  const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>([]);
+  const [approvedLeaveDates, setApprovedLeaveDates] = useState<string[]>([]);
+  const [isOnLeaveToday, setIsOnLeaveToday] = useState(false);
+  const [todayLeaveDetails, setTodayLeaveDetails] = useState<LeaveApplication | null>(null);
+  const [last7Days, setLast7Days] = useState<
+    Array<{ date: string; day: string; status: 'present' | 'absent' | 'leave' | 'weekend' | null; leaveType?: string }>
+  >([]);
   
   const officerProfile = getOfficerById(user?.id || '');
-  const officerTimetable = getOfficerTimetable(user?.id || '');
+  const officerTimetable = getOfficerTimetableData(user?.id || '');
   const todaySlots = getTodaySchedule(officerTimetable?.slots || []);
   const upcomingSlots = getUpcomingSlots(officerTimetable?.slots || [], 3);
 
-  // Load attendance from localStorage on mount
+  // Load attendance and leave data on mount
   useEffect(() => {
+    // Load attendance from localStorage
     const stored = localStorage.getItem(`attendance-${todayKey}`);
     if (stored) {
       const data = JSON.parse(stored);
@@ -97,7 +134,55 @@ export default function OfficerDashboard() {
       setIsCheckedOut(data.isCheckedOut);
       setHoursWorked(data.hoursWorked);
     }
-  }, [todayKey]);
+
+    // Load leave data
+    if (user?.id) {
+      const applications = getLeaveApplicationsByOfficer(user.id);
+      const approvedDates = getApprovedLeaveDates(user.id);
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const todayLeave = getTodayLeaveDetails(user.id, today);
+
+      setLeaveApplications(applications);
+      setApprovedLeaveDates(approvedDates);
+      setIsOnLeaveToday(approvedDates.includes(today));
+      setTodayLeaveDetails(todayLeave);
+    }
+
+    // Generate last 7 days with leave status
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = format(date, 'yyyy-MM-dd');
+      const dayStr = format(date, 'EEE');
+      const dayOfWeek = date.getDay();
+
+      // Check if weekend
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+      // Check if this date is on approved leave
+      const isOnLeave = user?.id ? getApprovedLeaveDates(user.id).includes(dateStr) : false;
+      const leaveDetails = user?.id ? getTodayLeaveDetails(user.id, dateStr) : null;
+
+      const status = isWeekend
+        ? ('weekend' as const)
+        : isOnLeave
+        ? ('leave' as const)
+        : i === 0
+        ? null
+        : i % 3 === 0
+        ? ('absent' as const)
+        : ('present' as const);
+
+      days.push({
+        date: dateStr,
+        day: dayStr,
+        status,
+        leaveType: leaveDetails?.leave_type,
+      });
+    }
+    setLast7Days(days);
+  }, [user?.id, todayKey]);
 
   // Save attendance to localStorage whenever state changes
   useEffect(() => {
@@ -126,9 +211,8 @@ export default function OfficerDashboard() {
         } catch (error) {
           console.error('Error calculating elapsed time:', error);
         }
-      }, 60000); // Update every minute
+      }, 60000);
       
-      // Initial calculation
       try {
         const checkIn = parse(checkInTime, 'hh:mm a', new Date());
         const now = new Date();
@@ -145,6 +229,10 @@ export default function OfficerDashboard() {
   }, [isCheckedIn, isCheckedOut, checkInTime]);
 
   const handleCheckIn = () => {
+    if (isOnLeaveToday) {
+      toast.error('You cannot check in while on approved leave');
+      return;
+    }
     const currentTime = format(new Date(), 'hh:mm a');
     setCheckInTime(currentTime);
     setIsCheckedIn(true);
@@ -152,13 +240,16 @@ export default function OfficerDashboard() {
   };
 
   const handleCheckOut = () => {
+    if (isOnLeaveToday) {
+      toast.error('You cannot check out while on approved leave');
+      return;
+    }
     if (!checkInTime) return;
     
     const currentTime = format(new Date(), 'hh:mm a');
     setCheckOutTime(currentTime);
     setIsCheckedOut(true);
     
-    // Calculate hours worked
     try {
       const checkIn = parse(checkInTime, 'hh:mm a', new Date());
       const checkOut = parse(currentTime, 'hh:mm a', new Date());
@@ -170,6 +261,52 @@ export default function OfficerDashboard() {
     } catch (error) {
       console.error('Error calculating hours:', error);
       toast.error('Error calculating work hours');
+    }
+  };
+
+  const handleLeaveApplied = () => {
+    if (user?.id) {
+      const applications = getLeaveApplicationsByOfficer(user.id);
+      const approvedDates = getApprovedLeaveDates(user.id);
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const todayLeave = getTodayLeaveDetails(user.id, today);
+
+      setLeaveApplications(applications);
+      setApprovedLeaveDates(approvedDates);
+      setIsOnLeaveToday(approvedDates.includes(today));
+      setTodayLeaveDetails(todayLeave);
+
+      // Refresh 7-day history
+      const days = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = format(date, 'yyyy-MM-dd');
+        const dayStr = format(date, 'EEE');
+        const dayOfWeek = date.getDay();
+
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const isOnLeave = approvedDates.includes(dateStr);
+        const leaveDetails = getTodayLeaveDetails(user.id, dateStr);
+
+        const status = isWeekend
+          ? ('weekend' as const)
+          : isOnLeave
+          ? ('leave' as const)
+          : i === 0
+          ? null
+          : i % 3 === 0
+          ? ('absent' as const)
+          : ('present' as const);
+
+        days.push({
+          date: dateStr,
+          day: dayStr,
+          status,
+          leaveType: leaveDetails?.leave_type,
+        });
+      }
+      setLast7Days(days);
     }
   };
 
@@ -217,63 +354,110 @@ export default function OfficerDashboard() {
   return (
     <Layout>
       <div className="space-y-6">
-      {/* Header */}
-      <div className="space-y-3">
-        <div>
-          <h1 className="text-3xl font-bold">Innovation Officer Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, {user?.name}!</p>
-        </div>
-        
-        {/* Assigned Institution Badge */}
-        {officerProfile && officerProfile.assigned_institutions.length > 0 && (
-          <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-lg w-fit">
-            <Building2 className="h-4 w-4 text-primary" />
-            <div>
-              <span className="text-sm font-medium">Assigned to:</span>
-              <span className="ml-2 text-sm text-muted-foreground">
-                {officerProfile.assigned_institutions.join(', ')}
-              </span>
-            </div>
+        {/* Header */}
+        <div className="space-y-3">
+          <div>
+            <h1 className="text-3xl font-bold">Innovation Officer Dashboard</h1>
+            <p className="text-muted-foreground">Welcome back, {user?.name}!</p>
           </div>
-        )}
-      </div>
+          
+          {/* Assigned Institution Badge */}
+          {officerProfile && officerProfile.assigned_institutions.length > 0 && (
+            <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-lg w-fit">
+              <Building2 className="h-4 w-4 text-primary" />
+              <div>
+                <span className="text-sm font-medium">Assigned to:</span>
+                <span className="ml-2 text-sm text-muted-foreground">
+                  {officerProfile.assigned_institutions.join(', ')}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <Card key={stat.title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                <div className={`${stat.bgColor} p-2 rounded-lg`}>
-                  <Icon className={`h-4 w-4 ${stat.color}`} />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <p className="text-xs text-muted-foreground">{stat.description}</p>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+        {/* Stats Grid */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {stats.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <Card key={stat.title}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                  <div className={`${stat.bgColor} p-2 rounded-lg`}>
+                    <Icon className={`h-4 w-4 ${stat.color}`} />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stat.value}</div>
+                  <p className="text-xs text-muted-foreground">{stat.description}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Daily Attendance Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Daily Attendance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="text-center">
-                {!isCheckedIn ? (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* Daily Attendance Card with Leave Integration */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Daily Attendance</CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsLeaveDialogOpen(true)}
+                  className="gap-2"
+                >
+                  <CalendarCheck className="h-4 w-4" />
+                  Apply Leave
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {isOnLeaveToday && todayLeaveDetails ? (
+                  <div className="p-6 bg-blue-500/10 border border-blue-500/20 rounded-lg space-y-3">
+                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                      <AlertCircle className="h-5 w-5" />
+                      <span className="font-semibold text-lg">On Leave</span>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">Type:</span>
+                        <Badge variant="outline" className="capitalize">
+                          {todayLeaveDetails.leave_type} Leave
+                        </Badge>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-muted-foreground">Reason:</span>
+                        <span className="font-medium">{todayLeaveDetails.reason}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">Status:</span>
+                        <Badge
+                          variant={
+                            todayLeaveDetails.status === 'approved'
+                              ? 'default'
+                              : todayLeaveDetails.status === 'pending'
+                              ? 'secondary'
+                              : 'destructive'
+                          }
+                          className="capitalize"
+                        >
+                          {todayLeaveDetails.status}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="pt-2 text-xs text-muted-foreground">
+                      Check-in and check-out are disabled for leave days
+                    </div>
+                  </div>
+                ) : !isCheckedIn ? (
                   <>
                     <p className="text-sm text-muted-foreground mb-4">
                       Mark your attendance for {format(new Date(), 'MMMM dd, yyyy')}
                     </p>
-                    <Button onClick={handleCheckIn} className="w-full">
+                    <Button onClick={handleCheckIn} className="w-full" disabled={isOnLeaveToday}>
                       <Check className="mr-2 h-4 w-4" />
                       Check In
                     </Button>
@@ -297,6 +481,7 @@ export default function OfficerDashboard() {
                       onClick={handleCheckOut} 
                       className="w-full" 
                       variant="outline"
+                      disabled={isOnLeaveToday}
                     >
                       <LogOut className="mr-2 h-4 w-4" />
                       Check Out
@@ -315,214 +500,220 @@ export default function OfficerDashboard() {
                     </div>
                   </div>
                 )}
-              </div>
 
-              {/* Last 7 Days Attendance History */}
-              <div className="pt-4 border-t">
-                <p className="text-sm font-medium mb-3">Last 7 Days</p>
-                <div className="grid grid-cols-7 gap-2">
-                  {[
-                    { day: 'M', status: 'present' },
-                    { day: 'T', status: 'present' },
-                    { day: 'W', status: 'present' },
-                    { day: 'T', status: 'leave' },
-                    { day: 'F', status: 'present' },
-                    { day: 'S', status: 'weekend' },
-                    { day: 'S', status: 'weekend' },
-                  ].map((day, i) => (
-                    <div
-                      key={i}
-                      className="flex flex-col items-center"
-                      title={
-                        day.status === 'present'
-                          ? 'Present'
-                          : day.status === 'leave'
-                          ? 'Leave'
-                          : 'Weekend'
-                      }
-                    >
-                      <span className="text-xs text-muted-foreground mb-1">{day.day}</span>
+                {/* Last 7 Days Attendance History with Leave Support */}
+                <div className="pt-4 border-t">
+                  <p className="text-sm font-medium mb-3">Last 7 Days</p>
+                  <div className="grid grid-cols-7 gap-2">
+                    {last7Days.map((day, i) => (
                       <div
-                        className={`w-8 h-8 rounded flex items-center justify-center text-xs ${
+                        key={i}
+                        className="flex flex-col items-center"
+                        title={
                           day.status === 'present'
-                            ? 'bg-green-500/20 text-green-700'
+                            ? 'Present'
                             : day.status === 'leave'
-                            ? 'bg-yellow-500/20 text-yellow-700'
-                            : 'bg-muted text-muted-foreground'
-                        }`}
+                            ? `${day.leaveType} Leave`
+                            : day.status === 'absent'
+                            ? 'Absent'
+                            : day.status === 'weekend'
+                            ? 'Weekend'
+                            : 'Not marked'
+                        }
                       >
-                        {day.status === 'present' ? (
-                          <Check className="h-3 w-3" />
-                        ) : day.status === 'leave' ? (
-                          'L'
-                        ) : (
-                          '-'
-                        )}
+                        <span className="text-xs text-muted-foreground mb-1">{day.day}</span>
+                        <div
+                          className={`w-8 h-8 rounded flex items-center justify-center text-xs ${
+                            day.status === 'present'
+                              ? 'bg-green-500/20 text-green-700'
+                              : day.status === 'leave'
+                              ? 'bg-blue-500/20 text-blue-700'
+                              : day.status === 'absent'
+                              ? 'bg-red-500/20 text-red-700'
+                              : 'bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {day.status === 'present' ? (
+                            <Check className="h-3 w-3" />
+                          ) : day.status === 'leave' ? (
+                            '🏖️'
+                          ) : day.status === 'absent' ? (
+                            <X className="h-3 w-3" />
+                          ) : (
+                            '-'
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* My Schedule / Timetable */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>My Schedule</CardTitle>
-            <Button variant="outline" size="sm" asChild>
-              <Link to={`/tenant/${tenantId}/officer/sessions`}>View Full Timetable</Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {!officerTimetable || officerTimetable.slots.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p className="font-medium">No schedule assigned yet</p>
-                <p className="text-sm">Contact management to get your timetable assigned</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Today's Classes Section */}
-                {todaySlots.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="h-1 w-1 rounded-full bg-green-500 animate-pulse" />
-                      <span className="text-sm font-semibold text-green-700">Today's Classes</span>
-                    </div>
-                    {todaySlots.map((slot) => (
-                      <div 
-                        key={slot.id} 
-                        className="flex items-center justify-between border-b pb-3 mb-3 last:border-0"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`p-2 rounded-lg ${getActivityColor(slot.type)}`}>
-                            <span className="text-lg">{getActivityIcon(slot.type)}</span>
-                          </div>
-                          <div>
-                            <p className="font-medium">{slot.subject}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {slot.class} • {slot.room}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Clock className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-xs text-muted-foreground">
-                                {slot.start_time} - {slot.end_time}
-                              </span>
+          {/* My Schedule */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>My Schedule</CardTitle>
+              <Button variant="outline" size="sm" asChild>
+                <Link to={`/tenant/${tenantId}/officer/sessions`}>View Full Timetable</Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {!officerTimetable || officerTimetable.slots.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p className="font-medium">No schedule assigned yet</p>
+                  <p className="text-sm">Contact management to get your timetable assigned</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {todaySlots.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="h-1 w-1 rounded-full bg-green-500 animate-pulse" />
+                        <span className="text-sm font-semibold text-green-700">Today's Classes</span>
+                      </div>
+                      {todaySlots.map((slot) => (
+                        <div 
+                          key={slot.id} 
+                          className="flex items-center justify-between border-b pb-3 mb-3 last:border-0"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`p-2 rounded-lg ${getActivityColor(slot.type)}`}>
+                              <span className="text-lg">{getActivityIcon(slot.type)}</span>
+                            </div>
+                            <div>
+                              <p className="font-medium">{slot.subject}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {slot.class} • {slot.room}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Clock className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">
+                                  {slot.start_time} - {slot.end_time}
+                                </span>
+                              </div>
                             </div>
                           </div>
+                          <Button size="sm" variant="outline" asChild>
+                            <Link to={`/tenant/${tenantId}/officer/sessions`}>Start</Link>
+                          </Button>
                         </div>
-                        <Button size="sm" variant="outline" asChild>
-                          <Link to={`/tenant/${tenantId}/officer/sessions`}>Start</Link>
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
-                {/* Upcoming Classes */}
-                {upcomingSlots.length > 0 && (
-                  <div>
-                    <p className="text-sm font-semibold text-muted-foreground mb-3">Upcoming This Week</p>
-                    {upcomingSlots.map((slot) => (
-                      <div 
-                        key={slot.id} 
-                        className="flex items-center justify-between border-b pb-3 mb-3 last:border-0"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`p-2 rounded-lg ${getActivityColor(slot.type)}`}>
-                            <span className="text-lg">{getActivityIcon(slot.type)}</span>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {upcomingSlots.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-muted-foreground mb-3">Upcoming This Week</p>
+                      {upcomingSlots.map((slot) => (
+                        <div 
+                          key={slot.id} 
+                          className="flex items-center justify-between border-b pb-3 mb-3 last:border-0"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`p-2 rounded-lg ${getActivityColor(slot.type)}`}>
+                              <span className="text-lg">{getActivityIcon(slot.type)}</span>
+                            </div>
+                            <div>
+                              <p className="font-medium">{slot.subject}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {slot.day}, {slot.start_time} • {slot.class}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium">{slot.subject}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {slot.day}, {slot.start_time} • {slot.class}
-                            </p>
-                          </div>
+                          <div className="text-xs text-muted-foreground">{slot.room}</div>
                         </div>
-                        <div className="text-xs text-muted-foreground">{slot.room}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
-                {todaySlots.length === 0 && upcomingSlots.length === 0 && (
-                  <div className="text-center py-4 text-muted-foreground">
-                    <p className="text-sm">No upcoming classes scheduled</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {todaySlots.length === 0 && upcomingSlots.length === 0 && (
+                    <div className="text-center py-4 text-muted-foreground">
+                      <p className="text-sm">No upcoming classes scheduled</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Pending Projects */}
+          {/* Pending Projects */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Projects Pending Review</CardTitle>
+              <Button variant="outline" size="sm" asChild>
+                <Link to={`/tenant/${tenantId}/officer/projects`}>View All</Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {pendingProjects.map((project) => (
+                  <div key={project.id} className="flex items-center justify-between border-b pb-3 last:border-0">
+                    <div className="flex items-start gap-3">
+                      <div className="bg-orange-500/10 p-2 rounded-lg">
+                        <TrendingUp className="h-4 w-4 text-orange-500" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{project.title}</p>
+                        <p className="text-sm text-muted-foreground">{project.team}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs bg-orange-500/10 text-orange-500 px-2 py-1 rounded-full">
+                      {project.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Projects Pending Review</CardTitle>
-            <Button variant="outline" size="sm" asChild>
-              <Link to={`/tenant/${tenantId}/officer/projects`}>View All</Link>
-            </Button>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {pendingProjects.map((project) => (
-                <div key={project.id} className="flex items-center justify-between border-b pb-3 last:border-0">
-                  <div className="flex items-start gap-3">
-                    <div className="bg-orange-500/10 p-2 rounded-lg">
-                      <TrendingUp className="h-4 w-4 text-orange-500" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{project.title}</p>
-                      <p className="text-sm text-muted-foreground">{project.team}</p>
-                    </div>
-                  </div>
-                  <span className="text-xs bg-orange-500/10 text-orange-500 px-2 py-1 rounded-full">
-                    {project.status}
-                  </span>
-                </div>
-              ))}
+            <div className="grid gap-4 md:grid-cols-4">
+              <Button variant="outline" className="h-24 flex-col gap-2" asChild>
+                <Link to={`/tenant/${tenantId}/officer/sessions`}>
+                  <Calendar className="h-6 w-6" />
+                  View My Timetable
+                </Link>
+              </Button>
+              <Button variant="outline" className="h-24 flex-col gap-2" asChild>
+                <Link to={`/tenant/${tenantId}/officer/projects`}>
+                  <CheckCircle className="h-6 w-6" />
+                  Review Projects
+                </Link>
+              </Button>
+              <Button variant="outline" className="h-24 flex-col gap-2" asChild>
+                <Link to={`/tenant/${tenantId}/officer/inventory`}>
+                  <Package className="h-6 w-6" />
+                  Manage Inventory
+                </Link>
+              </Button>
+              <Button variant="outline" className="h-24 flex-col gap-2" asChild>
+                <Link to={`/tenant/${tenantId}/officer/attendance`}>
+                  <Users className="h-6 w-6" />
+                  Mark Attendance
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
-            <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-              <Link to={`/tenant/${tenantId}/officer/sessions`}>
-                <Calendar className="h-6 w-6" />
-                View My Timetable
-              </Link>
-            </Button>
-            <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-              <Link to={`/tenant/${tenantId}/officer/projects`}>
-                <CheckCircle className="h-6 w-6" />
-                Review Projects
-              </Link>
-            </Button>
-            <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-              <Link to={`/tenant/${tenantId}/officer/inventory`}>
-                <Package className="h-6 w-6" />
-                Manage Inventory
-              </Link>
-            </Button>
-            <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-              <Link to={`/tenant/${tenantId}/officer/attendance`}>
-                <Users className="h-6 w-6" />
-                Mark Attendance
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-      </div>
+      {/* Leave Application Dialog */}
+      <LeaveApplicationDialog
+        open={isLeaveDialogOpen}
+        onOpenChange={setIsLeaveDialogOpen}
+        officerId={user?.id || 'off-001'}
+        officerName={user?.name || 'Officer'}
+        onLeaveApplied={handleLeaveApplied}
+      />
     </Layout>
   );
 }

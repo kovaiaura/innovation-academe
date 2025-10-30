@@ -161,3 +161,29 @@ export interface LoanRecord {
   end_date: string;
   status: 'active' | 'completed' | 'closed';
 }
+
+// Leave Application
+export interface LeaveApplication {
+  id: string;
+  officer_id: string;
+  officer_name: string;
+  start_date: string; // "2025-10-30"
+  end_date: string; // "2025-11-01"
+  leave_type: LeaveType;
+  reason: string;
+  total_days: number;
+  status: 'pending' | 'approved' | 'rejected';
+  applied_at: string;
+  reviewed_by?: string;
+  reviewed_at?: string;
+  rejection_reason?: string;
+}
+
+// Leave Balance
+export interface LeaveBalance {
+  officer_id: string;
+  sick_leave: number;
+  casual_leave: number;
+  earned_leave: number;
+  year: string; // "2025"
+}
