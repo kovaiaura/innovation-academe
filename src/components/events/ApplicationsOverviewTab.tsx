@@ -1,33 +1,74 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { mockEventApplications, mockActivityEvents } from '@/data/mockEventsData';
-import { ApplicationStatusBadge } from './ApplicationStatusBadge';
 import { ApplicationStatus } from '@/types/events';
-import { Search, Eye, Download } from 'lucide-react';
-import { format } from 'date-fns';
+import { Download } from 'lucide-react';
+
+// Institution name mapping
+const getInstitutionName = (institutionId: string) => {
+  const institutionMap: Record<string, string> = {
+    'springfield-high': 'Springfield High School',
+    'riverside-academy': 'Riverside Academy',
+    'oakwood-school': 'Oakwood School',
+    'tech-valley-high': 'Tech Valley High School',
+  };
+  return institutionMap[institutionId] || institutionId;
+};
+
+interface InstitutionSummary {
+  institutionId: string;
+  institutionName: string;
+  total: number;
+  pending: number;
+  shortlisted: number;
+  approved: number;
+  rejected: number;
+}
 
 export function ApplicationsOverviewTab() {
   const [applications] = useState(mockEventApplications);
-  const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<ApplicationStatus | 'all'>('all');
   const [filterEvent, setFilterEvent] = useState<string>('all');
 
-  const getEventName = (eventId: string) => {
-    return mockActivityEvents.find(e => e.id === eventId)?.title || 'Unknown Event';
-  };
+  // Group applications by institution and calculate statistics
+  const institutionSummaries = useMemo(() => {
+    // First filter applications by event if needed
+    const eventFilteredApps = filterEvent === 'all' 
+      ? applications 
+      : applications.filter(app => app.event_id === filterEvent);
 
-  const filteredApplications = applications.filter(app => {
-    const matchesSearch = app.student_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         app.idea_title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || app.status === filterStatus;
-    const matchesEvent = filterEvent === 'all' || app.event_id === filterEvent;
+    // Group by institution
+    const groupedByInstitution = eventFilteredApps.reduce((acc, app) => {
+      if (!acc[app.institution_id]) {
+        acc[app.institution_id] = {
+          institutionId: app.institution_id,
+          institutionName: getInstitutionName(app.institution_id),
+          total: 0,
+          pending: 0,
+          shortlisted: 0,
+          approved: 0,
+          rejected: 0,
+        };
+      }
+      
+      acc[app.institution_id].total++;
+      acc[app.institution_id][app.status]++;
+      
+      return acc;
+    }, {} as Record<string, InstitutionSummary>);
+
+    // Convert to array and filter by status if needed
+    let summaries = Object.values(groupedByInstitution);
     
-    return matchesSearch && matchesStatus && matchesEvent;
-  });
+    if (filterStatus !== 'all') {
+      summaries = summaries.filter(summary => summary[filterStatus] > 0);
+    }
+
+    return summaries.sort((a, b) => b.total - a.total);
+  }, [applications, filterEvent, filterStatus]);
 
   // Calculate statistics
   const stats = {
@@ -39,8 +80,8 @@ export function ApplicationsOverviewTab() {
   };
 
   const handleExport = () => {
-    // In real app, this would export to CSV/Excel
-    console.log('Exporting applications...');
+    // In real app, this would export institution summaries to CSV/Excel
+    console.log('Exporting institution summaries...', institutionSummaries);
   };
 
   return (
@@ -103,15 +144,6 @@ export function ApplicationsOverviewTab() {
         <CardContent className="space-y-4">
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by student name or idea..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
             <Select value={filterEvent} onValueChange={setFilterEvent}>
               <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Filter by event" />
@@ -131,10 +163,10 @@ export function ApplicationsOverviewTab() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="pending">Has Pending</SelectItem>
+                <SelectItem value="shortlisted">Has Shortlisted</SelectItem>
+                <SelectItem value="approved">Has Approved</SelectItem>
+                <SelectItem value="rejected">Has Rejected</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -144,41 +176,49 @@ export function ApplicationsOverviewTab() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Student Name</TableHead>
-                  <TableHead>Event</TableHead>
-                  <TableHead>Idea Title</TableHead>
-                  <TableHead>Applied On</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Reviewed By</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Institution Name</TableHead>
+                  <TableHead className="text-center">Total Applications</TableHead>
+                  <TableHead className="text-center">Pending</TableHead>
+                  <TableHead className="text-center">Shortlisted</TableHead>
+                  <TableHead className="text-center">Approved</TableHead>
+                  <TableHead className="text-center">Rejected</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredApplications.length === 0 ? (
+                {institutionSummaries.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                      No applications found
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      No institutions found with matching applications
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredApplications.map((application) => (
-                    <TableRow key={application.id}>
-                      <TableCell className="font-medium">{application.student_name}</TableCell>
-                      <TableCell className="text-sm">{getEventName(application.event_id)}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">{application.idea_title}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {format(new Date(application.applied_at), 'MMM dd, yyyy')}
+                  institutionSummaries.map((summary) => (
+                    <TableRow key={summary.institutionId}>
+                      <TableCell className="font-medium">{summary.institutionName}</TableCell>
+                      <TableCell className="text-center">
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold">
+                          {summary.total}
+                        </span>
                       </TableCell>
-                      <TableCell>
-                        <ApplicationStatusBadge status={application.status} />
+                      <TableCell className="text-center">
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 font-semibold">
+                          {summary.pending}
+                        </span>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {application.reviewed_by || '-'}
+                      <TableCell className="text-center">
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold">
+                          {summary.shortlisted}
+                        </span>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon">
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                      <TableCell className="text-center">
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 font-semibold">
+                          {summary.approved}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 font-semibold">
+                          {summary.rejected}
+                        </span>
                       </TableCell>
                     </TableRow>
                   ))
