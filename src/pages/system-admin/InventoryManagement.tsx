@@ -169,7 +169,7 @@ export default function InventoryManagement() {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">${(totalValue / 1000).toFixed(0)}K</div>
+                  <div className="text-2xl font-bold">₹{(totalValue / 1000).toFixed(0)}K</div>
                   <p className="text-xs text-muted-foreground">Across all institutions</p>
                 </CardContent>
               </Card>
@@ -303,7 +303,7 @@ export default function InventoryManagement() {
                             </div>
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            ${inv.value.toLocaleString()}
+                            ₹{inv.value.toLocaleString()}
                           </TableCell>
                           <TableCell>
                             <div>
