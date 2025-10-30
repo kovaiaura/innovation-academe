@@ -115,7 +115,7 @@ export default function CourseContentViewer() {
     );
   }
 
-  const handleContentSelect = (contentId: string, moduleId: string) => {
+  const handleContentSelect = (contentId: string, moduleId: string, sessionId: string) => {
     setSelectedModuleId(moduleId);
     setSelectedContentId(contentId);
   };
@@ -171,7 +171,7 @@ export default function CourseContentViewer() {
     }
 
     const allContent = courseModules.flatMap(m => 
-      mockContent.filter(c => c.module_id === m.id).map(c => ({ ...c, moduleId: m.id }))
+      mockContent.filter(c => c.module_id === m.id).map(c => ({ ...c, moduleId: m.id, sessionId: c.session_id }))
     ).sort((a, b) => a.order - b.order);
 
     const currentIndex = allContent.findIndex(c => c.id === selectedContentId);
@@ -179,10 +179,10 @@ export default function CourseContentViewer() {
 
     if (direction === 'next' && currentIndex < allContent.length - 1) {
       const next = allContent[currentIndex + 1];
-      handleContentSelect(next.id, next.moduleId);
+      handleContentSelect(next.id, next.moduleId, next.sessionId);
     } else if (direction === 'prev' && currentIndex > 0) {
       const prev = allContent[currentIndex - 1];
-      handleContentSelect(prev.id, prev.moduleId);
+      handleContentSelect(prev.id, prev.moduleId, prev.sessionId);
     }
   };
 
@@ -348,15 +348,16 @@ export default function CourseContentViewer() {
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar - Module Navigation */}
         {!isPresentationMode && (
-          <ModuleNavigationSidebar
-            modules={courseModules}
-            selectedModuleId={selectedModuleId}
-            selectedContentId={selectedContentId}
-            onModuleSelect={setSelectedModuleId}
-            onContentSelect={handleContentSelect}
-            completions={completions}
-            courseProgress={courseProgress}
-          />
+        <ModuleNavigationSidebar
+          modules={courseModules}
+          courseId={courseId || ''}
+          selectedModuleId={selectedModuleId}
+          selectedContentId={selectedContentId}
+          onModuleSelect={setSelectedModuleId}
+          onContentSelect={handleContentSelect}
+          completions={completions}
+          courseProgress={courseProgress}
+        />
         )}
 
         {/* Center - Content Display */}

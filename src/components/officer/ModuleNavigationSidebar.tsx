@@ -18,22 +18,24 @@ import {
   Circle,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { mockContent } from '@/data/mockCourseData';
-import type { CourseModule, CourseContent } from '@/types/course';
+import { mockContent, mockSessions } from '@/data/mockCourseData';
+import type { CourseModule, CourseContent, CourseSession } from '@/types/course';
 import type { ContentCompletion, CourseProgress } from '@/types/contentCompletion';
 
 interface ModuleNavigationSidebarProps {
   modules: CourseModule[];
+  courseId: string;
   selectedModuleId: string | null;
   selectedContentId: string | null;
   onModuleSelect: (moduleId: string) => void;
-  onContentSelect: (contentId: string, moduleId: string) => void;
+  onContentSelect: (contentId: string, moduleId: string, sessionId: string) => void;
   completions: ContentCompletion[];
   courseProgress: CourseProgress;
 }
 
 export function ModuleNavigationSidebar({
   modules,
+  courseId,
   selectedModuleId,
   selectedContentId,
   onModuleSelect,
@@ -44,6 +46,17 @@ export function ModuleNavigationSidebar({
   const [openModules, setOpenModules] = useState<string[]>(
     selectedModuleId ? [selectedModuleId] : []
   );
+  const [openSessions, setOpenSessions] = useState<string[]>([]);
+
+  const sessions = mockSessions.filter(s => s.course_id === courseId);
+
+  const toggleSession = (sessionId: string) => {
+    setOpenSessions(prev =>
+      prev.includes(sessionId)
+        ? prev.filter(id => id !== sessionId)
+        : [...prev, sessionId]
+    );
+  };
 
   const toggleModule = (moduleId: string) => {
     setOpenModules(prev =>
@@ -110,8 +123,8 @@ export function ModuleNavigationSidebar({
           {modules
             .sort((a, b) => a.order - b.order)
             .map((module) => {
-              const moduleContents = mockContent
-                .filter(c => c.module_id === module.id)
+              const moduleSessions = sessions
+                .filter(s => s.module_id === module.id)
                 .sort((a, b) => a.order - b.order);
               const isOpen = openModules.includes(module.id);
               const isSelected = selectedModuleId === module.id;
@@ -148,38 +161,76 @@ export function ModuleNavigationSidebar({
                       </div>
                     </Button>
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="ml-4 mt-1 space-y-1">
-                    {moduleContents.map((content) => {
-                      const isContentSelected = selectedContentId === content.id;
-                      const completed = isContentCompleted(content.id);
-                      const completionTime = getCompletionTime(content.id);
-                      
+                  <CollapsibleContent className="ml-2 mt-1 space-y-1">
+                    {moduleSessions.map((session) => {
+                      const sessionContents = mockContent
+                        .filter(c => c.session_id === session.id)
+                        .sort((a, b) => a.order - b.order);
+                      const isSessionOpen = openSessions.includes(session.id);
+                      const sessionCompletedCount = sessionContents.filter(c => isContentCompleted(c.id)).length;
+                      const sessionTotalCount = sessionContents.length;
+
                       return (
-                        <div key={content.id} className="space-y-0.5">
-                          <Button
-                            variant={isContentSelected ? "secondary" : "ghost"}
-                            size="sm"
-                            className="w-full justify-start text-sm"
-                            onClick={() => onContentSelect(content.id, module.id)}
-                          >
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              {completed ? (
-                                <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        <Collapsible
+                          key={session.id}
+                          open={isSessionOpen}
+                          onOpenChange={() => toggleSession(session.id)}
+                        >
+                          <CollapsibleTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full justify-start font-normal text-xs pl-2"
+                            >
+                              {isSessionOpen ? (
+                                <ChevronDown className="h-3 w-3 mr-1" />
                               ) : (
-                                <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                <ChevronRight className="h-3 w-3 mr-1" />
                               )}
-                              {getContentIcon(content.type)}
-                              <span className="truncate flex-1 text-left">
-                                {content.title}
+                              <span className="flex-1 text-left truncate">
+                                {session.title}
                               </span>
-                            </div>
-                          </Button>
-                          {completed && completionTime && (
-                            <p className="text-xs text-muted-foreground ml-11 px-2">
-                              Completed {completionTime}
-                            </p>
-                          )}
-                        </div>
+                              <Badge variant="secondary" className="ml-1 text-xs">
+                                {sessionCompletedCount}/{sessionTotalCount}
+                              </Badge>
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="ml-4 mt-1 space-y-1">
+                            {sessionContents.map((content) => {
+                              const isContentSelected = selectedContentId === content.id;
+                              const completed = isContentCompleted(content.id);
+                              const completionTime = getCompletionTime(content.id);
+                              
+                              return (
+                                <div key={content.id} className="space-y-0.5">
+                                  <Button
+                                    variant={isContentSelected ? "secondary" : "ghost"}
+                                    size="sm"
+                                    className="w-full justify-start text-xs"
+                                    onClick={() => onContentSelect(content.id, module.id, session.id)}
+                                  >
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                      {completed ? (
+                                        <CheckCircle2 className="h-3 w-3 text-green-500 flex-shrink-0" />
+                                      ) : (
+                                        <Circle className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                      )}
+                                      {getContentIcon(content.type)}
+                                      <span className="truncate flex-1 text-left">
+                                        {content.title}
+                                      </span>
+                                    </div>
+                                  </Button>
+                                  {completed && completionTime && (
+                                    <p className="text-xs text-muted-foreground ml-9 px-2">
+                                      Completed {completionTime}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </CollapsibleContent>
+                        </Collapsible>
                       );
                     })}
                   </CollapsibleContent>

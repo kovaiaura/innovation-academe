@@ -6,8 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { BookOpen, Video, FileText, Award, CheckCircle, Clock, AlertCircle } from 'lucide-react';
-import { mockCourses, mockModules, mockContent, mockAssignments, mockQuizzes, mockSubmissions, mockQuizAttempts, mockQuizQuestions } from '@/data/mockCourseData';
+import { BookOpen, Video, FileText, Award, CheckCircle, Clock, AlertCircle, PlayCircle, Link as LinkIcon } from 'lucide-react';
+import { mockCourses, mockModules, mockSessions, mockContent, mockAssignments, mockQuizzes, mockSubmissions, mockQuizAttempts, mockQuizQuestions } from '@/data/mockCourseData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useContentProgress } from '@/hooks/useContentProgress';
 import { ContentViewerDialog } from '@/components/student/ContentViewerDialog';
@@ -44,10 +44,41 @@ export default function StudentCourseDetail() {
   const { completedContentIds, markContentComplete, isContentComplete } = useContentProgress(studentId, courseId || '');
   
   const course = mockCourses.find(c => c.id === courseId);
-  const modules = mockModules.filter(m => m.course_id === courseId);
+  const modules = mockModules.filter(m => m.course_id === courseId).sort((a, b) => a.order - b.order);
+  const sessions = mockSessions.filter(s => s.course_id === courseId);
   const content = mockContent.filter(c => c.course_id === courseId);
   const assignments = mockAssignments.filter(a => a.course_id === courseId);
   const quizzes = mockQuizzes.filter(q => q.course_id === courseId);
+
+  // Helper functions for session hierarchy
+  const getModuleSessions = (moduleId: string) => {
+    return sessions
+      .filter(s => s.module_id === moduleId)
+      .sort((a, b) => a.order - b.order);
+  };
+
+  const getSessionContent = (sessionId: string) => {
+    return content
+      .filter(c => c.session_id === sessionId)
+      .sort((a, b) => a.order - b.order);
+  };
+
+  const getContentIcon = (type: string) => {
+    switch (type) {
+      case 'video':
+      case 'youtube':
+        return <Video className="h-4 w-4" />;
+      case 'pdf':
+        return <FileText className="h-4 w-4" />;
+      case 'ppt':
+        return <FileText className="h-4 w-4" />;
+      case 'link':
+      case 'simulation':
+        return <LinkIcon className="h-4 w-4" />;
+      default:
+        return <FileText className="h-4 w-4" />;
+    }
+  };
 
   useEffect(() => {
     if (!courseId) return;
@@ -159,31 +190,80 @@ export default function StudentCourseDetail() {
 
           <TabsContent value="content" className="space-y-6">
             {modules.map((module) => {
-              const moduleContent = content.filter(c => c.module_id === module.id);
+              const moduleSessions = getModuleSessions(module.id);
               return (
                 <Card key={module.id}>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <BookOpen className="h-5 w-5" />
-                      {module.title}
+                      Module {module.order}: {module.title}
                     </CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">{module.description}</p>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {moduleContent.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex items-center gap-3">
-                            {item.type === 'video' && <Video className="h-5 w-5" />}
-                            {item.type === 'pdf' && <FileText className="h-5 w-5" />}
-                            <span>{item.title}</span>
-                            {isContentComplete(item.id) && <CheckCircle className="h-4 w-4 text-green-600" />}
+                  <CardContent className="space-y-4">
+                    {moduleSessions.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No sessions available</p>
+                    ) : (
+                      moduleSessions.map((session) => {
+                        const sessionContent = getSessionContent(session.id);
+                        return (
+                          <div key={session.id} className="border rounded-lg p-4 space-y-3">
+                            <div className="flex items-start justify-between">
+                              <div className="space-y-1">
+                                <h4 className="font-medium flex items-center gap-2">
+                                  <PlayCircle className="h-4 w-4" />
+                                  Session {session.order}: {session.title}
+                                </h4>
+                                <p className="text-sm text-muted-foreground">{session.description}</p>
+                                {session.duration_minutes && (
+                                  <Badge variant="outline" className="text-xs">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    {session.duration_minutes} min
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            {session.learning_objectives && session.learning_objectives.length > 0 && (
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground mb-1">Learning Objectives:</p>
+                                <ul className="text-xs text-muted-foreground space-y-0.5 ml-4 list-disc">
+                                  {session.learning_objectives.map((obj, idx) => (
+                                    <li key={idx}>{obj}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            <div className="space-y-2 pt-2">
+                              {sessionContent.length === 0 ? (
+                                <p className="text-xs text-muted-foreground">No content available</p>
+                              ) : (
+                                sessionContent.map((item) => (
+                                  <div key={item.id} className="flex items-center justify-between p-2 border rounded-lg bg-muted/30">
+                                    <div className="flex items-center gap-2">
+                                      {getContentIcon(item.type)}
+                                      <span className="text-sm">{item.title}</span>
+                                      {isContentComplete(item.id) && (
+                                        <CheckCircle className="h-4 w-4 text-green-600" />
+                                      )}
+                                    </div>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      onClick={() => { 
+                                        setSelectedContent(item); 
+                                        setContentDialogOpen(true); 
+                                      }}
+                                    >
+                                      {isContentComplete(item.id) ? 'Review' : 'View'}
+                                    </Button>
+                                  </div>
+                                ))
+                              )}
+                            </div>
                           </div>
-                          <Button size="sm" onClick={() => { setSelectedContent(item); setContentDialogOpen(true); }}>
-                            {isContentComplete(item.id) ? 'Review' : 'View'}
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
+                        );
+                      })
+                    )}
                   </CardContent>
                 </Card>
               );
