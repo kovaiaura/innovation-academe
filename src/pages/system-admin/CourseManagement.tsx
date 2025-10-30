@@ -611,7 +611,7 @@ export default function CourseManagement() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>Assignments</CardTitle>
-                    <Button size="sm">
+                    <Button size="sm" onClick={() => setAssignmentDialogOpen(true)}>
                       <Plus className="mr-2 h-4 w-4" />
                       Create
                     </Button>
@@ -648,7 +648,7 @@ export default function CourseManagement() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>Quizzes</CardTitle>
-                    <Button size="sm">
+                    <Button size="sm" onClick={() => setQuizDialogOpen(true)}>
                       <Plus className="mr-2 h-4 w-4" />
                       Create
                     </Button>
