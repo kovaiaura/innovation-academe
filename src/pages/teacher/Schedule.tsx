@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, MapPin, BookOpen } from 'lucide-react';
+import { Calendar, Grid3x3, Download } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
+import { TeacherTimetableCalendar } from '@/components/teacher/TeacherTimetableCalendar';
+import { TeacherTimetableCards } from '@/components/teacher/TeacherTimetableCards';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const mockSchedule = [
   {
@@ -78,25 +80,11 @@ const mockSchedule = [
   },
 ];
 
-const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
 export default function TeacherSchedule() {
   const [schedule] = useState(mockSchedule);
+  const isMobile = useIsMobile();
+  const [viewMode, setViewMode] = useState<'calendar' | 'cards'>(isMobile ? 'cards' : 'calendar');
 
-  const getTypeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      lecture: 'bg-blue-500/10 text-blue-500',
-      lab: 'bg-green-500/10 text-green-500',
-      tutorial: 'bg-purple-500/10 text-purple-500',
-    };
-    return colors[type] || colors.lecture;
-  };
-
-  const getScheduleForDay = (day: string) => {
-    return schedule.filter((item) => item.day === day).sort((a, b) => {
-      return a.start_time.localeCompare(b.start_time);
-    });
-  };
 
   const totalHours = schedule.reduce((total, item) => {
     const start = new Date(`1970-01-01T${item.start_time}`);
@@ -107,15 +95,37 @@ export default function TeacherSchedule() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold">Class Schedule</h1>
             <p className="text-muted-foreground">Your weekly teaching schedule</p>
           </div>
-          <Button variant="outline">
-            <Calendar className="mr-2 h-4 w-4" />
-            Export Schedule
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex border rounded-lg overflow-hidden">
+              <Button
+                variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('calendar')}
+                className="rounded-none"
+              >
+                <Grid3x3 className="mr-2 h-4 w-4" />
+                Grid
+              </Button>
+              <Button
+                variant={viewMode === 'cards' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('cards')}
+                className="rounded-none"
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                Cards
+              </Button>
+            </div>
+            <Button variant="outline" size="sm">
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -142,61 +152,12 @@ export default function TeacherSchedule() {
           </Card>
         </div>
 
-        {/* Weekly Schedule */}
-        <div className="grid gap-4">
-          {days.map((day) => {
-            const daySchedule = getScheduleForDay(day);
-            if (daySchedule.length === 0) return null;
-
-            return (
-              <Card key={day}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    {day}
-                    <Badge variant="outline">{daySchedule.length} classes</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-3">
-                    {daySchedule.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-4 flex-1">
-                          <div className="bg-primary/10 p-3 rounded-lg">
-                            <BookOpen className="h-5 w-5 text-primary" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="font-semibold">
-                                {item.course_code} - {item.course_name}
-                              </p>
-                              <Badge className={getTypeColor(item.type)}>{item.type}</Badge>
-                            </div>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-4 w-4" />
-                                <span>
-                                  {item.start_time} - {item.end_time}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <MapPin className="h-4 w-4" />
-                                <span>{item.room}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+        {/* Timetable Views */}
+        {viewMode === 'calendar' ? (
+          <TeacherTimetableCalendar schedule={schedule} />
+        ) : (
+          <TeacherTimetableCards schedule={schedule} />
+        )}
       </div>
     </Layout>
   );
