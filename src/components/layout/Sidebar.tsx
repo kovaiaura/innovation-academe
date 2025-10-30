@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
+import logoImage from '@/assets/logo.png';
 import { 
   Home, Users, User, Settings, LogOut, ChevronLeft, 
   BookOpen, Target, Calendar, Award, BarChart,
@@ -178,8 +179,8 @@ export function Sidebar() {
       <div className="flex h-16 items-center justify-between border-b border-meta-dark-lighter px-4">
         {!collapsed && (
           <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-meta-accent">
-              <span className="text-lg font-bold text-meta-dark">MI</span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-full overflow-hidden bg-[#2d437f]">
+              <img src={logoImage} alt="CR Logo" className="h-full w-full object-contain p-1" />
             </div>
             <span className="text-xl font-bold">Meta-INNOVA</span>
           </div>
