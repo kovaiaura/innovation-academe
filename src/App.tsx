@@ -67,6 +67,7 @@ import InstitutionDetail from "./pages/system-admin/InstitutionDetail";
 import OfficerDetail from "./pages/system-admin/OfficerDetail";
 import ProjectManagement from "./pages/system-admin/ProjectManagement";
 import SystemAdminLeaveApprovals from "./pages/system-admin/LeaveApprovals";
+import EventManagement from "./pages/system-admin/EventManagement";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -235,6 +236,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <ProjectManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/event-management"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <EventManagement />
                 </ProtectedRoute>
               }
             />

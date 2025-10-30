@@ -6,7 +6,8 @@ import {
   Home, Users, User, Settings, LogOut, ChevronLeft, 
   BookOpen, Target, Calendar, Award, BarChart,
   Building2, FileText, Trophy, Package, UserCheck, GraduationCap,
-  Shield, Phone, Clock, ShoppingCart, PieChart, Briefcase, CalendarCheck
+  Shield, Phone, Clock, ShoppingCart, PieChart, Briefcase, CalendarCheck,
+  LayoutDashboard
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
@@ -24,13 +25,14 @@ interface MenuItem {
 
 // Role-based menu configuration
 const menuItems: MenuItem[] = [
-  { label: 'Dashboard', icon: <Home className="h-5 w-5" />, path: '/dashboard', roles: ['super_admin', 'system_admin', 'management', 'officer', 'teacher', 'student'] },
+  { label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" />, path: '/dashboard', roles: ['super_admin', 'system_admin', 'management', 'officer', 'teacher', 'student'] },
   // Super Admin menu items - Technical oversight
   { label: 'System Config', icon: <Settings className="h-5 w-5" />, path: '/system-config', roles: ['super_admin'] },
   { label: 'Audit Logs', icon: <FileText className="h-5 w-5" />, path: '/audit-logs', roles: ['super_admin'] },
   // System Admin menu items - Business operations
   { label: 'Institution Management', icon: <Building2 className="h-5 w-5" />, path: '/institutions', roles: ['system_admin'] },
   { label: 'Course Management', icon: <BookOpen className="h-5 w-5" />, path: '/course-management', roles: ['system_admin'] },
+  { label: 'Event Management', icon: <Trophy className="h-5 w-5" />, path: '/event-management', roles: ['system_admin'] },
   // Officers Management
   { label: 'Officer Management', icon: <Users className="h-5 w-5" />, path: '/officers', roles: ['system_admin'] },
   { label: 'Attendance & Payroll', icon: <Clock className="h-5 w-5" />, path: '/officer-attendance', roles: ['system_admin'] },
