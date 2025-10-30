@@ -60,9 +60,9 @@ export const mockProjects: Record<string, Project[]> = {
       description: 'Complete home automation system using IoT sensors and cloud connectivity',
       category: 'IoT',
       team_members: [
-        { id: 's1', name: 'Rahul Sharma', role: 'leader' },
-        { id: 's2', name: 'Priya Patel', role: 'member' },
-        { id: 's3', name: 'Amit Kumar', role: 'member' }
+        { id: 'springfield-8-A-001', name: 'Aarav Sharma', role: 'leader' },
+        { id: 'springfield-8-A-002', name: 'Vivaan Verma', role: 'member' },
+        { id: 'springfield-8-A-003', name: 'Aditya Gupta', role: 'member' }
       ],
       created_by_officer_id: 'off1',
       created_by_officer_name: 'Dr. Rajesh Kumar',
@@ -96,8 +96,8 @@ export const mockProjects: Record<string, Project[]> = {
       description: 'Machine learning system for crop health monitoring and irrigation optimization',
       category: 'AI/ML',
       team_members: [
-        { id: 's4', name: 'Sneha Reddy', role: 'leader' },
-        { id: 's5', name: 'Karthik Menon', role: 'member' }
+        { id: 'springfield-10-B-001', name: 'Aadhya Reddy', role: 'leader' },
+        { id: 'springfield-10-B-002', name: 'Ananya Nair', role: 'member' }
       ],
       created_by_officer_id: 'off1',
       created_by_officer_name: 'Dr. Rajesh Kumar',
@@ -138,10 +138,10 @@ export const mockProjects: Record<string, Project[]> = {
       description: 'Transparent supply chain management using blockchain technology',
       category: 'Blockchain',
       team_members: [
-        { id: 's6', name: 'Arjun Nair', role: 'leader' },
-        { id: 's7', name: 'Divya Krishnan', role: 'member' },
-        { id: 's8', name: 'Rohan Mehta', role: 'member' },
-        { id: 's9', name: 'Anjali Iyer', role: 'member' }
+        { id: 'springfield-9-C-001', name: 'Arjun Singh', role: 'leader' },
+        { id: 'springfield-9-C-002', name: 'Sai Patel', role: 'member' },
+        { id: 'springfield-9-C-003', name: 'Reyansh Gupta', role: 'member' },
+        { id: 'springfield-9-C-004', name: 'Krishna Kumar', role: 'member' }
       ],
       created_by_officer_id: 'off1',
       created_by_officer_name: 'Dr. Rajesh Kumar',
@@ -162,8 +162,8 @@ export const mockProjects: Record<string, Project[]> = {
       description: 'Low-cost water purification system powered by solar energy for rural areas',
       category: 'Renewable Energy',
       team_members: [
-        { id: 's10', name: 'Meera Nambiar', role: 'leader' },
-        { id: 's11', name: 'Vikram Desai', role: 'member' }
+        { id: 'springfield-11-A-001', name: 'Diya Sharma', role: 'leader' },
+        { id: 'springfield-11-A-002', name: 'Isha Verma', role: 'member' }
       ],
       created_by_officer_id: 'off1',
       created_by_officer_name: 'Dr. Rajesh Kumar',

@@ -1,8 +1,21 @@
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen, Target, Trophy, TrendingUp } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { getProjectsByStudent } from '@/data/mockProjectData';
 
 export default function StudentDashboard() {
+  const { user } = useAuth();
+  
+  // Get real projects for current student
+  const studentProjects = user ? getProjectsByStudent(user.id) : [];
+  const activeProjects = studentProjects.filter(p => 
+    p.status === 'in_progress' || p.status === 'approved'
+  ).length;
+  const completedProjects = studentProjects.filter(p => 
+    p.status === 'completed'
+  ).length;
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -29,8 +42,8 @@ export default function StudentDashboard() {
               <Target className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">2</div>
-              <p className="text-xs text-muted-foreground">1 submitted</p>
+              <div className="text-2xl font-bold">{activeProjects}</div>
+              <p className="text-xs text-muted-foreground">{completedProjects} completed</p>
             </CardContent>
           </Card>
 

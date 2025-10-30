@@ -1,5 +1,7 @@
 import { Student } from '@/types/student';
 
+export type { Student };
+
 const firstNames = [
   'Aarav', 'Vivaan', 'Aditya', 'Arjun', 'Sai', 'Reyansh', 'Krishna', 'Ishaan', 'Shaurya', 'Atharv',
   'Aadhya', 'Ananya', 'Diya', 'Isha', 'Kavya', 'Saanvi', 'Sara', 'Avni', 'Myra', 'Kiara',

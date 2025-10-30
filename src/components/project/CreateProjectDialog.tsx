@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Project } from "@/data/mockProjectData";
+import { getStudentsByInstitution, getStudentsByClassAndSection, Student } from "@/data/mockStudentData";
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
 
 interface CreateProjectDialogProps {
   open: boolean;
@@ -55,40 +58,87 @@ export function CreateProjectDialog({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
-  const [studentClass, setStudentClass] = useState("");
+  const [selectedClass, setSelectedClass] = useState("");
+  const [selectedSection, setSelectedSection] = useState("");
   const [fundingRequired, setFundingRequired] = useState("");
   const [selectedSdgs, setSelectedSdgs] = useState<number[]>([]);
-  const [teamLeader, setTeamLeader] = useState("");
-  const [teamMembers, setTeamMembers] = useState("");
+  const [teamLeader, setTeamLeader] = useState<Student | null>(null);
+  const [teamMembers, setTeamMembers] = useState<Student[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Get all students for this institution
+  const allStudents = useMemo(() => 
+    getStudentsByInstitution(institutionId).filter(s => s.status === 'active'),
+    [institutionId]
+  );
+
+  // Get unique classes
+  const uniqueClasses = useMemo(() => {
+    const classes = new Set<string>();
+    allStudents.forEach(student => {
+      const classNum = student.class.replace('Class ', '');
+      classes.add(classNum);
+    });
+    return Array.from(classes).sort((a, b) => parseInt(a) - parseInt(b));
+  }, [allStudents]);
+
+  // Get sections for selected class
+  const availableSections = useMemo(() => {
+    if (!selectedClass) return [];
+    const sections = new Set<string>();
+    allStudents.forEach(student => {
+      const classNum = student.class.replace('Class ', '');
+      if (classNum === selectedClass) {
+        sections.add(student.section);
+      }
+    });
+    return Array.from(sections).sort();
+  }, [allStudents, selectedClass]);
+
+  // Get students for selected class and section
+  const availableStudents = useMemo(() => {
+    if (!selectedClass || !selectedSection) return [];
+    return getStudentsByClassAndSection(
+      institutionId, 
+      `Class ${selectedClass}`, 
+      selectedSection
+    ).filter(s => s.status === 'active');
+  }, [institutionId, selectedClass, selectedSection]);
+
+  // Filter students by search term
+  const filteredStudents = useMemo(() => {
+    if (!searchTerm) return availableStudents;
+    const term = searchTerm.toLowerCase();
+    return availableStudents.filter(s => 
+      s.student_name.toLowerCase().includes(term) || 
+      s.roll_number.toLowerCase().includes(term)
+    );
+  }, [availableStudents, searchTerm]);
 
   const handleSubmit = () => {
-    if (!title || !description || !category || !studentClass || !teamLeader) {
+    if (!title || !description || !category || !selectedClass || !selectedSection || !teamLeader) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    const members = teamMembers
-      .split(',')
-      .map(name => name.trim())
-      .filter(name => name)
-      .map((name, index) => ({
-        id: `s${Date.now()}-${index}`,
-        name,
-        role: 'member' as const
-      }));
+    const members = teamMembers.map(student => ({
+      id: student.id,
+      name: student.student_name,
+      role: 'member' as const
+    }));
 
     const newProject: Omit<Project, 'id'> = {
       title,
       description,
       category,
       team_members: [
-        { id: `s${Date.now()}-leader`, name: teamLeader, role: 'leader' },
+        { id: teamLeader.id, name: teamLeader.student_name, role: 'leader' },
         ...members
       ],
       created_by_officer_id: officerId,
       created_by_officer_name: officerName,
       institution_id: institutionId,
-      class: studentClass,
+      class: `Class ${selectedClass} - Section ${selectedSection}`,
       status: 'approved',
       progress: 0,
       start_date: new Date().toISOString().split('T')[0],
@@ -105,14 +155,33 @@ export function CreateProjectDialog({
     setTitle("");
     setDescription("");
     setCategory("");
-    setStudentClass("");
+    setSelectedClass("");
+    setSelectedSection("");
     setFundingRequired("");
     setSelectedSdgs([]);
-    setTeamLeader("");
-    setTeamMembers("");
+    setTeamLeader(null);
+    setTeamMembers([]);
+    setSearchTerm("");
     
     toast.success("Project created successfully");
     onOpenChange(false);
+  };
+
+  const addTeamMember = (student: Student) => {
+    if (teamLeader?.id === student.id) {
+      toast.error("Team leader is already selected");
+      return;
+    }
+    if (teamMembers.some(m => m.id === student.id)) {
+      toast.error("Student already added to team");
+      return;
+    }
+    setTeamMembers([...teamMembers, student]);
+    setSearchTerm("");
+  };
+
+  const removeTeamMember = (studentId: string) => {
+    setTeamMembers(teamMembers.filter(m => m.id !== studentId));
   };
 
   return (
@@ -147,29 +216,60 @@ export function CreateProjectDialog({
             />
           </div>
 
+          <div>
+            <Label htmlFor="category">Category *</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map(cat => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="category">Category *</Label>
-              <Select value={category} onValueChange={setCategory}>
+              <Label htmlFor="class">Class *</Label>
+              <Select value={selectedClass} onValueChange={(val) => {
+                setSelectedClass(val);
+                setSelectedSection("");
+                setTeamLeader(null);
+                setTeamMembers([]);
+              }}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder="Select class" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map(cat => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  {uniqueClasses.map(cls => (
+                    <SelectItem key={cls} value={cls}>Class {cls}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label htmlFor="class">Class/Section *</Label>
-              <Input
-                id="class"
-                value={studentClass}
-                onChange={(e) => setStudentClass(e.target.value)}
-                placeholder="e.g., 3rd Year CSE - Section A"
-              />
+              <Label htmlFor="section">Section *</Label>
+              <Select 
+                value={selectedSection} 
+                onValueChange={(val) => {
+                  setSelectedSection(val);
+                  setTeamLeader(null);
+                  setTeamMembers([]);
+                }}
+                disabled={!selectedClass}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select section" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableSections.map(sec => (
+                    <SelectItem key={sec} value={sec}>Section {sec}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -211,23 +311,104 @@ export function CreateProjectDialog({
           </div>
 
           <div>
-            <Label htmlFor="teamLeader">Team Leader Name *</Label>
-            <Input
-              id="teamLeader"
-              value={teamLeader}
-              onChange={(e) => setTeamLeader(e.target.value)}
-              placeholder="e.g., Rahul Sharma"
-            />
+            <Label htmlFor="teamLeader">Team Leader *</Label>
+            {teamLeader ? (
+              <div className="flex items-center justify-between p-3 border rounded-md bg-muted">
+                <div>
+                  <div className="font-medium">{teamLeader.student_name}</div>
+                  <div className="text-sm text-muted-foreground">
+                    Roll: {teamLeader.roll_number}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setTeamLeader(null)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <Select 
+                disabled={!selectedClass || !selectedSection}
+                onValueChange={(val) => {
+                  const student = availableStudents.find(s => s.id === val);
+                  if (student) {
+                    setTeamLeader(student);
+                    setTeamMembers(teamMembers.filter(m => m.id !== student.id));
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={
+                    !selectedClass || !selectedSection 
+                      ? "Select class and section first" 
+                      : "Select team leader"
+                  } />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableStudents.map(student => (
+                    <SelectItem key={student.id} value={student.id}>
+                      {student.student_name} - {student.roll_number}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div>
-            <Label htmlFor="teamMembers">Team Members (comma-separated)</Label>
-            <Input
-              id="teamMembers"
-              value={teamMembers}
-              onChange={(e) => setTeamMembers(e.target.value)}
-              placeholder="e.g., Priya Patel, Amit Kumar"
-            />
+            <Label htmlFor="teamMembers">Team Members</Label>
+            <div className="space-y-2">
+              {teamMembers.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {teamMembers.map(member => (
+                    <Badge key={member.id} variant="secondary" className="gap-2">
+                      {member.student_name}
+                      <button
+                        type="button"
+                        onClick={() => removeTeamMember(member.id)}
+                        className="hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <div className="space-y-2">
+                <Input
+                  placeholder={
+                    !selectedClass || !selectedSection 
+                      ? "Select class and section first" 
+                      : "Search students by name or roll number..."
+                  }
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  disabled={!selectedClass || !selectedSection}
+                />
+                {searchTerm && filteredStudents.length > 0 && (
+                  <div className="border rounded-md max-h-48 overflow-y-auto">
+                    {filteredStudents
+                      .filter(s => s.id !== teamLeader?.id && !teamMembers.some(m => m.id === s.id))
+                      .map(student => (
+                        <button
+                          key={student.id}
+                          type="button"
+                          onClick={() => addTeamMember(student)}
+                          className="w-full text-left px-3 py-2 hover:bg-muted flex justify-between items-center"
+                        >
+                          <span>{student.student_name}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {student.roll_number}
+                          </span>
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 

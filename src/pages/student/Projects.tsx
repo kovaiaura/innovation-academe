@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Eye, Award } from "lucide-react";
 import { getProjectsByStudent, Project } from "@/data/mockProjectData";
 import { ProjectDetailsDialog } from "@/components/project/ProjectDetailsDialog";
+import { useAuth } from "@/contexts/AuthContext";
 
 const sdgNames: Record<number, string> = {
   1: 'No Poverty',
@@ -23,8 +24,8 @@ const sdgNames: Record<number, string> = {
 };
 
 export default function Projects() {
-  // In a real app, this would be the logged-in student's ID
-  const currentStudentId = 's1';
+  const { user } = useAuth();
+  const currentStudentId = user?.id || '';
   const projects = getProjectsByStudent(currentStudentId);
 
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
