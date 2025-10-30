@@ -63,9 +63,10 @@ const menuItems: MenuItem[] = [
   // Student menu items
   { label: 'My Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['student'] },
   { label: 'My Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['student'] },
+  { label: 'Events & Activities', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['student'] },
   { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['student'] },
   { label: 'Certificates', icon: <Award className="h-5 w-5" />, path: '/certificates', roles: ['student'] },
-  { label: 'Gamification', icon: <Trophy className="h-5 w-5" />, path: '/gamification', roles: ['student'] },
+  { label: 'Gamification', icon: <BarChart className="h-5 w-5" />, path: '/gamification', roles: ['student'] },
   { label: 'Resume', icon: <FileText className="h-5 w-5" />, path: '/resume', roles: ['student'] },
   // Management menu items (merged with institution admin functionality)
   { label: 'Teachers', icon: <Users className="h-5 w-5" />, path: '/teachers', roles: ['management'] },

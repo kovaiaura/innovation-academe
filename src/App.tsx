@@ -28,6 +28,7 @@ import StudentTimetable from "./pages/student/Timetable";
 import StudentCertificates from "./pages/student/Certificates";
 import StudentGamification from "./pages/student/Gamification";
 import StudentResume from "./pages/student/Resume";
+import StudentEvents from "./pages/student/Events";
 import OfficerDashboard from "./pages/officer/Dashboard";
 import OfficerSessions from "./pages/officer/Sessions";
 import OfficerProjects from "./pages/officer/Projects";
@@ -527,6 +528,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['student']}>
                   <StudentResume />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/events"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentEvents />
                 </ProtectedRoute>
               }
             />
