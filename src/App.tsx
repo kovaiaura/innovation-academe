@@ -34,6 +34,7 @@ import OfficerSessions from "./pages/officer/Sessions";
 import OfficerProjects from "./pages/officer/Projects";
 import OfficerInventory from "./pages/officer/Inventory";
 import OfficerAttendance from "./pages/officer/Attendance";
+import OfficerEvents from "./pages/officer/Events";
 import InstitutionDashboard from "./pages/institution/Dashboard";
 import InstitutionTeachers from "./pages/institution/Teachers";
 import InstitutionStudents from "./pages/institution/Students";
@@ -56,6 +57,7 @@ import ProjectsAndCertificates from "./pages/management/ProjectsAndCertificates"
 import ManagementSettings from "./pages/management/Settings";
 import Attendance from "./pages/management/Attendance";
 import ManagementReports from "./pages/management/Reports";
+import ManagementEvents from "./pages/management/Events";
 import SystemAdminCourseManagement from "./pages/system-admin/CourseManagement";
 import SystemAdminCourseDetail from "./pages/system-admin/CourseDetail";
 import OfficerCourseManagement from "./pages/officer/CourseManagement";
@@ -68,8 +70,8 @@ import InstitutionDetail from "./pages/system-admin/InstitutionDetail";
 import OfficerDetail from "./pages/system-admin/OfficerDetail";
 import ProjectManagement from "./pages/system-admin/ProjectManagement";
 import SystemAdminLeaveApprovals from "./pages/system-admin/LeaveApprovals";
-import Performance from "./pages/management/Performance";
 import EventManagement from "./pages/system-admin/EventManagement";
+import Performance from "./pages/management/Performance";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -373,6 +375,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/tenant/:tenantId/officer/events"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <OfficerEvents />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Management Routes (path-based multi-tenancy) - Merged with institution admin */}
             <Route
@@ -462,6 +472,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['management']}>
                   <Attendance />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/management/events"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <ManagementEvents />
                 </ProtectedRoute>
               }
             />
