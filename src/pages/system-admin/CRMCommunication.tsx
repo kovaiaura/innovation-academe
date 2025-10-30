@@ -16,6 +16,7 @@ import { Plus, Search, Phone, Mail, Video, Calendar as CalendarIcon, FileText, C
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { ContactDetailDialog } from "@/components/crm/ContactDetailDialog";
 
 // Data Types
 interface Contact {
@@ -146,6 +147,8 @@ export default function CRMCommunication() {
   const [renewalDialogOpen, setRenewalDialogOpen] = useState(false);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [contactDetailOpen, setContactDetailOpen] = useState(false);
 
   // Contact Form
   const [contactForm, setContactForm] = useState({
@@ -159,7 +162,9 @@ export default function CRMCommunication() {
 
   // Communication Log Form
   const [logForm, setLogForm] = useState({
+    contact_id: "",
     contact_name: "",
+    institution_id: "",
     institution_name: "",
     type: "call" as CommunicationLog['type'],
     subject: "",
@@ -171,7 +176,9 @@ export default function CRMCommunication() {
 
   // Follow-up Task Form
   const [taskForm, setTaskForm] = useState({
+    institution_id: "",
     institution_name: "",
+    contact_id: "",
     contact_name: "",
     task_description: "",
     due_date: undefined as Date | undefined,
@@ -245,7 +252,7 @@ export default function CRMCommunication() {
     }
     
     setLogDialogOpen(false);
-    setLogForm({ contact_name: "", institution_name: "", type: "call", subject: "", notes: "", date: new Date(), next_action: "", next_action_date: undefined });
+    setLogForm({ contact_id: "", contact_name: "", institution_id: "", institution_name: "", type: "call", subject: "", notes: "", date: new Date(), next_action: "", next_action_date: undefined });
     toast.success("Communication logged successfully");
   };
 
@@ -271,7 +278,7 @@ export default function CRMCommunication() {
     };
     setFollowUpTasks([newTask, ...followUpTasks]);
     setTaskDialogOpen(false);
-    setTaskForm({ institution_name: "", contact_name: "", task_description: "", due_date: undefined, priority: "medium" });
+    setTaskForm({ institution_id: "", institution_name: "", contact_id: "", contact_name: "", task_description: "", due_date: undefined, priority: "medium" });
     toast.success("Follow-up task created");
   };
 
@@ -573,7 +580,14 @@ export default function CRMCommunication() {
                   </TableHeader>
                   <TableBody>
                     {filteredContacts.map((contact) => (
-                      <TableRow key={contact.id}>
+                      <TableRow 
+                        key={contact.id}
+                        className="cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => {
+                          setSelectedContact(contact);
+                          setContactDetailOpen(true);
+                        }}
+                      >
                         <TableCell className="font-medium">{contact.name}</TableCell>
                         <TableCell>{contact.designation}</TableCell>
                         <TableCell>{contact.institution_name}</TableCell>
@@ -591,6 +605,41 @@ export default function CRMCommunication() {
                 </Table>
               </CardContent>
             </Card>
+
+            <ContactDetailDialog
+              contact={selectedContact}
+              open={contactDetailOpen}
+              onOpenChange={setContactDetailOpen}
+              onLogCommunication={(contact) => {
+                setContactDetailOpen(false);
+                setLogForm({
+                  contact_id: contact.id,
+                  contact_name: contact.name,
+                  institution_id: contact.institution_id,
+                  institution_name: contact.institution_name,
+                  type: "call",
+                  subject: "",
+                  notes: "",
+                  date: new Date(),
+                  next_action: "",
+                  next_action_date: undefined,
+                });
+                setLogDialogOpen(true);
+              }}
+              onAddTask={(contact) => {
+                setContactDetailOpen(false);
+                setTaskForm({
+                  institution_id: contact.institution_id,
+                  institution_name: contact.institution_name,
+                  contact_id: contact.id,
+                  contact_name: contact.name,
+                  task_description: "",
+                  due_date: undefined,
+                  priority: "medium",
+                });
+                setTaskDialogOpen(true);
+              }}
+            />
           </TabsContent>
 
           {/* Communication Logs Tab */}
