@@ -110,3 +110,46 @@ export interface PurchaseRequest {
   created_at: string;
   updated_at: string;
 }
+
+export interface ProjectComponent {
+  id: string;
+  component_code: string;
+  name: string;
+  category: 'electronics' | 'sensors' | 'actuators' | 'mechanical' | 'software' | 'other';
+  
+  // Project Association
+  project_id?: string;
+  project_name?: string;
+  
+  // Specifications
+  description: string;
+  specifications?: string;
+  manufacturer?: string;
+  part_number?: string;
+  
+  // Quantity & Cost
+  required_quantity: number;
+  unit: string;
+  estimated_unit_price: number;
+  estimated_total: number;
+  
+  // Status
+  status: 'needed' | 'requested' | 'approved' | 'purchased' | 'received';
+  
+  // Purchase Request Link
+  purchase_request_id?: string;
+  purchase_request_code?: string;
+  
+  // Tracking
+  added_by_officer_id: string;
+  added_by_officer_name: string;
+  created_at: string;
+  updated_at: string;
+  
+  // Priority
+  priority: 'urgent' | 'high' | 'medium' | 'low';
+  justification?: string;
+  
+  // Notes
+  notes?: string;
+}

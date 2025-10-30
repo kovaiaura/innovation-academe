@@ -1,4 +1,4 @@
-import { InventoryItem, StockLocation, AuditRecord, PurchaseRequest } from '@/types/inventory';
+import { InventoryItem, StockLocation, AuditRecord, PurchaseRequest, ProjectComponent } from '@/types/inventory';
 
 export const mockInventoryItems: Record<string, InventoryItem[]> = {
   'springfield': [
@@ -734,4 +734,152 @@ export const updateMockPurchaseRequest = (requestId: string, updates: Partial<Pu
     return mockPurchaseRequests[index];
   }
   return null;
+};
+
+// ============= PROJECT COMPONENTS DATA =============
+
+export const mockProjectComponents: ProjectComponent[] = [
+  {
+    id: 'comp-001',
+    component_code: 'COMP-SF-001',
+    name: 'Arduino Uno R3',
+    category: 'electronics',
+    description: 'Microcontroller board for IoT projects',
+    specifications: 'ATmega328P, 14 digital I/O pins, 6 analog inputs',
+    manufacturer: 'Arduino',
+    part_number: 'A000066',
+    required_quantity: 15,
+    unit: 'pieces',
+    estimated_unit_price: 450,
+    estimated_total: 6750,
+    status: 'needed',
+    project_id: '1',
+    project_name: 'IoT-Based Smart Home Automation',
+    priority: 'high',
+    justification: 'Required for student project prototyping',
+    added_by_officer_id: 'off-001',
+    added_by_officer_name: 'Dr. Rajesh Kumar',
+    created_at: '2025-10-25',
+    updated_at: '2025-10-25'
+  },
+  {
+    id: 'comp-002',
+    component_code: 'COMP-SF-002',
+    name: 'DHT22 Temperature & Humidity Sensor',
+    category: 'sensors',
+    description: 'Digital temperature and humidity sensor',
+    specifications: '-40°C to 80°C, 0-100% RH',
+    required_quantity: 20,
+    unit: 'pieces',
+    estimated_unit_price: 150,
+    estimated_total: 3000,
+    status: 'needed',
+    project_id: '1',
+    project_name: 'IoT-Based Smart Home Automation',
+    priority: 'medium',
+    added_by_officer_id: 'off-001',
+    added_by_officer_name: 'Dr. Rajesh Kumar',
+    created_at: '2025-10-26',
+    updated_at: '2025-10-26'
+  },
+  {
+    id: 'comp-003',
+    component_code: 'COMP-SF-003',
+    name: 'Servo Motor SG90',
+    category: 'actuators',
+    description: 'Micro servo motor for robotics',
+    specifications: '180° rotation, 4.8V-6V',
+    required_quantity: 25,
+    unit: 'pieces',
+    estimated_unit_price: 120,
+    estimated_total: 3000,
+    status: 'requested',
+    purchase_request_id: 'pr-001',
+    purchase_request_code: 'PR-001',
+    priority: 'high',
+    added_by_officer_id: 'off-001',
+    added_by_officer_name: 'Dr. Rajesh Kumar',
+    created_at: '2025-10-20',
+    updated_at: '2025-10-27'
+  },
+  {
+    id: 'comp-004',
+    component_code: 'COMP-SF-004',
+    name: 'NodeMCU ESP8266',
+    category: 'electronics',
+    description: 'WiFi development board',
+    specifications: 'ESP8266 SoC, WiFi 802.11 b/g/n',
+    manufacturer: 'Espressif',
+    required_quantity: 10,
+    unit: 'pieces',
+    estimated_unit_price: 350,
+    estimated_total: 3500,
+    status: 'needed',
+    project_id: '1',
+    project_name: 'IoT-Based Smart Home Automation',
+    priority: 'urgent',
+    justification: 'Critical for WiFi connectivity in home automation',
+    added_by_officer_id: 'off-001',
+    added_by_officer_name: 'Dr. Rajesh Kumar',
+    created_at: '2025-10-28',
+    updated_at: '2025-10-28'
+  },
+  {
+    id: 'comp-005',
+    component_code: 'COMP-SF-005',
+    name: 'Ultrasonic Sensor HC-SR04',
+    category: 'sensors',
+    description: 'Distance measuring sensor',
+    specifications: 'Range: 2cm-400cm, 5V DC',
+    required_quantity: 30,
+    unit: 'pieces',
+    estimated_unit_price: 80,
+    estimated_total: 2400,
+    status: 'approved',
+    purchase_request_code: 'PR-002',
+    priority: 'medium',
+    added_by_officer_id: 'off-001',
+    added_by_officer_name: 'Dr. Rajesh Kumar',
+    created_at: '2025-10-15',
+    updated_at: '2025-10-25'
+  }
+];
+
+// Helper functions for components
+export const getComponentsByOfficer = (officerId: string): ProjectComponent[] => {
+  return mockProjectComponents.filter(c => c.added_by_officer_id === officerId);
+};
+
+export const getComponentsByProject = (projectId: string): ProjectComponent[] => {
+  return mockProjectComponents.filter(c => c.project_id === projectId);
+};
+
+export const getComponentsByStatus = (status: ProjectComponent['status']): ProjectComponent[] => {
+  return mockProjectComponents.filter(c => c.status === status);
+};
+
+export const addMockComponent = (component: ProjectComponent) => {
+  mockProjectComponents.push(component);
+};
+
+export const updateMockComponent = (componentId: string, updates: Partial<ProjectComponent>): ProjectComponent | null => {
+  const index = mockProjectComponents.findIndex(c => c.id === componentId);
+  if (index !== -1) {
+    mockProjectComponents[index] = { 
+      ...mockProjectComponents[index], 
+      ...updates, 
+      updated_at: new Date().toISOString() 
+    };
+    return mockProjectComponents[index];
+  }
+  return null;
+};
+
+export const deleteMockComponent = (componentId: string): boolean => {
+  const index = mockProjectComponents.findIndex(c => c.id === componentId);
+  if (index !== -1) {
+    mockProjectComponents.splice(index, 1);
+    return true;
+  }
+  return false;
 };
