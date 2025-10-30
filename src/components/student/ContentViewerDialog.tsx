@@ -62,27 +62,43 @@ export function ContentViewerDialog({
     setHasViewed(true);
   };
 
-  const extractYouTubeId = (url: string) => {
+  const extractYouTubeId = (url?: string) => {
+    if (!url) return null;
     const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
     return match ? match[1] : null;
   };
 
+  const getContentUrl = () => {
+    switch (content.type) {
+      case 'youtube':
+        return content.youtube_url;
+      case 'link':
+      case 'simulation':
+        return content.external_url;
+      default:
+        return content.file_url;
+    }
+  };
+
+  const contentUrl = getContentUrl();
+
   const renderContent = () => {
     switch (content.type) {
       case 'video':
+        if (!contentUrl) return <p className="text-destructive">Video URL not available</p>;
         return (
           <video
             ref={videoRef}
             controls
             className="w-full rounded-lg"
-            src={content.file_url}
+            src={contentUrl}
           >
             Your browser does not support the video tag.
           </video>
         );
       
       case 'youtube':
-        const youtubeId = extractYouTubeId(content.file_url);
+        const youtubeId = extractYouTubeId(contentUrl);
         return youtubeId ? (
           <iframe
             src={`https://www.youtube.com/embed/${youtubeId}`}
@@ -95,29 +111,33 @@ export function ContentViewerDialog({
         );
       
       case 'pdf':
+        if (!contentUrl) return <p className="text-destructive">PDF URL not available</p>;
         return (
           <iframe
-            src={content.file_url}
+            src={contentUrl}
             className="w-full h-[70vh] rounded-lg"
             title={content.title}
           />
         );
       
       case 'ppt':
+        if (!contentUrl) return <p className="text-destructive">Presentation URL not available</p>;
         return (
           <iframe
-            src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(content.file_url)}`}
+            src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(contentUrl)}`}
             className="w-full h-[70vh] rounded-lg"
             title={content.title}
           />
         );
       
       case 'link':
+      case 'simulation':
+        if (!contentUrl) return <p className="text-destructive">URL not available</p>;
         return (
           <div className="space-y-4">
             <p className="text-muted-foreground">External resource</p>
             <Button asChild>
-              <a href={content.file_url} target="_blank" rel="noopener noreferrer">
+              <a href={contentUrl} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="mr-2 h-4 w-4" />
                 Open Link
               </a>
