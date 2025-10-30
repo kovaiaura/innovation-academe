@@ -6,7 +6,7 @@ import {
   Home, Users, User, Settings, LogOut, ChevronLeft, 
   BookOpen, Target, Calendar, Award, BarChart,
   Building2, FileText, Trophy, Package, UserCheck, GraduationCap,
-  Shield, Phone, Clock, ShoppingCart, PieChart, Briefcase
+  Shield, Phone, Clock, ShoppingCart, PieChart, Briefcase, CalendarCheck
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
@@ -56,6 +56,7 @@ const menuItems: MenuItem[] = [
   { label: 'Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['officer'] },
   { label: 'Lab Inventory', icon: <Package className="h-5 w-5" />, path: '/inventory', roles: ['officer'] },
   { label: 'Attendance', icon: <UserCheck className="h-5 w-5" />, path: '/attendance', roles: ['officer'] },
+  { label: 'Leave Management', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-management', roles: ['officer'] },
   // Student menu items
   { label: 'My Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['student'] },
   { label: 'My Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['student'] },

@@ -31,13 +31,13 @@ import { toast } from 'sonner';
 import { getOfficerById } from '@/data/mockOfficerData';
 import { getOfficerTimetable as getOfficerTimetableData } from '@/data/mockOfficerTimetable';
 import type { OfficerTimetableSlot } from '@/types/officer';
-import { LeaveApplicationDialog } from '@/components/officer/LeaveApplicationDialog';
 import {
   getLeaveApplicationsByOfficer,
   getApprovedLeaveDates,
   getTodayLeaveDetails,
 } from '@/data/mockLeaveData';
 import type { LeaveApplication } from '@/types/attendance';
+import { getRoleBasePath } from '@/utils/roleHelpers';
 
 // Helper functions
 const getDayName = (date: Date) => {
@@ -97,6 +97,7 @@ const getActivityColor = (type: string) => {
 export default function OfficerDashboard() {
   const { user } = useAuth();
   const { tenantId } = useParams();
+  const navigate = useNavigate();
   const todayKey = format(new Date(), 'yyyy-MM-dd');
   
   // Attendance state
@@ -108,7 +109,6 @@ export default function OfficerDashboard() {
   const [elapsedTime, setElapsedTime] = useState<string>('0h 0m');
 
   // Leave state
-  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>([]);
   const [approvedLeaveDates, setApprovedLeaveDates] = useState<string[]>([]);
   const [isOnLeaveToday, setIsOnLeaveToday] = useState(false);
@@ -400,18 +400,7 @@ export default function OfficerDashboard() {
           {/* Daily Attendance Card with Leave Integration */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Daily Attendance</CardTitle>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsLeaveDialogOpen(true)}
-                  className="gap-2"
-                >
-                  <CalendarCheck className="h-4 w-4" />
-                  Apply Leave
-                </Button>
-              </div>
+              <CardTitle>Daily Attendance</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -705,15 +694,6 @@ export default function OfficerDashboard() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Leave Application Dialog */}
-      <LeaveApplicationDialog
-        open={isLeaveDialogOpen}
-        onOpenChange={setIsLeaveDialogOpen}
-        officerId={user?.id || 'off-001'}
-        officerName={user?.name || 'Officer'}
-        onLeaveApplied={handleLeaveApplied}
-      />
     </Layout>
   );
 }
