@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SchoolTeacher } from '@/types/teacher';
 import { GraduationCap, Clock } from 'lucide-react';
+import { TeacherDetailsDialog } from './TeacherDetailsDialog';
 
 interface TeacherSidebarProfileProps {
   teacher: SchoolTeacher;
@@ -10,6 +12,8 @@ interface TeacherSidebarProfileProps {
 }
 
 export function TeacherSidebarProfile({ teacher, collapsed }: TeacherSidebarProfileProps) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -35,21 +39,37 @@ export function TeacherSidebarProfile({ teacher, collapsed }: TeacherSidebarProf
   if (collapsed) {
     // Collapsed view - only show avatar
     return (
-      <div className="border-t border-meta-dark-lighter p-2">
-        <Avatar className="h-10 w-10 mx-auto">
-          <AvatarFallback className="bg-meta-accent text-meta-dark font-semibold">
-            {getInitials(teacher.name)}
-          </AvatarFallback>
-        </Avatar>
-      </div>
+      <>
+        <div className="border-t border-meta-dark-lighter p-2">
+          <Avatar 
+            className="h-10 w-10 mx-auto cursor-pointer hover:ring-2 hover:ring-meta-accent transition-all" 
+            onClick={() => setDialogOpen(true)}
+          >
+            <AvatarFallback className="bg-meta-accent text-meta-dark font-semibold">
+              {getInitials(teacher.name)}
+            </AvatarFallback>
+          </Avatar>
+        </div>
+        <TeacherDetailsDialog
+          teacher={teacher}
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          onEdit={() => {}}
+          onDelete={() => {}}
+        />
+      </>
     );
   }
 
   // Expanded view - full profile card
   return (
-    <div className="border-t border-meta-dark-lighter p-4">
-      <Card className="bg-meta-dark-lighter border-meta-dark-lighter hover:bg-meta-dark transition-colors">
-        <CardContent className="p-4 space-y-3">
+    <>
+      <div className="border-t border-meta-dark-lighter p-4">
+        <Card 
+          className="bg-meta-dark-lighter border-meta-dark-lighter hover:bg-meta-dark transition-colors cursor-pointer hover:shadow-lg" 
+          onClick={() => setDialogOpen(true)}
+        >
+          <CardContent className="p-4 space-y-3">
           {/* Header with Avatar and Name */}
           <div className="flex items-center gap-3">
             <Avatar className="h-12 w-12">
@@ -86,5 +106,13 @@ export function TeacherSidebarProfile({ teacher, collapsed }: TeacherSidebarProf
         </CardContent>
       </Card>
     </div>
+    <TeacherDetailsDialog
+      teacher={teacher}
+      open={dialogOpen}
+      onOpenChange={setDialogOpen}
+      onEdit={() => {}}
+      onDelete={() => {}}
+    />
+  </>
   );
 }
