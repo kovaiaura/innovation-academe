@@ -29,6 +29,7 @@ export interface Institution {
   contract_start_date: string;
   contract_expiry_date: string;
   contract_value: number;
+  mou_document_url?: string;
   created_at: string;
 }
 
@@ -81,6 +82,7 @@ const mockInstitutions: Institution[] = [
     contract_start_date: '2025-01-01',
     contract_expiry_date: '2025-12-31',
     contract_value: 500000,
+    mou_document_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     created_at: '2024-01-15'
   },
   {
@@ -110,6 +112,7 @@ const mockInstitutions: Institution[] = [
     contract_start_date: '2024-03-15',
     contract_expiry_date: '2026-03-15',
     contract_value: 1200000,
+    mou_document_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     created_at: '2024-02-01'
   },
   {
@@ -139,6 +142,7 @@ const mockInstitutions: Institution[] = [
     contract_start_date: '2024-07-01',
     contract_expiry_date: '2025-06-30',
     contract_value: 150000,
+    mou_document_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     created_at: '2024-06-15'
   }
 ];

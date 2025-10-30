@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Progress } from '@/components/ui/progress';
 import { Search, Plus, Building2, Upload, Calendar, FileText, AlertCircle, CheckCircle, Clock, DollarSign, Users, Shield, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
+import ViewMouDialog from '@/components/institution/ViewMouDialog';
 
 export default function InstitutionManagement() {
   const navigate = useNavigate();
@@ -26,6 +27,8 @@ export default function InstitutionManagement() {
   const [isRenewDialogOpen, setIsRenewDialogOpen] = useState(false);
   const [selectedInstitution, setSelectedInstitution] = useState<Institution | null>(null);
   const [activeTab, setActiveTab] = useState('list');
+  const [isMouDialogOpen, setIsMouDialogOpen] = useState(false);
+  const [selectedInstitutionForMou, setSelectedInstitutionForMou] = useState<Institution | null>(null);
 
   // Add institution form state
   const [formData, setFormData] = useState({
@@ -689,7 +692,16 @@ export default function InstitutionManagement() {
                             {status === 'active' && <Badge variant="default">Active</Badge>}
                           </TableCell>
                           <TableCell>
-                            <Button variant="outline" size="sm">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedInstitutionForMou(inst);
+                                setIsMouDialogOpen(true);
+                              }}
+                              disabled={!inst.mou_document_url}
+                            >
                               <FileText className="h-4 w-4 mr-2" />
                               View MoU
                             </Button>
@@ -703,6 +715,13 @@ export default function InstitutionManagement() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* View MoU Dialog */}
+        <ViewMouDialog 
+          open={isMouDialogOpen}
+          onOpenChange={setIsMouDialogOpen}
+          institution={selectedInstitutionForMou}
+        />
 
         {/* Renew License Dialog */}
         <Dialog open={isRenewDialogOpen} onOpenChange={setIsRenewDialogOpen}>
