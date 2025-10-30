@@ -289,6 +289,22 @@ export const mockTeachers: SchoolTeacher[] = [
     average_attendance: 96,
     last_active: '2024-01-14',
   },
+  {
+    id: '19',
+    name: 'Dr. Sarah Teacher',
+    email: 'teacher@college.edu',
+    phone: '+91 98765 43228',
+    subjects: ['Computer Science', 'Mathematics'],
+    classes_taught: ['Class 10A', 'Class 11A', 'Class 12A'],
+    experience_years: 10,
+    qualification: 'Ph.D., M.Sc., B.Ed',
+    employee_id: 'TCH019',
+    joining_date: '2014-06-15',
+    status: 'active',
+    total_students: 165,
+    average_attendance: 97,
+    last_active: '2024-01-15',
+  },
 ];
 
 // Mock timetable data for some teachers
