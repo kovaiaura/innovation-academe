@@ -167,16 +167,19 @@ export interface LeaveApplication {
   id: string;
   officer_id: string;
   officer_name: string;
+  institution_id?: string;
+  institution_name?: string;
   start_date: string; // "2025-10-30"
   end_date: string; // "2025-11-01"
   leave_type: LeaveType;
   reason: string;
   total_days: number;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   applied_at: string;
   reviewed_by?: string;
   reviewed_at?: string;
   rejection_reason?: string;
+  admin_comments?: string;
 }
 
 // Leave Balance

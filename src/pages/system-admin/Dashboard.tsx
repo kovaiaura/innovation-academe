@@ -1,12 +1,20 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Building2, Users, GraduationCap, Key, TrendingUp, AlertCircle, Phone, Package, Calendar } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Building2, Users, GraduationCap, Key, TrendingUp, AlertCircle, Phone, Package, Calendar, CalendarCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Layout } from '@/components/layout/Layout';
+import { getPendingLeaveCount } from '@/data/mockLeaveData';
 
 export default function SystemAdminDashboard() {
   const { user } = useAuth();
+  const [pendingLeaveCount, setPendingLeaveCount] = useState(0);
+
+  useEffect(() => {
+    setPendingLeaveCount(getPendingLeaveCount());
+  }, []);
 
   const stats = [
     {
@@ -41,6 +49,15 @@ export default function SystemAdminDashboard() {
       color: 'text-orange-500',
       bgColor: 'bg-orange-500/10',
     },
+    {
+      title: 'Pending Leave Approvals',
+      value: pendingLeaveCount.toString(),
+      icon: CalendarCheck,
+      description: 'Require your attention',
+      color: 'text-yellow-500',
+      bgColor: 'bg-yellow-500/10',
+      link: '/system-admin/leave-approvals',
+    },
   ];
 
   const recentTenants = [
@@ -72,10 +89,26 @@ export default function SystemAdminDashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           {stats.map((stat) => {
             const Icon = stat.icon;
-            return (
+            
+            return stat.link ? (
+              <Link key={stat.title} to={stat.link}>
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                    <div className={`${stat.bgColor} p-2 rounded-lg`}>
+                      <Icon className={`h-4 w-4 ${stat.color}`} />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stat.value}</div>
+                    <p className="text-xs text-muted-foreground">{stat.description}</p>
+                  </CardContent>
+                </Card>
+              </Link>
+            ) : (
               <Card key={stat.title}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
@@ -221,6 +254,17 @@ export default function SystemAdminDashboard() {
                 <Link to="/system-admin/institutional-calendar">
                   <Calendar className="h-6 w-6" />
                   Institutional Calendar
+                </Link>
+              </Button>
+              <Button variant="outline" className="h-24 flex-col gap-2 relative" asChild>
+                <Link to="/system-admin/leave-approvals">
+                  <CalendarCheck className="h-6 w-6" />
+                  Leave Approvals
+                  {pendingLeaveCount > 0 && (
+                    <Badge variant="destructive" className="absolute top-2 right-2">
+                      {pendingLeaveCount}
+                    </Badge>
+                  )}
                 </Link>
               </Button>
             </div>

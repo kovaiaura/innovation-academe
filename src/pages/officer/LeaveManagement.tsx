@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format, differenceInCalendarDays, isWeekend, addDays } from 'date-fns';
-import { CalendarCheck, Clock, TrendingUp, FileText, AlertCircle } from 'lucide-react';
+import { CalendarCheck, Clock, TrendingUp, FileText, AlertCircle, Eye, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +18,15 @@ import {
   getLeaveBalance,
   addLeaveApplication,
   getApprovedLeaveDates,
+  cancelLeaveApplication,
 } from '@/data/mockLeaveData';
+import { LeaveApprovalTimeline } from '@/components/officer/LeaveApprovalTimeline';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import type { LeaveApplication, LeaveBalance, LeaveType } from '@/types/attendance';
 import type { DateRange } from 'react-day-picker';
 
@@ -36,6 +44,10 @@ export default function LeaveManagement() {
 
   // Filter state
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  
+  // Details dialog state
+  const [selectedApplication, setSelectedApplication] = useState<LeaveApplication | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -161,6 +173,25 @@ export default function LeaveManagement() {
     }
   };
 
+  const handleViewDetails = (application: LeaveApplication) => {
+    setSelectedApplication(application);
+    setDetailsOpen(true);
+  };
+
+  const handleCancelApplication = (id: string) => {
+    if (user?.id) {
+      try {
+        cancelLeaveApplication(id, user.id);
+        const applications = getLeaveApplicationsByOfficer(user.id);
+        setLeaveApplications(applications);
+        toast.success('Leave application cancelled successfully');
+        setDetailsOpen(false);
+      } catch (error) {
+        toast.error('Failed to cancel leave application');
+      }
+    }
+  };
+
   const filteredApplications = leaveApplications.filter((app) => {
     if (statusFilter === 'all') return true;
     return app.status === statusFilter;
@@ -245,6 +276,10 @@ export default function LeaveManagement() {
             <TabsTrigger value="apply" className="gap-2">
               <CalendarCheck className="h-4 w-4" />
               Apply Leave
+            </TabsTrigger>
+            <TabsTrigger value="tracking" className="gap-2">
+              <Clock className="h-4 w-4" />
+              Approval Tracking
             </TabsTrigger>
             <TabsTrigger value="history" className="gap-2">
               <FileText className="h-4 w-4" />
@@ -351,6 +386,82 @@ export default function LeaveManagement() {
             </Card>
           </TabsContent>
 
+          {/* Approval Tracking Tab */}
+          <TabsContent value="tracking" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Approval Tracking</CardTitle>
+                <CardDescription>Track the status of your leave applications</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {leaveApplications.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">No leave applications yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {leaveApplications.map((application) => (
+                      <Card key={application.id} className="overflow-hidden">
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <CardTitle className="text-base">
+                                {format(new Date(application.start_date), 'PPP')} -{' '}
+                                {format(new Date(application.end_date), 'PPP')}
+                              </CardTitle>
+                              <CardDescription className="flex items-center gap-2 mt-1">
+                                <Badge variant="outline" className="capitalize">
+                                  {application.leave_type} Leave
+                                </Badge>
+                                <span>• {application.total_days} days</span>
+                              </CardDescription>
+                            </div>
+                            <Badge
+                              variant={
+                                application.status === 'approved'
+                                  ? 'default'
+                                  : application.status === 'pending'
+                                  ? 'secondary'
+                                  : 'destructive'
+                              }
+                              className="capitalize"
+                            >
+                              {application.status}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <LeaveApprovalTimeline application={application} />
+                          <div className="mt-4 flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewDetails(application)}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </Button>
+                            {application.status === 'pending' && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleCancelApplication(application.id)}
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Cancel Application
+                              </Button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Leave History Tab */}
           <TabsContent value="history" className="space-y-4">
             <Card>
@@ -440,6 +551,70 @@ export default function LeaveManagement() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Details Dialog */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Leave Application Details</DialogTitle>
+          </DialogHeader>
+          {selectedApplication && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="text-sm text-muted-foreground">Leave Type</p>
+                  <Badge variant="outline" className="capitalize mt-1">
+                    {selectedApplication.leave_type} Leave
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Days</p>
+                  <p className="font-medium mt-1">{selectedApplication.total_days} days</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-sm text-muted-foreground">Date Range</p>
+                  <p className="font-medium mt-1">
+                    {format(new Date(selectedApplication.start_date), 'PPP')} -{' '}
+                    {format(new Date(selectedApplication.end_date), 'PPP')}
+                  </p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-sm text-muted-foreground">Reason</p>
+                  <p className="mt-1">{selectedApplication.reason}</p>
+                </div>
+                {selectedApplication.rejection_reason && (
+                  <div className="col-span-2 p-3 bg-destructive/10 rounded-lg">
+                    <p className="text-sm text-muted-foreground">Rejection Reason</p>
+                    <p className="mt-1 text-destructive">{selectedApplication.rejection_reason}</p>
+                  </div>
+                )}
+                {selectedApplication.admin_comments && (
+                  <div className="col-span-2 p-3 bg-primary/10 rounded-lg">
+                    <p className="text-sm text-muted-foreground">Admin Comments</p>
+                    <p className="mt-1">{selectedApplication.admin_comments}</p>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-4">Approval Timeline</h4>
+                <LeaveApprovalTimeline application={selectedApplication} />
+              </div>
+
+              {selectedApplication.status === 'pending' && (
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="destructive"
+                    onClick={() => handleCancelApplication(selectedApplication.id)}
+                  >
+                    Cancel Application
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

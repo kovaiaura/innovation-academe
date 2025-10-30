@@ -66,6 +66,7 @@ import InstitutionalCalendar from "./pages/system-admin/InstitutionalCalendar";
 import InstitutionDetail from "./pages/system-admin/InstitutionDetail";
 import OfficerDetail from "./pages/system-admin/OfficerDetail";
 import ProjectManagement from "./pages/system-admin/ProjectManagement";
+import SystemAdminLeaveApprovals from "./pages/system-admin/LeaveApprovals";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -170,6 +171,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <SystemAdminOfficerAttendance />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/leave-approvals"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminLeaveApprovals />
                 </ProtectedRoute>
               }
             />

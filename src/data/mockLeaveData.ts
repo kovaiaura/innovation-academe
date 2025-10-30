@@ -124,3 +124,98 @@ export const getTodayLeaveDetails = (
     approvedApps.find((app) => date >= app.start_date && date <= app.end_date) || null
   );
 };
+
+// Global leave management functions for system admin
+export const getAllLeaveApplications = (): LeaveApplication[] => {
+  const stored = localStorage.getItem('all_leave_applications');
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch (e) {
+      console.error("Failed to parse all leave applications", e);
+    }
+  }
+  return mockLeaveApplications;
+};
+
+export const getAllPendingLeaveApplications = (): LeaveApplication[] => {
+  const allApps = getAllLeaveApplications();
+  return allApps.filter((app) => app.status === "pending").sort((a, b) => 
+    new Date(a.applied_at).getTime() - new Date(b.applied_at).getTime()
+  );
+};
+
+export const getPendingLeaveCount = (): number => {
+  return getAllPendingLeaveApplications().length;
+};
+
+export const getLeaveApplicationById = (id: string): LeaveApplication | null => {
+  const allApps = getAllLeaveApplications();
+  return allApps.find((app) => app.id === id) || null;
+};
+
+export const approveLeaveApplication = (
+  id: string,
+  reviewerName: string,
+  comments?: string
+): void => {
+  const allApps = getAllLeaveApplications();
+  const appIndex = allApps.findIndex((app) => app.id === id);
+  
+  if (appIndex !== -1) {
+    allApps[appIndex].status = "approved";
+    allApps[appIndex].reviewed_by = reviewerName;
+    allApps[appIndex].reviewed_at = new Date().toISOString();
+    allApps[appIndex].admin_comments = comments;
+    
+    // Save to global storage
+    localStorage.setItem('all_leave_applications', JSON.stringify(allApps));
+    
+    // Update officer-specific storage
+    const officerId = allApps[appIndex].officer_id;
+    const officerApps = getLeaveApplicationsByOfficer(officerId);
+    const officerAppIndex = officerApps.findIndex((app) => app.id === id);
+    if (officerAppIndex !== -1) {
+      officerApps[officerAppIndex] = allApps[appIndex];
+      localStorage.setItem(`leave_applications_${officerId}`, JSON.stringify(officerApps));
+    }
+  }
+};
+
+export const rejectLeaveApplication = (
+  id: string,
+  reviewerName: string,
+  rejectionReason: string
+): void => {
+  const allApps = getAllLeaveApplications();
+  const appIndex = allApps.findIndex((app) => app.id === id);
+  
+  if (appIndex !== -1) {
+    allApps[appIndex].status = "rejected";
+    allApps[appIndex].reviewed_by = reviewerName;
+    allApps[appIndex].reviewed_at = new Date().toISOString();
+    allApps[appIndex].rejection_reason = rejectionReason;
+    
+    // Save to global storage
+    localStorage.setItem('all_leave_applications', JSON.stringify(allApps));
+    
+    // Update officer-specific storage
+    const officerId = allApps[appIndex].officer_id;
+    const officerApps = getLeaveApplicationsByOfficer(officerId);
+    const officerAppIndex = officerApps.findIndex((app) => app.id === id);
+    if (officerAppIndex !== -1) {
+      officerApps[officerAppIndex] = allApps[appIndex];
+      localStorage.setItem(`leave_applications_${officerId}`, JSON.stringify(officerApps));
+    }
+  }
+};
+
+export const cancelLeaveApplication = (id: string, officerId: string): void => {
+  // Remove from officer-specific storage
+  const officerApps = getLeaveApplicationsByOfficer(officerId).filter((app) => app.id !== id);
+  localStorage.setItem(`leave_applications_${officerId}`, JSON.stringify(officerApps));
+  
+  // Remove from global storage
+  const allApps = getAllLeaveApplications().filter((app) => app.id !== id);
+  localStorage.setItem('all_leave_applications', JSON.stringify(allApps));
+};
