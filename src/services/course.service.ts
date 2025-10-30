@@ -3,6 +3,7 @@ import { ApiResponse } from '@/types';
 import {
   Course,
   CourseModule,
+  CourseSession,
   CourseContent,
   Assignment,
   AssignmentQuestion,
@@ -13,6 +14,7 @@ import {
   CreateCourseRequest,
   UpdateCourseRequest,
   CreateModuleRequest,
+  CreateSessionRequest,
   CourseAssignmentRequest
 } from '@/types/course';
 
@@ -76,9 +78,30 @@ export const courseService = {
     return response.data;
   },
 
+  // ========== SESSION MANAGEMENT ==========
+  async addSession(courseId: string, moduleId: string, data: CreateSessionRequest): Promise<ApiResponse<CourseSession>> {
+    const response = await api.post(`/system-admin/courses/${courseId}/modules/${moduleId}/sessions`, data);
+    return response.data;
+  },
+
+  async getSessions(courseId: string, moduleId: string): Promise<ApiResponse<CourseSession[]>> {
+    const response = await api.get(`/system-admin/courses/${courseId}/modules/${moduleId}/sessions`);
+    return response.data;
+  },
+
+  async updateSession(courseId: string, moduleId: string, sessionId: string, data: Partial<CreateSessionRequest>): Promise<ApiResponse<CourseSession>> {
+    const response = await api.put(`/system-admin/courses/${courseId}/modules/${moduleId}/sessions/${sessionId}`, data);
+    return response.data;
+  },
+
+  async deleteSession(courseId: string, moduleId: string, sessionId: string): Promise<ApiResponse<void>> {
+    const response = await api.delete(`/system-admin/courses/${courseId}/modules/${moduleId}/sessions/${sessionId}`);
+    return response.data;
+  },
+
   // ========== CONTENT MANAGEMENT ==========
-  async uploadContent(courseId: string, formData: FormData): Promise<ApiResponse<CourseContent>> {
-    const response = await api.post(`/system-admin/courses/${courseId}/content`, formData, {
+  async uploadContent(courseId: string, moduleId: string, sessionId: string, formData: FormData): Promise<ApiResponse<CourseContent>> {
+    const response = await api.post(`/system-admin/courses/${courseId}/modules/${moduleId}/sessions/${sessionId}/content`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data;

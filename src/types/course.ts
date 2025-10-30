@@ -37,11 +37,25 @@ export interface CourseModule {
   created_at: string;
 }
 
+// Course Sessions (logical content groupings within modules)
+export interface CourseSession {
+  id: string;
+  course_id: string;
+  module_id: string;
+  title: string;
+  description: string;
+  order: number;
+  duration_minutes?: number;
+  learning_objectives?: string[];
+  created_at: string;
+}
+
 // Course Content (Materials)
 export interface CourseContent {
   id: string;
   course_id: string;
   module_id: string;
+  session_id: string; // Link content to sessions
   title: string;
   type: ContentType;
   file_url?: string;
@@ -266,6 +280,14 @@ export interface CreateModuleRequest {
   title: string;
   description: string;
   order: number;
+}
+
+export interface CreateSessionRequest {
+  title: string;
+  description: string;
+  order: number;
+  duration_minutes?: number;
+  learning_objectives?: string[];
 }
 
 export interface CourseAssignmentRequest {

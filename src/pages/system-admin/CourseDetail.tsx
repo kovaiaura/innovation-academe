@@ -8,10 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ArrowLeft, Users, Clock, BarChart3, Plus, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { mockCourses, mockModules, mockContent, mockAssignments, mockQuizzes, mockCourseAnalytics, mockEnrollments } from '@/data/mockCourseData';
-import { Course, CourseModule, CourseContent } from '@/types/course';
+import { mockCourses, mockModules, mockSessions, mockContent, mockAssignments, mockQuizzes, mockCourseAnalytics, mockEnrollments } from '@/data/mockCourseData';
+import { Course, CourseModule, CourseSession, CourseContent } from '@/types/course';
 import { ContentItem } from '@/components/course/ContentItem';
 import { AddModuleDialog } from '@/components/course/AddModuleDialog';
+import { AddSessionDialog } from '@/components/course/AddSessionDialog';
 import { AddContentDialog } from '@/components/course/AddContentDialog';
 import { EditContentDialog } from '@/components/course/EditContentDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -21,6 +22,7 @@ export default function SystemAdminCourseDetail() {
   const navigate = useNavigate();
   const [course, setCourse] = useState<Course | null>(null);
   const [modules, setModules] = useState<CourseModule[]>([]);
+  const [sessions, setSessions] = useState<CourseSession[]>([]);
   const [content, setContent] = useState<CourseContent[]>([]);
   const [activeTab, setActiveTab] = useState('curriculum');
   const [isLoading, setIsLoading] = useState(true);
@@ -28,18 +30,23 @@ export default function SystemAdminCourseDetail() {
   // Dialog states
   const [isAddModuleOpen, setIsAddModuleOpen] = useState(false);
   const [isEditModuleOpen, setIsEditModuleOpen] = useState(false);
+  const [isAddSessionOpen, setIsAddSessionOpen] = useState(false);
+  const [isEditSessionOpen, setIsEditSessionOpen] = useState(false);
   const [isAddContentOpen, setIsAddContentOpen] = useState(false);
   const [isEditContentOpen, setIsEditContentOpen] = useState(false);
   const [isDeleteModuleOpen, setIsDeleteModuleOpen] = useState(false);
+  const [isDeleteSessionOpen, setIsDeleteSessionOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState<CourseModule | null>(null);
+  const [selectedSession, setSelectedSession] = useState<CourseSession | null>(null);
   const [selectedContent, setSelectedContent] = useState<CourseContent | null>(null);
 
   useEffect(() => {
     const fetchCourseData = async () => {
       setIsLoading(true);
       try {
-        const courseData = mockCourses.find(c => c.id === courseId);
+      const courseData = mockCourses.find(c => c.id === courseId);
         const modulesData = mockModules.filter(m => m.course_id === courseId);
+        const sessionsData = mockSessions.filter(s => s.course_id === courseId);
         const contentData = mockContent.filter(c => c.course_id === courseId);
         
         if (!courseData) {
@@ -50,6 +57,7 @@ export default function SystemAdminCourseDetail() {
 
         setCourse(courseData);
         setModules(modulesData.sort((a, b) => a.order - b.order));
+        setSessions(sessionsData.sort((a, b) => a.order - b.order));
         setContent(contentData);
       } catch (error) {
         toast.error('Failed to load course data');
@@ -60,6 +68,18 @@ export default function SystemAdminCourseDetail() {
     
     fetchCourseData();
   }, [courseId, navigate]);
+
+  const getModuleSessions = (moduleId: string) => {
+    return sessions
+      .filter(s => s.module_id === moduleId)
+      .sort((a, b) => a.order - b.order);
+  };
+
+  const getSessionContent = (sessionId: string) => {
+    return content
+      .filter(c => c.session_id === sessionId)
+      .sort((a, b) => a.order - b.order);
+  };
 
   const getModuleContent = (moduleId: string) => {
     return content
@@ -127,6 +147,68 @@ export default function SystemAdminCourseDetail() {
     setSelectedModule(null);
   };
 
+  // Session handlers
+  const handleAddSession = (module: CourseModule) => {
+    setSelectedModule(module);
+    setSelectedSession(null);
+    setIsAddSessionOpen(true);
+  };
+
+  const handleEditSession = (e: React.MouseEvent, session: CourseSession) => {
+    e.stopPropagation();
+    setSelectedSession(session);
+    setIsEditSessionOpen(true);
+  };
+
+  const handleDeleteSession = (e: React.MouseEvent, session: CourseSession) => {
+    e.stopPropagation();
+    setSelectedSession(session);
+    setIsDeleteSessionOpen(true);
+  };
+
+  const confirmDeleteSession = () => {
+    if (selectedSession) {
+      setSessions(sessions.filter(s => s.id !== selectedSession.id));
+      setContent(content.filter(c => c.session_id !== selectedSession.id));
+      toast.success('Session deleted successfully');
+      setIsDeleteSessionOpen(false);
+      setSelectedSession(null);
+    }
+  };
+
+  const handleSaveSession = (sessionData: Partial<CourseSession>) => {
+    if (selectedSession) {
+      // Edit mode
+      setSessions(sessions.map(s => s.id === selectedSession.id ? { ...s, ...sessionData } : s));
+      toast.success('Session updated successfully');
+    } else {
+      // Add mode
+      const moduleSessions = sessions.filter(s => s.module_id === selectedModule!.id);
+      const newSession: CourseSession = {
+        id: `session-${Date.now()}`,
+        course_id: courseId!,
+        module_id: selectedModule!.id,
+        title: sessionData.title!,
+        description: sessionData.description!,
+        order: moduleSessions.length + 1,
+        duration_minutes: sessionData.duration_minutes,
+        learning_objectives: sessionData.learning_objectives,
+        created_at: new Date().toISOString()
+      };
+      setSessions([...sessions, newSession]);
+      toast.success('Session added successfully');
+    }
+    setIsAddSessionOpen(false);
+    setIsEditSessionOpen(false);
+    setSelectedSession(null);
+  };
+
+  const handleAddContentToSession = (session: CourseSession) => {
+    setSelectedSession(session);
+    setSelectedModule(modules.find(m => m.id === session.module_id) || null);
+    setIsAddContentOpen(true);
+  };
+
   const handleSaveContent = (contentData: Partial<CourseContent>) => {
     if (selectedContent) {
       // Edit mode
@@ -134,10 +216,12 @@ export default function SystemAdminCourseDetail() {
       toast.success('Content updated successfully');
     } else {
       // Add mode
+      const sessionContent = content.filter(c => c.session_id === selectedSession!.id);
       const newContent: CourseContent = {
         id: `content-${Date.now()}`,
         course_id: courseId!,
         module_id: selectedModule!.id,
+        session_id: selectedSession!.id,
         title: contentData.title!,
         type: contentData.type!,
         file_url: contentData.file_url,
@@ -335,18 +419,10 @@ export default function SystemAdminCourseDetail() {
                           <h3 className="font-semibold text-lg">{module.title}</h3>
                         </div>
                         <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => handleEditModule(e, module)}
-                          >
+                          <Button variant="ghost" size="sm" onClick={(e) => handleEditModule(e, module)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => handleDeleteModule(e, module)}
-                          >
+                          <Button variant="ghost" size="sm" onClick={(e) => handleDeleteModule(e, module)}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -355,31 +431,80 @@ export default function SystemAdminCourseDetail() {
                     <AccordionContent className="pb-4">
                       <p className="text-muted-foreground mb-4">{module.description}</p>
                       
-                      <div className="space-y-2">
-                        {getModuleContent(module.id).length === 0 ? (
+                      {/* Sessions within module */}
+                      <div className="ml-4 space-y-3">
+                        {getModuleSessions(module.id).length === 0 ? (
                           <p className="text-sm text-muted-foreground italic py-4">
-                            No content added yet. Click below to add learning materials.
+                            No sessions yet. Click below to add sessions.
                           </p>
                         ) : (
-                          getModuleContent(module.id).map((contentItem) => (
-                            <ContentItem
-                              key={contentItem.id}
-                              content={contentItem}
-                              onEdit={handleEditContent}
-                              onDelete={handleDeleteContent}
-                            />
+                          getModuleSessions(module.id).map((session) => (
+                            <Card key={session.id} className="border-l-4 border-l-primary">
+                              <CardHeader>
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Badge variant="secondary">Session {session.order}</Badge>
+                                      {session.duration_minutes && (
+                                        <Badge variant="outline">{session.duration_minutes} min</Badge>
+                                      )}
+                                    </div>
+                                    <CardTitle className="text-base">{session.title}</CardTitle>
+                                    <CardDescription className="mt-1">{session.description}</CardDescription>
+                                    {session.learning_objectives && session.learning_objectives.length > 0 && (
+                                      <div className="mt-2">
+                                        <p className="text-xs font-semibold mb-1">Learning Objectives:</p>
+                                        <ul className="text-xs text-muted-foreground list-disc list-inside">
+                                          {session.learning_objectives.map((obj, idx) => (
+                                            <li key={idx}>{obj}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button variant="ghost" size="sm" onClick={(e) => handleEditSession(e, session)}>
+                                      <Edit className="h-3 w-3" />
+                                    </Button>
+                                    <Button variant="ghost" size="sm" onClick={(e) => handleDeleteSession(e, session)}>
+                                      <Trash2 className="h-3 w-3 text-destructive" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-2">
+                                  {getSessionContent(session.id).length === 0 ? (
+                                    <p className="text-sm text-muted-foreground italic">No content yet</p>
+                                  ) : (
+                                    getSessionContent(session.id).map((contentItem) => (
+                                      <ContentItem
+                                        key={contentItem.id}
+                                        content={contentItem}
+                                        onEdit={handleEditContent}
+                                        onDelete={handleDeleteContent}
+                                      />
+                                    ))
+                                  )}
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="mt-3"
+                                  onClick={() => handleAddContentToSession(session)}
+                                >
+                                  <Plus className="mr-2 h-3 w-3" />
+                                  Add Content
+                                </Button>
+                              </CardContent>
+                            </Card>
                           ))
                         )}
+                        <Button variant="outline" onClick={() => handleAddSession(module)}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Session to Module
+                        </Button>
                       </div>
-                      
-                      <Button
-                        variant="outline"
-                        className="mt-4"
-                        onClick={() => handleAddContent(module)}
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Content to this Module
-                      </Button>
                     </AccordionContent>
                   </AccordionItem>
                 ))}
@@ -498,11 +623,27 @@ export default function SystemAdminCourseDetail() {
           module={selectedModule}
         />
 
+        <AddSessionDialog
+          open={isAddSessionOpen}
+          onOpenChange={setIsAddSessionOpen}
+          onSave={handleSaveSession}
+          session={null}
+          moduleName={selectedModule?.title || ''}
+        />
+
+        <AddSessionDialog
+          open={isEditSessionOpen}
+          onOpenChange={setIsEditSessionOpen}
+          onSave={handleSaveSession}
+          session={selectedSession}
+          moduleName={selectedModule?.title || ''}
+        />
+
         <AddContentDialog
           open={isAddContentOpen}
           onOpenChange={setIsAddContentOpen}
           onSave={handleSaveContent}
-          moduleName={selectedModule?.title || ''}
+          sessionName={selectedSession?.title || ''}
         />
 
         <EditContentDialog
@@ -515,16 +656,32 @@ export default function SystemAdminCourseDetail() {
         <AlertDialog open={isDeleteModuleOpen} onOpenChange={setIsDeleteModuleOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Module?</AlertDialogTitle>
+              <AlertDialogTitle>Delete Module</AlertDialogTitle>
               <AlertDialogDescription>
-                This module contains {selectedModule ? getModuleContent(selectedModule.id).length : 0} content items. 
-                This action cannot be undone.
+                Are you sure you want to delete "{selectedModule?.title}"? All sessions and content will be deleted.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDeleteModule} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                Delete Module
+              <AlertDialogAction onClick={confirmDeleteModule} className="bg-destructive text-destructive-foreground">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={isDeleteSessionOpen} onOpenChange={setIsDeleteSessionOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Session</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{selectedSession?.title}"? All content in this session will be deleted.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteSession} className="bg-destructive text-destructive-foreground">
+                Delete
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

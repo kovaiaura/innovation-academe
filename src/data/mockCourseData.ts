@@ -1,6 +1,7 @@
 import { 
   Course, 
-  CourseModule, 
+  CourseModule,
+  CourseSession,
   CourseContent, 
   Assignment,
   AssignmentQuestion,
@@ -133,16 +134,36 @@ export const mockModules: CourseModule[] = [
   { id: 'mod-6', course_id: 'course-2', title: 'Database Management', description: 'SQL and MongoDB', order: 3, created_at: '2024-01-10T10:00:00Z' },
 ];
 
+// Mock Sessions
+export const mockSessions: CourseSession[] = [
+  // AI101 - Module 1 Sessions
+  { id: 'session-1', course_id: 'course-1', module_id: 'mod-1', title: 'Introduction to AI Concepts', description: 'Understanding basic AI terminology and concepts', order: 1, duration_minutes: 45, learning_objectives: ['Define artificial intelligence', 'Understand AI vs ML vs DL'], created_at: '2024-01-15T10:00:00Z' },
+  { id: 'session-2', course_id: 'course-1', module_id: 'mod-1', title: 'History of AI', description: 'Evolution of AI from early days to modern times', order: 2, duration_minutes: 30, learning_objectives: ['Trace AI development timeline', 'Identify key AI milestones'], created_at: '2024-01-15T10:00:00Z' },
+  
+  // AI101 - Module 2 Sessions
+  { id: 'session-3', course_id: 'course-1', module_id: 'mod-2', title: 'Supervised Learning', description: 'Learn about supervised machine learning algorithms', order: 1, duration_minutes: 60, learning_objectives: ['Understand supervised learning', 'Apply classification algorithms'], created_at: '2024-01-15T10:00:00Z' },
+  { id: 'session-4', course_id: 'course-1', module_id: 'mod-2', title: 'Unsupervised Learning', description: 'Explore clustering and dimensionality reduction', order: 2, duration_minutes: 50, learning_objectives: ['Master clustering techniques', 'Apply PCA'], created_at: '2024-01-15T10:00:00Z' },
+  
+  // WEB201 - Module 4 Sessions
+  { id: 'session-5', course_id: 'course-2', module_id: 'mod-4', title: 'React Basics', description: 'Introduction to React components and JSX', order: 1, duration_minutes: 90, learning_objectives: ['Create functional components', 'Understand JSX syntax'], created_at: '2024-01-10T10:00:00Z' },
+  { id: 'session-6', course_id: 'course-2', module_id: 'mod-4', title: 'State and Props', description: 'Managing component state and passing props', order: 2, duration_minutes: 75, learning_objectives: ['Use useState hook', 'Pass data via props'], created_at: '2024-01-10T10:00:00Z' },
+];
+
 // Mock Content
 export const mockContent: CourseContent[] = [
-  // AI101 Content
-  { id: 'content-1', course_id: 'course-1', module_id: 'mod-1', title: 'Introduction to AI - Lecture Slides', type: 'ppt', file_url: '/files/ai-intro.ppt', order: 1, views_count: 245, file_size_mb: 5.2, created_at: '2024-01-15T10:00:00Z' },
-  { id: 'content-2', course_id: 'course-1', module_id: 'mod-1', title: 'History of AI', type: 'youtube', youtube_url: 'https://www.youtube.com/watch?v=ad79nYk2keg', duration_minutes: 15, order: 2, views_count: 198, created_at: '2024-01-15T10:00:00Z' },
-  { id: 'content-3', course_id: 'course-1', module_id: 'mod-2', title: 'ML Algorithms Guide', type: 'pdf', file_url: '/files/ml-guide.pdf', order: 1, views_count: 167, file_size_mb: 3.8, created_at: '2024-01-15T10:00:00Z' },
+  // AI101 - Session 1 Content
+  { id: 'content-1', course_id: 'course-1', module_id: 'mod-1', session_id: 'session-1', title: 'Introduction to AI - Lecture Slides', type: 'ppt', file_url: '/files/ai-intro.ppt', order: 1, views_count: 245, file_size_mb: 5.2, created_at: '2024-01-15T10:00:00Z' },
+  { id: 'content-2', course_id: 'course-1', module_id: 'mod-1', session_id: 'session-1', title: 'AI Fundamentals Video', type: 'youtube', youtube_url: 'https://www.youtube.com/watch?v=ad79nYk2keg', duration_minutes: 20, order: 2, views_count: 198, created_at: '2024-01-15T10:00:00Z' },
   
-  // WEB201 Content
-  { id: 'content-4', course_id: 'course-2', module_id: 'mod-4', title: 'React Tutorial', type: 'youtube', youtube_url: 'https://www.youtube.com/watch?v=SqcY0GlETPk', duration_minutes: 45, order: 1, views_count: 312, created_at: '2024-01-10T10:00:00Z' },
-  { id: 'content-5', course_id: 'course-2', module_id: 'mod-4', title: 'React Best Practices', type: 'pdf', file_url: '/files/react-best-practices.pdf', order: 2, views_count: 278, file_size_mb: 2.1, created_at: '2024-01-10T10:00:00Z' },
+  // AI101 - Session 2 Content
+  { id: 'content-3', course_id: 'course-1', module_id: 'mod-1', session_id: 'session-2', title: 'History of AI', type: 'youtube', youtube_url: 'https://www.youtube.com/watch?v=ad79nYk2keg', duration_minutes: 15, order: 1, views_count: 198, created_at: '2024-01-15T10:00:00Z' },
+  
+  // AI101 - Session 3 Content
+  { id: 'content-4', course_id: 'course-1', module_id: 'mod-2', session_id: 'session-3', title: 'ML Algorithms Guide', type: 'pdf', file_url: '/files/ml-guide.pdf', order: 1, views_count: 167, file_size_mb: 3.8, created_at: '2024-01-15T10:00:00Z' },
+  
+  // WEB201 - Session 5 Content
+  { id: 'content-5', course_id: 'course-2', module_id: 'mod-4', session_id: 'session-5', title: 'React Tutorial', type: 'youtube', youtube_url: 'https://www.youtube.com/watch?v=SqcY0GlETPk', duration_minutes: 45, order: 1, views_count: 312, created_at: '2024-01-10T10:00:00Z' },
+  { id: 'content-6', course_id: 'course-2', module_id: 'mod-4', session_id: 'session-5', title: 'React Best Practices', type: 'pdf', file_url: '/files/react-best-practices.pdf', order: 2, views_count: 278, file_size_mb: 2.1, created_at: '2024-01-10T10:00:00Z' },
 ];
 
 // Mock Assignments

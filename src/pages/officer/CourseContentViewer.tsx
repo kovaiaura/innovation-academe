@@ -52,6 +52,7 @@ export default function CourseContentViewer() {
         const sessionCompletions: ContentCompletion[] = session.content_completed.map(contentId => ({
           content_id: contentId,
           module_id: session.current_module_id,
+          session_id: '', // Session context - no specific session
           course_id: courseId!,
           officer_id: session.officer_id,
           completed: true,
@@ -135,6 +136,7 @@ export default function CourseContentViewer() {
       const newCompletion: ContentCompletion = {
         content_id: contentId,
         module_id: moduleId,
+        session_id: '', // Will be updated with actual session when available
         course_id: courseId!,
         officer_id: officerId,
         completed: true,
@@ -213,6 +215,7 @@ export default function CourseContentViewer() {
         total_content: moduleContent.length,
         completed_content: completed,
         percentage: moduleContent.length > 0 ? (completed / moduleContent.length) * 100 : 0,
+        sessions: [] // Empty sessions array for now
       };
     });
 

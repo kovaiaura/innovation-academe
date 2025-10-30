@@ -12,10 +12,10 @@ interface AddContentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (content: any) => void;
-  moduleName: string;
+  sessionName: string;
 }
 
-export function AddContentDialog({ open, onOpenChange, onSave, moduleName }: AddContentDialogProps) {
+export function AddContentDialog({ open, onOpenChange, onSave, sessionName }: AddContentDialogProps) {
   const [contentType, setContentType] = useState<ContentType>('pdf');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -123,8 +123,8 @@ export function AddContentDialog({ open, onOpenChange, onSave, moduleName }: Add
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add Content to {moduleName}</DialogTitle>
-          <DialogDescription>Upload files or add links to course materials</DialogDescription>
+          <DialogTitle>Add Content to {sessionName}</DialogTitle>
+          <DialogDescription>Upload files or add links to session materials</DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
