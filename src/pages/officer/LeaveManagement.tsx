@@ -45,6 +45,9 @@ export default function LeaveManagement() {
   // Filter state
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   
+  // Tab state
+  const [activeTab, setActiveTab] = useState('apply');
+  
   // Details dialog state
   const [selectedApplication, setSelectedApplication] = useState<LeaveApplication | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -271,7 +274,7 @@ export default function LeaveManagement() {
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="apply" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="apply" className="gap-2">
               <CalendarCheck className="h-4 w-4" />
@@ -395,9 +398,18 @@ export default function LeaveManagement() {
               </CardHeader>
               <CardContent>
                 {leaveApplications.length === 0 ? (
-                  <div className="text-center py-12">
-                    <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">No leave applications yet</p>
+                  <div className="text-center py-12 max-w-md mx-auto">
+                    <div className="bg-muted/50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <CalendarCheck className="h-10 w-10 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2">No Leave Applications Yet</h3>
+                    <p className="text-muted-foreground mb-6">
+                      You haven't submitted any leave applications. Once you apply for leave, you'll be able to track the approval status here.
+                    </p>
+                    <Button onClick={() => setActiveTab('apply')}>
+                      <CalendarCheck className="h-4 w-4 mr-2" />
+                      Apply for Leave
+                    </Button>
                   </div>
                 ) : (
                   <div className="space-y-4">
