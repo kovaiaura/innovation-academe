@@ -59,7 +59,7 @@ export default function Login() {
     >
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full overflow-hidden" style={{ backgroundColor: '#2d437f' }}>
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full overflow-hidden" style={{ backgroundColor: '#051c2d' }}>
             <img src={logoImage} alt="CR Logo" className="h-full w-full object-contain p-2" />
           </div>
           <CardTitle className="text-2xl font-bold">Meta-INNOVA LMS</CardTitle>
