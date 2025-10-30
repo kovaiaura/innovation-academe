@@ -292,6 +292,11 @@ export const mockTeachers: SchoolTeacher[] = [
 ];
 
 // Mock timetable data for some teachers
+// Helper function to get teacher by email
+export function getTeacherByEmail(email: string): SchoolTeacher | undefined {
+  return mockTeachers.find(teacher => teacher.email === email);
+}
+
 export const mockTimetables: TeacherTimetable[] = [
   {
     teacher_id: '1',

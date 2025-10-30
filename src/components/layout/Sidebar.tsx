@@ -15,6 +15,9 @@ import { UserRole } from '@/types';
 import { OfficerSidebarProfile } from './OfficerSidebarProfile';
 import { getOfficerByEmail } from '@/data/mockOfficerData';
 import { OfficerDetails } from '@/services/systemadmin.service';
+import { TeacherSidebarProfile } from '@/components/teacher/TeacherSidebarProfile';
+import { getTeacherByEmail } from '@/data/mockTeacherData';
+import { SchoolTeacher } from '@/types/teacher';
 
 interface MenuItem {
   label: string;
@@ -88,12 +91,19 @@ export function Sidebar() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [officerProfile, setOfficerProfile] = useState<OfficerDetails | null>(null);
+  const [teacherProfile, setTeacherProfile] = useState<SchoolTeacher | null>(null);
 
   useEffect(() => {
     // Fetch officer profile if user is an officer
     if (user?.role === 'officer' && user?.email) {
       const profile = getOfficerByEmail(user.email);
       setOfficerProfile(profile || null);
+    }
+    
+    // Fetch teacher profile if user is a teacher
+    if (user?.role === 'teacher' && user?.email) {
+      const profile = getTeacherByEmail(user.email);
+      setTeacherProfile(profile || null);
     }
   }, [user]);
 
@@ -213,8 +223,10 @@ export function Sidebar() {
       <div className="border-t border-meta-dark-lighter">
         {user?.role === 'officer' && officerProfile ? (
           <OfficerSidebarProfile officer={officerProfile} collapsed={collapsed} />
+        ) : user?.role === 'teacher' && teacherProfile ? (
+          <TeacherSidebarProfile teacher={teacherProfile} collapsed={collapsed} />
         ) : (
-          // Default user section for non-officers
+          // Default user section for other roles
           <div className="p-4">
             {!collapsed && user && (
               <div className="mb-3">
