@@ -191,4 +191,44 @@ export const institutionService = {
     });
     return response.data;
   },
+
+  // ========== CLASS MANAGEMENT ==========
+  async getInstitutionClasses(institutionId: string): Promise<ApiResponse<any[]>> {
+    const response = await api.get(`/system-admin/institutions/${institutionId}/classes`);
+    return response.data;
+  },
+
+  async createClass(institutionId: string, classData: any): Promise<ApiResponse<any>> {
+    const response = await api.post(`/system-admin/institutions/${institutionId}/classes`, classData);
+    return response.data;
+  },
+
+  async updateClass(institutionId: string, classId: string, classData: any): Promise<ApiResponse<any>> {
+    const response = await api.put(`/system-admin/institutions/${institutionId}/classes/${classId}`, classData);
+    return response.data;
+  },
+
+  async deleteClass(institutionId: string, classId: string): Promise<ApiResponse<void>> {
+    const response = await api.delete(`/system-admin/institutions/${institutionId}/classes/${classId}`);
+    return response.data;
+  },
+
+  async archiveClass(institutionId: string, classId: string): Promise<ApiResponse<any>> {
+    const response = await api.patch(`/system-admin/institutions/${institutionId}/classes/${classId}/archive`);
+    return response.data;
+  },
+
+  async enrollStudentInClass(institutionId: string, classId: string, student: Partial<Student>): Promise<ApiResponse<Student>> {
+    const response = await api.post(`/system-admin/institutions/${institutionId}/classes/${classId}/students`, student);
+    return response.data;
+  },
+
+  async bulkUploadStudentsToClass(institutionId: string, classId: string, formData: FormData): Promise<ApiResponse<any>> {
+    const response = await api.post(
+      `/system-admin/institutions/${institutionId}/classes/${classId}/students/bulk`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
 };

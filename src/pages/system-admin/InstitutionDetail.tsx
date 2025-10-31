@@ -4,16 +4,17 @@ import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
-import { ArrowLeft, Users, GraduationCap, Building2, Mail, Phone, Calendar, MapPin, Download, Upload, Pencil } from 'lucide-react';
+import { ArrowLeft, Users, GraduationCap, Building2, Mail, Phone, Calendar, MapPin, Download, Upload, Pencil, Plus, Edit, Trash2 } from 'lucide-react';
 import { ClassStudentTable } from '@/components/institution/ClassStudentTable';
 import { StudentEditDialog } from '@/components/institution/StudentEditDialog';
 import { EditInstitutionDialog } from '@/components/institution/EditInstitutionDialog';
+import { AddClassDialog } from '@/components/institution/AddClassDialog';
 import { BulkUploadDialog, BulkUploadResult } from '@/components/student/BulkUploadDialog';
-import { Student } from '@/types/student';
-import { getStudentsByInstitution, getStudentsByClass } from '@/data/mockStudentData';
+import { Student, InstitutionClass } from '@/types/student';
+import { getStudentsByInstitution } from '@/data/mockStudentData';
+import { getClassesByInstitution } from '@/data/mockClassData';
 import { calculateClassStatistics } from '@/utils/studentHelpers';
 import { generateTemplate } from '@/utils/csvParser';
 import { toast } from 'sonner';
@@ -23,13 +24,18 @@ export default function InstitutionDetail() {
   const { institutionId } = useParams();
   const navigate = useNavigate();
   const { institutions, updateInstitution } = useInstitutionData();
-  const [selectedClass, setSelectedClass] = useState('Class 1');
+  const [institutionClasses, setInstitutionClasses] = useState<InstitutionClass[]>([]);
+  const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [classStudents, setClassStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isEditInstitutionOpen, setIsEditInstitutionOpen] = useState(false);
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+  const [isAddClassOpen, setIsAddClassOpen] = useState(false);
+  const [isEditClassOpen, setIsEditClassOpen] = useState(false);
+  const [selectedClassForEdit, setSelectedClassForEdit] = useState<InstitutionClass | null>(null);
+  const [selectedClassForUpload, setSelectedClassForUpload] = useState<InstitutionClass | null>(null);
 
   const institution = institutions.find(inst => inst.id === institutionId);
 
@@ -38,10 +44,21 @@ export default function InstitutionDetail() {
       const allStudents = getStudentsByInstitution(institutionId);
       setStudents(allStudents);
       
-      const filtered = getStudentsByClass(institutionId, selectedClass);
+      const classes = getClassesByInstitution(institutionId);
+      setInstitutionClasses(classes);
+      
+      if (classes.length > 0 && !selectedClass) {
+        setSelectedClass(classes[0].id);
+      }
+    }
+  }, [institutionId]);
+
+  useEffect(() => {
+    if (selectedClass) {
+      const filtered = students.filter(s => s.class_id === selectedClass);
       setClassStudents(filtered);
     }
-  }, [institutionId, selectedClass]);
+  }, [selectedClass, students]);
 
   if (!institution) {
     return (
@@ -58,8 +75,49 @@ export default function InstitutionDetail() {
     );
   }
 
+  const selectedClassData = institutionClasses.find(c => c.id === selectedClass);
   const classStats = calculateClassStatistics(classStudents);
-  const classes = Array.from({ length: 12 }, (_, i) => `Class ${i + 1}`);
+
+  const handleAddClass = (classData: Partial<InstitutionClass>) => {
+    const newClass: InstitutionClass = {
+      ...classData,
+      id: `class-${Date.now()}`,
+      institution_id: institutionId!,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    } as InstitutionClass;
+    
+    setInstitutionClasses([...institutionClasses, newClass]);
+    setSelectedClass(newClass.id);
+    toast.success(`Class "${classData.class_name}" created successfully`);
+  };
+
+  const handleEditClass = (classData: Partial<InstitutionClass>) => {
+    const updated = institutionClasses.map(c => 
+      c.id === selectedClassForEdit?.id ? { ...c, ...classData, updated_at: new Date().toISOString() } : c
+    );
+    setInstitutionClasses(updated);
+    setSelectedClassForEdit(null);
+    toast.success('Class updated successfully');
+  };
+
+  const handleDeleteClass = (classId: string) => {
+    const classToDelete = institutionClasses.find(c => c.id === classId);
+    const studentsInClass = students.filter(s => s.class_id === classId).length;
+    
+    if (studentsInClass > 0) {
+      toast.error(`Cannot delete class with ${studentsInClass} students. Please move or delete students first.`);
+      return;
+    }
+    
+    if (window.confirm(`Delete class "${classToDelete?.class_name}"? This action cannot be undone.`)) {
+      setInstitutionClasses(institutionClasses.filter(c => c.id !== classId));
+      if (selectedClass === classId) {
+        setSelectedClass(institutionClasses[0]?.id || null);
+      }
+      toast.success('Class deleted successfully');
+    }
+  };
 
   const handleEditStudent = (student: Student) => {
     setSelectedStudent(student);
@@ -86,13 +144,21 @@ export default function InstitutionDetail() {
       toast.warning(`${result.failed} students failed to import. Check logs.`);
     }
     setIsBulkUploadOpen(false);
-    // Refresh student data
+    setSelectedClassForUpload(null);
+    
     if (institutionId) {
       const allStudents = getStudentsByInstitution(institutionId);
       setStudents(allStudents);
-      const filtered = getStudentsByClass(institutionId, selectedClass);
-      setClassStudents(filtered);
+      if (selectedClass) {
+        const filtered = allStudents.filter(s => s.class_id === selectedClass);
+        setClassStudents(filtered);
+      }
     }
+  };
+
+  const handleBulkUploadForClass = (classItem: InstitutionClass) => {
+    setSelectedClassForUpload(classItem);
+    setIsBulkUploadOpen(true);
   };
 
   const handleDownloadTemplate = () => {
@@ -201,8 +267,13 @@ export default function InstitutionDetail() {
                   <Building2 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">12</div>
-                  <p className="text-xs text-muted-foreground">Class 1 - 12</p>
+                  <div className="text-2xl font-bold">{institutionClasses.length}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {institutionClasses.length === 0 
+                      ? 'No classes created' 
+                      : `${institutionClasses.length} active class${institutionClasses.length !== 1 ? 'es' : ''}`
+                    }
+                  </p>
                 </CardContent>
               </Card>
               <Card>
@@ -279,87 +350,152 @@ export default function InstitutionDetail() {
           <TabsContent value="students" className="space-y-6">
             <Card>
               <CardHeader>
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Students by Class</CardTitle>
-                    <CardDescription>View and manage students organized by class</CardDescription>
+                    <CardTitle>Class Management</CardTitle>
+                    <CardDescription>Manage classes and their students</CardDescription>
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={handleDownloadTemplate}>
-                      <Download className="h-4 w-4 mr-2" />
-                      Download Template
-                    </Button>
-                    <Button variant="outline" onClick={() => setIsBulkUploadOpen(true)}>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Bulk Upload Students
-                    </Button>
-                    <Select value={selectedClass} onValueChange={setSelectedClass}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {classes.map(className => (
-                          <SelectItem key={className} value={className}>
-                            {className}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <Button onClick={() => setIsAddClassOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Class
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                {/* Class Statistics */}
-                <div className="grid gap-4 md:grid-cols-5 mb-6">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{classStats.total}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Boys</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-blue-600">{classStats.boys}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Girls</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-pink-600">{classStats.girls}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Active</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-green-600">{classStats.active}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Sections</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{classStats.sections.join(', ')}</div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Student Table */}
-                <ClassStudentTable
-                  students={classStudents}
-                  onEditStudent={handleEditStudent}
-                  institutionCode={institution.code}
-                  className={selectedClass}
-                />
+                {institutionClasses.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Building2 className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No Classes Created</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Get started by creating your first class
+                    </p>
+                    <Button onClick={() => setIsAddClassOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Your First Class
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {institutionClasses.map((classItem) => {
+                      const classStudentCount = students.filter(s => s.class_id === classItem.id).length;
+                      const isSelected = selectedClass === classItem.id;
+                      
+                      return (
+                        <Card 
+                          key={classItem.id} 
+                          className={isSelected ? 'border-primary shadow-sm' : ''}
+                        >
+                          <CardHeader 
+                            className="cursor-pointer hover:bg-muted/50 transition-colors" 
+                            onClick={() => setSelectedClass(classItem.id)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3">
+                                  <CardTitle className="text-lg">{classItem.class_name}</CardTitle>
+                                  <Badge variant="outline">{classItem.academic_year}</Badge>
+                                </div>
+                                <CardDescription className="mt-1">
+                                  {classStudentCount} student{classStudentCount !== 1 ? 's' : ''}
+                                  {classItem.capacity && ` / ${classItem.capacity} capacity`}
+                                  {classItem.room_number && ` • ${classItem.room_number}`}
+                                </CardDescription>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedClassForEdit(classItem);
+                                    setIsEditClassOpen(true);
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteClass(classItem.id);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          
+                          {isSelected && (
+                            <CardContent className="pt-0">
+                              <div className="space-y-4">
+                                {/* Action Buttons */}
+                                <div className="flex gap-2 pt-4 border-t">
+                                  <Button 
+                                    variant="outline" 
+                                    onClick={() => handleBulkUploadForClass(classItem)}
+                                  >
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    Bulk Upload Students
+                                  </Button>
+                                  <Button variant="outline" onClick={handleDownloadTemplate}>
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Download Template
+                                  </Button>
+                                </div>
+                                
+                                {/* Class Statistics */}
+                                <div className="grid gap-4 md:grid-cols-4">
+                                  <Card>
+                                    <CardHeader className="pb-2">
+                                      <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                      <div className="text-2xl font-bold">{classStats.total}</div>
+                                    </CardContent>
+                                  </Card>
+                                  <Card>
+                                    <CardHeader className="pb-2">
+                                      <CardTitle className="text-sm font-medium">Boys</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                      <div className="text-2xl font-bold text-blue-600">{classStats.boys}</div>
+                                    </CardContent>
+                                  </Card>
+                                  <Card>
+                                    <CardHeader className="pb-2">
+                                      <CardTitle className="text-sm font-medium">Girls</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                      <div className="text-2xl font-bold text-pink-600">{classStats.girls}</div>
+                                    </CardContent>
+                                  </Card>
+                                  <Card>
+                                    <CardHeader className="pb-2">
+                                      <CardTitle className="text-sm font-medium">Active</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                      <div className="text-2xl font-bold text-green-600">{classStats.active}</div>
+                                    </CardContent>
+                                  </Card>
+                                </div>
+                                
+                                {/* Student Table */}
+                                <ClassStudentTable
+                                  students={classStudents}
+                                  onEditStudent={handleEditStudent}
+                                  institutionCode={institution.code}
+                                  className={classItem.class_name}
+                                />
+                              </div>
+                            </CardContent>
+                          )}
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -386,7 +522,26 @@ export default function InstitutionDetail() {
           isOpen={isBulkUploadOpen}
           onOpenChange={setIsBulkUploadOpen}
           institutionId={institutionId || '1'}
+          classId={selectedClassForUpload?.id}
+          className={selectedClassForUpload?.class_name}
           onUploadComplete={handleBulkUploadComplete}
+        />
+
+        {/* Add Class Dialog */}
+        <AddClassDialog
+          open={isAddClassOpen}
+          onOpenChange={setIsAddClassOpen}
+          onSave={handleAddClass}
+          institutionId={institutionId || ''}
+        />
+
+        {/* Edit Class Dialog */}
+        <AddClassDialog
+          open={isEditClassOpen}
+          onOpenChange={setIsEditClassOpen}
+          onSave={handleEditClass}
+          existingClass={selectedClassForEdit}
+          institutionId={institutionId || ''}
         />
       </div>
     </Layout>

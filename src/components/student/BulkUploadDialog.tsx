@@ -20,6 +20,8 @@ interface BulkUploadDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   institutionId: string;
+  classId?: string;
+  className?: string;
   onUploadComplete: (result: BulkUploadResult) => void;
 }
 
@@ -37,7 +39,7 @@ interface ValidatedRow extends ParsedRow {
   validation: ValidationResult;
 }
 
-export function BulkUploadDialog({ isOpen, onOpenChange, institutionId, onUploadComplete }: BulkUploadDialogProps) {
+export function BulkUploadDialog({ isOpen, onOpenChange, institutionId, classId, className, onUploadComplete }: BulkUploadDialogProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<ValidatedRow[]>([]);
@@ -209,7 +211,10 @@ export function BulkUploadDialog({ isOpen, onOpenChange, institutionId, onUpload
         <DialogHeader>
           <DialogTitle>Bulk Upload Students - Step {currentStep} of 3</DialogTitle>
           <DialogDescription>
-            {stepDescriptions[currentStep as keyof typeof stepDescriptions]}
+            {className 
+              ? `Upload student data for ${className}`
+              : stepDescriptions[currentStep as keyof typeof stepDescriptions]
+            }
           </DialogDescription>
         </DialogHeader>
 
