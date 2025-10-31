@@ -8,6 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Student } from "@/types/student";
 import { generateRollNumber, generateAdmissionNumber, generateStudentId, validatePhoneNumber } from "@/utils/studentHelpers";
+import { getClassesByInstitution } from "@/data/mockClassData";
 import { useState, useEffect } from "react";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
@@ -186,7 +187,7 @@ export function AddEditStudentDialog({
     onOpenChange(false);
   };
 
-  const classes = Array.from({ length: 12 }, (_, i) => `Class ${i + 1}`);
+  const institutionClasses = getClassesByInstitution(institutionId);
   const sections = ['A', 'B', 'C', 'D', 'E'];
   const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 
@@ -282,13 +283,21 @@ export function AddEditStudentDialog({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="class">Class *</Label>
-                <Select value={formData.class} onValueChange={(value) => setFormData({ ...formData, class: value })}>
+                <Select 
+                  value={formData.class} 
+                  onValueChange={(value) => {
+                    setFormData({ 
+                      ...formData, 
+                      class: value
+                    });
+                  }}
+                >
                   <SelectTrigger className={errors.class ? 'border-destructive' : ''}>
                     <SelectValue placeholder="Select class" />
                   </SelectTrigger>
                   <SelectContent>
-                    {classes.map(cls => (
-                      <SelectItem key={cls} value={cls}>{cls}</SelectItem>
+                    {institutionClasses.map(cls => (
+                      <SelectItem key={cls.id} value={cls.class_name}>{cls.class_name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

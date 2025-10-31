@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Search, UserCheck, Mail, BookOpen, Users, Award, Phone, Plus } from "lucide-react";
 import { useState } from "react";
+import { useParams } from "react-router-dom";
 import {
   Select,
   SelectContent,
@@ -22,6 +23,7 @@ import { TimetableManagementTab } from "@/components/teacher/TimetableManagement
 import { toast } from "sonner";
 
 const Teachers = () => {
+  const { tenantId } = useParams();
   const [teachers, setTeachers] = useState(mockTeachers);
   const [timetables, setTimetables] = useState<TeacherTimetable[]>(mockTimetables);
   const [searchQuery, setSearchQuery] = useState("");
@@ -371,6 +373,7 @@ const Teachers = () => {
           onSave={handleAddTeacher}
           mode="add"
           nextEmployeeId={nextEmployeeId}
+          institutionId={tenantId}
         />
 
         <AddEditTeacherDialog
@@ -379,6 +382,7 @@ const Teachers = () => {
           onOpenChange={setEditDialogOpen}
           onSave={handleEditTeacher}
           mode="edit"
+          institutionId={tenantId}
         />
 
         <DeleteTeacherDialog

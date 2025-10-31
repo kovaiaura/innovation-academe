@@ -16,11 +16,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SchoolTeacher, SCHOOL_SUBJECTS, CLASS_LEVELS } from "@/types/teacher";
+import { getClassesByInstitution } from "@/data/mockClassData";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
+import { useParams } from "react-router-dom";
 
 interface AddEditTeacherDialogProps {
   teacher?: SchoolTeacher | null;
@@ -29,12 +31,8 @@ interface AddEditTeacherDialogProps {
   onSave: (teacher: Omit<SchoolTeacher, 'id'> & { id?: string }) => void;
   mode: 'add' | 'edit';
   nextEmployeeId?: string;
+  institutionId?: string;
 }
-
-// Generate class options (1A-12D)
-const CLASS_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1).flatMap(classNum =>
-  ['A', 'B', 'C', 'D'].map(section => `Class ${classNum}${section}`)
-);
 
 const QUALIFICATIONS = [
   'B.Ed',
@@ -58,7 +56,11 @@ export function AddEditTeacherDialog({
   onSave,
   mode,
   nextEmployeeId,
+  institutionId,
 }: AddEditTeacherDialogProps) {
+  const { tenantId } = useParams();
+  const effectiveInstitutionId = institutionId || tenantId || '1';
+  const institutionClasses = getClassesByInstitution(effectiveInstitutionId);
   const [formData, setFormData] = useState<{
     name: string;
     email: string;
@@ -330,9 +332,9 @@ export function AddEditTeacherDialog({
                     <SelectValue placeholder="Select class" />
                   </SelectTrigger>
                   <SelectContent>
-                    {CLASS_OPTIONS.map((className) => (
-                      <SelectItem key={className} value={className}>
-                        {className}
+                    {institutionClasses.map((cls) => (
+                      <SelectItem key={cls.id} value={cls.class_name}>
+                        {cls.class_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
