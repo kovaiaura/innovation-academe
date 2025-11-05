@@ -39,7 +39,7 @@ const menuItems: MenuItem[] = [
   // System Admin menu items - Business operations
   { label: 'Institution Management', icon: <Building2 className="h-5 w-5" />, path: '/institutions', roles: ['system_admin'] },
   { label: 'Course Management', icon: <BookOpen className="h-5 w-5" />, path: '/course-management', roles: ['system_admin'] },
-  { label: 'Assessments', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['system_admin'] },
+  { label: 'Assessment Management', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['system_admin'] },
   { label: 'Event Management', icon: <Trophy className="h-5 w-5" />, path: '/event-management', roles: ['system_admin'] },
   // Officers Management
   { label: 'Officer Management', icon: <Users className="h-5 w-5" />, path: '/officers', roles: ['system_admin'] },
