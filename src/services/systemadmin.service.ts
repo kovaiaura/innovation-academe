@@ -175,42 +175,6 @@ export interface OfficerAssignment {
   status: 'active' | 'inactive';
 }
 
-// CRM Interfaces
-export interface Contact {
-  id: string;
-  institution_id: string;
-  institution_name: string;
-  name: string;
-  designation: string;
-  email: string;
-  phone: string;
-  type: 'lead' | 'customer' | 'partner';
-  status: 'active' | 'inactive';
-}
-
-export interface RenewalContract {
-  id: string;
-  tenant_name: string;
-  contract_type: string;
-  start_date: string;
-  expiry_date: string;
-  value: number;
-  status: 'active' | 'expiring_soon' | 'expired';
-  days_until_expiry: number;
-}
-
-export interface CommunicationLog {
-  id: string;
-  contact_name: string;
-  institution_name: string;
-  type: 'call' | 'meeting' | 'email' | 'follow_up';
-  subject: string;
-  notes: string;
-  date: string;
-  next_action: string;
-  next_action_date: string;
-}
-
 // Inventory & Purchase Interfaces
 export interface PurchaseRequest {
   id: string;
@@ -437,32 +401,6 @@ export const systemAdminService = {
 
   async removeOfficerAssignment(officerId: string, institutionId: string): Promise<ApiResponse<void>> {
     const response = await api.delete(`/system-admin/officers/${officerId}/assignments/${institutionId}`);
-    return response.data;
-  },
-
-  // CRM & Communication
-  async getContacts(): Promise<ApiResponse<Contact[]>> {
-    const response = await api.get('/system-admin/contacts');
-    return response.data;
-  },
-
-  async createContact(contact: Partial<Contact>): Promise<ApiResponse<Contact>> {
-    const response = await api.post('/system-admin/contacts', contact);
-    return response.data;
-  },
-
-  async getRenewalContracts(): Promise<ApiResponse<RenewalContract[]>> {
-    const response = await api.get('/system-admin/renewals');
-    return response.data;
-  },
-
-  async getCommunicationLogs(): Promise<ApiResponse<CommunicationLog[]>> {
-    const response = await api.get('/system-admin/communication-logs');
-    return response.data;
-  },
-
-  async createCommunicationLog(log: Partial<CommunicationLog>): Promise<ApiResponse<CommunicationLog>> {
-    const response = await api.post('/system-admin/communication-logs', log);
     return response.data;
   },
 

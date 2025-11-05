@@ -93,11 +93,6 @@ System Admin,Institutional Calendar,/system-admin/institutional-calendar,Holiday
 System Admin,Institutional Calendar,/system-admin/institutional-calendar,Institution Events,Event Calendar,Calendar Component,Institution-specific events,"Add event, Edit event",Schedule institution events
 System Admin,Institutional Calendar,/system-admin/institutional-calendar,Audit Calendar,Audit Schedule,Calendar Component,"Scheduled audits, audit history","Schedule audit, View history",Plan compliance audits
 
-System Admin,CRM & Communication,/system-admin/crm,Main View,Contact List,Data Table,"Name, institution, role, email, phone","Add contact, Edit, View details",Manage contacts
-System Admin,CRM & Communication,/system-admin/crm,Main View,Communication History,Timeline View,Past communications,View history,Track engagement
-System Admin,CRM & Communication,/system-admin/crm,Main View,Email Templates,Template Library,Pre-built email templates,"Use template, Edit template",Use communication templates
-System Admin,CRM & Communication,/system-admin/crm,Main View,Bulk Communication Tools,Bulk Action Panel,Send mass communications,"Select recipients, Send",Communicate with groups
-
 System Admin,Reports & Analytics,/system-admin/reports,Main View,Report Categories,Category Selector,Available report types,Select category,Choose report type
 System Admin,Reports & Analytics,/system-admin/reports,Main View,Date Range Selector,Date Picker,Select report period,Pick dates,Define report timeframe
 System Admin,Reports & Analytics,/system-admin/reports,Main View,Export Options,Action Buttons,Export to PDF/Excel,"Export, Download",Get report files
