@@ -77,11 +77,13 @@ System Admin,Inventory Management,/system-admin/inventory-management,Main View,I
 System Admin,Inventory Management,/system-admin/inventory-management,Main View,"Total Inventory Value, Item Categories",Summary Cards,Inventory statistics,View metrics,Monitor inventory value
 System Admin,Inventory Management,/system-admin/inventory-management,Main View,Inventory Table,Data Table,"Item Name, Category, Quantity, Condition, Location, Purchase Date, Value","Add item, Update, View details",Manage cross-institution inventory
 
-System Admin,Officer Attendance,/system-admin/officer-attendance,Attendance,Calendar View,Calendar Component,Officer attendance records,"View attendance, Select dates",View attendance patterns
-System Admin,Officer Attendance,/system-admin/officer-attendance,Attendance,Attendance Records,Data Table,"Officer, Check-in, Check-out, Hours, Status",View records,Monitor officer attendance
-System Admin,Officer Attendance,/system-admin/officer-attendance,Attendance,Monthly Summary,Summary Panel,Attendance statistics,View summary,Attendance overview
-System Admin,Officer Attendance,/system-admin/officer-attendance,Payroll,Monthly Payroll Dashboard,Dashboard Panel,"Salary structure, deductions, net salary",View payroll,Review payroll data
-System Admin,Officer Attendance,/system-admin/officer-attendance,Payroll,Generate Payslips Button,Action Button,Generate monthly payslips,Click to generate,Create payslip documents
+System Admin,Attendance,/system-admin/officer-attendance,Main View,Institution Filter,Dropdown Selector,Filter by institution,"Select institution, View all",Filter attendance by institution
+System Admin,Attendance,/system-admin/officer-attendance,Main View,Officer Selector,Dropdown Selector,Select officer to view,Select officer,Choose specific officer
+System Admin,Attendance,/system-admin/officer-attendance,Main View,Month Navigation,Navigation Controls,Navigate between months,"Previous month, Next month",Change viewing period
+System Admin,Attendance,/system-admin/officer-attendance,Main View,Export Button,Action Button,Export attendance data,Click to export CSV,Download attendance records
+System Admin,Attendance,/system-admin/officer-attendance,Main View,Summary Statistics Cards,Metric Cards,"Present Days, Absent Days, Leave Days, Attendance Rate",View metrics,Monitor attendance summary
+System Admin,Attendance,/system-admin/officer-attendance,Main View,Monthly Attendance Calendar,Calendar Grid,"Daily attendance status with indicators (✓, ✗, L), hours worked",View calendar,Track monthly attendance
+System Admin,Attendance,/system-admin/officer-attendance,Main View,Officer Details Card,Info Card,"Employee ID, Department, Total Hours, Last Marked Date",View details,Review officer information
 
 System Admin,Leave Approvals,/system-admin/leave-approvals,Main View,Pending Count Badge,Notification Badge,Count of pending applications,View count,Monitor pending requests
 System Admin,Leave Approvals,/system-admin/leave-approvals,Main View,Leave Applications Table,Data Table,"Officer Name, Institution, Leave Type, From Date, To Date, Days, Reason, Status","Approve, Reject",Review leave requests

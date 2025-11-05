@@ -1,8 +1,4 @@
 import { Layout } from '@/components/layout/Layout';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PayrollManagementTab } from '@/components/attendance/PayrollManagementTab';
-import { PayrollReportsTab } from '@/components/attendance/PayrollReportsTab';
-import { ComplianceReportsTab } from '@/components/attendance/ComplianceReportsTab';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -122,252 +118,231 @@ export default function OfficerAttendance() {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Attendance & Payroll</h1>
+          <h1 className="text-3xl font-bold">Officer Attendance</h1>
           <p className="text-muted-foreground mt-1">
-            Monitor officer attendance and manage salary payments
+            Track and monitor officer attendance records
           </p>
         </div>
 
-        <Tabs defaultValue="attendance" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="attendance">Officer Attendance</TabsTrigger>
-            <TabsTrigger value="payroll">Payroll Management</TabsTrigger>
-            <TabsTrigger value="reports">Payroll Reports</TabsTrigger>
-            <TabsTrigger value="compliance">Statutory Compliance</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="attendance" className="space-y-6">
-            {/* Controls Row */}
+        {/* Controls Row */}
+        <div className="space-y-6">
             <div className="flex items-center justify-between gap-4 flex-wrap">
-              {/* Institution Filter */}
-              <div className="w-64">
-                <Select value={selectedInstitution} onValueChange={(value) => {
-                  setSelectedInstitution(value);
-                  setSelectedOfficerId(''); // Reset officer selection
-                }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by Institution" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Institutions</SelectItem>
-                    {institutions.map((inst) => (
-                      <SelectItem key={inst} value={inst}>
-                        {inst.charAt(0).toUpperCase() + inst.slice(1)} High School
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Institution Filter */}
+            <div className="w-64">
+              <Select value={selectedInstitution} onValueChange={(value) => {
+                setSelectedInstitution(value);
+                setSelectedOfficerId(''); // Reset officer selection
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by Institution" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Institutions</SelectItem>
+                  {institutions.map((inst) => (
+                    <SelectItem key={inst} value={inst}>
+                      {inst.charAt(0).toUpperCase() + inst.slice(1)} High School
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              {/* Officer Selection */}
-              <div className="w-64">
-                <Select value={selectedOfficerId} onValueChange={setSelectedOfficerId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Officer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {attendanceData.map((officer) => (
-                      <SelectItem key={officer.officer_id} value={officer.officer_id}>
-                        {officer.officer_name} ({officer.employee_id})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Officer Selection */}
+            <div className="w-64">
+              <Select value={selectedOfficerId} onValueChange={setSelectedOfficerId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Officer" />
+                </SelectTrigger>
+                <SelectContent>
+                  {attendanceData.map((officer) => (
+                    <SelectItem key={officer.officer_id} value={officer.officer_id}>
+                      {officer.officer_name} ({officer.employee_id})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              {/* Month Navigation */}
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" onClick={goToPreviousMonth}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-lg font-semibold min-w-[150px] text-center">
-                  {new Date(currentMonth + '-01').toLocaleDateString('en-US', {
-                    month: 'long',
-                    year: 'numeric',
-                  })}
-                </span>
-                <Button variant="outline" size="icon" onClick={goToNextMonth}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {/* Export Button */}
-              <Button variant="outline" onClick={handleExport} disabled={!selectedOfficer}>
-                <Download className="h-4 w-4 mr-2" />
-                Export
+            {/* Month Navigation */}
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" onClick={goToPreviousMonth}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-lg font-semibold min-w-[150px] text-center">
+                {new Date(currentMonth + '-01').toLocaleDateString('en-US', {
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </span>
+              <Button variant="outline" size="icon" onClick={goToNextMonth}>
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
 
-            {/* Summary Statistics */}
-            {selectedOfficer && (
-              <div className="grid gap-4 md:grid-cols-4">
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center">
-                      <p className="text-sm text-muted-foreground">Present Days</p>
-                      <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-                        {selectedOfficer.present_days}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center">
-                      <p className="text-sm text-muted-foreground">Absent Days</p>
-                      <p className="text-3xl font-bold text-red-600 dark:text-red-400">
-                        {selectedOfficer.absent_days}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center">
-                      <p className="text-sm text-muted-foreground">Leave Days</p>
-                      <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
-                        {selectedOfficer.leave_days}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center">
-                      <p className="text-sm text-muted-foreground">Attendance Rate</p>
-                      <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                        {attendanceRate.toFixed(1)}%
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+            {/* Export Button */}
+            <Button variant="outline" onClick={handleExport} disabled={!selectedOfficer}>
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+          </div>
 
-            {/* Calendar Grid */}
+          {/* Summary Statistics */}
+          {selectedOfficer && (
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Present Days</p>
+                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                      {selectedOfficer.present_days}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Absent Days</p>
+                    <p className="text-3xl font-bold text-red-600 dark:text-red-400">
+                      {selectedOfficer.absent_days}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Leave Days</p>
+                    <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
+                      {selectedOfficer.leave_days}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Attendance Rate</p>
+                    <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                      {attendanceRate.toFixed(1)}%
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Calendar Grid */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Monthly Attendance Calendar</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Days of Week Header */}
+                <div className="grid grid-cols-7 gap-2 text-center font-semibold text-sm">
+                  <div>Sun</div>
+                  <div>Mon</div>
+                  <div>Tue</div>
+                  <div>Wed</div>
+                  <div>Thu</div>
+                  <div>Fri</div>
+                  <div>Sat</div>
+                </div>
+
+                {/* Calendar Days Grid */}
+                <div className="grid grid-cols-7 gap-2">
+                  {calendarDays.map((date, index) => {
+                    const dayOfMonth = date.getDate();
+                    const isCurrentMonth = date.toISOString().startsWith(currentMonth);
+                    const attendance = selectedOfficer
+                      ? getAttendanceForDate(date, selectedOfficer.daily_records)
+                      : null;
+
+                    return (
+                      <div
+                        key={index}
+                        className={`
+                          min-h-[80px] p-2 rounded-lg border-2 transition-all
+                          ${isCurrentMonth ? getStatusColor(date) : 'bg-muted/50 text-muted-foreground'}
+                          ${attendance ? 'cursor-pointer hover:shadow-md' : ''}
+                        `}
+                        title={
+                          attendance
+                            ? `${attendance.status.toUpperCase()}\nCheck In: ${attendance.check_in_time || '-'}\nCheck Out: ${attendance.check_out_time || '-'}\nHours: ${attendance.hours_worked?.toFixed(2) || '0'}h`
+                            : ''
+                        }
+                      >
+                        <div className="text-right text-xs font-semibold mb-1">
+                          {dayOfMonth}
+                        </div>
+                        <div className="text-center text-2xl font-bold">
+                          {isCurrentMonth && getStatusIndicator(date)}
+                        </div>
+                        {attendance && attendance.hours_worked && (
+                          <div className="text-center text-xs mt-1">
+                            {attendance.hours_worked.toFixed(1)}h
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Legend */}
+                <div className="flex items-center justify-center gap-6 pt-4 border-t flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-green-100 border-2 border-green-300 dark:bg-green-900/20 dark:border-green-800"></div>
+                    <span className="text-sm">Present (✓)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-red-100 border-2 border-red-300 dark:bg-red-900/20 dark:border-red-800"></div>
+                    <span className="text-sm">Absent (✗)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-yellow-100 border-2 border-yellow-300 dark:bg-yellow-900/20 dark:border-yellow-800"></div>
+                    <span className="text-sm">Leave (L)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-muted border-2 border-muted-foreground/20"></div>
+                    <span className="text-sm">Weekend / No Data</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Additional Details Section */}
+          {selectedOfficer && (
             <Card>
               <CardHeader>
-                <CardTitle>Monthly Attendance Calendar</CardTitle>
+                <CardTitle>Officer Details</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {/* Days of Week Header */}
-                  <div className="grid grid-cols-7 gap-2 text-center font-semibold text-sm">
-                    <div>Sun</div>
-                    <div>Mon</div>
-                    <div>Tue</div>
-                    <div>Wed</div>
-                    <div>Thu</div>
-                    <div>Fri</div>
-                    <div>Sat</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Employee ID</p>
+                    <p className="font-semibold">{selectedOfficer.employee_id}</p>
                   </div>
-
-                  {/* Calendar Days Grid */}
-                  <div className="grid grid-cols-7 gap-2">
-                    {calendarDays.map((date, index) => {
-                      const dayOfMonth = date.getDate();
-                      const isCurrentMonth = date.toISOString().startsWith(currentMonth);
-                      const attendance = selectedOfficer
-                        ? getAttendanceForDate(date, selectedOfficer.daily_records)
-                        : null;
-
-                      return (
-                        <div
-                          key={index}
-                          className={`
-                            min-h-[80px] p-2 rounded-lg border-2 transition-all
-                            ${isCurrentMonth ? getStatusColor(date) : 'bg-muted/50 text-muted-foreground'}
-                            ${attendance ? 'cursor-pointer hover:shadow-md' : ''}
-                          `}
-                          title={
-                            attendance
-                              ? `${attendance.status.toUpperCase()}\nCheck In: ${attendance.check_in_time || '-'}\nCheck Out: ${attendance.check_out_time || '-'}\nHours: ${attendance.hours_worked?.toFixed(2) || '0'}h`
-                              : ''
-                          }
-                        >
-                          <div className="text-right text-xs font-semibold mb-1">
-                            {dayOfMonth}
-                          </div>
-                          <div className="text-center text-2xl font-bold">
-                            {isCurrentMonth && getStatusIndicator(date)}
-                          </div>
-                          {attendance && attendance.hours_worked && (
-                            <div className="text-center text-xs mt-1">
-                              {attendance.hours_worked.toFixed(1)}h
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                  <div>
+                    <p className="text-muted-foreground">Department</p>
+                    <p className="font-semibold">{selectedOfficer.department}</p>
                   </div>
-
-                  {/* Legend */}
-                  <div className="flex items-center justify-center gap-6 pt-4 border-t flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded bg-green-100 border-2 border-green-300 dark:bg-green-900/20 dark:border-green-800"></div>
-                      <span className="text-sm">Present (✓)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded bg-red-100 border-2 border-red-300 dark:bg-red-900/20 dark:border-red-800"></div>
-                      <span className="text-sm">Absent (✗)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded bg-yellow-100 border-2 border-yellow-300 dark:bg-yellow-900/20 dark:border-yellow-800"></div>
-                      <span className="text-sm">Leave (L)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded bg-muted border-2 border-muted-foreground/20"></div>
-                      <span className="text-sm">Weekend / No Data</span>
-                    </div>
+                  <div>
+                    <p className="text-muted-foreground">Total Hours Worked</p>
+                    <p className="font-semibold">{selectedOfficer.total_hours_worked}h</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Last Marked</p>
+                    <p className="font-semibold">
+                      {new Date(selectedOfficer.last_marked_date).toLocaleDateString()}
+                    </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-
-            {/* Additional Details Section */}
-            {selectedOfficer && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Officer Details</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Employee ID</p>
-                      <p className="font-semibold">{selectedOfficer.employee_id}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Department</p>
-                      <p className="font-semibold">{selectedOfficer.department}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Total Hours Worked</p>
-                      <p className="font-semibold">{selectedOfficer.total_hours_worked}h</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Last Marked</p>
-                      <p className="font-semibold">
-                        {new Date(selectedOfficer.last_marked_date).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="payroll" className="space-y-6">
-            <PayrollManagementTab />
-          </TabsContent>
-
-          <TabsContent value="reports" className="space-y-6">
-            <PayrollReportsTab />
-          </TabsContent>
-
-          <TabsContent value="compliance" className="space-y-6">
-            <ComplianceReportsTab />
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
       </div>
     </Layout>
   );
