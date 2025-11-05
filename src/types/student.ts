@@ -19,7 +19,7 @@ export interface Student {
   admission_number: string;
   class: string;
   section: string;
-  class_id?: string;
+  class_id: string; // Required - links student to specific class
   admission_date: string;
   date_of_birth: string;
   gender: 'male' | 'female' | 'other';

@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Project } from "@/data/mockProjectData";
-import { getStudentsByInstitution, getStudentsByClassAndSection, Student } from "@/data/mockStudentData";
+import { getStudentsByInstitution, getStudentsByClassAndSection } from "@/data/mockStudentData";
+import { Student } from "@/types/student";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 

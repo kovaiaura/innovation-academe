@@ -1,7 +1,69 @@
 import { InstitutionClass } from '@/types/student';
 
 export const mockInstitutionClasses: InstitutionClass[] = [
-  // Springfield High School
+  // Institution 1 - Main Campus
+  {
+    id: 'class-1-9a',
+    institution_id: '1',
+    class_name: 'Grade 9 Section A',
+    display_order: 1,
+    academic_year: '2024-2025',
+    capacity: 35,
+    room_number: 'Room 301',
+    status: 'active',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z'
+  },
+  {
+    id: 'class-1-9b',
+    institution_id: '1',
+    class_name: 'Grade 9 Section B',
+    display_order: 2,
+    academic_year: '2024-2025',
+    capacity: 35,
+    room_number: 'Room 302',
+    status: 'active',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z'
+  },
+  {
+    id: 'class-1-10a',
+    institution_id: '1',
+    class_name: 'Grade 10 Section A',
+    display_order: 3,
+    academic_year: '2024-2025',
+    capacity: 32,
+    room_number: 'Room 401',
+    status: 'active',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z'
+  },
+  {
+    id: 'class-1-11a',
+    institution_id: '1',
+    class_name: 'Grade 11 Section A',
+    display_order: 4,
+    academic_year: '2024-2025',
+    capacity: 30,
+    room_number: 'Room 501',
+    status: 'active',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z'
+  },
+  {
+    id: 'class-1-12a',
+    institution_id: '1',
+    class_name: 'Grade 12 Section A',
+    display_order: 5,
+    academic_year: '2024-2025',
+    capacity: 28,
+    room_number: 'Room 601',
+    status: 'active',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z'
+  },
+  
+  // Springfield High School (legacy data)
   {
     id: 'class-spring-1',
     institution_id: 'springfield',

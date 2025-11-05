@@ -1,106 +1,90 @@
 import { Student } from '@/types/student';
 
-export type { Student };
-
 const firstNames = [
-  'Aarav', 'Vivaan', 'Aditya', 'Arjun', 'Sai', 'Reyansh', 'Krishna', 'Ishaan', 'Shaurya', 'Atharv',
-  'Aadhya', 'Ananya', 'Diya', 'Isha', 'Kavya', 'Saanvi', 'Sara', 'Avni', 'Myra', 'Kiara',
-  'Rohan', 'Ayaan', 'Ved', 'Kabir', 'Arnav', 'Vihaan', 'Advaith', 'Rudra', 'Pranav', 'Dhruv',
-  'Aanya', 'Pari', 'Mira', 'Riya', 'Navya', 'Prisha', 'Zara', 'Ahana', 'Anvi', 'Tara'
+  'Aarav', 'Vivaan', 'Aditya', 'Arjun', 'Sai', 'Krishna', 'Aryan', 'Ishaan', 'Reyansh', 'Ayaan',
+  'Aadhya', 'Ananya', 'Diya', 'Saanvi', 'Pari', 'Sara', 'Aaradhya', 'Navya', 'Angel', 'Kiara',
+  'Arnav', 'Dhruv', 'Vihaan', 'Shaurya', 'Atharv', 'Rudra', 'Kabir', 'Shivansh', 'Kian', 'Om'
 ];
 
 const lastNames = [
-  'Sharma', 'Verma', 'Gupta', 'Kumar', 'Singh', 'Patel', 'Reddy', 'Nair', 'Iyer', 'Rao',
-  'Mehta', 'Shah', 'Joshi', 'Agarwal', 'Malhotra', 'Kapoor', 'Chopra', 'Bansal', 'Sinha', 'Bhatia'
+  'Sharma', 'Verma', 'Gupta', 'Kumar', 'Singh', 'Patel', 'Reddy', 'Rao', 'Mehta', 'Joshi',
+  'Agarwal', 'Desai', 'Nair', 'Kulkarni', 'Iyer', 'Pandey', 'Saxena', 'Bhat', 'Pillai', 'Menon'
 ];
 
 const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+const genders: Array<'male' | 'female' | 'other'> = ['male', 'female', 'male', 'female', 'male', 'female', 'other'];
 
-const generateStudent = (
-  index: number,
-  institutionId: string,
-  classNum: number,
-  section: string
-): Student => {
-  const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-  const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-  const studentName = `${firstName} ${lastName}`;
-  const rollNum = String(index).padStart(3, '0');
-  const gender: 'male' | 'female' = Math.random() > 0.5 ? 'male' : 'female';
-  
-  const statusRand = Math.random();
-  let status: 'active' | 'inactive' | 'transferred' | 'graduated';
-  if (statusRand > 0.95) status = 'transferred';
-  else if (statusRand > 0.90) status = 'inactive';
-  else status = 'active';
-
-  const yearOffset = Math.floor(Math.random() * 5);
-  const admissionYear = 2024 - yearOffset;
-  
-  return {
-    id: `${institutionId}-${classNum}-${section}-${rollNum}`,
-    student_name: studentName,
-    roll_number: `${classNum}-${section}-${rollNum}`,
-    admission_number: `ADM-${admissionYear}-${institutionId}-${rollNum}`,
-    class: `Class ${classNum}`,
-    section: section,
-    admission_date: `${admissionYear}-04-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}`,
-    date_of_birth: `${2024 - classNum - 5}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}`,
-    gender: gender,
-    status: status,
-    parent_name: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastName}`,
-    parent_phone: `+91-${Math.floor(Math.random() * 9000000000) + 1000000000}`,
-    parent_email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@email.com`,
-    address: `${Math.floor(Math.random() * 999) + 1}, Sector ${Math.floor(Math.random() * 50) + 1}, Delhi`,
-    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${studentName}`,
-    institution_id: institutionId,
-    blood_group: bloodGroups[Math.floor(Math.random() * bloodGroups.length)],
-    previous_school: Math.random() > 0.7 ? 'Previous School Name' : undefined,
-    created_at: `${admissionYear}-04-01T00:00:00Z`
-  };
-};
-
-const generateStudentsForInstitution = (institutionId: string): Student[] => {
+// Generate students for Institution 1 classes
+const generateStudentsForClass = (classId: string, className: string, section: string, startIndex: number, count: number): Student[] => {
   const students: Student[] = [];
+  const classNumber = className.replace('Grade ', '');
   
-  // Generate students for classes 1-12
-  for (let classNum = 1; classNum <= 12; classNum++) {
-    const sections = classNum <= 5 ? ['A', 'B'] : ['A', 'B', 'C'];
+  for (let i = 0; i < count; i++) {
+    const index = startIndex + i;
+    const firstName = firstNames[index % firstNames.length];
+    const lastName = lastNames[index % lastNames.length];
+    const gender = genders[index % genders.length];
     
-    sections.forEach(section => {
-      const studentsPerSection = Math.floor(Math.random() * 15) + 30; // 30-45 students per section
-      
-      for (let i = 1; i <= studentsPerSection; i++) {
-        students.push(generateStudent(i, institutionId, classNum, section));
-      }
+    students.push({
+      id: `stu-1-${classId}-${i + 1}`,
+      student_name: `${firstName} ${lastName}`,
+      roll_number: `${classNumber}${section}${String(i + 1).padStart(3, '0')}`,
+      admission_number: `ADM1-2024-${String(index).padStart(5, '0')}`,
+      class: className,
+      section: section,
+      class_id: classId,
+      institution_id: '1',
+      admission_date: '2024-04-01',
+      date_of_birth: `${2010 - parseInt(classNumber)}-${String((index % 12) + 1).padStart(2, '0')}-${String((index % 28) + 1).padStart(2, '0')}`,
+      gender: gender,
+      status: index % 25 === 0 ? 'inactive' : 'active',
+      parent_name: `Mr/Mrs ${lastName}`,
+      parent_phone: `+91-${9000000000 + index}`,
+      parent_email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@email.com`,
+      address: `${index + 1}, Block ${String.fromCharCode(65 + (index % 5))}, Main Street, City`,
+      blood_group: bloodGroups[index % bloodGroups.length],
+      previous_school: index % 3 === 0 ? 'St. Xavier School' : undefined,
+      created_at: '2024-01-15T00:00:00Z'
     });
   }
   
   return students;
 };
 
-// Generate students for all 3 institutions using tenant slugs
+// Generate mock students for Institution 1
 export const mockStudents: Student[] = [
-  ...generateStudentsForInstitution('springfield'), // Springfield Elementary
-  ...generateStudentsForInstitution('ryan'), // Ryan International
-  ...generateStudentsForInstitution('innovation'), // Innovation Hub
+  // Grade 9 Section A (class-1-9a) - 32 students
+  ...generateStudentsForClass('class-1-9a', 'Grade 9', 'A', 0, 32),
+  
+  // Grade 9 Section B (class-1-9b) - 33 students
+  ...generateStudentsForClass('class-1-9b', 'Grade 9', 'B', 100, 33),
+  
+  // Grade 10 Section A (class-1-10a) - 30 students
+  ...generateStudentsForClass('class-1-10a', 'Grade 10', 'A', 200, 30),
+  
+  // Grade 11 Section A (class-1-11a) - 28 students
+  ...generateStudentsForClass('class-1-11a', 'Grade 11', 'A', 300, 28),
+  
+  // Grade 12 Section A (class-1-12a) - 25 students
+  ...generateStudentsForClass('class-1-12a', 'Grade 12', 'A', 400, 25),
 ];
 
 // Helper functions
 export const getStudentsByInstitution = (institutionId: string): Student[] => {
-  return mockStudents.filter(s => s.institution_id === institutionId);
+  return mockStudents.filter(student => student.institution_id === institutionId);
 };
 
 export const getStudentsByClass = (institutionId: string, className: string): Student[] => {
-  return mockStudents.filter(s => s.institution_id === institutionId && s.class === className);
+  return mockStudents.filter(
+    student => student.institution_id === institutionId && student.class === className
+  );
 };
 
-export const getStudentsByClassAndSection = (
-  institutionId: string, 
-  className: string, 
-  section: string
-): Student[] => {
+export const getStudentsByClassAndSection = (institutionId: string, className: string, section: string): Student[] => {
   return mockStudents.filter(
-    s => s.institution_id === institutionId && s.class === className && s.section === section
+    student => 
+      student.institution_id === institutionId && 
+      student.class === className && 
+      student.section === section
   );
 };

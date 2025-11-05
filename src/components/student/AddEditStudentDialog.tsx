@@ -40,6 +40,7 @@ export function AddEditStudentDialog({
     admission_number: '',
     class: '',
     section: '',
+    class_id: '',
     date_of_birth: '',
     gender: 'male' as 'male' | 'female' | 'other',
     blood_group: '',
@@ -64,6 +65,7 @@ export function AddEditStudentDialog({
         admission_number: student.admission_number,
         class: student.class,
         section: student.section,
+        class_id: student.class_id,
         date_of_birth: student.date_of_birth,
         gender: student.gender,
         blood_group: student.blood_group || '',
@@ -85,6 +87,7 @@ export function AddEditStudentDialog({
         admission_number: '',
         class: '',
         section: '',
+        class_id: '',
         date_of_birth: '',
         gender: 'male',
         blood_group: '',
@@ -286,9 +289,11 @@ export function AddEditStudentDialog({
                 <Select 
                   value={formData.class} 
                   onValueChange={(value) => {
+                    const selectedClass = institutionClasses.find(cls => cls.class_name === value);
                     setFormData({ 
                       ...formData, 
-                      class: value
+                      class: value,
+                      class_id: selectedClass?.id || ''
                     });
                   }}
                 >
