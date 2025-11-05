@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { PlayCircle, RotateCcw, CheckCircle, BookOpen, Clock } from 'lucide-react';
+import { PlayCircle, RotateCcw, CheckCircle, BookOpen, Clock, Lock } from 'lucide-react';
 import { mockClassCourseAssignments } from '@/data/mockClassCourseAssignments';
 import { mockCourses, mockModules } from '@/data/mockCourseData';
 import { mockClassCourseProgress } from '@/data/mockClassTeachingProgress';
@@ -30,12 +30,23 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
   const assignedCourses = mockCourses.filter(c => assignedCourseIds.includes(c.id));
 
   const handleLaunchCourse = (courseId: string, continueFrom?: boolean) => {
+    const assignment = classAssignments.find(ca => ca.course_id === courseId);
     const progress = mockClassCourseProgress.find(
       p => p.class_id === classId && p.course_id === courseId
     );
 
-    // Build navigation URL with class context
+    // Get allowed module IDs for this class (only unlocked modules)
+    const allowedModuleIds = assignment?.assigned_modules
+      .filter(m => m.is_unlocked)
+      .map(m => m.module_id) || [];
+
+    // Build navigation URL with class context AND allowed modules
     let url = `/tenant/${tenantId}/officer/courses/${courseId}/viewer?class_id=${classId}&class_name=${encodeURIComponent(className)}`;
+    
+    // Pass allowed modules as comma-separated list
+    if (allowedModuleIds.length > 0) {
+      url += `&allowed_modules=${allowedModuleIds.join(',')}`;
+    }
     
     if (continueFrom && progress?.current_module_id) {
       url += `&module_id=${progress.current_module_id}&content_index=${progress.current_content_index || 0}`;
@@ -69,13 +80,26 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
 
       <div className="grid gap-6 md:grid-cols-2">
         {assignedCourses.map((course) => {
+          const assignment = classAssignments.find(ca => ca.course_id === course.id);
           const progress = mockClassCourseProgress.find(
             p => p.class_id === classId && p.course_id === course.id
           );
 
-          const courseModules = mockModules.filter(m => m.course_id === course.id);
-          const totalModules = courseModules.length;
-          const completedModules = progress?.completed_modules.length || 0;
+          // Get assigned modules for this class
+          const assignedModules = assignment?.assigned_modules || [];
+          const totalModules = assignedModules.length;
+          const unlockedModules = assignedModules.filter(m => m.is_unlocked);
+          const lockedModules = assignedModules.filter(m => !m.is_unlocked);
+          
+          // Calculate completion based on assigned modules only
+          const completedModules = progress?.completed_modules.filter(
+            moduleId => assignedModules.some(am => am.module_id === moduleId)
+          ).length || 0;
+          
+          const completionPercentage = totalModules > 0 
+            ? Math.round((completedModules / totalModules) * 100)
+            : 0;
+          
           const status = progress?.status || 'not_started';
           const canContinue = status === 'in_progress' && progress?.current_module_id;
 
@@ -107,17 +131,37 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
                   <div>
                     <div className="flex items-center justify-between text-sm mb-2">
                       <span className="text-muted-foreground">Progress</span>
-                      <span className="font-medium">{progress?.completion_percentage || 0}%</span>
+                      <span className="font-medium">{completionPercentage}%</span>
                     </div>
-                    <Progress value={progress?.completion_percentage || 0} />
+                    <Progress value={completionPercentage} />
                   </div>
 
                   {/* Module Progress */}
-                  <div className="flex items-center gap-2 text-sm">
-                    <BookOpen className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">
-                      {completedModules}/{totalModules} modules completed
-                    </span>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <BookOpen className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">
+                        {completedModules}/{totalModules} modules completed
+                      </span>
+                    </div>
+                    
+                    {/* Module Availability Info */}
+                    <div className="flex items-center gap-2 text-sm">
+                      <BookOpen className="h-4 w-4 text-primary" />
+                      <span className="text-primary font-medium">
+                        {unlockedModules.length} of {totalModules} modules available
+                      </span>
+                    </div>
+                    
+                    {/* Locked Modules Warning */}
+                    {lockedModules.length > 0 && (
+                      <div className="flex items-center gap-2 text-sm p-2 bg-amber-50 dark:bg-amber-950 rounded-md">
+                        <Lock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                        <span className="text-amber-700 dark:text-amber-300">
+                          {lockedModules.length} {lockedModules.length === 1 ? 'module' : 'modules'} locked by admin
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Teaching Stats */}

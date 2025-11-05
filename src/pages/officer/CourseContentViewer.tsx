@@ -33,10 +33,21 @@ export default function CourseContentViewer() {
   const sessionId = searchParams.get('session_id');
   const className = searchParams.get('class');
   const slotId = searchParams.get('slot_id');
+  const classId = searchParams.get('class_id');
+  const allowedModulesParam = searchParams.get('allowed_modules');
+  const allowedModuleIds = allowedModulesParam ? allowedModulesParam.split(',') : null;
 
   // Get course data
   const course = mockCourses.find(c => c.id === courseId);
-  const courseModules = mockModules.filter(m => m.course_id === courseId);
+  
+  // Get course modules - filter to only allowed modules if teaching a specific class
+  let courseModules = mockModules.filter(m => m.course_id === courseId);
+  if (allowedModuleIds) {
+    courseModules = courseModules.filter(m => allowedModuleIds.includes(m.id));
+  }
+  // Sort by order
+  courseModules = courseModules.sort((a, b) => a.order - b.order);
+  
   const selectedModule = courseModules.find(m => m.id === selectedModuleId);
   const moduleContent = selectedModuleId 
     ? mockContent.filter(c => c.module_id === selectedModuleId)
@@ -258,7 +269,7 @@ export default function CourseContentViewer() {
   return (
     <div className={`${isPresentationMode ? 'fixed inset-0 z-50 bg-background' : 'min-h-screen'} flex flex-col`}>
       {/* Session Context Banner */}
-      {className && sessionId && !isPresentationMode && (
+      {className && !isPresentationMode && (
         <div className="bg-primary/10 border-b px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4 text-sm">
@@ -268,23 +279,22 @@ export default function CourseContentViewer() {
               <span className="text-muted-foreground">
                 {format(new Date(), 'EEEE, MMM dd, yyyy')}
               </span>
-              {(() => {
-                const progress = getSessionProgressByClass(courseId!, className);
-                return progress && (
-                  <span className="text-muted-foreground">
-                    Module {progress.completed_modules + 1}/{progress.total_modules}
-                  </span>
-                );
-              })()}
+              {allowedModuleIds && (
+                <span className="text-muted-foreground">
+                  {courseModules.length} modules available for this class
+                </span>
+              )}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAttendanceDialog(true)}
-            >
-              <UsersIcon className="h-4 w-4 mr-2" />
-              Take Attendance
-            </Button>
+            {sessionId && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAttendanceDialog(true)}
+              >
+                <UsersIcon className="h-4 w-4 mr-2" />
+                Take Attendance
+              </Button>
+            )}
           </div>
         </div>
       )}
