@@ -6,17 +6,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
-import { ArrowLeft, Users, GraduationCap, Building2, Mail, Phone, Calendar, MapPin, Download, Upload, Pencil, Plus, Edit, Trash2 } from 'lucide-react';
-import { ClassStudentTable } from '@/components/institution/ClassStudentTable';
-import { StudentEditDialog } from '@/components/institution/StudentEditDialog';
+import { ArrowLeft, Users, GraduationCap, Building2, Mail, Phone, Calendar, MapPin, Pencil } from 'lucide-react';
 import { EditInstitutionDialog } from '@/components/institution/EditInstitutionDialog';
 import { AddClassDialog } from '@/components/institution/AddClassDialog';
-import { BulkUploadDialog, BulkUploadResult } from '@/components/student/BulkUploadDialog';
+import { InstitutionClassesTab } from '@/components/institution/InstitutionClassesTab';
+import { InstitutionOfficersTab } from '@/components/institution/InstitutionOfficersTab';
+import { InstitutionAnalyticsTab } from '@/components/institution/InstitutionAnalyticsTab';
+import { InstitutionTimetableTab } from '@/components/institution/InstitutionTimetableTab';
 import { Student, InstitutionClass } from '@/types/student';
 import { getStudentsByInstitution } from '@/data/mockStudentData';
 import { getClassesByInstitution } from '@/data/mockClassData';
-import { calculateClassStatistics } from '@/utils/studentHelpers';
-import { generateTemplate } from '@/utils/csvParser';
+import { getInstitutionOfficers, getAvailableOfficers } from '@/data/mockInstitutionOfficers';
+import { getInstitutionAnalytics } from '@/data/mockInstitutionAnalytics';
+import { getInstitutionPeriods } from '@/data/mockInstitutionPeriods';
+import { getInstitutionTimetable } from '@/data/mockInstitutionTimetable';
 import { toast } from 'sonner';
 import { useInstitutionData } from '@/contexts/InstitutionDataContext';
 
@@ -25,17 +28,11 @@ export default function InstitutionDetail() {
   const navigate = useNavigate();
   const { institutions, updateInstitution } = useInstitutionData();
   const [institutionClasses, setInstitutionClasses] = useState<InstitutionClass[]>([]);
-  const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
-  const [classStudents, setClassStudents] = useState<Student[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isEditInstitutionOpen, setIsEditInstitutionOpen] = useState(false);
-  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const [isAddClassOpen, setIsAddClassOpen] = useState(false);
   const [isEditClassOpen, setIsEditClassOpen] = useState(false);
   const [selectedClassForEdit, setSelectedClassForEdit] = useState<InstitutionClass | null>(null);
-  const [selectedClassForUpload, setSelectedClassForUpload] = useState<InstitutionClass | null>(null);
 
   const institution = institutions.find(inst => inst.id === institutionId);
 
@@ -53,13 +50,6 @@ export default function InstitutionDetail() {
     }
   }, [institutionId]);
 
-  useEffect(() => {
-    if (selectedClass) {
-      const filtered = students.filter(s => s.class_id === selectedClass);
-      setClassStudents(filtered);
-    }
-  }, [selectedClass, students]);
-
   if (!institution) {
     return (
       <Layout>
@@ -75,9 +65,6 @@ export default function InstitutionDetail() {
     );
   }
 
-  const selectedClassData = institutionClasses.find(c => c.id === selectedClass);
-  const classStats = calculateClassStatistics(classStudents);
-
   const handleAddClass = (classData: Partial<InstitutionClass>) => {
     const newClass: InstitutionClass = {
       ...classData,
@@ -88,7 +75,6 @@ export default function InstitutionDetail() {
     } as InstitutionClass;
     
     setInstitutionClasses([...institutionClasses, newClass]);
-    setSelectedClass(newClass.id);
     toast.success(`Class "${classData.class_name}" created successfully`);
   };
 
@@ -112,66 +98,8 @@ export default function InstitutionDetail() {
     
     if (window.confirm(`Delete class "${classToDelete?.class_name}"? This action cannot be undone.`)) {
       setInstitutionClasses(institutionClasses.filter(c => c.id !== classId));
-      if (selectedClass === classId) {
-        setSelectedClass(institutionClasses[0]?.id || null);
-      }
       toast.success('Class deleted successfully');
     }
-  };
-
-  const handleEditStudent = (student: Student) => {
-    setSelectedStudent(student);
-    setIsEditDialogOpen(true);
-  };
-
-  const handleSaveStudent = (updatedStudent: Student) => {
-    const updatedStudents = students.map(s => 
-      s.id === updatedStudent.id ? updatedStudent : s
-    );
-    setStudents(updatedStudents);
-    
-    const updatedClassStudents = classStudents.map(s => 
-      s.id === updatedStudent.id ? updatedStudent : s
-    );
-    setClassStudents(updatedClassStudents);
-    
-    toast.success('Student details updated successfully');
-  };
-
-  const handleBulkUploadComplete = (result: BulkUploadResult) => {
-    toast.success(`Successfully imported ${result.imported} students!`);
-    if (result.failed > 0) {
-      toast.warning(`${result.failed} students failed to import. Check logs.`);
-    }
-    setIsBulkUploadOpen(false);
-    setSelectedClassForUpload(null);
-    
-    if (institutionId) {
-      const allStudents = getStudentsByInstitution(institutionId);
-      setStudents(allStudents);
-      if (selectedClass) {
-        const filtered = allStudents.filter(s => s.class_id === selectedClass);
-        setClassStudents(filtered);
-      }
-    }
-  };
-
-  const handleBulkUploadForClass = (classItem: InstitutionClass) => {
-    setSelectedClassForUpload(classItem);
-    setIsBulkUploadOpen(true);
-  };
-
-  const handleDownloadTemplate = () => {
-    const blob = generateTemplate();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'student_bulk_upload_template.csv';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast.success('Template downloaded');
   };
 
   const handleSaveInstitution = (updatedInstitution: Partial<any>) => {
@@ -235,9 +163,12 @@ export default function InstitutionDetail() {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="students">Students by Class</TabsTrigger>
+            <TabsTrigger value="classes">Classes</TabsTrigger>
+            <TabsTrigger value="officers">Innovation Officers</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="timetable">Timetable</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
@@ -346,8 +277,56 @@ export default function InstitutionDetail() {
             </Card>
           </TabsContent>
 
-          {/* Students by Class Tab */}
-          <TabsContent value="students" className="space-y-6">
+          {/* Classes Tab */}
+          <TabsContent value="classes" className="space-y-6">
+            <InstitutionClassesTab
+              institutionId={institutionId!}
+              institutionClasses={institutionClasses}
+              studentCounts={students.reduce((acc, s) => ({ ...acc, [s.class_id || '']: (acc[s.class_id || ''] || 0) + 1 }), {} as Record<string, number>)}
+              onAddClass={() => setIsAddClassOpen(true)}
+              onEditClass={(cls) => { setSelectedClassForEdit(cls); setIsEditClassOpen(true); }}
+              onDeleteClass={handleDeleteClass}
+              onSelectClass={(id) => setSelectedClass(id)}
+            />
+          </TabsContent>
+
+          {/* Innovation Officers Tab */}
+          <TabsContent value="officers" className="space-y-6">
+            <InstitutionOfficersTab
+              institutionId={institutionId!}
+              institutionName={institution.name}
+              assignedOfficers={getInstitutionOfficers(institutionId!)}
+              availableOfficers={getAvailableOfficers(institutionId!)}
+              onAssignOfficer={async (officerId) => { toast.success('Officer assigned'); }}
+              onRemoveOfficer={async (officerId) => { toast.success('Officer removed'); }}
+            />
+          </TabsContent>
+
+          {/* Analytics Tab */}
+          <TabsContent value="analytics" className="space-y-6">
+            <InstitutionAnalyticsTab
+              institutionId={institutionId!}
+              institutionName={institution.name}
+              analytics={getInstitutionAnalytics(institutionId!) || {} as any}
+              onGenerateReport={async (options) => { toast.success('Report generated'); }}
+            />
+          </TabsContent>
+
+          {/* Timetable Tab */}
+          <TabsContent value="timetable" className="space-y-6">
+            <InstitutionTimetableTab
+              institutionId={institutionId!}
+              institutionName={institution.name}
+              classes={institutionClasses.filter(c => c.status === 'active')}
+              periods={getInstitutionPeriods(institutionId!)}
+              timetableData={getInstitutionTimetable(institutionId!)}
+              onSavePeriods={async (periods) => { toast.success('Periods saved'); }}
+              onSaveTimetable={async (assignments) => { toast.success('Timetable saved'); }}
+            />
+          </TabsContent>
+
+          {/* Old Students by Class Tab - Keep for reference but hidden */}
+          <TabsContent value="students-old" className="space-y-6">
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
