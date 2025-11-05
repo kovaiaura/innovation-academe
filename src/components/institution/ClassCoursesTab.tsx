@@ -3,9 +3,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { InstitutionClass, ClassCourseAssignment } from '@/types/institution';
+import { AssignCourseToClassDialog } from './AssignCourseToClassDialog';
 import { BookOpen, Plus, Lock, Unlock, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
 
 interface ClassCoursesTabProps {
   classId: string;
@@ -26,8 +38,33 @@ export function ClassCoursesTab({
   onRemoveAssignment,
   onUnlockModule
 }: ClassCoursesTabProps) {
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [assignmentToDelete, setAssignmentToDelete] = useState<ClassCourseAssignment | null>(null);
+
+  const handleAssignCourse = async (assignment: any) => {
+    await onAssignCourse(assignment);
+    setShowAssignDialog(false);
+  };
+
+  const handleUnlockModule = async (assignmentId: string, moduleId: string) => {
+    try {
+      await onUnlockModule(assignmentId, moduleId);
+      toast.success('Module unlocked successfully');
+    } catch (error) {
+      toast.error('Failed to unlock module');
+    }
+  };
+
+  const handleDeleteAssignment = async () => {
+    if (assignmentToDelete) {
+      await onRemoveAssignment(assignmentToDelete.id);
+      setAssignmentToDelete(null);
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -37,7 +74,7 @@ export function ClassCoursesTab({
                 Manage courses and modules assigned to {classData.class_name}
               </CardDescription>
             </div>
-            <Button size="sm">
+            <Button size="sm" onClick={() => setShowAssignDialog(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Assign Course
             </Button>
@@ -87,11 +124,14 @@ export function ClassCoursesTab({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => toast.info('Edit functionality coming soon')}>
                               <Pencil className="h-4 w-4 mr-2" />
                               Edit Assignment
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => setAssignmentToDelete(assignment)}
+                            >
                               <Trash2 className="h-4 w-4 mr-2" />
                               Remove Assignment
                             </DropdownMenuItem>
@@ -133,7 +173,7 @@ export function ClassCoursesTab({
                                     <Button 
                                       variant="ghost" 
                                       size="sm"
-                                      onClick={() => onUnlockModule(assignment.id, module.module_id)}
+                                      onClick={() => handleUnlockModule(assignment.id, module.module_id)}
                                     >
                                       Unlock
                                     </Button>
@@ -178,7 +218,7 @@ export function ClassCoursesTab({
               <p className="text-muted-foreground mb-4">
                 No courses assigned to this class yet
               </p>
-              <Button>
+              <Button onClick={() => setShowAssignDialog(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Assign First Course
               </Button>
@@ -187,5 +227,29 @@ export function ClassCoursesTab({
         </CardContent>
       </Card>
     </div>
+
+    {/* Dialogs */}
+    <AssignCourseToClassDialog
+      isOpen={showAssignDialog}
+      onOpenChange={setShowAssignDialog}
+      classData={classData}
+      onAssignCourse={handleAssignCourse}
+    />
+
+    <AlertDialog open={!!assignmentToDelete} onOpenChange={() => setAssignmentToDelete(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove Course Assignment</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to remove {assignmentToDelete?.course_title} from {classData.class_name}? Students will lose access to this course.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDeleteAssignment}>Remove</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>
   );
 }

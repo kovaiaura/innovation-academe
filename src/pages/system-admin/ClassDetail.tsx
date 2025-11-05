@@ -136,17 +136,29 @@ export default function ClassDetail() {
               classData={classData}
               students={students}
               onAddStudent={async (studentData) => {
+                // In production, call institutionService.addStudentToClass
+                const newStudent = {
+                  ...studentData,
+                  id: `stu-${Date.now()}`,
+                  created_at: new Date().toISOString()
+                };
+                setStudents([...students, newStudent as any]);
                 toast.success('Student added successfully');
               }}
               onEditStudent={async (studentData) => {
+                // In production, call institutionService.updateClassStudent
+                setStudents(students.map(s => s.id === studentData.id ? { ...s, ...studentData } : s));
                 toast.success('Student updated successfully');
               }}
               onRemoveStudent={async (studentId) => {
+                // In production, call institutionService.removeStudentFromClass
+                setStudents(students.filter(s => s.id !== studentId));
                 toast.success('Student removed successfully');
               }}
               onBulkUpload={async (file) => {
+                // In production, call institutionService.bulkUploadStudentsToClass
                 toast.success('Bulk upload completed');
-                return { imported: 0, updated: 0, failed: 0, duplicates: [] };
+                return { imported: 25, updated: 0, skipped: 0, failed: 0, duplicates: [] };
               }}
             />
           </TabsContent>
@@ -157,15 +169,42 @@ export default function ClassDetail() {
               classData={classData}
               courseAssignments={courseAssignments}
               onAssignCourse={async (assignment) => {
+                // In production, call institutionService.assignCourseToClass
+                const newAssignment = {
+                  ...assignment,
+                  id: `assign-${Date.now()}`,
+                  course_thumbnail: '/placeholder.svg',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                };
+                setCourseAssignments([...courseAssignments, newAssignment]);
                 toast.success('Course assigned successfully');
               }}
               onUpdateAssignment={async (assignmentId, data) => {
+                // In production, call institutionService.updateClassCourseAssignment
+                setCourseAssignments(courseAssignments.map(a => 
+                  a.id === assignmentId ? { ...a, ...data } : a
+                ));
                 toast.success('Assignment updated successfully');
               }}
               onRemoveAssignment={async (assignmentId) => {
+                // In production, call institutionService.removeClassCourseAssignment
+                setCourseAssignments(courseAssignments.filter(a => a.id !== assignmentId));
                 toast.success('Course assignment removed');
               }}
               onUnlockModule={async (assignmentId, moduleId) => {
+                // In production, call institutionService.unlockModuleForClass
+                setCourseAssignments(courseAssignments.map(assignment => {
+                  if (assignment.id === assignmentId) {
+                    return {
+                      ...assignment,
+                      assigned_modules: assignment.assigned_modules.map(module =>
+                        module.module_id === moduleId ? { ...module, is_unlocked: true } : module
+                      )
+                    };
+                  }
+                  return assignment;
+                }));
                 toast.success('Module unlocked successfully');
               }}
             />
