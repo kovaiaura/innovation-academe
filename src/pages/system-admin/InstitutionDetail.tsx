@@ -43,10 +43,6 @@ export default function InstitutionDetail() {
       
       const classes = getClassesByInstitution(institutionId);
       setInstitutionClasses(classes);
-      
-      if (classes.length > 0 && !selectedClass) {
-        setSelectedClass(classes[0].id);
-      }
     }
   }, [institutionId]);
 
@@ -286,7 +282,7 @@ export default function InstitutionDetail() {
               onAddClass={() => setIsAddClassOpen(true)}
               onEditClass={(cls) => { setSelectedClassForEdit(cls); setIsEditClassOpen(true); }}
               onDeleteClass={handleDeleteClass}
-              onSelectClass={(id) => setSelectedClass(id)}
+              onSelectClass={(id) => {}}
             />
           </TabsContent>
 
@@ -325,200 +321,24 @@ export default function InstitutionDetail() {
             />
           </TabsContent>
 
-          {/* Old Students by Class Tab - Keep for reference but hidden */}
-          <TabsContent value="students-old" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Class Management</CardTitle>
-                    <CardDescription>Manage classes and their students</CardDescription>
-                  </div>
-                  <Button onClick={() => setIsAddClassOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Class
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {institutionClasses.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Building2 className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No Classes Created</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Get started by creating your first class
-                    </p>
-                    <Button onClick={() => setIsAddClassOpen(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Your First Class
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {institutionClasses.map((classItem) => {
-                      const classStudentCount = students.filter(s => s.class_id === classItem.id).length;
-                      const isSelected = selectedClass === classItem.id;
-                      
-                      return (
-                        <Card 
-                          key={classItem.id} 
-                          className={isSelected ? 'border-primary shadow-sm' : ''}
-                        >
-                          <CardHeader 
-                            className="cursor-pointer hover:bg-muted/50 transition-colors" 
-                            onClick={() => setSelectedClass(classItem.id)}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3">
-                                  <CardTitle className="text-lg">{classItem.class_name}</CardTitle>
-                                  <Badge variant="outline">{classItem.academic_year}</Badge>
-                                </div>
-                                <CardDescription className="mt-1">
-                                  {classStudentCount} student{classStudentCount !== 1 ? 's' : ''}
-                                  {classItem.capacity && ` / ${classItem.capacity} capacity`}
-                                  {classItem.room_number && ` • ${classItem.room_number}`}
-                                </CardDescription>
-                              </div>
-                              <div className="flex gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedClassForEdit(classItem);
-                                    setIsEditClassOpen(true);
-                                  }}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteClass(classItem.id);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          </CardHeader>
-                          
-                          {isSelected && (
-                            <CardContent className="pt-0">
-                              <div className="space-y-4">
-                                {/* Action Buttons */}
-                                <div className="flex gap-2 pt-4 border-t">
-                                  <Button 
-                                    variant="outline" 
-                                    onClick={() => handleBulkUploadForClass(classItem)}
-                                  >
-                                    <Upload className="h-4 w-4 mr-2" />
-                                    Bulk Upload Students
-                                  </Button>
-                                  <Button variant="outline" onClick={handleDownloadTemplate}>
-                                    <Download className="h-4 w-4 mr-2" />
-                                    Download Template
-                                  </Button>
-                                </div>
-                                
-                                {/* Class Statistics */}
-                                <div className="grid gap-4 md:grid-cols-4">
-                                  <Card>
-                                    <CardHeader className="pb-2">
-                                      <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                      <div className="text-2xl font-bold">{classStats.total}</div>
-                                    </CardContent>
-                                  </Card>
-                                  <Card>
-                                    <CardHeader className="pb-2">
-                                      <CardTitle className="text-sm font-medium">Boys</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                      <div className="text-2xl font-bold text-blue-600">{classStats.boys}</div>
-                                    </CardContent>
-                                  </Card>
-                                  <Card>
-                                    <CardHeader className="pb-2">
-                                      <CardTitle className="text-sm font-medium">Girls</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                      <div className="text-2xl font-bold text-pink-600">{classStats.girls}</div>
-                                    </CardContent>
-                                  </Card>
-                                  <Card>
-                                    <CardHeader className="pb-2">
-                                      <CardTitle className="text-sm font-medium">Active</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                      <div className="text-2xl font-bold text-green-600">{classStats.active}</div>
-                                    </CardContent>
-                                  </Card>
-                                </div>
-                                
-                                {/* Student Table */}
-                                <ClassStudentTable
-                                  students={classStudents}
-                                  onEditStudent={handleEditStudent}
-                                  institutionCode={institution.code}
-                                  className={classItem.class_name}
-                                />
-                              </div>
-                            </CardContent>
-                          )}
-                        </Card>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
 
-        {/* Edit Institution Dialog */}
+        {/* Dialogs */}
         <EditInstitutionDialog
-          institution={institution || null}
+          institution={institution}
           open={isEditInstitutionOpen}
           onOpenChange={setIsEditInstitutionOpen}
           onSave={handleSaveInstitution}
         />
 
-        {/* Edit Student Dialog */}
-        <StudentEditDialog
-          student={selectedStudent}
-          open={isEditDialogOpen}
-          onOpenChange={setIsEditDialogOpen}
-          onSave={handleSaveStudent}
-        />
-
-        {/* Bulk Upload Dialog */}
-        <BulkUploadDialog
-          isOpen={isBulkUploadOpen}
-          onOpenChange={setIsBulkUploadOpen}
-          institutionId={institutionId || '1'}
-          classId={selectedClassForUpload?.id}
-          className={selectedClassForUpload?.class_name}
-          onUploadComplete={handleBulkUploadComplete}
-        />
-
-        {/* Add Class Dialog */}
         <AddClassDialog
-          open={isAddClassOpen}
-          onOpenChange={setIsAddClassOpen}
-          onSave={handleAddClass}
-          institutionId={institutionId || ''}
-        />
-
-        {/* Edit Class Dialog */}
-        <AddClassDialog
-          open={isEditClassOpen}
-          onOpenChange={setIsEditClassOpen}
-          onSave={handleEditClass}
+          open={isAddClassOpen || isEditClassOpen}
+          onOpenChange={(open) => {
+            setIsAddClassOpen(open);
+            setIsEditClassOpen(open);
+            if (!open) setSelectedClassForEdit(null);
+          }}
+          onSave={selectedClassForEdit ? handleEditClass : handleAddClass}
           existingClass={selectedClassForEdit}
           institutionId={institutionId || ''}
         />
