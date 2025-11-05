@@ -182,12 +182,9 @@ export default function CourseManagement() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="all-courses">All Courses</TabsTrigger>
             <TabsTrigger value="create">Create Course</TabsTrigger>
-            
-            <TabsTrigger value="assessments">Assessments</TabsTrigger>
-            <TabsTrigger value="assignments">Assignments</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
@@ -603,154 +600,7 @@ export default function CourseManagement() {
             </Card>
           </TabsContent>
 
-
-          {/* Tab 4: Assessments */}
-          <TabsContent value="assessments" className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Assignments</CardTitle>
-                    <Button size="sm" onClick={() => setAssignmentDialogOpen(true)}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {mockAssignments.map((assignment) => {
-                      const course = courses.find(c => c.id === assignment.course_id);
-                      return (
-                        <div key={assignment.id} className="flex items-start justify-between border-b pb-4 last:border-0">
-                          <div>
-                            <h4 className="font-medium">{assignment.title}</h4>
-                            <p className="text-sm text-muted-foreground">{course?.course_code}</p>
-                            <div className="mt-2 flex items-center gap-4 text-sm">
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {new Date(assignment.due_date).toLocaleDateString()}
-                              </span>
-                              <span>{assignment.total_points} pts</span>
-                            </div>
-                          </div>
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Quizzes</CardTitle>
-                    <Button size="sm" onClick={() => setQuizDialogOpen(true)}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {mockQuizzes.map((quiz) => {
-                      const course = courses.find(c => c.id === quiz.course_id);
-                      return (
-                        <div key={quiz.id} className="flex items-start justify-between border-b pb-4 last:border-0">
-                          <div>
-                            <h4 className="font-medium">{quiz.title}</h4>
-                            <p className="text-sm text-muted-foreground">{course?.course_code}</p>
-                            <div className="mt-2 flex items-center gap-4 text-sm">
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {quiz.time_limit_minutes} min
-                              </span>
-                              <span>{quiz.attempts_allowed} attempts</span>
-                            </div>
-                          </div>
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Tab 5: Course Assignments */}
-          <TabsContent value="assignments" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Course Assignments</CardTitle>
-                    <CardDescription>Assign courses to institutions and officers</CardDescription>
-                  </div>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Assign Course
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Course</TableHead>
-                        <TableHead>Institution</TableHead>
-                        <TableHead>Class Level</TableHead>
-                        <TableHead>Officer(s)</TableHead>
-                        <TableHead>Enrollments</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {mockCourseAssignments.map((assignment) => {
-                        const course = courses.find(c => c.id === assignment.course_id);
-                        return (
-                          <TableRow key={assignment.id}>
-                            <TableCell className="font-medium">{course?.course_code}</TableCell>
-                            <TableCell>{assignment.institution_name}</TableCell>
-                            <TableCell>{assignment.class_level}</TableCell>
-                            <TableCell>{assignment.officer_names.join(', ')}</TableCell>
-                            <TableCell>
-                              {assignment.current_enrollments}
-                              {assignment.max_enrollments && ` / ${assignment.max_enrollments}`}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={assignment.status === 'ongoing' ? 'default' : 'secondary'}>
-                                {assignment.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button variant="ghost" size="sm">
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Tab 6: Analytics */}
+          {/* Analytics Tab */}
           <TabsContent value="analytics" className="space-y-6">
             <div className="grid gap-4 md:grid-cols-4">
               <Card>

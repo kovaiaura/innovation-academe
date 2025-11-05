@@ -59,6 +59,7 @@ import ManagementReports from "./pages/management/Reports";
 import ManagementEvents from "./pages/management/Events";
 import SystemAdminCourseManagement from "./pages/system-admin/CourseManagement";
 import SystemAdminCourseDetail from "./pages/system-admin/CourseDetail";
+import SystemAdminAssessmentManagement from "./pages/system-admin/AssessmentManagement";
 import OfficerCourseManagement from "./pages/officer/CourseManagement";
 import OfficerCourseContentViewer from "./pages/officer/CourseContentViewer";
 import OfficerProfile from "./pages/officer/Profile";
@@ -224,6 +225,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <SystemAdminCourseDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/assessments"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminAssessmentManagement />
                 </ProtectedRoute>
               }
             />
