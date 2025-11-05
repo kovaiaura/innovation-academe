@@ -95,3 +95,7 @@ export const getClassesByInstitution = (institutionId: string): InstitutionClass
     .filter(c => c.institution_id === institutionId && c.status === 'active')
     .sort((a, b) => a.display_order - b.display_order);
 };
+
+export const getClassById = (classId: string): InstitutionClass | undefined => {
+  return mockInstitutionClasses.find(c => c.id === classId);
+};

@@ -66,6 +66,7 @@ import OfficerLeaveManagement from "./pages/officer/LeaveManagement";
 import StudentCourseDetail from "./pages/student/CourseDetail";
 import InstitutionalCalendar from "./pages/system-admin/InstitutionalCalendar";
 import InstitutionDetail from "./pages/system-admin/InstitutionDetail";
+import ClassDetail from "./pages/system-admin/ClassDetail";
 import OfficerDetail from "./pages/system-admin/OfficerDetail";
 import ProjectManagement from "./pages/system-admin/ProjectManagement";
 import SystemAdminLeaveApprovals from "./pages/system-admin/LeaveApprovals";
@@ -143,6 +144,14 @@ const App = () => (
             element={
               <ProtectedRoute allowedRoles={['system_admin']}>
                 <InstitutionDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/system-admin/institutions/:institutionId/classes/:classId"
+            element={
+              <ProtectedRoute allowedRoles={['system_admin']}>
+                <ClassDetail />
               </ProtectedRoute>
             }
           />

@@ -282,7 +282,7 @@ export default function InstitutionDetail() {
               onAddClass={() => setIsAddClassOpen(true)}
               onEditClass={(cls) => { setSelectedClassForEdit(cls); setIsEditClassOpen(true); }}
               onDeleteClass={handleDeleteClass}
-              onSelectClass={(id) => {}}
+              onSelectClass={(id) => navigate(`/system-admin/institutions/${institutionId}/classes/${id}`)}
             />
           </TabsContent>
 

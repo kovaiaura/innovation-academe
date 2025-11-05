@@ -231,4 +231,76 @@ export const institutionService = {
     );
     return response.data;
   },
+
+  // ========== CLASS DETAILS ==========
+  async getClassDetails(classId: string): Promise<ApiResponse<any>> {
+    const response = await api.get(`/classes/${classId}`);
+    return response.data;
+  },
+
+  async getClassStudents(classId: string): Promise<ApiResponse<Student[]>> {
+    const response = await api.get(`/classes/${classId}/students`);
+    return response.data;
+  },
+
+  async addStudentToClass(classId: string, studentData: Partial<Student>): Promise<ApiResponse<Student>> {
+    const response = await api.post(`/classes/${classId}/students`, studentData);
+    return response.data;
+  },
+
+  async updateClassStudent(classId: string, studentId: string, data: Partial<Student>): Promise<ApiResponse<Student>> {
+    const response = await api.put(`/classes/${classId}/students/${studentId}`, data);
+    return response.data;
+  },
+
+  async removeStudentFromClass(classId: string, studentId: string): Promise<ApiResponse<void>> {
+    const response = await api.delete(`/classes/${classId}/students/${studentId}`);
+    return response.data;
+  },
+
+  // ========== CLASS COURSE ASSIGNMENTS ==========
+  async getClassCourseAssignments(classId: string): Promise<ApiResponse<any[]>> {
+    const response = await api.get(`/classes/${classId}/course-assignments`);
+    return response.data;
+  },
+
+  async assignCourseToClass(data: any): Promise<ApiResponse<any>> {
+    const response = await api.post(`/classes/${data.class_id}/course-assignments`, data);
+    return response.data;
+  },
+
+  async updateClassCourseAssignment(
+    classId: string,
+    assignmentId: string,
+    data: any
+  ): Promise<ApiResponse<any>> {
+    const response = await api.put(`/classes/${classId}/course-assignments/${assignmentId}`, data);
+    return response.data;
+  },
+
+  async removeClassCourseAssignment(classId: string, assignmentId: string): Promise<ApiResponse<void>> {
+    const response = await api.delete(`/classes/${classId}/course-assignments/${assignmentId}`);
+    return response.data;
+  },
+
+  async unlockModuleForClass(classId: string, assignmentId: string, moduleId: string): Promise<ApiResponse<void>> {
+    const response = await api.post(`/classes/${classId}/course-assignments/${assignmentId}/modules/${moduleId}/unlock`);
+    return response.data;
+  },
+
+  // ========== CLASS ANALYTICS ==========
+  async getClassAnalytics(classId: string, dateRange: { start: Date; end: Date }): Promise<ApiResponse<any>> {
+    const response = await api.get(`/classes/${classId}/analytics`, {
+      params: {
+        start_date: dateRange.start.toISOString(),
+        end_date: dateRange.end.toISOString()
+      }
+    });
+    return response.data;
+  },
+
+  async generateClassReport(classId: string, options: any): Promise<ApiResponse<{ report_url: string }>> {
+    const response = await api.post(`/classes/${classId}/reports/generate`, options);
+    return response.data;
+  },
 };
