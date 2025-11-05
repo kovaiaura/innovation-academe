@@ -31,11 +31,9 @@ export default function OfficerCourseManagement() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="classes">Classes</TabsTrigger>
             <TabsTrigger value="content">Course Content</TabsTrigger>
-            <TabsTrigger value="grading">Grading</TabsTrigger>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
           </TabsList>
 
           {/* Classes Tab - NEW */}
@@ -108,18 +106,6 @@ export default function OfficerCourseManagement() {
           {/* Course Content Tab */}
           <TabsContent value="content" className="space-y-6">
             <CourseContentTab />
-          </TabsContent>
-
-          {/* Grading Tab */}
-          <TabsContent value="grading" className="space-y-6">
-            <AssignmentsAndQuizzesTab />
-          </TabsContent>
-
-          {/* Performance Tab */}
-          <TabsContent value="performance" className="space-y-6">
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">Performance analytics coming soon</p>
-            </div>
           </TabsContent>
         </Tabs>
       </div>

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { PlayCircle, RotateCcw, CheckCircle, BookOpen, Clock } from 'lucide-react';
-import { mockCourseAssignments } from '@/data/mockCourseData';
+import { mockClassCourseAssignments } from '@/data/mockClassCourseAssignments';
 import { mockCourses, mockModules } from '@/data/mockCourseData';
 import { mockClassCourseProgress } from '@/data/mockClassTeachingProgress';
 import { getTeachingStatusColor, getTeachingStatusText, formatTeachingDuration } from '@/utils/classTeachingHelpers';
@@ -22,8 +22,8 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
   const navigate = useNavigate();
 
   // Get courses assigned to this class
-  const classAssignments = mockCourseAssignments.filter(
-    ca => ca.class_level === className || ca.class_level.includes(className.split(' ')[0])
+  const classAssignments = mockClassCourseAssignments.filter(
+    ca => ca.class_id === classId
   );
 
   const assignedCourseIds = classAssignments.map(ca => ca.course_id);
