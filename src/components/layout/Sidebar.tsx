@@ -59,7 +59,7 @@ const menuItems: MenuItem[] = [
   { label: 'Schedule', icon: <Calendar className="h-5 w-5" />, path: '/schedule', roles: ['teacher'] },
   { label: 'Materials', icon: <FileText className="h-5 w-5" />, path: '/materials', roles: ['teacher'] },
   // Officer menu items
-  { label: 'Course Management', icon: <BookOpen className="h-5 w-5" />, path: '/course-management', roles: ['officer'] },
+  { label: 'Start Teaching', icon: <BookOpen className="h-5 w-5" />, path: '/course-management', roles: ['officer'] },
   { label: 'My Timetable', icon: <Calendar className="h-5 w-5" />, path: '/sessions', roles: ['officer'] },
   { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['officer'] },
   { label: 'Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['officer'] },
