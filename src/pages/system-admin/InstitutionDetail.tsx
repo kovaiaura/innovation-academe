@@ -300,12 +300,20 @@ export default function InstitutionDetail() {
 
           {/* Analytics Tab */}
           <TabsContent value="analytics" className="space-y-6">
-            <InstitutionAnalyticsTab
-              institutionId={institutionId!}
-              institutionName={institution.name}
-              analytics={getInstitutionAnalytics(institutionId!) || {} as any}
-              onGenerateReport={async (options) => { toast.success('Report generated'); }}
-            />
+            {getInstitutionAnalytics(institutionId!) ? (
+              <InstitutionAnalyticsTab
+                institutionId={institutionId!}
+                institutionName={institution.name}
+                analytics={getInstitutionAnalytics(institutionId!)!}
+                onGenerateReport={async (options) => { toast.success('Report generated'); }}
+              />
+            ) : (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <p className="text-muted-foreground">Analytics data not available for this institution</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Timetable Tab */}

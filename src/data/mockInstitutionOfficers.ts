@@ -1,7 +1,7 @@
 import { OfficerAssignment } from '@/types/institution';
 
 export const mockInstitutionOfficers: Record<string, OfficerAssignment[]> = {
-  'springfield-high': [
+  '1': [
     {
       officer_id: 'officer-1',
       officer_name: 'Dr. Sarah Johnson',
@@ -39,7 +39,7 @@ export const mockInstitutionOfficers: Record<string, OfficerAssignment[]> = {
       status: 'active'
     }
   ],
-  'riverside-academy': [
+  '2': [
     {
       officer_id: 'officer-4',
       officer_name: 'Mr. David Kumar',

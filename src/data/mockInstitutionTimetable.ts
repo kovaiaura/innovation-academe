@@ -1,11 +1,11 @@
 import { InstitutionTimetableAssignment } from '@/types/institution';
 
 export const mockInstitutionTimetable: Record<string, InstitutionTimetableAssignment[]> = {
-  'springfield-high': [
+  '1': [
     // Monday
     {
       id: 'tt-1',
-      institution_id: 'springfield-high',
+      institution_id: '1',
       academic_year: '2024-25',
       day: 'Monday',
       period_id: 'period-1',
@@ -18,7 +18,7 @@ export const mockInstitutionTimetable: Record<string, InstitutionTimetableAssign
     },
     {
       id: 'tt-2',
-      institution_id: 'springfield-high',
+      institution_id: '1',
       academic_year: '2024-25',
       day: 'Monday',
       period_id: 'period-2',
@@ -32,7 +32,7 @@ export const mockInstitutionTimetable: Record<string, InstitutionTimetableAssign
     // Tuesday
     {
       id: 'tt-3',
-      institution_id: 'springfield-high',
+      institution_id: '1',
       academic_year: '2024-25',
       day: 'Tuesday',
       period_id: 'period-1',
@@ -45,7 +45,7 @@ export const mockInstitutionTimetable: Record<string, InstitutionTimetableAssign
     },
     {
       id: 'tt-4',
-      institution_id: 'springfield-high',
+      institution_id: '1',
       academic_year: '2024-25',
       day: 'Tuesday',
       period_id: 'period-2',
@@ -57,7 +57,7 @@ export const mockInstitutionTimetable: Record<string, InstitutionTimetableAssign
       updated_at: '2024-01-01T00:00:00Z'
     }
   ],
-  'riverside-academy': []
+  '2': []
 };
 
 export const getInstitutionTimetable = (institutionId: string): InstitutionTimetableAssignment[] => {

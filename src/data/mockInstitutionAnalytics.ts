@@ -1,8 +1,8 @@
 import { InstitutionAnalytics } from '@/types/institution';
 
 export const mockInstitutionAnalytics: Record<string, InstitutionAnalytics> = {
-  'springfield-high': {
-    institution_id: 'springfield-high',
+  '1': {
+    institution_id: '1',
     period: '2024-25',
     student_metrics: {
       total_students: 1247,
@@ -41,8 +41,8 @@ export const mockInstitutionAnalytics: Record<string, InstitutionAnalytics> = {
       project_completion_rate: 84.7
     }
   },
-  'riverside-academy': {
-    institution_id: 'riverside-academy',
+  '2': {
+    institution_id: '2',
     period: '2024-25',
     student_metrics: {
       total_students: 892,

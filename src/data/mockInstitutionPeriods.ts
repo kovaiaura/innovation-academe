@@ -1,10 +1,10 @@
 import { PeriodConfig } from '@/types/institution';
 
 export const mockInstitutionPeriods: Record<string, PeriodConfig[]> = {
-  'springfield-high': [
+  '1': [
     {
       id: 'period-1',
-      institution_id: 'springfield-high',
+      institution_id: '1',
       label: 'Period 1',
       start_time: '08:00',
       end_time: '08:45',
@@ -15,7 +15,7 @@ export const mockInstitutionPeriods: Record<string, PeriodConfig[]> = {
     },
     {
       id: 'period-2',
-      institution_id: 'springfield-high',
+      institution_id: '1',
       label: 'Period 2',
       start_time: '08:45',
       end_time: '09:30',
@@ -26,7 +26,7 @@ export const mockInstitutionPeriods: Record<string, PeriodConfig[]> = {
     },
     {
       id: 'period-3',
-      institution_id: 'springfield-high',
+      institution_id: '1',
       label: 'Period 3',
       start_time: '09:30',
       end_time: '10:15',
@@ -37,7 +37,7 @@ export const mockInstitutionPeriods: Record<string, PeriodConfig[]> = {
     },
     {
       id: 'break-1',
-      institution_id: 'springfield-high',
+      institution_id: '1',
       label: 'Morning Break',
       start_time: '10:15',
       end_time: '10:30',
@@ -48,7 +48,7 @@ export const mockInstitutionPeriods: Record<string, PeriodConfig[]> = {
     },
     {
       id: 'period-4',
-      institution_id: 'springfield-high',
+      institution_id: '1',
       label: 'Period 4',
       start_time: '10:30',
       end_time: '11:15',
@@ -59,7 +59,7 @@ export const mockInstitutionPeriods: Record<string, PeriodConfig[]> = {
     },
     {
       id: 'period-5',
-      institution_id: 'springfield-high',
+      institution_id: '1',
       label: 'Period 5',
       start_time: '11:15',
       end_time: '12:00',
@@ -70,7 +70,7 @@ export const mockInstitutionPeriods: Record<string, PeriodConfig[]> = {
     },
     {
       id: 'lunch',
-      institution_id: 'springfield-high',
+      institution_id: '1',
       label: 'Lunch Break',
       start_time: '12:00',
       end_time: '12:45',
@@ -81,7 +81,7 @@ export const mockInstitutionPeriods: Record<string, PeriodConfig[]> = {
     },
     {
       id: 'period-6',
-      institution_id: 'springfield-high',
+      institution_id: '1',
       label: 'Period 6',
       start_time: '12:45',
       end_time: '13:30',
@@ -91,10 +91,10 @@ export const mockInstitutionPeriods: Record<string, PeriodConfig[]> = {
       updated_at: '2024-01-01T00:00:00Z'
     }
   ],
-  'riverside-academy': [
+  '2': [
     {
       id: 'period-1',
-      institution_id: 'riverside-academy',
+      institution_id: '2',
       label: 'Period 1',
       start_time: '08:30',
       end_time: '09:15',
@@ -105,7 +105,7 @@ export const mockInstitutionPeriods: Record<string, PeriodConfig[]> = {
     },
     {
       id: 'period-2',
-      institution_id: 'riverside-academy',
+      institution_id: '2',
       label: 'Period 2',
       start_time: '09:15',
       end_time: '10:00',
@@ -116,7 +116,7 @@ export const mockInstitutionPeriods: Record<string, PeriodConfig[]> = {
     },
     {
       id: 'break-1',
-      institution_id: 'riverside-academy',
+      institution_id: '2',
       label: 'Break',
       start_time: '10:00',
       end_time: '10:15',
@@ -127,7 +127,7 @@ export const mockInstitutionPeriods: Record<string, PeriodConfig[]> = {
     },
     {
       id: 'period-3',
-      institution_id: 'riverside-academy',
+      institution_id: '2',
       label: 'Period 3',
       start_time: '10:15',
       end_time: '11:00',
@@ -138,7 +138,7 @@ export const mockInstitutionPeriods: Record<string, PeriodConfig[]> = {
     },
     {
       id: 'period-4',
-      institution_id: 'riverside-academy',
+      institution_id: '2',
       label: 'Period 4',
       start_time: '11:00',
       end_time: '11:45',
@@ -149,7 +149,7 @@ export const mockInstitutionPeriods: Record<string, PeriodConfig[]> = {
     },
     {
       id: 'lunch',
-      institution_id: 'riverside-academy',
+      institution_id: '2',
       label: 'Lunch',
       start_time: '11:45',
       end_time: '12:30',
@@ -160,7 +160,7 @@ export const mockInstitutionPeriods: Record<string, PeriodConfig[]> = {
     },
     {
       id: 'period-5',
-      institution_id: 'riverside-academy',
+      institution_id: '2',
       label: 'Period 5',
       start_time: '12:30',
       end_time: '13:15',
