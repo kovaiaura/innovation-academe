@@ -26,14 +26,16 @@ export const PublishingSelector = ({ value, onChange }: PublishingSelectorProps)
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedInstitutions, setSelectedInstitutions] = useState<Map<string, Set<string>>>(new Map());
 
-  // Initialize from value prop
+  // Initialize from value prop on mount only
   useEffect(() => {
-    const institutionMap = new Map<string, Set<string>>();
-    value.forEach((pub) => {
-      institutionMap.set(pub.institution_id, new Set(pub.class_ids));
-    });
-    setSelectedInstitutions(institutionMap);
-  }, [value]);
+    if (value.length > 0) {
+      const institutionMap = new Map<string, Set<string>>();
+      value.forEach((pub) => {
+        institutionMap.set(pub.institution_id, new Set(pub.class_ids));
+      });
+      setSelectedInstitutions(institutionMap);
+    }
+  }, []); // Empty dependency - only run on mount to prevent overriding user selections
 
   const filteredInstitutions = mockInstitutions.filter((inst) =>
     inst.name.toLowerCase().includes(searchTerm.toLowerCase())
