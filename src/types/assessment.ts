@@ -31,6 +31,8 @@ export interface Assessment {
   
   // Metadata
   created_by: string;
+  created_by_role: 'system_admin' | 'officer'; // NEW: Track who created it
+  institution_id?: string; // NEW: For officer-created assessments
   created_at: string;
   updated_at: string;
 }

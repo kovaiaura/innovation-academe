@@ -26,6 +26,7 @@ export const mockAssessments: Assessment[] = [
     ],
     question_count: 10,
     created_by: 'admin-1',
+    created_by_role: 'system_admin',
     created_at: '2024-01-10T10:00:00Z',
     updated_at: '2024-01-10T10:00:00Z'
   },
@@ -60,6 +61,7 @@ export const mockAssessments: Assessment[] = [
     ],
     question_count: 15,
     created_by: 'admin-1',
+    created_by_role: 'system_admin',
     created_at: '2024-01-12T14:00:00Z',
     updated_at: '2024-01-12T14:00:00Z'
   },
@@ -88,6 +90,7 @@ export const mockAssessments: Assessment[] = [
     ],
     question_count: 12,
     created_by: 'admin-1',
+    created_by_role: 'system_admin',
     created_at: '2024-01-05T09:00:00Z',
     updated_at: '2024-01-05T09:00:00Z'
   },
@@ -109,6 +112,7 @@ export const mockAssessments: Assessment[] = [
     published_to: [],
     question_count: 20,
     created_by: 'admin-1',
+    created_by_role: 'system_admin',
     created_at: '2024-01-13T11:00:00Z',
     updated_at: '2024-01-13T11:00:00Z'
   },
@@ -137,8 +141,70 @@ export const mockAssessments: Assessment[] = [
     ],
     question_count: 16,
     created_by: 'admin-1',
+    created_by_role: 'system_admin',
     created_at: '2024-01-11T15:00:00Z',
     updated_at: '2024-01-11T15:00:00Z'
+  },
+  // Officer-created assessments
+  {
+    id: 'assessment-6',
+    title: 'IoT Fundamentals - Springfield Campus',
+    description: 'Institution-specific assessment for IoT course students',
+    status: 'ongoing',
+    start_time: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    end_time: new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString(),
+    duration_minutes: 45,
+    total_points: 60,
+    pass_percentage: 70,
+    auto_submit: true,
+    auto_evaluate: true,
+    shuffle_questions: false,
+    show_results_immediately: true,
+    allow_review_after_submission: true,
+    published_to: [
+      {
+        institution_id: '1',
+        institution_name: 'Springfield High School',
+        class_ids: ['class-1-11a'],
+        class_names: ['Grade 11 Section A']
+      }
+    ],
+    question_count: 12,
+    created_by: 'officer-1',
+    created_by_role: 'officer',
+    institution_id: '1',
+    created_at: '2024-01-14T08:00:00Z',
+    updated_at: '2024-01-14T08:00:00Z'
+  },
+  {
+    id: 'assessment-7',
+    title: 'Robotics Mid-term - Springfield Campus',
+    description: 'Mid-term assessment for robotics course',
+    status: 'upcoming',
+    start_time: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+    end_time: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+    duration_minutes: 60,
+    total_points: 100,
+    pass_percentage: 75,
+    auto_submit: true,
+    auto_evaluate: true,
+    shuffle_questions: true,
+    show_results_immediately: false,
+    allow_review_after_submission: true,
+    published_to: [
+      {
+        institution_id: '1',
+        institution_name: 'Springfield High School',
+        class_ids: ['class-1-12a'],
+        class_names: ['Grade 12 Section A']
+      }
+    ],
+    question_count: 20,
+    created_by: 'officer-2',
+    created_by_role: 'officer',
+    institution_id: '1',
+    created_at: '2024-01-13T16:00:00Z',
+    updated_at: '2024-01-13T16:00:00Z'
   }
 ];
 

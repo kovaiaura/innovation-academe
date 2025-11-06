@@ -61,6 +61,7 @@ const menuItems: MenuItem[] = [
   // Officer menu items
   { label: 'Start Teaching', icon: <BookOpen className="h-5 w-5" />, path: '/course-management', roles: ['officer'] },
   { label: 'My Timetable', icon: <Calendar className="h-5 w-5" />, path: '/sessions', roles: ['officer'] },
+  { label: 'Assessments', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['officer'] },
   { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['officer'] },
   { label: 'Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['officer'] },
   { label: 'Lab Inventory', icon: <Package className="h-5 w-5" />, path: '/inventory', roles: ['officer'] },
@@ -69,6 +70,7 @@ const menuItems: MenuItem[] = [
   { label: 'Events & Activities', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['officer'] },
   // Student menu items
   { label: 'My Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['student'] },
+  { label: 'Assessments', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['student'] },
   { label: 'My Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['student'] },
   { label: 'Events & Activities', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['student'] },
   { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['student'] },

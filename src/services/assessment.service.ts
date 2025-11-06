@@ -1,5 +1,5 @@
 import api from './api';
-import { Assessment, AssessmentQuestion, AssessmentAttempt, AssessmentPublishing } from '@/types/assessment';
+import { Assessment, AssessmentQuestion, AssessmentAttempt, AssessmentPublishing, AssessmentAnswer } from '@/types/assessment';
 
 export const assessmentService = {
   // Assessment CRUD
@@ -68,5 +68,27 @@ export const assessmentService = {
   
   getAttemptById: async (attemptId: string) => {
     return api.get(`/assessments/attempts/${attemptId}`);
+  },
+  
+  // Officer-specific
+  getInstitutionAssessments: async (institutionId: string) => {
+    return api.get(`/assessments/institution/${institutionId}`);
+  },
+
+  // Student-specific
+  getStudentAssessments: async (studentId: string, classId: string) => {
+    return api.get(`/assessments/student`, { params: { studentId, classId } });
+  },
+
+  getStudentAttempts: async (studentId: string) => {
+    return api.get(`/assessments/attempts/student/${studentId}`);
+  },
+
+  submitAttempt: async (attemptId: string, answers: AssessmentAnswer[]) => {
+    return api.post(`/assessments/attempts/${attemptId}/submit`, { answers });
+  },
+
+  startAttempt: async (assessmentId: string, studentId: string) => {
+    return api.post(`/assessments/${assessmentId}/start`, { studentId });
   }
 };

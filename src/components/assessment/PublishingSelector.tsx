@@ -20,9 +20,10 @@ import { Search, Building2, GraduationCap } from 'lucide-react';
 interface PublishingSelectorProps {
   value: AssessmentPublishing[];
   onChange: (publishing: AssessmentPublishing[]) => void;
+  restrictToInstitution?: string; // NEW: Officer can only publish to their institution
 }
 
-export const PublishingSelector = ({ value, onChange }: PublishingSelectorProps) => {
+export const PublishingSelector = ({ value, onChange, restrictToInstitution }: PublishingSelectorProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedInstitutions, setSelectedInstitutions] = useState<Map<string, Set<string>>>(new Map());
 
@@ -37,7 +38,12 @@ export const PublishingSelector = ({ value, onChange }: PublishingSelectorProps)
     }
   }, []); // Empty dependency - only run on mount to prevent overriding user selections
 
-  const filteredInstitutions = mockInstitutions.filter((inst) =>
+  // Filter institutions based on restriction
+  const availableInstitutions = restrictToInstitution 
+    ? mockInstitutions.filter(inst => inst.id === restrictToInstitution)
+    : mockInstitutions;
+
+  const filteredInstitutions = availableInstitutions.filter((inst) =>
     inst.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 

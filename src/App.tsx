@@ -64,7 +64,10 @@ import OfficerCourseManagement from "./pages/officer/CourseManagement";
 import OfficerCourseContentViewer from "./pages/officer/CourseContentViewer";
 import OfficerProfile from "./pages/officer/Profile";
 import OfficerLeaveManagement from "./pages/officer/LeaveManagement";
+import OfficerAssessmentManagement from "./pages/officer/AssessmentManagement";
 import StudentCourseDetail from "./pages/student/CourseDetail";
+import StudentAssessments from "./pages/student/Assessments";
+import TakeAssessment from "./pages/student/TakeAssessment";
 import InstitutionalCalendar from "./pages/system-admin/InstitutionalCalendar";
 import InstitutionDetail from "./pages/system-admin/InstitutionDetail";
 import ClassDetail from "./pages/system-admin/ClassDetail";
@@ -392,6 +395,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/tenant/:tenantId/officer/assessments"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <OfficerAssessmentManagement />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Management Routes (path-based multi-tenancy) - Merged with institution admin */}
             <Route
@@ -563,6 +574,22 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['student']}>
                   <StudentEvents />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/assessments"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentAssessments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/assessments/:assessmentId/take"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <TakeAssessment />
                 </ProtectedRoute>
               }
             />
