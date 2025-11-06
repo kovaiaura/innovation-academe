@@ -6,18 +6,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { BookOpen, Video, FileText, Award, CheckCircle, Clock, AlertCircle, PlayCircle, Link as LinkIcon } from 'lucide-react';
-import { mockCourses, mockModules, mockSessions, mockContent, mockAssignments, mockQuizzes, mockSubmissions, mockQuizAttempts, mockQuizQuestions } from '@/data/mockCourseData';
+import { BookOpen, Video, FileText, CheckCircle, Clock, PlayCircle, Link as LinkIcon } from 'lucide-react';
+import { mockCourses, mockModules, mockSessions, mockContent, mockAssignments, mockQuizzes } from '@/data/mockCourseData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useContentProgress } from '@/hooks/useContentProgress';
 import { ContentViewerDialog } from '@/components/student/ContentViewerDialog';
-import { SubmitAssignmentDialog } from '@/components/student/SubmitAssignmentDialog';
-import { TakeQuizDialog } from '@/components/student/TakeQuizDialog';
 import { CourseCompletionBanner } from '@/components/student/CourseCompletionBanner';
 import { CertificatePreviewDialog } from '@/components/student/CertificatePreviewDialog';
 import { checkCourseCompletion } from '@/utils/courseCompletionHelpers';
 import { generateCourseCertificate, storeCertificate, getCertificateByCourse } from '@/utils/certificateGenerator';
-import { AssignmentSubmission, QuizAttempt, CourseContent } from '@/types/course';
+import { AssignmentSubmission, QuizAttempt, CourseContent, Assignment, Quiz } from '@/types/course';
 import { mockStudents } from '@/data/mockStudentData';
 import { getOfficerByTenant } from '@/data/mockOfficerData';
 import { toast } from 'sonner';
@@ -28,10 +26,6 @@ export default function StudentCourseDetail() {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedContent, setSelectedContent] = useState<CourseContent | null>(null);
   const [contentDialogOpen, setContentDialogOpen] = useState(false);
-  const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
-  const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
-  const [selectedQuiz, setSelectedQuiz] = useState<any>(null);
-  const [quizDialogOpen, setQuizDialogOpen] = useState(false);
   const [certificateDialogOpen, setCertificateDialogOpen] = useState(false);
   const [submissions, setSubmissions] = useState<AssignmentSubmission[]>([]);
   const [quizAttempts, setQuizAttempts] = useState<QuizAttempt[]>([]);
@@ -113,16 +107,6 @@ export default function StudentCourseDetail() {
   const certificate = getCertificateByCourse(studentId, courseId || '');
   const { progressPercentage } = checkCourseCompletion(courseId || '', studentId, completedContentIds, content, submissions, assignments, quizAttempts, quizzes);
 
-  const getSubmissionStatus = (assignmentId: string) => {
-    const submission = submissions.find(s => s.assignment_id === assignmentId && s.student_id === studentId);
-    return submission;
-  };
-
-  const getQuizStatus = (quizId: string) => {
-    const attempts = quizAttempts.filter(qa => qa.quiz_id === quizId && qa.student_id === studentId);
-    return attempts.sort((a, b) => (b.percentage || 0) - (a.percentage || 0))[0];
-  };
-
   return (
     <Layout>
       <div className="space-y-6">
@@ -142,9 +126,6 @@ export default function StudentCourseDetail() {
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="content">Content</TabsTrigger>
-            <TabsTrigger value="assignments">Assignments</TabsTrigger>
-            <TabsTrigger value="quizzes">Quizzes</TabsTrigger>
-            <TabsTrigger value="progress">Progress</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -269,111 +250,6 @@ export default function StudentCourseDetail() {
               );
             })}
           </TabsContent>
-
-          <TabsContent value="assignments" className="space-y-4">
-            {assignments.map((assignment) => {
-              const submission = getSubmissionStatus(assignment.id);
-              return (
-                <Card key={assignment.id}>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <span>{assignment.title}</span>
-                      {submission?.status === 'pending' && <Badge variant="outline" className="bg-yellow-50"><Clock className="h-3 w-3 mr-1" />Pending Review</Badge>}
-                      {submission?.status === 'graded' && <Badge variant="outline" className="bg-green-50"><CheckCircle className="h-3 w-3 mr-1" />Graded: {submission.grade}/{submission.total_points}</Badge>}
-                      {!submission && <Badge variant="outline"><AlertCircle className="h-3 w-3 mr-1" />Not Submitted</Badge>}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground mb-4">{assignment.description}</p>
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="text-sm">Due: {new Date(assignment.due_date).toLocaleDateString()}</p>
-                        <p className="text-sm">Points: {assignment.total_points}</p>
-                        {submission?.feedback && <p className="text-sm text-muted-foreground mt-2">Feedback: {submission.feedback}</p>}
-                      </div>
-                      {!submission && <Button onClick={() => { setSelectedAssignment(assignment); setAssignmentDialogOpen(true); }}>Submit</Button>}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </TabsContent>
-
-          <TabsContent value="quizzes" className="space-y-4">
-            {quizzes.map((quiz) => {
-              const bestAttempt = getQuizStatus(quiz.id);
-              const attemptCount = quizAttempts.filter(qa => qa.quiz_id === quiz.id && qa.student_id === studentId).length;
-              const passed = bestAttempt && (bestAttempt.percentage || 0) >= quiz.pass_percentage;
-              return (
-                <Card key={quiz.id}>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <span>{quiz.title}</span>
-                      {!bestAttempt && <Badge variant="outline"><AlertCircle className="h-3 w-3 mr-1" />Not Attempted</Badge>}
-                      {passed && <Badge variant="outline" className="bg-green-50"><CheckCircle className="h-3 w-3 mr-1" />Passed: {bestAttempt.percentage?.toFixed(1)}%</Badge>}
-                      {bestAttempt && !passed && <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Failed: {bestAttempt.percentage?.toFixed(1)}%</Badge>}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <p className="text-muted-foreground">{quiz.description}</p>
-                      <div className="grid gap-4 md:grid-cols-3">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Time Limit</p>
-                          <p className="font-medium">{quiz.time_limit_minutes} minutes</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Attempts</p>
-                          <p className="font-medium">{attemptCount} of {quiz.attempts_allowed}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Pass %</p>
-                          <p className="font-medium">{quiz.pass_percentage}%</p>
-                        </div>
-                      </div>
-                      {attemptCount < quiz.attempts_allowed && (
-                        <Button onClick={() => { setSelectedQuiz(quiz); setQuizDialogOpen(true); }}>
-                          {attemptCount === 0 ? 'Start Quiz' : 'Retry Quiz'}
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </TabsContent>
-
-          <TabsContent value="progress" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Award className="h-5 w-5" />
-                  Your Progress
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm">Overall Progress</span>
-                    <span className="text-sm font-medium">65%</span>
-                  </div>
-                  <Progress value={65} className="h-2" />
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="p-4 border rounded-lg">
-                    <p className="text-sm text-muted-foreground">Assignments</p>
-                    <p className="text-2xl font-bold">1/2</p>
-                    <p className="text-sm">Completed</p>
-                  </div>
-                  <div className="p-4 border rounded-lg">
-                    <p className="text-sm text-muted-foreground">Quizzes</p>
-                    <p className="text-2xl font-bold">1/1</p>
-                    <p className="text-sm">Completed</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
 
         <ContentViewerDialog
@@ -385,34 +261,6 @@ export default function StudentCourseDetail() {
             if (selectedContent) markContentComplete(selectedContent.id);
           }}
         />
-
-        {selectedAssignment && student && officer && (
-          <SubmitAssignmentDialog
-            open={assignmentDialogOpen}
-            onOpenChange={setAssignmentDialogOpen}
-            assignment={selectedAssignment}
-            studentId={studentId}
-            studentName={student.student_name}
-            courseId={courseId || ''}
-            officerId={officer.id}
-            onSubmit={(sub) => setSubmissions([...submissions, sub])}
-          />
-        )}
-
-        {selectedQuiz && student && officer && (
-          <TakeQuizDialog
-            open={quizDialogOpen}
-            onOpenChange={setQuizDialogOpen}
-            quiz={selectedQuiz}
-            questions={mockQuizQuestions.filter(q => q.quiz_id === selectedQuiz.id)}
-            studentId={studentId}
-            studentName={student.student_name}
-            courseId={courseId || ''}
-            officerId={officer.id}
-            attemptNumber={quizAttempts.filter(qa => qa.quiz_id === selectedQuiz.id && qa.student_id === studentId).length + 1}
-            onSubmit={(attempt) => setQuizAttempts([...quizAttempts, attempt])}
-          />
-        )}
 
         {certificate && (
           <CertificatePreviewDialog
