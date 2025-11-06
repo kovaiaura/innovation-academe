@@ -349,7 +349,13 @@ export default function AssessmentManagement() {
                   <PublishingSelector value={publishing} onChange={setPublishing} />
                   <div className="flex gap-3">
                     <Button variant="outline" onClick={() => setStep(3)}>Back</Button>
-                    <Button onClick={() => setStep(5)}>Next</Button>
+                    <Button 
+                      onClick={() => setStep(5)} 
+                      disabled={publishing.length === 0}
+                      title={publishing.length === 0 ? "Please select at least one class to proceed" : ""}
+                    >
+                      Next
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

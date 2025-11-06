@@ -8,11 +8,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { AssessmentPublishing } from '@/types/assessment';
 import { mockInstitutionClasses } from '@/data/mockClassData';
 
-// Simple mock institutions for selector
+// Simple mock institutions for selector - matching actual institution IDs from mockClassData
 const mockInstitutions = [
-  { id: '1', name: 'Springfield High School', location: 'Springfield, IL' },
-  { id: '2', name: 'Riverside Academy', location: 'Riverside, CA' },
-  { id: '3', name: 'Metro Tech Institute', location: 'New York, NY' }
+  { id: '1', name: 'Main Campus', location: 'Springfield, IL' },
+  { id: 'springfield', name: 'Springfield High School', location: 'Springfield, IL' },
+  { id: 'ryan', name: 'Ryan International', location: 'Mumbai, India' },
+  { id: 'dps', name: 'Delhi Public School', location: 'New Delhi, India' }
 ];
 import { Search, Building2, GraduationCap } from 'lucide-react';
 
@@ -128,6 +129,11 @@ export const PublishingSelector = ({ value, onChange }: PublishingSelectorProps)
               </div>
             </div>
           </div>
+          {counts.classes === 0 && (
+            <p className="text-sm text-amber-600 mt-3">
+              Please select at least one institution and class to proceed
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -191,6 +197,14 @@ export const PublishingSelector = ({ value, onChange }: PublishingSelectorProps)
                         </div>
                       ))}
                     </div>
+                  </CardContent>
+                )}
+                
+                {isSelected && classes.length === 0 && (
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground pl-8">
+                      No classes available for this institution
+                    </p>
                   </CardContent>
                 )}
               </Card>
