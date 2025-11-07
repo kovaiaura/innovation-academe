@@ -18,7 +18,7 @@ export const mockActivityEvents: ActivityEvent[] = [
     rules: '1. Each team must have 2-4 members\n2. All code must be original\n3. Use of open-source libraries is allowed\n4. Projects must be submitted by the deadline\n5. Mentors will be available throughout the event',
     prizes: ['₹50,000 (First Prize)', '₹30,000 (Second Prize)', '₹20,000 (Third Prize)', 'Certificates for all participants'],
     institution_ids: [], // All institutions
-    linked_project_ids: [],
+    linked_project_ids: [], // Projects assigned to participate in this event
     banner_image: '/placeholder.svg',
     created_by: 'sysadmin-001',
     created_at: '2025-01-15T10:00:00Z',

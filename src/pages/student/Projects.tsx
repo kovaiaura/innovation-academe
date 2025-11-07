@@ -81,7 +81,7 @@ export default function Projects() {
                           )}
                           {project.event_id && project.event_title && (
                             <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/20 text-xs">
-                              🎯 {project.event_title}
+                              📅 Event: {project.event_title}
                             </Badge>
                           )}
                         </CardTitle>

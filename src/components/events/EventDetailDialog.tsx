@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EventStatusBadge } from './EventStatusBadge';
 import { RegistrationCountdown } from './RegistrationCountdown';
-import { LinkProjectToEventDialog } from '@/components/events/officer/LinkProjectToEventDialog';
-import { Calendar, MapPin, Users, Trophy, FileText, Clock, FolderKanban, Link as LinkIcon } from 'lucide-react';
+import { AssignProjectToEventDialog } from '@/components/events/officer/AssignProjectToEventDialog';
+import { Calendar, MapPin, Users, Trophy, FileText, Clock, FolderKanban, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,16 +22,16 @@ interface EventDetailDialogProps {
 export function EventDetailDialog({ eventId, open, onOpenChange, userRole }: EventDetailDialogProps) {
   const { user } = useAuth();
   const event = mockActivityEvents.find(e => e.id === eventId);
-  const [showLinkProjectDialog, setShowLinkProjectDialog] = useState(false);
+  const [showAssignProjectDialog, setShowAssignProjectDialog] = useState(false);
 
   if (!event) return null;
 
   const canEdit = userRole === 'system_admin';
   
-  // Get linked projects for this event
-  const linkedProjectIds = event.linked_project_ids || [];
+  // Get assigned projects for this event
+  const assignedProjectIds = event.linked_project_ids || [];
   const allProjects = Object.values(mockProjects).flat();
-  const linkedProjects = allProjects.filter(p => linkedProjectIds.includes(p.id));
+  const assignedProjects = allProjects.filter(p => assignedProjectIds.includes(p.id));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -162,46 +162,46 @@ export function EventDetailDialog({ eventId, open, onOpenChange, userRole }: Eve
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold flex items-center gap-2">
                     <FolderKanban className="h-5 w-5" />
-                    Linked Projects
+                    Assigned Projects
                   </h3>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setShowLinkProjectDialog(true)}
+                    onClick={() => setShowAssignProjectDialog(true)}
                   >
-                    <LinkIcon className="h-4 w-4 mr-2" />
-                    Manage Projects
+                    <Plus className="h-4 w-4 mr-2" />
+                    Assign Projects
                   </Button>
                 </div>
                 
-                {linkedProjects.length === 0 ? (
-                  <div className="text-center py-6 bg-muted/50 rounded-lg">
-                    <p className="text-sm text-muted-foreground">
-                      No projects linked yet. Click "Manage Projects" to link projects to this event.
+                <div className="space-y-3">
+                  {assignedProjects.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-6 border rounded-lg">
+                      No projects assigned yet. Click "Assign Projects" to assign your projects to this event.
                     </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {linkedProjects.map(project => {
-                      const teamLeader = project.team_members.find(m => m.role === 'leader');
-                      return (
-                        <div key={project.id} className="p-3 bg-muted/50 rounded-lg">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h4 className="font-semibold text-sm">{project.title}</h4>
-                              <p className="text-xs text-muted-foreground">
-                                Led by {teamLeader?.name} • {project.team_members.length} member{project.team_members.length !== 1 ? 's' : ''}
-                              </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {assignedProjects.map(project => {
+                        const teamLeader = project.team_members.find(m => m.role === 'leader');
+                        return (
+                          <div key={project.id} className="p-3 bg-muted/50 rounded-lg">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h4 className="font-semibold text-sm">{project.title}</h4>
+                                <p className="text-xs text-muted-foreground">
+                                  Led by {teamLeader?.name} • {project.team_members.length} member{project.team_members.length !== 1 ? 's' : ''}
+                                </p>
+                              </div>
+                              <Badge variant="outline" className="text-xs">
+                                {project.category}
+                              </Badge>
                             </div>
-                            <Badge variant="outline" className="text-xs">
-                              {project.category}
-                            </Badge>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           )}
@@ -228,12 +228,12 @@ export function EventDetailDialog({ eventId, open, onOpenChange, userRole }: Eve
           </div>
         </div>
         
-        {/* Link Project Dialog */}
+        {/* Assign Project Dialog */}
         {userRole === 'officer' && user && (
-          <LinkProjectToEventDialog
+          <AssignProjectToEventDialog
             eventId={eventId}
-            open={showLinkProjectDialog}
-            onOpenChange={setShowLinkProjectDialog}
+            open={showAssignProjectDialog}
+            onOpenChange={setShowAssignProjectDialog}
             officerId={user.id}
           />
         )}

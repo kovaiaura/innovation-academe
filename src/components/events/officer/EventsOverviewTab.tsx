@@ -27,8 +27,8 @@ export function EventsOverviewTab() {
     };
   };
 
-  // Get linked projects count for this event
-  const getLinkedProjectsCount = (eventId: string) => {
+  // Get assigned projects count for this event
+  const getAssignedProjectsCount = (eventId: string) => {
     const event = mockActivityEvents.find(e => e.id === eventId);
     return event?.linked_project_ids?.length || 0;
   };
@@ -96,7 +96,7 @@ export function EventsOverviewTab() {
                     <div>
                       <div className="text-lg font-bold text-blue-600 flex items-center justify-center gap-1">
                         <FolderKanban className="h-4 w-4" />
-                        {getLinkedProjectsCount(event.id)}
+                        {getAssignedProjectsCount(event.id)}
                       </div>
                       <div className="text-xs text-muted-foreground">Projects</div>
                     </div>

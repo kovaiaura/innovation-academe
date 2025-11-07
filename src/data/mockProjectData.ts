@@ -28,9 +28,9 @@ export interface Project {
   institution_id: string;
   class: string;
   
-  // Event Linking
-  event_id?: string; // If linked to an event
-  event_title?: string; // Stored as text for persistence
+  // Event Assignment
+  event_id?: string; // Event this project is assigned to participate in
+  event_title?: string; // Title of the assigned event (stored for persistence)
   
   // Project Lifecycle
   status: 'proposal' | 'approved' | 'in_progress' | 'completed' | 'rejected';

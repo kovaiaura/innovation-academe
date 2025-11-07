@@ -9,24 +9,24 @@ import { mockActivityEvents } from '@/data/mockEventsData';
 import { toast } from 'sonner';
 import { Users, Target } from 'lucide-react';
 
-interface LinkProjectToEventDialogProps {
+interface AssignProjectToEventDialogProps {
   eventId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   officerId: string;
 }
 
-export function LinkProjectToEventDialog({
+export function AssignProjectToEventDialog({
   eventId,
   open,
   onOpenChange,
   officerId
-}: LinkProjectToEventDialogProps) {
+}: AssignProjectToEventDialogProps) {
   const event = mockActivityEvents.find(e => e.id === eventId);
   const allProjects = getProjectsByOfficer(officerId);
-  const linkedProjectIds = event?.linked_project_ids || [];
+  const assignedProjectIds = event?.linked_project_ids || [];
   
-  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>(linkedProjectIds);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>(assignedProjectIds);
 
   const handleToggleProject = (projectId: string) => {
     setSelectedProjectIds(prev =>
@@ -39,19 +39,19 @@ export function LinkProjectToEventDialog({
   const handleSave = () => {
     if (!event) return;
 
-    // Update event with linked projects
+    // Update event with assigned projects
     event.linked_project_ids = selectedProjectIds;
 
-    // Update each project with event info
+    // Update each project with event assignment
     allProjects.forEach(project => {
       if (selectedProjectIds.includes(project.id)) {
-        // Link project to event
+        // Assign project to event
         updateProject(project.institution_id, project.id, {
           event_id: eventId,
           event_title: event.title
         });
       } else if (project.event_id === eventId) {
-        // Unlink project from event
+        // Unassign project from event
         updateProject(project.institution_id, project.id, {
           event_id: undefined,
           event_title: undefined
@@ -59,7 +59,7 @@ export function LinkProjectToEventDialog({
       }
     });
 
-    toast.success(`Successfully linked ${selectedProjectIds.length} project(s) to ${event.title}`);
+    toast.success(`Successfully assigned ${selectedProjectIds.length} project(s) to participate in ${event.title}`);
     onOpenChange(false);
   };
 
@@ -79,9 +79,9 @@ export function LinkProjectToEventDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh]">
         <DialogHeader>
-          <DialogTitle>Link Projects to Event</DialogTitle>
+          <DialogTitle>Assign Projects to Event</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Select which projects are participating in "{event.title}"
+            Select which projects will participate in "{event.title}"
           </p>
         </DialogHeader>
 
@@ -89,7 +89,7 @@ export function LinkProjectToEventDialog({
           <div className="space-y-3 pr-4">
             {allProjects.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                You don't have any projects yet. Create a project first.
+                You don't have any projects yet. Create a project first in the Projects menu.
               </div>
             ) : (
               allProjects.map((project) => {
@@ -152,7 +152,7 @@ export function LinkProjectToEventDialog({
             Cancel
           </Button>
           <Button onClick={handleSave}>
-            Link {selectedProjectIds.length} Project{selectedProjectIds.length !== 1 ? 's' : ''}
+            Assign {selectedProjectIds.length} Project{selectedProjectIds.length !== 1 ? 's' : ''}
           </Button>
         </DialogFooter>
       </DialogContent>
