@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { mockActivityEvents } from '@/data/mockEventsData';
 import { EventStatusBadge } from '../EventStatusBadge';
 import { RegistrationCountdown } from '../RegistrationCountdown';
-import { ApplyEventDialog } from './ApplyEventDialog';
 import { EventDetailDialog } from '../EventDetailDialog';
 import { Search, MapPin, Users, Calendar, Trophy } from 'lucide-react';
 import { format } from 'date-fns';
@@ -18,7 +17,6 @@ export function AvailableEventsTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<ActivityEventType | 'all'>('all');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [applyEventId, setApplyEventId] = useState<string | null>(null);
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -126,20 +124,13 @@ export function AvailableEventsTab() {
                   <RegistrationCountdown endDate={event.registration_end} />
                 </div>
               </CardContent>
-              <CardFooter className="flex gap-2">
+              <CardFooter>
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  className="w-full"
                   onClick={() => setSelectedEventId(event.id)}
                 >
                   View Details
-                </Button>
-                <Button
-                  className="flex-1"
-                  onClick={() => setApplyEventId(event.id)}
-                  disabled={new Date(event.registration_end) < new Date()}
-                >
-                  Apply Now
                 </Button>
               </CardFooter>
             </Card>
@@ -154,19 +145,6 @@ export function AvailableEventsTab() {
           open={!!selectedEventId}
           onOpenChange={(open) => !open && setSelectedEventId(null)}
           userRole="student"
-          onApply={() => {
-            setApplyEventId(selectedEventId);
-            setSelectedEventId(null);
-          }}
-        />
-      )}
-
-      {/* Apply Dialog */}
-      {applyEventId && (
-        <ApplyEventDialog
-          eventId={applyEventId}
-          open={!!applyEventId}
-          onOpenChange={(open) => !open && setApplyEventId(null)}
         />
       )}
     </div>

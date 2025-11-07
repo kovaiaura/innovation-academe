@@ -12,15 +12,13 @@ interface EventDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userRole: 'system_admin' | 'student' | 'officer' | 'management';
-  onApply?: () => void;
 }
 
-export function EventDetailDialog({ eventId, open, onOpenChange, userRole, onApply }: EventDetailDialogProps) {
+export function EventDetailDialog({ eventId, open, onOpenChange, userRole }: EventDetailDialogProps) {
   const event = mockActivityEvents.find(e => e.id === eventId);
 
   if (!event) return null;
 
-  const canApply = userRole === 'student' && event.status === 'published';
   const canEdit = userRole === 'system_admin';
 
   return (
@@ -141,16 +139,20 @@ export function EventDetailDialog({ eventId, open, onOpenChange, userRole, onApp
             </div>
           )}
 
+          {/* Contact Note for Students */}
+          {userRole === 'student' && (
+            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <p className="text-sm text-blue-900 dark:text-blue-100">
+                <strong>Interested in this event?</strong> Please contact your Innovation Officer directly to express your interest and get more details.
+              </p>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close
             </Button>
-            {canApply && onApply && (
-              <Button onClick={onApply}>
-                Apply Now
-              </Button>
-            )}
             {canEdit && (
               <Button variant="secondary">
                 Edit Event
