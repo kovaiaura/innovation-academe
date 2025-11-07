@@ -4,20 +4,31 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { mockActivityEvents } from '@/data/mockEventsData';
+import { mockActivityEvents, mockEventApplications } from '@/data/mockEventsData';
 import { EventStatusBadge } from '../EventStatusBadge';
 import { RegistrationCountdown } from '../RegistrationCountdown';
 import { EventDetailDialog } from '../EventDetailDialog';
 import { Search, MapPin, Users, Calendar, Trophy } from 'lucide-react';
 import { format } from 'date-fns';
 import { ActivityEventType } from '@/types/events';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function EventsViewTab() {
+  const { user } = useAuth();
   const [events] = useState(mockActivityEvents.filter(e => e.status !== 'draft'));
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<ActivityEventType | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'ongoing' | 'completed'>('all');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+
+  // Get count of applications from user's institution for a specific event
+  const getInstitutionParticipantCount = (eventId: string): number => {
+    if (!user?.institution_id) return 0;
+    
+    return mockEventApplications.filter(
+      app => app.event_id === eventId && app.institution_id === user.institution_id
+    ).length;
+  };
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -129,8 +140,8 @@ export function EventsViewTab() {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Users className="h-4 w-4" />
                   <span>
-                    {event.current_participants}
-                    {event.max_participants && ` / ${event.max_participants}`} registered
+                    {getInstitutionParticipantCount(event.id)}
+                    {event.max_participants && ` / ${event.max_participants}`} from your institution
                   </span>
                 </div>
                 {event.status === 'published' && (
