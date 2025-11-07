@@ -6,23 +6,31 @@ import { mockActivityEvents, mockEventApplications } from '@/data/mockEventsData
 import { EventStatusBadge } from '../EventStatusBadge';
 import { RegistrationCountdown } from '../RegistrationCountdown';
 import { EventDetailDialog } from '../EventDetailDialog';
-import { Calendar, MapPin, Users, FileText } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Calendar, MapPin, Users, FileText, FolderKanban } from 'lucide-react';
 import { format } from 'date-fns';
 
 export function EventsOverviewTab() {
+  const { user } = useAuth();
   const [events] = useState(mockActivityEvents.filter(e => e.status === 'published' || e.status === 'ongoing'));
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
-  // Mock: Get applications for officer's institution
+  // Get applications for officer's institution
   const getEventStats = (eventId: string) => {
     const applications = mockEventApplications.filter(app => 
-      app.event_id === eventId && app.institution_id === 'springfield-high'
+      app.event_id === eventId && app.institution_id === user?.institution_id
     );
     return {
       total: applications.length,
       pending: applications.filter(a => a.status === 'pending').length,
       approved: applications.filter(a => a.status === 'approved').length,
     };
+  };
+
+  // Get linked projects count for this event
+  const getLinkedProjectsCount = (eventId: string) => {
+    const event = mockActivityEvents.find(e => e.id === eventId);
+    return event?.linked_project_ids?.length || 0;
   };
 
   return (
@@ -72,7 +80,7 @@ export function EventsOverviewTab() {
                     <FileText className="h-4 w-4" />
                     <span>Our Institution</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="grid grid-cols-4 gap-2 text-center">
                     <div>
                       <div className="text-lg font-bold">{stats.total}</div>
                       <div className="text-xs text-muted-foreground">Applied</div>
@@ -84,6 +92,13 @@ export function EventsOverviewTab() {
                     <div>
                       <div className="text-lg font-bold text-green-600">{stats.approved}</div>
                       <div className="text-xs text-muted-foreground">Approved</div>
+                    </div>
+                    <div>
+                      <div className="text-lg font-bold text-blue-600 flex items-center justify-center gap-1">
+                        <FolderKanban className="h-4 w-4" />
+                        {getLinkedProjectsCount(event.id)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Projects</div>
                     </div>
                   </div>
                 </div>

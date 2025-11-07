@@ -69,7 +69,7 @@ export default function Projects() {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
-                        <CardTitle className="flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2 flex-wrap">
                           {project.title}
                           {isLeader && (
                             <Badge variant="outline" className="text-xs">Team Leader</Badge>
@@ -77,6 +77,11 @@ export default function Projects() {
                           {project.is_showcase && (
                             <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
                               ⭐ Showcase
+                            </Badge>
+                          )}
+                          {project.event_id && project.event_title && (
+                            <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/20 text-xs">
+                              🎯 {project.event_title}
                             </Badge>
                           )}
                         </CardTitle>

@@ -113,13 +113,6 @@ export function AvailableEventsTab() {
                     <span className="line-clamp-1">{event.venue}</span>
                   </div>
                 )}
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Users className="h-4 w-4" />
-                  <span>
-                    {event.current_participants}
-                    {event.max_participants && ` / ${event.max_participants}`} registered
-                  </span>
-                </div>
                 <div className="pt-2">
                   <RegistrationCountdown endDate={event.registration_end} />
                 </div>

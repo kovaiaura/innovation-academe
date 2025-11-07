@@ -28,6 +28,10 @@ export interface Project {
   institution_id: string;
   class: string;
   
+  // Event Linking
+  event_id?: string; // If linked to an event
+  event_title?: string; // Stored as text for persistence
+  
   // Project Lifecycle
   status: 'proposal' | 'approved' | 'in_progress' | 'completed' | 'rejected';
   progress: number; // 0-100
@@ -68,6 +72,8 @@ export const mockProjects: Record<string, Project[]> = {
       created_by_officer_name: 'Dr. Rajesh Kumar',
       institution_id: 'springfield',
       class: '3rd Year CSE - Section A',
+      event_id: 'evt-004',
+      event_title: 'Innovation Exhibition 2025',
       status: 'in_progress',
       progress: 65,
       start_date: '2024-01-15',
@@ -103,6 +109,8 @@ export const mockProjects: Record<string, Project[]> = {
       created_by_officer_name: 'Dr. Rajesh Kumar',
       institution_id: 'springfield',
       class: '4th Year CSE - Section B',
+      event_id: 'evt-002',
+      event_title: 'Science Fair - Springfield High 2025',
       status: 'completed',
       progress: 100,
       start_date: '2023-08-01',
@@ -169,6 +177,8 @@ export const mockProjects: Record<string, Project[]> = {
       created_by_officer_name: 'Dr. Rajesh Kumar',
       institution_id: 'springfield',
       class: '2nd Year Mechanical - Section A',
+      event_id: 'evt-004',
+      event_title: 'Innovation Exhibition 2025',
       status: 'in_progress',
       progress: 40,
       start_date: '2024-02-01',

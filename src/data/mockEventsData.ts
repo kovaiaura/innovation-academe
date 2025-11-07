@@ -18,6 +18,7 @@ export const mockActivityEvents: ActivityEvent[] = [
     rules: '1. Each team must have 2-4 members\n2. All code must be original\n3. Use of open-source libraries is allowed\n4. Projects must be submitted by the deadline\n5. Mentors will be available throughout the event',
     prizes: ['₹50,000 (First Prize)', '₹30,000 (Second Prize)', '₹20,000 (Third Prize)', 'Certificates for all participants'],
     institution_ids: [], // All institutions
+    linked_project_ids: [],
     banner_image: '/placeholder.svg',
     created_by: 'sysadmin-001',
     created_at: '2025-01-15T10:00:00Z',
@@ -40,6 +41,7 @@ export const mockActivityEvents: ActivityEvent[] = [
     rules: '1. Projects must be original\n2. Maximum 3 members per team\n3. Display boards must follow size guidelines\n4. Judges\' decision is final',
     prizes: ['Gold Medal', 'Silver Medal', 'Bronze Medal', 'Participation Certificate'],
     institution_ids: ['springfield-high'],
+    linked_project_ids: ['2'], // AI-Powered Agriculture project linked
     banner_image: '/placeholder.svg',
     created_by: 'sysadmin-001',
     created_at: '2024-12-20T10:00:00Z',
@@ -62,6 +64,7 @@ export const mockActivityEvents: ActivityEvent[] = [
     rules: '1. Robot must fit within size constraints\n2. No remote control - autonomous only\n3. Safety guidelines must be followed',
     prizes: ['Trophy + ₹25,000', '₹15,000', '₹10,000'],
     institution_ids: [],
+    linked_project_ids: [],
     banner_image: '/placeholder.svg',
     created_by: 'sysadmin-001',
     created_at: '2025-02-01T09:00:00Z',
@@ -84,6 +87,7 @@ export const mockActivityEvents: ActivityEvent[] = [
     rules: '1. Booth space will be provided\n2. Project demo required\n3. Poster presentation mandatory',
     prizes: ['Best Innovation Award', 'Best Presentation', 'People\'s Choice Award'],
     institution_ids: [],
+    linked_project_ids: ['1', '4'], // Smart Home and Water Purification projects linked
     banner_image: '/placeholder.svg',
     created_by: 'sysadmin-001',
     created_at: '2025-02-20T11:00:00Z',
@@ -106,6 +110,7 @@ export const mockActivityEvents: ActivityEvent[] = [
     rules: '1. Laptop required\n2. Install prerequisites before workshop\n3. Active participation mandatory',
     prizes: ['Certificates of Completion', 'Best Project Award'],
     institution_ids: [],
+    linked_project_ids: [],
     banner_image: '/placeholder.svg',
     created_by: 'sysadmin-001',
     created_at: '2025-01-25T08:00:00Z',
@@ -127,6 +132,7 @@ export const mockActivityEvents: ActivityEvent[] = [
     eligibility_criteria: 'Individual participation for grades 8-12.',
     prizes: ['Gold Medal + ₹10,000', 'Silver Medal + ₹7,000', 'Bronze Medal + ₹5,000'],
     institution_ids: [],
+    linked_project_ids: [],
     banner_image: '/placeholder.svg',
     created_by: 'sysadmin-001',
     created_at: '2024-11-20T10:00:00Z',

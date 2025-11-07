@@ -47,6 +47,9 @@ export interface ActivityEvent {
   institution_ids: string[]; // Empty = all institutions
   class_ids?: string[]; // Empty = all classes
   
+  // Project Linking
+  linked_project_ids?: string[]; // Projects participating in this event
+  
   // Media
   banner_image?: string;
   attachments?: string[];
