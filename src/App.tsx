@@ -49,7 +49,6 @@ import TeacherMaterials from "./pages/teacher/Materials";
 import ManagementDashboard from "./pages/management/Dashboard";
 import ManagementTeachers from "./pages/management/Teachers";
 import ManagementOfficers from "./pages/management/Officers";
-import ManagementTeam from "./pages/management/ManagementTeam";
 import CoursesAndSessions from "./pages/management/CoursesAndSessions";
 import InventoryAndPurchase from "./pages/management/InventoryAndPurchase";
 import ProjectsAndCertificates from "./pages/management/ProjectsAndCertificates";
@@ -435,14 +434,6 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['management']}>
                   <ManagementOfficers />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/tenant/:tenantId/management/management-team"
-              element={
-                <ProtectedRoute allowedRoles={['management']}>
-                  <ManagementTeam />
                 </ProtectedRoute>
               }
             />
