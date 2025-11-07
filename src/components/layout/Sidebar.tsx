@@ -21,6 +21,7 @@ import { TeacherSidebarProfile } from '@/components/teacher/TeacherSidebarProfil
 import { getTeacherByEmail } from '@/data/mockTeacherData';
 import { SchoolTeacher } from '@/types/teacher';
 import { getPendingLeaveCount } from '@/data/mockLeaveData';
+import { NotificationBell } from './NotificationBell';
 
 interface MenuItem {
   label: string;
@@ -254,9 +255,17 @@ export function Sidebar() {
           // Default user section for other roles
           <div className="p-4">
             {!collapsed && user && (
-              <div className="mb-3">
-                <p className="text-sm font-medium">{user.name}</p>
-                <p className="text-xs text-gray-400">{user.role.replace('_', ' ')}</p>
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">{user.name}</p>
+                  <p className="text-xs text-gray-400">{user.role.replace('_', ' ')}</p>
+                </div>
+                {['system_admin', 'officer', 'student'].includes(user.role) && (
+                  <NotificationBell 
+                    userId={user.id} 
+                    userRole={user.role as 'officer' | 'student' | 'system_admin'} 
+                  />
+                )}
               </div>
             )}
           </div>
