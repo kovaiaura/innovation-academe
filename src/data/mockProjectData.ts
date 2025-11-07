@@ -65,6 +65,7 @@ export const mockProjects: Record<string, Project[]> = {
       category: 'IoT',
       team_members: [
         { id: 'springfield-8-A-001', name: 'Aarav Sharma', role: 'leader' },
+        { id: '2', name: 'John Student', role: 'member' },
         { id: 'springfield-8-A-002', name: 'Vivaan Verma', role: 'member' },
         { id: 'springfield-8-A-003', name: 'Aditya Gupta', role: 'member' }
       ],
@@ -102,7 +103,8 @@ export const mockProjects: Record<string, Project[]> = {
       description: 'Machine learning system for crop health monitoring and irrigation optimization',
       category: 'AI/ML',
       team_members: [
-        { id: 'springfield-10-B-001', name: 'Aadhya Reddy', role: 'leader' },
+        { id: '2', name: 'John Student', role: 'leader' },
+        { id: 'springfield-10-B-001', name: 'Aadhya Reddy', role: 'member' },
         { id: 'springfield-10-B-002', name: 'Ananya Nair', role: 'member' }
       ],
       created_by_officer_id: 'off1',
@@ -171,6 +173,7 @@ export const mockProjects: Record<string, Project[]> = {
       category: 'Renewable Energy',
       team_members: [
         { id: 'springfield-11-A-001', name: 'Diya Sharma', role: 'leader' },
+        { id: '2', name: 'John Student', role: 'member' },
         { id: 'springfield-11-A-002', name: 'Isha Verma', role: 'member' }
       ],
       created_by_officer_id: 'off1',
