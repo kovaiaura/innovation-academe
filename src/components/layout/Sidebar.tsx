@@ -21,7 +21,6 @@ import { TeacherSidebarProfile } from '@/components/teacher/TeacherSidebarProfil
 import { getTeacherByEmail } from '@/data/mockTeacherData';
 import { SchoolTeacher } from '@/types/teacher';
 import { getPendingLeaveCount } from '@/data/mockLeaveData';
-import { NotificationBell } from './NotificationBell';
 
 interface MenuItem {
   label: string;
@@ -199,19 +198,14 @@ export function Sidebar() {
             <span className="text-xl font-bold">Meta-INNOVA</span>
           </div>
         )}
-        <div className="flex items-center gap-2">
-          {user?.role === 'system_admin' && user.id && (
-            <NotificationBell userId={user.id} userRole="system_admin" />
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setCollapsed(!collapsed)}
-            className="text-white hover:bg-meta-dark-lighter hover:text-meta-accent"
-          >
-            <ChevronLeft className={cn('h-5 w-5 transition-transform', collapsed && 'rotate-180')} />
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setCollapsed(!collapsed)}
+          className="text-white hover:bg-meta-dark-lighter hover:text-meta-accent"
+        >
+          <ChevronLeft className={cn('h-5 w-5 transition-transform', collapsed && 'rotate-180')} />
+        </Button>
       </div>
 
       {/* Navigation */}
