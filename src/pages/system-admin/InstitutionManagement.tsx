@@ -166,7 +166,7 @@ export default function InstitutionManagement() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Institution Management</h1>
-          <p className="text-muted-foreground">Manage tenants, licenses, and contracts in one place</p>
+          <p className="text-muted-foreground">Manage clients, licenses, and contracts in one place</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>

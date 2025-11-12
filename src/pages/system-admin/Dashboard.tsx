@@ -18,7 +18,7 @@ export default function SystemAdminDashboard() {
 
   const stats = [
     {
-      title: 'Total Tenants',
+      title: 'Total Clients',
       value: '25',
       icon: Building2,
       description: '+3 this month',
@@ -37,7 +37,7 @@ export default function SystemAdminDashboard() {
       title: 'Total Users',
       value: '15,420',
       icon: Users,
-      description: 'Across all tenants',
+      description: 'Across all clients',
       color: 'text-purple-500',
       bgColor: 'bg-purple-500/10',
     },
@@ -85,7 +85,7 @@ export default function SystemAdminDashboard() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold">System Admin Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, {user?.name}! Manage tenants and customer operations</p>
+          <p className="text-muted-foreground">Welcome back, {user?.name}! Manage clients and customer operations</p>
         </div>
 
         {/* Stats Grid */}
@@ -157,7 +157,7 @@ export default function SystemAdminDashboard() {
           {/* Top Tenants */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Top Tenants by Users</CardTitle>
+              <CardTitle>Top Clients by Users</CardTitle>
               <Button variant="outline" size="sm" asChild>
                 <Link to="/system-admin/tenants">View All</Link>
               </Button>
@@ -186,7 +186,7 @@ export default function SystemAdminDashboard() {
         {/* Recent Tenants */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Recent Tenants</CardTitle>
+            <CardTitle>Recent Clients</CardTitle>
             <Button variant="outline" size="sm" asChild>
               <Link to="/system-admin/tenants">Manage All</Link>
             </Button>
