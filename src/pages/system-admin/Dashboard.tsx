@@ -42,7 +42,7 @@ export default function SystemAdminDashboard() {
       bgColor: 'bg-purple-500/10',
     },
     {
-      title: 'Expiring Licenses',
+      title: 'Expiring Agreements',
       value: '3',
       icon: AlertCircle,
       description: 'Within 30 days',
@@ -67,7 +67,7 @@ export default function SystemAdminDashboard() {
   ];
 
   const alerts = [
-    { id: '1', message: 'DPS Network license expires in 15 days', severity: 'warning' },
+    { id: '1', message: 'DPS Network agreement expires in 15 days', severity: 'warning' },
     { id: '2', message: 'Ryan Schools exceeded storage limit by 10%', severity: 'error' },
     { id: '3', message: 'New tenant signup: Tech Academy Network', severity: 'info' },
   ];

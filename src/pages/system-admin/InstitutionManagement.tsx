@@ -166,7 +166,7 @@ export default function InstitutionManagement() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Institution Management</h1>
-          <p className="text-muted-foreground">Manage clients, licenses, and contracts in one place</p>
+          <p className="text-muted-foreground">Manage clients, agreements, and contracts in one place</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -178,7 +178,7 @@ export default function InstitutionManagement() {
               Add Institution
             </TabsTrigger>
             <TabsTrigger value="licenses">
-              License Management
+              Agreement Management
             </TabsTrigger>
             <TabsTrigger value="renewals">
               Renewals & Contracts
@@ -218,7 +218,7 @@ export default function InstitutionManagement() {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Licenses Expiring</CardTitle>
+                  <CardTitle className="text-sm font-medium">Agreements Expiring</CardTitle>
                   <AlertCircle className="h-4 w-4 text-orange-500" />
                 </CardHeader>
                 <CardContent>
@@ -419,10 +419,10 @@ export default function InstitutionManagement() {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="font-semibold text-lg">License Configuration</div>
+                  <div className="font-semibold text-lg">Agreement Configuration</div>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="license_type">License Type *</Label>
+                      <Label htmlFor="license_type">Agreement Type *</Label>
                       <Select value={formData.license_type} onValueChange={(value: Institution['license_type']) => setFormData({ ...formData, license_type: value })}>
                         <SelectTrigger>
                           <SelectValue />
@@ -467,12 +467,12 @@ export default function InstitutionManagement() {
             </Card>
           </TabsContent>
 
-          {/* Tab 3: License Management */}
+          {/* Tab 3: Agreement Management */}
           <TabsContent value="licenses" className="space-y-6">
             <div className="grid gap-4 md:grid-cols-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Licenses</CardTitle>
+                  <CardTitle className="text-sm font-medium">Total Agreements</CardTitle>
                   <Shield className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -481,7 +481,7 @@ export default function InstitutionManagement() {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Licenses</CardTitle>
+                  <CardTitle className="text-sm font-medium">Active Agreements</CardTitle>
                   <CheckCircle className="h-4 w-4 text-green-500" />
                 </CardHeader>
                 <CardContent>
@@ -511,13 +511,13 @@ export default function InstitutionManagement() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>License Overview</CardTitle>
+                  <CardTitle>Agreement Overview</CardTitle>
                   <Select value={licenseFilter} onValueChange={setLicenseFilter}>
                     <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Filter by license" />
+                      <SelectValue placeholder="Filter by agreement" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Licenses</SelectItem>
+                      <SelectItem value="all">All Agreements</SelectItem>
                       <SelectItem value="basic">Basic</SelectItem>
                       <SelectItem value="standard">Standard</SelectItem>
                       <SelectItem value="premium">Premium</SelectItem>
@@ -531,7 +531,7 @@ export default function InstitutionManagement() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Institution</TableHead>
-                      <TableHead>License Type</TableHead>
+                      <TableHead>Agreement Type</TableHead>
                       <TableHead>User Capacity</TableHead>
                       <TableHead>Expiry Date</TableHead>
                       <TableHead>Days Left</TableHead>
@@ -723,13 +723,13 @@ export default function InstitutionManagement() {
           institution={selectedInstitutionForMou}
         />
 
-        {/* Renew License Dialog */}
+        {/* Renew Agreement Dialog */}
         <Dialog open={isRenewDialogOpen} onOpenChange={setIsRenewDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Renew License</DialogTitle>
+              <DialogTitle>Renew Agreement</DialogTitle>
               <DialogDescription>
-                Extend the license for {selectedInstitution?.name}
+                Extend the agreement for {selectedInstitution?.name}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -758,7 +758,7 @@ export default function InstitutionManagement() {
                 Cancel
               </Button>
               <Button onClick={handleRenewLicense}>
-                Renew License
+                Renew Agreement
               </Button>
             </DialogFooter>
           </DialogContent>
