@@ -7,7 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { mockAttendanceData, getAttendanceByInstitution, mockPayrollData } from '@/data/mockAttendanceData';
 import { mockOfficerProfiles, getOfficerById } from '@/data/mockOfficerData';
 import { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Download, DollarSign, Clock, TrendingUp, FileText, CheckCircle, Eye } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, DollarSign, Clock, TrendingUp, FileText, CheckCircle, Eye, MapPin } from 'lucide-react';
+import { toast } from 'sonner';
 import { generateMonthCalendarDays, getAttendanceForDate, calculateAttendancePercentage, exportToCSV, formatCurrency, calculateMonthlyOvertime } from '@/utils/attendanceHelpers';
 import { format } from 'date-fns';
 import { PayrollRecord } from '@/types/attendance';
@@ -94,6 +95,133 @@ export default function OfficerAttendance() {
   // Generate calendar days for current month
   const calendarDays = generateMonthCalendarDays(currentMonth);
 
+  // Generate all days in the month
+  const allDaysInMonth = useMemo(() => {
+    const [year, month] = currentMonth.split('-').map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    
+    return Array.from({ length: daysInMonth }, (_, i) => {
+      const day = i + 1;
+      const date = `${currentMonth}-${day.toString().padStart(2, '0')}`;
+      return { date, dayNumber: day };
+    });
+  }, [currentMonth]);
+
+  // Daily attendance details with GPS tracking
+  const dailyAttendanceDetails = useMemo(() => {
+    if (!selectedOfficer) return [];
+    
+    const today = new Date();
+    const [currentYear, currentMonthNum] = currentMonth.split('-').map(Number);
+    
+    return allDaysInMonth.map(({ date, dayNumber }) => {
+      const dayDate = new Date(currentYear, currentMonthNum - 1, dayNumber);
+      const isFutureDate = dayDate > today;
+      
+      // Find attendance record for this date
+      const record = selectedOfficer.daily_records.find(r => r.date === date);
+      
+      if (isFutureDate) {
+        return {
+          date,
+          displayDate: format(dayDate, 'EEE, MMM dd'),
+          status: 'future',
+          checkInTime: '-',
+          checkOutTime: '-',
+          checkInLocation: null,
+          checkOutLocation: null,
+          locationValidated: null,
+          totalHours: '-',
+          overtime: '-',
+        };
+      }
+      
+      if (!record) {
+        return {
+          date,
+          displayDate: format(dayDate, 'EEE, MMM dd'),
+          status: 'not_marked',
+          checkInTime: '-',
+          checkOutTime: '-',
+          checkInLocation: null,
+          checkOutLocation: null,
+          locationValidated: null,
+          totalHours: '-',
+          overtime: '-',
+        };
+      }
+      
+      // Calculate overtime
+      const normalHours = officerProfile?.normal_working_hours || 8;
+      const totalHours = record.hours_worked || 0;
+      const overtime = Math.max(0, totalHours - normalHours);
+      
+      return {
+        date,
+        displayDate: format(dayDate, 'EEE, MMM dd'),
+        status: record.status,
+        checkInTime: record.check_in_time || '-',
+        checkOutTime: record.check_out_time || '-',
+        checkInLocation: record.check_in_location,
+        checkOutLocation: record.check_out_location,
+        locationValidated: record.location_validated,
+        totalHours: record.hours_worked ? `${record.hours_worked.toFixed(1)} hrs` : '-',
+        overtime: overtime > 0 ? `${overtime.toFixed(1)} hrs` : '-',
+      };
+    });
+  }, [selectedOfficer, currentMonth, allDaysInMonth, officerProfile]);
+
+  // Helper function to render GPS link
+  const renderGPSLink = (location: { latitude: number; longitude: number; address?: string } | null) => {
+    if (!location) {
+      return <span className="text-muted-foreground">-</span>;
+    }
+    
+    const { latitude, longitude, address } = location;
+    const googleMapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+    const coordinateDisplay = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+    
+    return (
+      <a 
+        href={googleMapsUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 hover:text-blue-800 hover:underline text-sm flex items-center gap-1"
+        title={address || coordinateDisplay}
+      >
+        <MapPin className="h-3 w-3" />
+        <span className="font-mono text-xs">{coordinateDisplay}</span>
+      </a>
+    );
+  };
+
+  // Helper function for validation badge
+  const getValidationBadge = (validated: boolean | null, status: string) => {
+    if (validated === null || status === 'future' || status === 'not_marked' || status === 'absent' || status === 'leave') {
+      return <Badge variant="outline" className="bg-gray-100 text-gray-500">N/A</Badge>;
+    }
+    
+    if (validated === true) {
+      return <Badge className="bg-green-100 text-green-800 border-green-300">✓ Verified</Badge>;
+    }
+    
+    return <Badge className="bg-red-100 text-red-800 border-red-300">✗ Invalid</Badge>;
+  };
+
+  // Helper function for attendance status badge
+  const getAttendanceStatusBadge = (status: string) => {
+    const statusConfig = {
+      present: { label: 'Present', className: 'bg-green-100 text-green-800 border-green-300' },
+      absent: { label: 'Absent', className: 'bg-red-100 text-red-800 border-red-300' },
+      leave: { label: 'Leave', className: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
+      not_marked: { label: 'Not Marked', className: 'bg-gray-100 text-gray-600 border-gray-300' },
+      future: { label: 'Future', className: 'bg-blue-100 text-blue-600 border-blue-300' },
+    };
+    
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.not_marked;
+    return <Badge className={config.className}>{config.label}</Badge>;
+  };
+
   // Navigation functions
   const goToPreviousMonth = () => {
     const [year, month] = currentMonth.split('-').map(Number);
@@ -107,6 +235,43 @@ export default function OfficerAttendance() {
     const nextMonth = month === 12 ? 1 : month + 1;
     const nextYear = month === 12 ? year + 1 : year;
     setCurrentMonth(`${nextYear}-${String(nextMonth).padStart(2, '0')}`);
+  };
+
+  // Export handler for daily details
+  const handleExportDailyDetails = () => {
+    if (!selectedOfficer) return;
+    
+    const exportData = dailyAttendanceDetails.map(day => {
+      const checkInCoords = day.checkInLocation 
+        ? `${day.checkInLocation.latitude}, ${day.checkInLocation.longitude}`
+        : '-';
+      const checkOutCoords = day.checkOutLocation 
+        ? `${day.checkOutLocation.latitude}, ${day.checkOutLocation.longitude}`
+        : '-';
+      const validation = day.locationValidated === null 
+        ? 'N/A' 
+        : day.locationValidated 
+          ? 'Verified' 
+          : 'Invalid';
+      
+      return {
+        Date: day.displayDate,
+        Status: day.status.replace('_', ' ').toUpperCase(),
+        'Check-in Time': day.checkInTime,
+        'Check-out Time': day.checkOutTime,
+        'Check-in GPS': checkInCoords,
+        'Check-out GPS': checkOutCoords,
+        'Location Validated': validation,
+        'Total Hours': day.totalHours,
+        'Overtime Hours': day.overtime,
+      };
+    });
+    
+    const officerName = selectedOfficer.officer_name.replace(/\s+/g, '_');
+    const filename = `${officerName}_Daily_Attendance_${currentMonth}.csv`;
+    
+    exportToCSV(exportData, filename);
+    toast.success('Daily attendance details exported successfully');
   };
 
   // Get status color for calendar day
@@ -397,6 +562,74 @@ export default function OfficerAttendance() {
                       <span className="text-sm">No Data</span>
                     </div>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Daily Attendance Details Table */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Daily Attendance Details</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Complete daily breakdown with GPS location tracking
+                  </p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleExportDailyDetails}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Export Daily Details
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[120px]">Date</TableHead>
+                        <TableHead className="min-w-[100px]">Status</TableHead>
+                        <TableHead className="min-w-[90px]">Check-in</TableHead>
+                        <TableHead className="min-w-[90px]">Check-out</TableHead>
+                        <TableHead className="min-w-[180px]">Check-in Location</TableHead>
+                        <TableHead className="min-w-[180px]">Check-out Location</TableHead>
+                        <TableHead className="min-w-[100px]">Validated</TableHead>
+                        <TableHead className="min-w-[90px]">Total Hours</TableHead>
+                        <TableHead className="min-w-[90px]">Overtime</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {dailyAttendanceDetails.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                            No attendance data available for this month
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        dailyAttendanceDetails.map((day) => (
+                          <TableRow key={day.date}>
+                            <TableCell className="font-medium">{day.displayDate}</TableCell>
+                            <TableCell>{getAttendanceStatusBadge(day.status)}</TableCell>
+                            <TableCell className="text-sm">{day.checkInTime}</TableCell>
+                            <TableCell className="text-sm">{day.checkOutTime}</TableCell>
+                            <TableCell>{renderGPSLink(day.checkInLocation)}</TableCell>
+                            <TableCell>{renderGPSLink(day.checkOutLocation)}</TableCell>
+                            <TableCell>{getValidationBadge(day.locationValidated, day.status)}</TableCell>
+                            <TableCell className="text-sm">{day.totalHours}</TableCell>
+                            <TableCell>
+                              {day.overtime !== '-' && day.overtime !== '0.0 hrs' ? (
+                                <span className="text-orange-600 font-semibold text-sm">{day.overtime}</span>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">{day.overtime}</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
               </CardContent>
             </Card>
