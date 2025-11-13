@@ -17,7 +17,6 @@ const questionSchema = z.object({
   options: z.array(z.string()).optional(),
   correct_answer: z.union([z.string(), z.number()]).refine(val => val !== '', 'Correct answer is required'),
   points: z.number().min(1, 'Points must be at least 1').max(100),
-  time_limit_seconds: z.number().min(10, 'Minimum 10 seconds').max(600, 'Maximum 10 minutes'),
   explanation: z.string().optional(),
 });
 
@@ -45,7 +44,6 @@ export function AddQuestionDialog({
     resolver: zodResolver(questionSchema),
     defaultValues: {
       points: 10,
-      time_limit_seconds: 60,
       question_type: 'mcq',
     },
   });
@@ -61,7 +59,6 @@ export function AddQuestionDialog({
         question_type: data.question_type as QuestionType,
         correct_answer: data.correct_answer,
         points: data.points,
-        time_limit_seconds: data.time_limit_seconds,
         explanation: data.explanation,
         order: orderNumber,
       };
@@ -95,12 +92,6 @@ export function AddQuestionDialog({
     setOptions(newOptions);
   };
 
-  const formatTimeDisplay = (seconds: number) => {
-    if (seconds < 60) return `${seconds} seconds`;
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes} minutes`;
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -223,48 +214,24 @@ export function AddQuestionDialog({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="points"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Points</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="10" 
-                        {...field} 
-                        onChange={e => field.onChange(parseInt(e.target.value))} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="time_limit_seconds"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Time Limit</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="60" 
-                        {...field} 
-                        onChange={e => field.onChange(parseInt(e.target.value))} 
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {formatTimeDisplay(field.value || 60)}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="points"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Points</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      placeholder="10" 
+                      {...field} 
+                      onChange={e => field.onChange(parseInt(e.target.value))} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

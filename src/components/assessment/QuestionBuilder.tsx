@@ -27,7 +27,6 @@ export const QuestionBuilder = ({ question, questionNumber, onSave, onCancel }: 
   );
   const [correctOptionId, setCorrectOptionId] = useState(question?.correct_option_id || '');
   const [points, setPoints] = useState(question?.points || 5);
-  const [timeLimit, setTimeLimit] = useState(question?.time_limit_seconds || 60);
   const [explanation, setExplanation] = useState(question?.explanation || '');
   const [imageUrl, setImageUrl] = useState(question?.image_url || '');
   const [codeSnippet, setCodeSnippet] = useState(question?.code_snippet || '');
@@ -69,7 +68,6 @@ export const QuestionBuilder = ({ question, questionNumber, onSave, onCancel }: 
       options,
       correct_option_id: correctOptionId,
       points,
-      time_limit_seconds: timeLimit,
       explanation: explanation || undefined,
       image_url: imageUrl || undefined,
       code_snippet: codeSnippet || undefined,
@@ -174,29 +172,16 @@ export const QuestionBuilder = ({ question, questionNumber, onSave, onCancel }: 
           <p className="text-sm text-muted-foreground">Select the correct answer by clicking the radio button</p>
         </div>
 
-        {/* Scoring and Timing */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="points">Points *</Label>
-            <Input
-              id="points"
-              type="number"
-              min="1"
-              value={points}
-              onChange={(e) => setPoints(parseInt(e.target.value) || 0)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="time-limit">Time Limit (seconds)</Label>
-            <Input
-              id="time-limit"
-              type="number"
-              min="0"
-              value={timeLimit}
-              onChange={(e) => setTimeLimit(parseInt(e.target.value) || 0)}
-              placeholder="Optional"
-            />
-          </div>
+        {/* Scoring */}
+        <div className="space-y-2">
+          <Label htmlFor="points">Points *</Label>
+          <Input
+            id="points"
+            type="number"
+            min="1"
+            value={points}
+            onChange={(e) => setPoints(parseInt(e.target.value) || 0)}
+          />
         </div>
 
         {/* Explanation */}
