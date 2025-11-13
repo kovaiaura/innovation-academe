@@ -2,13 +2,16 @@ import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { mockAttendanceData, getAttendanceByInstitution } from '@/data/mockAttendanceData';
 import { mockOfficerProfiles } from '@/data/mockOfficerData';
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Calendar, DollarSign } from 'lucide-react';
 import { generateMonthCalendarDays, getAttendanceForDate, calculateAttendancePercentage, exportToCSV } from '@/utils/attendanceHelpers';
+import { OfficerPayrollTab } from '@/components/attendance/OfficerPayrollTab';
 
 export default function OfficerAttendance() {
+  const [activeTab, setActiveTab] = useState<'calendar' | 'payroll'>('calendar');
   const [selectedInstitution, setSelectedInstitution] = useState<string>('all');
   const [selectedOfficerId, setSelectedOfficerId] = useState('');
   const [currentMonth, setCurrentMonth] = useState('2024-01');
@@ -118,11 +121,25 @@ export default function OfficerAttendance() {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Officer Attendance</h1>
+          <h1 className="text-3xl font-bold">Officer Attendance & Payroll</h1>
           <p className="text-muted-foreground mt-1">
-            Track and monitor officer attendance records
+            Track attendance and manage payroll for innovation officers
           </p>
         </div>
+
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger value="calendar" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Attendance Calendar
+            </TabsTrigger>
+            <TabsTrigger value="payroll" className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              Payroll
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="calendar" className="mt-6 space-y-6">
 
         {/* Controls Row */}
         <div className="space-y-6">
@@ -343,6 +360,12 @@ export default function OfficerAttendance() {
             </Card>
           )}
         </div>
+          </TabsContent>
+
+          <TabsContent value="payroll" className="mt-6">
+            <OfficerPayrollTab />
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
