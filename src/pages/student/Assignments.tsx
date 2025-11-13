@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -109,7 +110,8 @@ export default function Assignments() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <Layout>
+      <div className="container mx-auto p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold">My Assignments</h1>
         <p className="text-muted-foreground mt-1">
@@ -256,5 +258,6 @@ export default function Assignments() {
         </TabsContent>
       </Tabs>
     </div>
+    </Layout>
   );
 }
