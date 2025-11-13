@@ -1,8 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Clock, DollarSign, TrendingUp, Calendar } from 'lucide-react';
+import { Clock, DollarSign, TrendingUp, Calendar, CheckCircle2, MapPin } from 'lucide-react';
 import { formatCurrency } from '@/utils/attendanceHelpers';
+import type { LocationData } from '@/utils/locationHelpers';
 
 interface SalaryTrackerProps {
   currentMonthSalary: number;
@@ -11,6 +12,11 @@ interface SalaryTrackerProps {
   overtimePay: number;
   expectedHours: number;
   netPay: number;
+  // Today's check-in status
+  isCheckedIn?: boolean;
+  checkInTime?: string | null;
+  checkInLocation?: LocationData | null;
+  locationValidated?: boolean | null;
 }
 
 export function SalaryTrackerCard({
@@ -20,6 +26,10 @@ export function SalaryTrackerCard({
   overtimePay,
   expectedHours,
   netPay,
+  isCheckedIn = false,
+  checkInTime = null,
+  checkInLocation = null,
+  locationValidated = null,
 }: SalaryTrackerProps) {
   const progressPercent = Math.min((normalHoursWorked / expectedHours) * 100, 100);
 
@@ -33,6 +43,35 @@ export function SalaryTrackerCard({
         <CardDescription>Current month estimated earnings</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Today's Check-in Status */}
+        {isCheckedIn && checkInTime && (
+          <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Today's Status</p>
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  Checked in at {checkInTime}
+                </p>
+              </div>
+              <CheckCircle2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            {checkInLocation && (
+              <div className="flex items-center justify-between pt-2 border-t border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400">
+                  <MapPin className="h-3 w-3" />
+                  <span>Location recorded</span>
+                </div>
+                {locationValidated === true && (
+                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 text-xs">✓ Verified</Badge>
+                )}
+                {locationValidated === false && (
+                  <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100 text-xs">⚠ Review</Badge>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        
         {/* Net Pay */}
         <div className="p-4 bg-primary/10 rounded-lg">
           <p className="text-sm text-muted-foreground mb-1">Expected Net Pay</p>

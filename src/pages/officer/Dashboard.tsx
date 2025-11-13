@@ -40,6 +40,9 @@ import type { LeaveApplication } from '@/types/attendance';
 import { getRoleBasePath } from '@/utils/roleHelpers';
 import { mockEventApplications } from '@/data/mockEventsData';
 import { getCurrentLocation, isWithinInstitution } from '@/utils/locationHelpers';
+import type { LocationData } from '@/utils/locationHelpers';
+import { Loader2, MapPin } from 'lucide-react';
+import { SalaryTrackerCard } from '@/components/officer/SalaryTrackerCard';
 
 // Helper functions
 const getDayName = (date: Date) => {
@@ -113,6 +116,12 @@ export default function OfficerDashboard() {
   const [isCheckedOut, setIsCheckedOut] = useState(false);
   const [hoursWorked, setHoursWorked] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState<string>('0h 0m');
+  
+  // GPS location state
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [checkInLocation, setCheckInLocation] = useState<LocationData | null>(null);
+  const [checkOutLocation, setCheckOutLocation] = useState<LocationData | null>(null);
+  const [locationValidated, setLocationValidated] = useState<boolean | null>(null);
 
   // Leave state
   const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>([]);
@@ -234,39 +243,118 @@ export default function OfficerDashboard() {
     }
   }, [isCheckedIn, isCheckedOut, checkInTime]);
 
-  const handleCheckIn = () => {
+  const handleCheckIn = async () => {
     if (isOnLeaveToday) {
       toast.error('You cannot check in while on approved leave');
       return;
     }
-    const currentTime = format(new Date(), 'hh:mm a');
-    setCheckInTime(currentTime);
-    setIsCheckedIn(true);
-    toast.success(`Checked in at ${currentTime}`);
+    
+    setIsLoadingLocation(true);
+    
+    try {
+      // Step 1: Get GPS location
+      const location = await getCurrentLocation();
+      
+      // Step 2: Mock institution GPS data (replace with real data from backend later)
+      const institutionGPS = {
+        latitude: 28.5244, // Delhi Public School coordinates
+        longitude: 77.1855,
+        radius_meters: 200
+      };
+      
+      // Step 3: Validate location against institution
+      const isValid = isWithinInstitution(
+        { latitude: location.latitude, longitude: location.longitude },
+        institutionGPS
+      );
+      
+      // Step 4: Record check-in with GPS data
+      const currentTime = format(new Date(), 'hh:mm a');
+      
+      setCheckInTime(currentTime);
+      setIsCheckedIn(true);
+      setCheckInLocation(location);
+      setLocationValidated(isValid);
+      
+      // Step 5: Show feedback based on validation
+      if (isValid) {
+        toast.success(`✓ Checked in at ${currentTime}`, {
+          description: 'Location verified - You are within institution premises'
+        });
+      } else {
+        toast.warning(`⚠ Checked in at ${currentTime}`, {
+          description: 'Location not verified - You appear to be outside institution premises. Admin will review.'
+        });
+      }
+      
+    } catch (error) {
+      // Handle GPS errors (permission denied, timeout, etc.)
+      const errorMessage = error instanceof Error ? error.message : 'Unable to get location';
+      
+      toast.error(`Location Error: ${errorMessage}`, {
+        description: 'Check-in recorded without location verification'
+      });
+      
+      // Still allow check-in but mark as unverified
+      const currentTime = format(new Date(), 'hh:mm a');
+      setCheckInTime(currentTime);
+      setIsCheckedIn(true);
+      setLocationValidated(false);
+    } finally {
+      setIsLoadingLocation(false);
+    }
   };
 
-  const handleCheckOut = () => {
+  const handleCheckOut = async () => {
     if (isOnLeaveToday) {
       toast.error('You cannot check out while on approved leave');
       return;
     }
     if (!checkInTime) return;
     
-    const currentTime = format(new Date(), 'hh:mm a');
-    setCheckOutTime(currentTime);
-    setIsCheckedOut(true);
+    setIsLoadingLocation(true);
     
     try {
+      // Step 1: Get GPS location
+      const location = await getCurrentLocation();
+      
+      // Step 2: Record check-out
+      const currentTime = format(new Date(), 'hh:mm a');
+      setCheckOutTime(currentTime);
+      setIsCheckedOut(true);
+      setCheckOutLocation(location);
+      
+      // Step 3: Calculate hours worked
       const checkIn = parse(checkInTime, 'hh:mm a', new Date());
       const checkOut = parse(currentTime, 'hh:mm a', new Date());
       const minutes = differenceInMinutes(checkOut, checkIn);
       const hours = Math.round((minutes / 60) * 100) / 100;
       setHoursWorked(hours);
       
-      toast.success(`Checked out at ${currentTime}. Total hours: ${hours.toFixed(2)}h`);
+      toast.success(`✓ Checked out at ${currentTime}`, {
+        description: `Total hours worked: ${hours.toFixed(2)}h`
+      });
+      
     } catch (error) {
-      console.error('Error calculating hours:', error);
-      toast.error('Error calculating work hours');
+      // Handle GPS errors
+      const errorMessage = error instanceof Error ? error.message : 'Unable to get location';
+      
+      // Still allow check-out but without location
+      const currentTime = format(new Date(), 'hh:mm a');
+      setCheckOutTime(currentTime);
+      setIsCheckedOut(true);
+      
+      const checkIn = parse(checkInTime, 'hh:mm a', new Date());
+      const checkOut = parse(currentTime, 'hh:mm a', new Date());
+      const minutes = differenceInMinutes(checkOut, checkIn);
+      const hours = Math.round((minutes / 60) * 100) / 100;
+      setHoursWorked(hours);
+      
+      toast.warning(`Checked out without location verification`, {
+        description: errorMessage
+      });
+    } finally {
+      setIsLoadingLocation(false);
     }
   };
 
@@ -406,10 +494,29 @@ export default function OfficerDashboard() {
                     <p className="text-sm text-muted-foreground mb-4">
                       Mark your attendance for {format(new Date(), 'MMMM dd, yyyy')}
                     </p>
-                    <Button onClick={handleCheckIn} className="w-full" disabled={isOnLeaveToday}>
-                      <Check className="mr-2 h-4 w-4" />
-                      Check In
+                    <Button 
+                      onClick={handleCheckIn} 
+                      className="w-full" 
+                      disabled={isOnLeaveToday || isLoadingLocation}
+                    >
+                      {isLoadingLocation ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Verifying Location...
+                        </>
+                      ) : (
+                        <>
+                          <Check className="mr-2 h-4 w-4" />
+                          Check In
+                        </>
+                      )}
                     </Button>
+                    {isLoadingLocation && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3 animate-pulse">
+                        <MapPin className="h-4 w-4" />
+                        <span>Getting your location...</span>
+                      </div>
+                    )}
                   </>
                 ) : !isCheckedOut ? (
                   <div className="space-y-4">
@@ -419,6 +526,27 @@ export default function OfficerDashboard() {
                         <p className="font-semibold text-blue-700 text-lg">Working</p>
                       </div>
                       <p className="text-sm text-blue-600 mb-1">Checked in at {checkInTime}</p>
+                      
+                      {/* GPS Location Badge */}
+                      {checkInLocation && (
+                        <div className="mt-3 p-2 bg-background/50 rounded-lg">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                              <span className="text-xs text-muted-foreground truncate">
+                                {checkInLocation.latitude.toFixed(6)}, {checkInLocation.longitude.toFixed(6)}
+                              </span>
+                            </div>
+                            {locationValidated === true && (
+                              <Badge className="bg-green-100 text-green-800 text-xs flex-shrink-0">✓ Verified</Badge>
+                            )}
+                            {locationValidated === false && (
+                              <Badge className="bg-amber-100 text-amber-800 text-xs flex-shrink-0">⚠ Review</Badge>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
                       <div className="flex items-center justify-center gap-2 mt-3 pt-3 border-t border-blue-500/20">
                         <Clock className="h-4 w-4 text-blue-500" />
                         <p className="text-sm font-medium text-blue-700">
@@ -430,19 +558,43 @@ export default function OfficerDashboard() {
                       onClick={handleCheckOut} 
                       className="w-full" 
                       variant="outline"
-                      disabled={isOnLeaveToday}
+                      disabled={isOnLeaveToday || isLoadingLocation}
                     >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Check Out
+                      {isLoadingLocation ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Verifying Location...
+                        </>
+                      ) : (
+                        <>
+                          <LogOut className="mr-2 h-4 w-4" />
+                          Check Out
+                        </>
+                      )}
                     </Button>
                   </div>
                 ) : (
                   <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/20">
                     <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
                     <p className="font-semibold text-green-700 text-lg mb-3">Attendance Complete</p>
-                    <div className="text-sm text-green-600 space-y-1">
+                    <div className="text-sm text-green-600 space-y-2">
                       <p>Check-in: {checkInTime}</p>
                       <p>Check-out: {checkOutTime}</p>
+                      
+                      {/* Show GPS verification status */}
+                      {(checkInLocation || checkOutLocation) && (
+                        <div className="pt-2 mt-2 border-t border-green-500/20">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs">Location Status:</span>
+                            {locationValidated === true ? (
+                              <Badge className="bg-green-100 text-green-800 text-xs">✓ Verified</Badge>
+                            ) : (
+                              <Badge className="bg-amber-100 text-amber-800 text-xs">⚠ Pending Review</Badge>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
                       <div className="pt-2 mt-2 border-t border-green-500/20">
                         <p className="font-semibold text-base">Hours Worked: {hoursWorked.toFixed(2)}h</p>
                       </div>
@@ -618,6 +770,20 @@ export default function OfficerDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* My Salary Tracker - Full Width */}
+        <SalaryTrackerCard
+          currentMonthSalary={75000}
+          normalHoursWorked={120}
+          overtimeHours={8}
+          overtimePay={5625}
+          expectedHours={160}
+          netPay={80625}
+          isCheckedIn={isCheckedIn}
+          checkInTime={checkInTime}
+          checkInLocation={checkInLocation}
+          locationValidated={locationValidated}
+        />
 
         {/* Quick Actions */}
         <Card>

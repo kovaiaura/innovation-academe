@@ -31,6 +31,14 @@ export interface Institution {
   contract_value: number;
   mou_document_url?: string;
   created_at: string;
+  // GPS Attendance Configuration
+  gps_location?: {
+    latitude: number;
+    longitude: number;
+    address?: string;
+  };
+  attendance_radius_meters?: number; // Validation radius, default 200m
+  normal_working_hours?: number; // Default 8 hours per day
 }
 
 // Inventory Summary type from InventoryManagement
@@ -83,7 +91,14 @@ const mockInstitutions: Institution[] = [
     contract_expiry_date: '2025-12-31',
     contract_value: 500000,
     mou_document_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    created_at: '2024-01-15'
+    created_at: '2024-01-15',
+    gps_location: {
+      latitude: 28.5244,
+      longitude: 77.1855,
+      address: 'Sector C, Pocket C, Vasant Kunj, New Delhi'
+    },
+    attendance_radius_meters: 200,
+    normal_working_hours: 8
   },
   {
     id: '2',
@@ -113,7 +128,14 @@ const mockInstitutions: Institution[] = [
     contract_expiry_date: '2026-03-15',
     contract_value: 1200000,
     mou_document_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    created_at: '2024-02-01'
+    created_at: '2024-02-01',
+    gps_location: {
+      latitude: 19.0760,
+      longitude: 72.8777,
+      address: 'Goregaon West, Mumbai'
+    },
+    attendance_radius_meters: 250,
+    normal_working_hours: 8
   },
   {
     id: '3',
@@ -143,7 +165,14 @@ const mockInstitutions: Institution[] = [
     contract_expiry_date: '2025-06-30',
     contract_value: 150000,
     mou_document_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    created_at: '2024-06-15'
+    created_at: '2024-06-15',
+    gps_location: {
+      latitude: 13.0827,
+      longitude: 80.2707,
+      address: 'Anna Nagar, Chennai'
+    },
+    attendance_radius_meters: 150,
+    normal_working_hours: 8
   }
 ];
 
