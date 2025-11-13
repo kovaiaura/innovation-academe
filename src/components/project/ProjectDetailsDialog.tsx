@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Project } from "@/data/mockProjectData";
-import { Calendar, Users, Target, DollarSign, TrendingUp } from "lucide-react";
+import { Calendar, Users, Target, TrendingUp } from "lucide-react";
 
 interface ProjectDetailsDialogProps {
   open: boolean;
@@ -100,19 +100,6 @@ export function ProjectDetailsDialog({
                 <div className="text-sm text-muted-foreground">{project.progress}%</div>
               </div>
             </div>
-
-            {project.funding_required && (
-              <div className="flex items-start gap-3">
-                <DollarSign className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <div className="text-sm font-medium">Funding</div>
-                  <div className="text-sm text-muted-foreground">
-                    ₹{project.funding_required.toLocaleString()}
-                    {project.funding_approved && ' (Approved)'}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           <Separator />

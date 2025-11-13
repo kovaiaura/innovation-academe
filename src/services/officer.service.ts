@@ -24,8 +24,6 @@ export interface InnovationProject {
   team_members: string[];
   status: 'proposal' | 'approved' | 'in_progress' | 'completed' | 'rejected';
   category: string;
-  funding_required: number;
-  funding_approved?: number;
   progress: number;
   start_date: string;
   end_date?: string;
@@ -85,8 +83,8 @@ export const officerService = {
     return response.data;
   },
 
-  async approveProject(id: string, fundingApproved: number): Promise<ApiResponse<InnovationProject>> {
-    const response = await api.put(`/officer/projects/${id}/approve`, { funding_approved: fundingApproved });
+  async approveProject(id: string): Promise<ApiResponse<InnovationProject>> {
+    const response = await api.put(`/officer/projects/${id}/approve`);
     return response.data;
   },
 

@@ -61,7 +61,6 @@ export function CreateProjectDialog({
   const [category, setCategory] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
-  const [fundingRequired, setFundingRequired] = useState("");
   const [selectedSdgs, setSelectedSdgs] = useState<number[]>([]);
   const [teamLeader, setTeamLeader] = useState<Student | null>(null);
   const [teamMembers, setTeamMembers] = useState<Student[]>([]);
@@ -133,7 +132,6 @@ export function CreateProjectDialog({
       status: 'approved',
       progress: 0,
       start_date: new Date().toISOString().split('T')[0],
-      funding_required: fundingRequired ? parseFloat(fundingRequired) : undefined,
       sdg_goals: selectedSdgs,
       last_updated: new Date().toISOString().split('T')[0],
       progress_updates: [],
@@ -148,7 +146,6 @@ export function CreateProjectDialog({
     setCategory("");
     setSelectedClass("");
     setSelectedSection("");
-    setFundingRequired("");
     setSelectedSdgs([]);
     setTeamLeader(null);
     setTeamMembers([]);
@@ -260,17 +257,6 @@ export function CreateProjectDialog({
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div>
-            <Label htmlFor="funding">Funding Required (₹)</Label>
-            <Input
-              id="funding"
-              type="number"
-              value={fundingRequired}
-              onChange={(e) => setFundingRequired(e.target.value)}
-              placeholder="e.g., 15000"
-            />
           </div>
 
           <div>

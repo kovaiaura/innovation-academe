@@ -38,10 +38,6 @@ export interface Project {
   start_date: string;
   completion_date?: string;
   
-  // Funding
-  funding_required?: number;
-  funding_approved?: number;
-  
   // SDG Goals
   sdg_goals: number[];
   
@@ -78,8 +74,6 @@ export const mockProjects: Record<string, Project[]> = {
       status: 'in_progress',
       progress: 65,
       start_date: '2024-01-15',
-      funding_required: 15000,
-      funding_approved: 15000,
       sdg_goals: [7, 11],
       last_updated: '2024-03-20',
       progress_updates: [
@@ -117,8 +111,6 @@ export const mockProjects: Record<string, Project[]> = {
       progress: 100,
       start_date: '2023-08-01',
       completion_date: '2024-01-15',
-      funding_required: 25000,
-      funding_approved: 25000,
       sdg_goals: [2, 12, 13],
       last_updated: '2024-01-15',
       progress_updates: [
@@ -160,7 +152,6 @@ export const mockProjects: Record<string, Project[]> = {
       status: 'proposal',
       progress: 0,
       start_date: '2024-04-01',
-      funding_required: 30000,
       sdg_goals: [9, 12],
       last_updated: '2024-03-25',
       progress_updates: [],
@@ -185,8 +176,6 @@ export const mockProjects: Record<string, Project[]> = {
       status: 'in_progress',
       progress: 40,
       start_date: '2024-02-01',
-      funding_required: 20000,
-      funding_approved: 20000,
       sdg_goals: [6, 7, 11],
       last_updated: '2024-03-18',
       progress_updates: [

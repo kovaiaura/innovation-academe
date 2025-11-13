@@ -75,8 +75,7 @@ export default function OfficerProjects() {
 
   const handleApprove = (projectId: string) => {
     updateProject(institutionId, projectId, { 
-      status: 'approved',
-      funding_approved: projects.find(p => p.id === projectId)?.funding_required 
+      status: 'approved'
     });
     setProjects(getProjectsByInstitution(institutionId));
     toast.success("Project approved successfully");
@@ -202,7 +201,7 @@ export default function OfficerProjects() {
                   )}
 
                   {/* Project Info */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                     <div>
                       <span className="text-muted-foreground">Category</span>
                       <p className="font-medium">{project.category}</p>
@@ -215,12 +214,6 @@ export default function OfficerProjects() {
                       <span className="text-muted-foreground">Class</span>
                       <p className="font-medium">{project.class}</p>
                     </div>
-                    {project.funding_required && (
-                      <div>
-                        <span className="text-muted-foreground">Funding</span>
-                        <p className="font-medium">₹{project.funding_required.toLocaleString()}</p>
-                      </div>
-                    )}
                   </div>
 
                   {/* Actions */}
