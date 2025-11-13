@@ -2,13 +2,14 @@ import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { mockAttendanceData, getAttendanceByInstitution } from '@/data/mockAttendanceData';
-import { mockOfficerProfiles } from '@/data/mockOfficerData';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { mockAttendanceData, getAttendanceByInstitution, mockPayrollData } from '@/data/mockAttendanceData';
+import { mockOfficerProfiles, getOfficerById } from '@/data/mockOfficerData';
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Download, Calendar, DollarSign } from 'lucide-react';
-import { generateMonthCalendarDays, getAttendanceForDate, calculateAttendancePercentage, exportToCSV } from '@/utils/attendanceHelpers';
-import { OfficerPayrollTab } from '@/components/attendance/OfficerPayrollTab';
+import { ChevronLeft, ChevronRight, Download, Calendar, DollarSign, Clock, TrendingUp, FileText, CheckCircle } from 'lucide-react';
+import { generateMonthCalendarDays, getAttendanceForDate, calculateAttendancePercentage, exportToCSV, formatCurrency, calculateMonthlyOvertime } from '@/utils/attendanceHelpers';
+import { format } from 'date-fns';
 
 export default function OfficerAttendance() {
   const [activeTab, setActiveTab] = useState<'calendar' | 'payroll'>('calendar');
