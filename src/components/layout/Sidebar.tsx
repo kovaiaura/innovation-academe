@@ -48,7 +48,7 @@ const menuItems: MenuItem[] = [
   { label: 'Project Management', icon: <Target className="h-5 w-5" />, path: '/project-management', roles: ['system_admin'] },
   // Inventory & Purchase
   { label: 'Inventory Management', icon: <Package className="h-5 w-5" />, path: '/inventory-management', roles: ['system_admin'] },
-  { label: 'Attendance', icon: <Clock className="h-5 w-5" />, path: '/officer-attendance', roles: ['system_admin'] },
+  { label: 'Attendance and Payroll', icon: <Clock className="h-5 w-5" />, path: '/officer-attendance', roles: ['system_admin'] },
   { label: 'Leave Approvals', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-approvals', roles: ['system_admin'] },
   { label: 'Institutional Calendar', icon: <Calendar className="h-5 w-5" />, path: '/institutional-calendar', roles: ['system_admin'] },
   // Reports & Analytics
