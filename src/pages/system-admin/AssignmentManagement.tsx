@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -123,7 +124,8 @@ export default function AssignmentManagement() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <Layout>
+      <div className="container mx-auto p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Assignment Management</h1>
         <p className="text-muted-foreground mt-1">
@@ -544,5 +546,6 @@ export default function AssignmentManagement() {
         </TabsContent>
       </Tabs>
     </div>
+    </Layout>
   );
 }
