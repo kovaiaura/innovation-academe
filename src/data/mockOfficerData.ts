@@ -35,6 +35,9 @@ export const mockOfficerProfiles: OfficerDetails[] = [
       'Mentorship & Training'
     ],
     profile_photo_url: '/placeholder.svg',
+    hourly_rate: 468.75, // ₹75000 / 160 hours per month
+    overtime_rate_multiplier: 1.5,
+    normal_working_hours: 8,
   },
   {
     id: '3',
@@ -69,6 +72,9 @@ export const mockOfficerProfiles: OfficerDetails[] = [
       'Student Mentorship'
     ],
     profile_photo_url: '/placeholder.svg',
+    hourly_rate: 437.5, // ₹70000 / 160 hours per month
+    overtime_rate_multiplier: 1.5,
+    normal_working_hours: 8,
   },
   {
     id: 'off-002',
@@ -102,6 +108,9 @@ export const mockOfficerProfiles: OfficerDetails[] = [
       'Technology Integration'
     ],
     profile_photo_url: '/placeholder.svg',
+    hourly_rate: 450, // ₹72000 / 160 hours per month
+    overtime_rate_multiplier: 1.5,
+    normal_working_hours: 8,
   }
 ];
 

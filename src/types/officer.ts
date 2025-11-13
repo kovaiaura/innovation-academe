@@ -20,3 +20,12 @@ export interface OfficerTimetable {
   status: 'assigned' | 'partial' | 'not_assigned';
   last_updated: string;
 }
+
+// Salary Configuration for Officers
+export interface OfficerSalaryConfig {
+  officer_id: string;
+  hourly_rate?: number; // ₹ per hour
+  overtime_rate_multiplier?: number; // e.g., 1.5 for 1.5x pay
+  normal_working_hours?: number; // e.g., 8 hours per day
+  salary_type: 'monthly' | 'hourly';
+}

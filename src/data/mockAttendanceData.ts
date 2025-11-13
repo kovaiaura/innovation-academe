@@ -22,12 +22,25 @@ const generateDailyRecords = (
     let checkIn: string | undefined;
     let checkOut: string | undefined;
     let hoursWorked: number | undefined;
+    let overtimeHours: number | undefined;
+    
+    // Generate random GPS coordinates (near a fictional institution)
+    const baseLatitude = 28.6139; // Delhi coordinates as example
+    const baseLongitude = 77.2090;
+    const randomOffset = () => (Math.random() - 0.5) * 0.01; // ~1km radius
     
     if (pattern === 'regular') {
       status = 'present';
-      checkIn = `0${8 + Math.floor(Math.random() * 2)}:${15 + Math.floor(Math.random() * 30)} AM`;
-      checkOut = `0${5 + Math.floor(Math.random() * 2)}:${Math.floor(Math.random() * 60)} PM`;
-      hoursWorked = 8 + Math.random();
+      const checkInHour = 8 + Math.floor(Math.random() * 2);
+      const checkInMin = 15 + Math.floor(Math.random() * 30);
+      checkIn = `${String(checkInHour).padStart(2, '0')}:${String(checkInMin).padStart(2, '0')} AM`;
+      
+      const checkOutHour = 5 + Math.floor(Math.random() * 2);
+      const checkOutMin = Math.floor(Math.random() * 60);
+      checkOut = `${String(checkOutHour).padStart(2, '0')}:${String(checkOutMin).padStart(2, '0')} PM`;
+      
+      hoursWorked = 8 + Math.random() * 2; // 8-10 hours
+      overtimeHours = Math.max(0, hoursWorked - 8);
     } else if (pattern === 'some_absences') {
       const rand = Math.random();
       if (rand < 0.85) {
@@ -35,6 +48,7 @@ const generateDailyRecords = (
         checkIn = `0${8 + Math.floor(Math.random() * 2)}:${15 + Math.floor(Math.random() * 30)} AM`;
         checkOut = `0${5 + Math.floor(Math.random() * 2)}:${Math.floor(Math.random() * 60)} PM`;
         hoursWorked = 8 + Math.random();
+        overtimeHours = Math.max(0, hoursWorked - 8);
       } else if (rand < 0.92) {
         status = 'leave';
       } else {
@@ -47,6 +61,7 @@ const generateDailyRecords = (
         checkIn = `0${8 + Math.floor(Math.random() * 2)}:${15 + Math.floor(Math.random() * 30)} AM`;
         checkOut = `0${5 + Math.floor(Math.random() * 2)}:${Math.floor(Math.random() * 60)} PM`;
         hoursWorked = 8 + Math.random();
+        overtimeHours = Math.max(0, hoursWorked - 8);
       } else if (rand < 0.85) {
         status = 'leave';
       } else {
@@ -60,7 +75,23 @@ const generateDailyRecords = (
       check_in_time: checkIn,
       check_out_time: checkOut,
       hours_worked: hoursWorked,
+      overtime_hours: overtimeHours,
     };
+    
+    // Add GPS location for present days
+    if (status === 'present') {
+      record.check_in_location = {
+        latitude: baseLatitude + randomOffset(),
+        longitude: baseLongitude + randomOffset(),
+        timestamp: `${date}T${checkIn?.replace(' AM', ':00').replace(' PM', ':00')}`,
+      };
+      record.check_out_location = {
+        latitude: baseLatitude + randomOffset(),
+        longitude: baseLongitude + randomOffset(),
+        timestamp: `${date}T${checkOut?.replace(' AM', ':00').replace(' PM', ':00')}`,
+      };
+      record.location_validated = true;
+    }
     
     if (status === 'leave') {
       record.leave_type = day % 3 === 0 ? 'sick' : 'casual';

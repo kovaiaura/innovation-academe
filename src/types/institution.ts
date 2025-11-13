@@ -218,3 +218,17 @@ export interface OfficerAssignment {
   total_teaching_hours: number;
   status: 'active' | 'inactive';
 }
+
+// Working Hours Configuration for Institution
+export interface WorkingHoursConfig {
+  institution_id: string;
+  default_working_hours: number; // e.g., 8 hours per day
+  overtime_enabled: boolean;
+  gps_validation_enabled: boolean;
+  location?: {
+    latitude: number;
+    longitude: number;
+    radius_meters: number; // Validation radius
+  };
+  updated_at: string;
+}

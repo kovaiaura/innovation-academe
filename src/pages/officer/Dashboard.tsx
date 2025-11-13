@@ -39,6 +39,7 @@ import {
 import type { LeaveApplication } from '@/types/attendance';
 import { getRoleBasePath } from '@/utils/roleHelpers';
 import { mockEventApplications } from '@/data/mockEventsData';
+import { getCurrentLocation, isWithinInstitution } from '@/utils/locationHelpers';
 
 // Helper functions
 const getDayName = (date: Date) => {

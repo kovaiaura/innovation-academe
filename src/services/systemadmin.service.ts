@@ -111,6 +111,11 @@ export interface OfficerDetails extends Officer {
   employee_id?: string;
   department?: string;
   
+  // Salary Configuration
+  hourly_rate?: number;
+  overtime_rate_multiplier?: number;
+  normal_working_hours?: number;
+  
   // Bank Details
   bank_account_number?: string;
   bank_name?: string;

@@ -32,6 +32,20 @@ export interface DailyAttendance {
   leave_type?: LeaveType;
   leave_reason?: string;
   notes?: string;
+  check_in_location?: {
+    latitude: number;
+    longitude: number;
+    address?: string;
+    timestamp: string;
+  };
+  check_out_location?: {
+    latitude: number;
+    longitude: number;
+    address?: string;
+    timestamp: string;
+  };
+  overtime_hours?: number;
+  location_validated?: boolean;
 }
 
 // Salary Component

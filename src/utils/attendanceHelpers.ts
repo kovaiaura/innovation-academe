@@ -52,6 +52,56 @@ export const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
+/**
+ * Calculate daily overtime hours
+ * @param checkInTime - Check-in time in 'hh:mm a' format
+ * @param checkOutTime - Check-out time in 'hh:mm a' format
+ * @param normalHours - Normal working hours per day (default: 8)
+ * @returns Overtime hours
+ */
+export const calculateDailyOvertime = (
+  checkInTime: string,
+  checkOutTime: string,
+  normalHours: number = 8
+): number => {
+  try {
+    const checkIn = new Date(`2000-01-01 ${checkInTime}`);
+    const checkOut = new Date(`2000-01-01 ${checkOutTime}`);
+    const hoursWorked = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
+    
+    return Math.max(0, hoursWorked - normalHours);
+  } catch (error) {
+    console.error('Error calculating overtime:', error);
+    return 0;
+  }
+};
+
+/**
+ * Calculate total monthly overtime from daily records
+ */
+export const calculateMonthlyOvertime = (
+  dailyRecords: DailyAttendance[],
+  normalHours: number = 8
+): number => {
+  return dailyRecords.reduce((total, record) => {
+    if (record.check_in_time && record.check_out_time && record.status === 'present') {
+      return total + calculateDailyOvertime(record.check_in_time, record.check_out_time, normalHours);
+    }
+    return total;
+  }, 0);
+};
+
+/**
+ * Calculate overtime pay
+ */
+export const calculateOvertimePay = (
+  overtimeHours: number,
+  hourlyRate: number,
+  multiplier: number = 1.5
+): number => {
+  return overtimeHours * hourlyRate * multiplier;
+};
+
 export const exportToCSV = (data: any[], filename: string) => {
   if (data.length === 0) return;
   

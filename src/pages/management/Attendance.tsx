@@ -1,14 +1,15 @@
 import { Layout } from "@/components/layout/Layout";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, GraduationCap, BookOpen } from "lucide-react";
+import { Users, GraduationCap, BookOpen, DollarSign } from "lucide-react";
 import { useState } from "react";
 import { OfficerAttendanceTab } from "@/components/attendance/OfficerAttendanceTab";
 import { StudentAttendanceTab } from "@/components/attendance/StudentAttendanceTab";
 import { TeacherAttendanceTab } from "@/components/attendance/TeacherAttendanceTab";
+import { OfficerPayrollTab } from "@/components/attendance/OfficerPayrollTab";
 
 const Attendance = () => {
-  const [activeTab, setActiveTab] = useState<'officers' | 'students' | 'teachers'>('officers');
+  const [activeTab, setActiveTab] = useState<'officers' | 'students' | 'teachers' | 'payroll'>('officers');
   
   return (
     <Layout>
@@ -21,7 +22,7 @@ const Attendance = () => {
         </div>
         
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-          <TabsList className="grid w-full grid-cols-3 max-w-2xl">
+          <TabsList className="grid w-full grid-cols-4 max-w-3xl">
             <TabsTrigger value="officers" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Innovation Officers
@@ -33,6 +34,10 @@ const Attendance = () => {
             <TabsTrigger value="teachers" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
               Teachers
+            </TabsTrigger>
+            <TabsTrigger value="payroll" className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              Payroll
             </TabsTrigger>
           </TabsList>
           
@@ -46,6 +51,10 @@ const Attendance = () => {
           
           <TabsContent value="teachers" className="mt-6">
             <TeacherAttendanceTab />
+          </TabsContent>
+          
+          <TabsContent value="payroll" className="mt-6">
+            <OfficerPayrollTab />
           </TabsContent>
         </Tabs>
       </div>
