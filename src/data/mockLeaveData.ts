@@ -270,3 +270,64 @@ export const cancelLeaveApplication = (id: string, officerId: string): void => {
   const allApps = getAllLeaveApplications().filter((app) => app.id !== id);
   localStorage.setItem('all_leave_applications', JSON.stringify(allApps));
 };
+
+/**
+ * Update timetable slot status when leave is approved
+ */
+export const updateTimetableSlotStatus = (
+  officerId: string,
+  slotId: string,
+  status: 'on_leave' | 'substitute',
+  leaveApplicationId: string
+): void => {
+  const { mockOfficerTimetables } = require('@/data/mockOfficerTimetable');
+  const timetable = mockOfficerTimetables.find((t: any) => t.officer_id === officerId);
+  
+  if (timetable) {
+    const slot = timetable.slots.find((s: any) => s.id === slotId);
+    if (slot) {
+      slot.status = status;
+      slot.leave_application_id = leaveApplicationId;
+    }
+  }
+};
+
+/**
+ * Add substitute slot to officer's timetable
+ */
+export const addSubstituteSlot = (
+  substituteOfficerId: string,
+  assignment: any,
+  leaveApplication: any
+): void => {
+  const { mockOfficerTimetables } = require('@/data/mockOfficerTimetable');
+  const timetable = mockOfficerTimetables.find((t: any) => t.officer_id === substituteOfficerId);
+  
+  if (timetable) {
+    const affectedSlot = leaveApplication.affected_slots?.find(
+      (s: any) => s.slot_id === assignment.slot_id
+    );
+    
+    if (affectedSlot) {
+      // Create a new substitute slot
+      const newSlot = {
+        id: `substitute-${assignment.slot_id}-${Date.now()}`,
+        officer_id: substituteOfficerId,
+        day: affectedSlot.day,
+        start_time: affectedSlot.start_time,
+        end_time: affectedSlot.end_time,
+        class: affectedSlot.class,
+        subject: affectedSlot.subject,
+        room: affectedSlot.room,
+        type: 'substitute' as const,
+        status: 'substitute' as const,
+        original_officer_id: assignment.original_officer_id,
+        original_officer_name: leaveApplication.officer_name,
+        leave_application_id: leaveApplication.id,
+      };
+      
+      timetable.slots.push(newSlot);
+      timetable.total_hours += assignment.hours;
+    }
+  }
+};

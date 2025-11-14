@@ -225,3 +225,25 @@ export const generatePayrollCalculation = (
     professional_tax: pt,
   };
 };
+
+/**
+ * Adjust payroll for leave days (deduction)
+ */
+export const adjustPayrollForLeave = (
+  leaveDays: number,
+  hourlyRate: number,
+  normalWorkingHours: number
+): number => {
+  const deduction = leaveDays * normalWorkingHours * hourlyRate;
+  return deduction;
+};
+
+/**
+ * Calculate substitute pay (regular hours)
+ */
+export const calculateSubstitutePay = (
+  substituteHours: number,
+  hourlyRate: number
+): number => {
+  return substituteHours * hourlyRate;
+};

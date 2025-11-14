@@ -176,6 +176,28 @@ export interface LoanRecord {
   status: 'active' | 'completed' | 'closed';
 }
 
+// Affected Slot (for leave substitute system)
+export interface AffectedSlot {
+  slot_id: string;
+  day: string;
+  start_time: string;
+  end_time: string;
+  class: string;
+  subject: string;
+  room: string;
+  date: string;
+}
+
+// Substitute Assignment (for leave substitute system)
+export interface SubstituteAssignment {
+  slot_id: string;
+  original_officer_id: string;
+  substitute_officer_id: string;
+  substitute_officer_name: string;
+  date: string;
+  hours: number;
+}
+
 // Leave Application
 export interface LeaveApplication {
   id: string;
@@ -194,6 +216,8 @@ export interface LeaveApplication {
   reviewed_at?: string;
   rejection_reason?: string;
   admin_comments?: string;
+  affected_slots?: AffectedSlot[];
+  substitute_assignments?: SubstituteAssignment[];
 }
 
 // Leave Balance
