@@ -354,93 +354,354 @@ export default function LeaveManagement() {
                 <CardDescription>Select date range and provide leave details</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Calendar */}
-                <div className="space-y-2">
-                  <Label>Select Date Range</Label>
-                  <div className="flex justify-center border rounded-lg p-4">
-                    <Calendar
-                      mode="range"
-                      selected={dateRange}
-                      onSelect={setDateRange}
-                      disabled={disabledDates}
-                      modifiers={modifiers}
-                      modifiersStyles={modifiersStyles}
-                      numberOfMonths={2}
-                      className="pointer-events-auto"
-                    />
+                {/* Step Progress Indicator */}
+                <div className="flex items-center justify-center gap-4 pb-6">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                      {currentStep > 1 ? <CheckCircle className="h-5 w-5" /> : '1'}
+                    </div>
+                    <span className={`text-sm font-medium ${currentStep === 1 ? 'text-foreground' : 'text-muted-foreground'}`}>Leave Details</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    * Dates with light blue background are already approved leaves
-                  </p>
+                  <div className={`h-px w-12 ${currentStep > 1 ? 'bg-primary' : 'bg-muted'}`} />
+                  <div className="flex items-center gap-2">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                      {currentStep > 2 ? <CheckCircle className="h-5 w-5" /> : '2'}
+                    </div>
+                    <span className={`text-sm font-medium ${currentStep === 2 ? 'text-foreground' : 'text-muted-foreground'}`}>Select Substitutes</span>
+                  </div>
+                  <div className={`h-px w-12 ${currentStep > 2 ? 'bg-primary' : 'bg-muted'}`} />
+                  <div className="flex items-center gap-2">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                      3
+                    </div>
+                    <span className={`text-sm font-medium ${currentStep === 3 ? 'text-foreground' : 'text-muted-foreground'}`}>Review & Submit</span>
+                  </div>
                 </div>
 
-                {/* Leave Type */}
-                <div className="space-y-2">
-                  <Label>Leave Type</Label>
-                  <Select value={leaveType} onValueChange={(value) => setLeaveType(value as LeaveType)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select leave type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sick">Sick Leave</SelectItem>
-                      <SelectItem value="casual">Casual Leave</SelectItem>
-                      <SelectItem value="earned">Earned Leave</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Step 1: Leave Details */}
+                {currentStep === 1 && (
+                  <div className="space-y-6">
+                    {/* Calendar */}
+                    <div className="space-y-2">
+                      <Label>Select Date Range</Label>
+                      <div className="flex justify-center border rounded-lg p-4">
+                        <Calendar
+                          mode="range"
+                          selected={dateRange}
+                          onSelect={setDateRange}
+                          disabled={disabledDates}
+                          modifiers={modifiers}
+                          modifiersStyles={modifiersStyles}
+                          numberOfMonths={2}
+                          className="pointer-events-auto"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        * Dates with light blue background are already approved leaves
+                      </p>
+                    </div>
 
-                {/* Reason */}
-                <div className="space-y-2">
-                  <Label>Reason</Label>
-                  <Textarea
-                    placeholder="Provide a detailed reason for your leave application (minimum 10 characters)..."
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    rows={4}
-                  />
-                  <p className="text-xs text-muted-foreground">{reason.length} characters</p>
-                </div>
+                    {/* Leave Type */}
+                    <div className="space-y-2">
+                      <Label>Leave Type</Label>
+                      <Select value={leaveType} onValueChange={(value) => setLeaveType(value as LeaveType)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select leave type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sick">Sick Leave</SelectItem>
+                          <SelectItem value="casual">Casual Leave</SelectItem>
+                          <SelectItem value="earned">Earned Leave</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                {/* Summary */}
-                {dateRange?.from && dateRange?.to && leaveType && (
-                  <div className="p-4 bg-muted rounded-lg space-y-2">
-                    <p className="font-medium">Leave Summary</p>
-                    <div className="text-sm space-y-1">
-                      <p>
-                        <span className="text-muted-foreground">Date Range:</span>{' '}
-                        {format(dateRange.from, 'MMM dd, yyyy')} - {format(dateRange.to, 'MMM dd, yyyy')}
-                      </p>
-                      <p>
-                        <span className="text-muted-foreground">Working Days:</span> {workingDays} days
-                      </p>
-                      <p>
-                        <span className="text-muted-foreground">Leave Type:</span>{' '}
-                        <span className="capitalize">{leaveType} Leave</span>
-                      </p>
-                      <p>
-                        <span className="text-muted-foreground">Balance After:</span>{' '}
-                        {getRemainingBalance() - workingDays} days remaining
-                      </p>
+                    {/* Reason */}
+                    <div className="space-y-2">
+                      <Label>Reason</Label>
+                      <Textarea
+                        placeholder="Provide a detailed reason for your leave application (minimum 10 characters)..."
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        rows={4}
+                      />
+                      <p className="text-xs text-muted-foreground">{reason.length} characters</p>
+                    </div>
+
+                    {/* Summary */}
+                    {dateRange?.from && dateRange?.to && leaveType && (
+                      <div className="p-4 bg-muted rounded-lg space-y-2">
+                        <p className="font-medium">Leave Summary</p>
+                        <div className="text-sm space-y-1">
+                          <p>
+                            <span className="text-muted-foreground">Date Range:</span>{' '}
+                            {format(dateRange.from, 'MMM dd, yyyy')} - {format(dateRange.to, 'MMM dd, yyyy')}
+                          </p>
+                          <p>
+                            <span className="text-muted-foreground">Working Days:</span> {workingDays} days
+                          </p>
+                          <p>
+                            <span className="text-muted-foreground">Leave Type:</span>{' '}
+                            <span className="capitalize">{leaveType} Leave</span>
+                          </p>
+                          <p>
+                            <span className="text-muted-foreground">Balance After:</span>{' '}
+                            {getRemainingBalance() - workingDays} days remaining
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setDateRange(undefined);
+                          setLeaveType('');
+                          setReason('');
+                        }}
+                      >
+                        Clear
+                      </Button>
+                      <Button 
+                        onClick={handleProceedToSubstitutes} 
+                        disabled={isSubmitting || !dateRange?.from || !dateRange?.to || !leaveType || reason.length < 10}
+                      >
+                        Proceed to Select Substitutes
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 )}
 
-                {/* Action Buttons */}
-                <div className="flex gap-3 justify-end">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setDateRange(undefined);
-                      setLeaveType('');
-                      setReason('');
-                    }}
-                  >
-                    Clear
-                  </Button>
-                  <Button onClick={handleSubmit} disabled={isSubmitting || !dateRange?.from || !dateRange?.to}>
-                    {isSubmitting ? 'Submitting...' : 'Submit Leave Application'}
-                  </Button>
-                </div>
+                {/* Step 2: Select Substitutes */}
+                {currentStep === 2 && (
+                  <div className="space-y-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Users className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="font-medium">Assign Substitutes</p>
+                          <p className="text-sm text-muted-foreground">
+                            Select substitute teachers for your scheduled classes during leave
+                          </p>
+                        </div>
+                      </div>
+
+                      {affectedSlots.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No scheduled classes found during selected leave dates
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {affectedSlots.map((slot, index) => {
+                            const assignment = substituteAssignments[index];
+                            const availableSubstitutes = getAvailableSubstitutes(
+                              slot.day,
+                              slot.start_time,
+                              slot.end_time,
+                              slot.subject,
+                              user?.id || ''
+                            );
+
+                            return (
+                              <Card key={index}>
+                                <CardContent className="pt-6">
+                                  <div className="space-y-4">
+                                    <div className="flex items-start justify-between">
+                                      <div className="space-y-1">
+                                        <p className="font-medium">{slot.class}</p>
+                                        <p className="text-sm text-muted-foreground">{slot.subject}</p>
+                                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                          <span>{format(new Date(slot.date), 'MMM dd, yyyy')}</span>
+                                          <span>•</span>
+                                          <span>{slot.start_time} - {slot.end_time}</span>
+                                        </div>
+                                      </div>
+                                      {assignment?.substitute_officer_id && (
+                                        <Badge variant="outline" className="gap-1">
+                                          <CheckCircle className="h-3 w-3" />
+                                          Assigned
+                                        </Badge>
+                                      )}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                      <Label>Select Substitute Teacher</Label>
+                                      <Select
+                                        value={assignment?.substitute_officer_id || ''}
+                                        onValueChange={(value) => handleSubstituteSelect(index, value)}
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Choose a substitute teacher..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {availableSubstitutes.length === 0 ? (
+                                            <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+                                              No available substitutes found
+                                            </div>
+                                          ) : (
+                                            availableSubstitutes.map((sub) => (
+                                              <SelectItem key={sub.officer_id} value={sub.officer_id}>
+                                                <div className="flex items-center justify-between gap-4">
+                                                  <span>{sub.officer_name}</span>
+                                                  {sub.is_fully_qualified && (
+                                                    <Badge variant="secondary" className="text-xs">
+                                                      Qualified
+                                                    </Badge>
+                                                  )}
+                                                </div>
+                                              </SelectItem>
+                                            ))
+                                          )}
+                                        </SelectContent>
+                                      </Select>
+                                      {assignment?.substitute_officer_id && (
+                                        <p className="text-xs text-muted-foreground">
+                                          Substitute will be assigned {calculateSlotHours(slot.start_time, slot.end_time).toFixed(1)} hours
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 justify-between">
+                      <Button
+                        variant="outline"
+                        onClick={() => setCurrentStep(1)}
+                      >
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Leave Details
+                      </Button>
+                      <Button
+                        onClick={handleProceedToReview}
+                        disabled={!allSubstitutesSelected()}
+                      >
+                        Proceed to Review
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: Review & Submit */}
+                {currentStep === 3 && (
+                  <div className="space-y-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <CheckCircle className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="font-medium">Review Your Application</p>
+                          <p className="text-sm text-muted-foreground">
+                            Verify all details before submitting
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Leave Summary */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">Leave Details</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Date Range</p>
+                              <p className="font-medium">
+                                {dateRange?.from && dateRange?.to &&
+                                  `${format(dateRange.from, 'MMM dd, yyyy')} - ${format(dateRange.to, 'MMM dd, yyyy')}`
+                                }
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Working Days</p>
+                              <p className="font-medium">{workingDays} days</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Leave Type</p>
+                              <p className="font-medium capitalize">{leaveType} Leave</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Balance After</p>
+                              <p className="font-medium">{getRemainingBalance() - workingDays} days</p>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Reason</p>
+                            <p className="text-sm mt-1">{reason}</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Substitute Assignments */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">Substitute Assignments</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {substituteAssignments.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">No substitute assignments</p>
+                          ) : (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Date</TableHead>
+                                  <TableHead>Time</TableHead>
+                                  <TableHead>Class</TableHead>
+                                  <TableHead>Subject</TableHead>
+                                  <TableHead>Substitute Teacher</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {substituteAssignments.map((assignment, index) => {
+                                  const substitute = mockOfficerProfiles.find(
+                                    o => o.id === assignment.substitute_officer_id
+                                  );
+                                  const slot = affectedSlots[index];
+                                  return (
+                                    <TableRow key={index}>
+                                      <TableCell>{format(new Date(assignment.date), 'MMM dd, yyyy')}</TableCell>
+                                      <TableCell>{slot?.start_time} - {slot?.end_time}</TableCell>
+                                      <TableCell>{slot?.class}</TableCell>
+                                      <TableCell>{slot?.subject}</TableCell>
+                                      <TableCell>{substitute?.name || 'Unknown'}</TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 justify-between">
+                      <Button
+                        variant="outline"
+                        onClick={() => setCurrentStep(2)}
+                      >
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Substitutes
+                      </Button>
+                      <Button
+                        onClick={handleFinalSubmit}
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? 'Submitting...' : 'Submit Leave Application'}
+                        <CheckCircle className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
