@@ -35,6 +35,7 @@ import {
   getLeaveApplicationsByOfficer,
   getApprovedLeaveDates,
   getTodayLeaveDetails,
+  getAllLeaveApplications,
 } from '@/data/mockLeaveData';
 import type { LeaveApplication } from '@/types/attendance';
 import { getRoleBasePath } from '@/utils/roleHelpers';
@@ -132,6 +133,9 @@ export default function OfficerDashboard() {
     Array<{ date: string; day: string; status: 'present' | 'absent' | 'leave' | 'weekend' | null; leaveType?: string }>
   >([]);
   
+  // Substitute assignments state
+  const [substituteAssignments, setSubstituteAssignments] = useState<any[]>([]);
+  
   const officerProfile = getOfficerById(user?.id || '');
   const officerTimetable = getOfficerTimetableData(user?.id || '');
   const todaySlots = getTodaySchedule(officerTimetable?.slots || []);
@@ -161,6 +165,28 @@ export default function OfficerDashboard() {
       setApprovedLeaveDates(approvedDates);
       setIsOnLeaveToday(approvedDates.includes(today));
       setTodayLeaveDetails(todayLeave);
+      
+      // Find substitute assignments where this officer is the substitute
+      const allApplications = getAllLeaveApplications();
+      const mySubstituteAssignments: any[] = [];
+      
+      allApplications.forEach(app => {
+        if (app.status === 'approved' && app.substitute_assignments) {
+          app.substitute_assignments.forEach(assignment => {
+            if (assignment.substitute_officer_id === user.id) {
+              const slot = app.affected_slots?.find(s => s.slot_id === assignment.slot_id);
+              mySubstituteAssignments.push({
+                ...assignment,
+                slot,
+                original_officer_name: app.officer_name,
+                leave_id: app.id
+              });
+            }
+          });
+        }
+      });
+      
+      setSubstituteAssignments(mySubstituteAssignments);
     }
 
     // Generate last 7 days with leave status
@@ -769,6 +795,54 @@ export default function OfficerDashboard() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Substitute Assignments Card */}
+          {substituteAssignments.length > 0 && (
+            <Card className="border-orange-200 dark:border-orange-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-orange-600" />
+                  My Substitute Assignments
+                </CardTitle>
+                <CardDescription>Classes you're covering for other officers</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {substituteAssignments.slice(0, 5).map((assignment, idx) => (
+                    <div key={idx} className="p-3 bg-orange-50 dark:bg-orange-950 rounded-lg border border-orange-200 dark:border-orange-800">
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                          <p className="font-semibold text-sm">{assignment.slot?.subject}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Covering for: {assignment.original_officer_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(assignment.date), 'MMM dd, yyyy')} • {assignment.slot?.start_time}-{assignment.slot?.end_time}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {assignment.slot?.class} • {assignment.slot?.room}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <Badge className="bg-orange-100 text-orange-800">
+                            Substitute
+                          </Badge>
+                          <p className="text-xs text-muted-foreground mt-1">{assignment.hours}h</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {substituteAssignments.length > 5 && (
+                    <Button variant="outline" size="sm" className="w-full" asChild>
+                      <Link to={`/tenant/${tenantId}/officer/sessions`}>
+                        View All {substituteAssignments.length} Assignments
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* My Salary Tracker - Full Width */}
