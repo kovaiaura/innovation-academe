@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Shield, Users, Plus, Trash2, Edit } from 'lucide-react';
+import { Shield, Users, Plus, Trash2, Key, Copy, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { metaStaffService } from '@/services/metastaff.service';
@@ -50,8 +50,23 @@ export default function PositionManagement() {
   const [positionFeatures, setPositionFeatures] = useState<SystemAdminFeature[]>([]);
   const [metaStaffUsers, setMetaStaffUsers] = useState<User[]>([]);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
-  const [newUserData, setNewUserData] = useState({ name: '', email: '', position: 'manager' as SystemAdminPosition });
+  const [newUserData, setNewUserData] = useState({
+    name: '',
+    email: '',
+    position: 'manager' as SystemAdminPosition,
+  });
   const [isLoading, setIsLoading] = useState(false);
+  const [credentialsDialog, setCredentialsDialog] = useState<{
+    open: boolean;
+    email: string;
+    password: string;
+    name: string;
+  }>({
+    open: false,
+    email: '',
+    password: '',
+    name: '',
+  });
 
   const positions = getAllPositions().filter(p => p.position !== 'ceo');
 
@@ -110,10 +125,19 @@ export default function PositionManagement() {
 
     setIsLoading(true);
     try {
-      await metaStaffService.createMetaStaff(newUserData);
+      const result = await metaStaffService.createMetaStaff(newUserData);
       toast.success('Meta staff added successfully');
       setIsAddUserDialogOpen(false);
       setNewUserData({ name: '', email: '', position: 'manager' });
+      
+      // Show credentials dialog
+      setCredentialsDialog({
+        open: true,
+        email: result.user.email,
+        password: result.password,
+        name: result.user.name,
+      });
+      
       loadMetaStaff();
     } catch (error) {
       toast.error('Failed to add meta staff');
@@ -135,6 +159,27 @@ export default function PositionManagement() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleResetPassword = async (userId: string, userName: string, userEmail: string) => {
+    try {
+      const newPassword = await metaStaffService.resetPassword(userId);
+      setCredentialsDialog({
+        open: true,
+        email: userEmail,
+        password: newPassword,
+        name: userName,
+      });
+      toast.success('Password reset successfully');
+    } catch (error) {
+      toast.error('Failed to reset password');
+    }
+  };
+
+  const copyCredentials = () => {
+    const text = `Login Credentials\nName: ${credentialsDialog.name}\nEmail: ${credentialsDialog.email}\nPassword: ${credentialsDialog.password}`;
+    navigator.clipboard.writeText(text);
+    toast.success('Credentials copied to clipboard');
   };
 
   const getPositionCount = (position: SystemAdminPosition) => {
@@ -242,13 +287,24 @@ export default function PositionManagement() {
                           <p className="text-sm text-muted-foreground">{metaUser.email}</p>
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteUser(metaUser.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleResetPassword(metaUser.id, metaUser.name, metaUser.email)}
+                          title="Reset Password"
+                        >
+                          <Key className="h-4 w-4 text-primary" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteUser(metaUser.id)}
+                          title="Remove User"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 {metaStaffUsers.filter(u => u.position === selectedPosition).length === 0 && (
@@ -320,6 +376,59 @@ export default function PositionManagement() {
               Add User
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Credentials Display Dialog */}
+      <Dialog open={credentialsDialog.open} onOpenChange={(open) => setCredentialsDialog({ ...credentialsDialog, open })}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5 text-primary" />
+              Login Credentials Created
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-destructive">
+                Save these credentials now! This is the only time the password will be shown.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Name</label>
+                <p className="text-base font-medium">{credentialsDialog.name}</p>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Email</label>
+                <p className="text-base font-medium">{credentialsDialog.email}</p>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Temporary Password</label>
+                <div className="flex items-center gap-2 p-2 bg-muted rounded-md font-mono text-sm">
+                  <code className="flex-1">{credentialsDialog.password}</code>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button onClick={copyCredentials} className="flex-1">
+                <Copy className="h-4 w-4 mr-2" />
+                Copy Credentials
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setCredentialsDialog({ ...credentialsDialog, open: false })}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </Layout>

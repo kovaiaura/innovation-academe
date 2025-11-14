@@ -17,22 +17,31 @@ export const metaStaffService = {
     name: string;
     email: string;
     position: SystemAdminPosition;
-  }): Promise<User> => {
+  }): Promise<{ user: User; password: string }> => {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    const newUser: User = {
+    // Generate random temporary password
+    const tempPassword = `Meta${Math.random().toString(36).slice(-8).toUpperCase()}!`;
+    
+    const newUser: any = {
       id: `meta-${Date.now()}`,
       email: data.email,
       name: data.name,
       role: 'system_admin',
       position: data.position,
       is_ceo: false,
+      password: tempPassword,
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.name}`,
       created_at: new Date().toISOString(),
     };
     
-    return newUser;
+    // Add to mockUsers array so they can login
+    mockUsers.push(newUser);
+    
+    // Return user without password field and the password separately
+    const { password, ...userWithoutPassword } = newUser;
+    return { user: userWithoutPassword, password: tempPassword };
   },
 
   updatePosition: async (userId: string, position: SystemAdminPosition): Promise<void> => {
@@ -72,5 +81,20 @@ export const metaStaffService = {
     await new Promise(resolve => setTimeout(resolve, 300));
     
     updatePermissionsConfig(position, features);
+  },
+
+  resetPassword: async (userId: string): Promise<string> => {
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Generate new random password
+    const newPassword = `Meta${Math.random().toString(36).slice(-8).toUpperCase()}!`;
+    
+    const user = mockUsers.find(u => u.id === userId);
+    if (user) {
+      (user as any).password = newPassword;
+    }
+    
+    return newPassword;
   },
 };
