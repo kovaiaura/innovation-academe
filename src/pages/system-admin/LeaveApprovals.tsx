@@ -25,9 +25,11 @@ import {
   getAllLeaveApplications,
   approveLeaveApplication,
   rejectLeaveApplication,
+  updateTimetableSlotStatus,
+  addSubstituteSlot,
 } from "@/data/mockLeaveData";
 import { format } from "date-fns";
-import { Check, X, Eye, Search, Filter } from "lucide-react";
+import { Check, X, Eye, Search, Filter, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { LeaveActionDialog } from "@/components/system-admin/LeaveActionDialog";
@@ -116,7 +118,54 @@ export default function LeaveApprovals() {
     try {
       if (actionMode === "approve") {
         approveLeaveApplication(selectedApplication.id, user.name, comments);
-        toast.success("Leave application approved successfully");
+        
+        // Update timetables and notify substitutes
+        if (selectedApplication.substitute_assignments) {
+          selectedApplication.substitute_assignments.forEach(assignment => {
+            // Mark original officer's slot as ON_LEAVE
+            updateTimetableSlotStatus(
+              assignment.original_officer_id,
+              assignment.slot_id,
+              'on_leave',
+              selectedApplication.id
+            );
+            
+            // Add substitute slot to substitute officer's timetable
+            addSubstituteSlot(
+              assignment.substitute_officer_id,
+              assignment,
+              selectedApplication
+            );
+          });
+
+          // Send notifications to substitutes
+          const uniqueSubstitutes = [...new Set(
+            selectedApplication.substitute_assignments.map(a => a.substitute_officer_id)
+          )];
+          
+          const { createNotification } = require('@/hooks/useNotifications');
+          uniqueSubstitutes.forEach(subId => {
+            const assignments = selectedApplication.substitute_assignments?.filter(
+              a => a.substitute_officer_id === subId
+            ) || [];
+            
+            createNotification(
+              subId,
+              'officer',
+              'substitute_assignment',
+              'New Substitute Assignment',
+              `You have been assigned to substitute for ${selectedApplication.officer_name} (${assignments.length} class${assignments.length > 1 ? 'es' : ''})`,
+              '/officer/schedule',
+              {
+                leave_application_id: selectedApplication.id,
+                original_officer_id: selectedApplication.officer_id,
+                class_count: assignments.length
+              }
+            );
+          });
+        }
+        
+        toast.success("Leave approved and substitutes assigned successfully");
       } else if (actionMode === "reject") {
         rejectLeaveApplication(selectedApplication.id, user.name, rejectionReason!);
         toast.success("Leave application rejected");
@@ -436,6 +485,40 @@ export default function LeaveApprovals() {
                   <p className="mt-1">{selectedApplication.reason}</p>
                 </div>
               </div>
+
+              {/* Show substitute assignments */}
+              {selectedApplication.substitute_assignments && selectedApplication.substitute_assignments.length > 0 && (
+                <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Substitute Assignments ({selectedApplication.substitute_assignments.length} classes)
+                  </h4>
+                  <div className="space-y-2">
+                    {selectedApplication.substitute_assignments.map((assignment, idx) => {
+                      const slot = selectedApplication.affected_slots?.find(s => s.slot_id === assignment.slot_id);
+                      return (
+                        <div key={idx} className="text-sm p-3 bg-white dark:bg-background rounded border">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="font-medium">{slot?.subject}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {slot?.day}, {assignment.date} • {slot?.start_time}-{slot?.end_time}
+                              </p>
+                              <p className="text-xs text-muted-foreground">{slot?.class} • {slot?.room}</p>
+                            </div>
+                            <div className="text-right">
+                              <Badge className="bg-purple-100 text-purple-800">
+                                {assignment.substitute_officer_name}
+                              </Badge>
+                              <p className="text-xs text-muted-foreground mt-1">{assignment.hours}h</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <h4 className="font-semibold mb-4">Approval Timeline</h4>
