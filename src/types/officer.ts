@@ -11,6 +11,10 @@ export interface OfficerTimetableSlot {
   batch?: string;      // 'Batch A' (optional)
   course_id?: string;  // Links to Course
   current_module_id?: string; // Tracks which module you're on for this class
+  status?: 'active' | 'on_leave' | 'substitute';
+  original_officer_id?: string;
+  original_officer_name?: string;
+  leave_application_id?: string;
 }
 
 export interface OfficerTimetable {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format, differenceInCalendarDays, isWeekend, addDays } from 'date-fns';
-import { CalendarCheck, Clock, TrendingUp, FileText, AlertCircle, Eye, X } from 'lucide-react';
+import { CalendarCheck, Clock, TrendingUp, FileText, AlertCircle, Eye, X, ArrowRight, ArrowLeft, Users, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,9 +27,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import type { LeaveApplication, LeaveBalance, LeaveType } from '@/types/attendance';
+import type { LeaveApplication, LeaveBalance, LeaveType, AffectedSlot, SubstituteAssignment } from '@/types/attendance';
 import type { DateRange } from 'react-day-picker';
 import { useNotifications } from '@/hooks/useNotifications';
+import { getAffectedSlots, getAvailableSubstitutes, calculateSlotHours } from '@/utils/substituteHelpers';
+import { mockOfficerProfiles } from '@/data/mockOfficerData';
 
 export default function LeaveManagement() {
   const { user } = useAuth();
@@ -39,10 +41,13 @@ export default function LeaveManagement() {
   const [approvedLeaveDates, setApprovedLeaveDates] = useState<string[]>([]);
   
   // Form state
+  const [currentStep, setCurrentStep] = useState(1);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [leaveType, setLeaveType] = useState<LeaveType | ''>('');
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [affectedSlots, setAffectedSlots] = useState<AffectedSlot[]>([]);
+  const [substituteAssignments, setSubstituteAssignments] = useState<SubstituteAssignment[]>([]);
 
   // Filter state
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
@@ -109,14 +114,9 @@ export default function LeaveManagement() {
     }
   };
 
-  const handleSubmit = () => {
-    if (!dateRange?.from || !dateRange?.to) {
-      toast.error('Please select a date range');
-      return;
-    }
-
-    if (!leaveType) {
-      toast.error('Please select leave type');
+  const handleProceedToSubstitutes = () => {
+    if (!dateRange?.from || !dateRange?.to || !leaveType) {
+      toast.error('Please select dates and leave type');
       return;
     }
 
@@ -132,7 +132,6 @@ export default function LeaveManagement() {
     }
 
     // Check for overlapping dates
-    const selectedDates: string[] = [];
     let currentDate = new Date(dateRange.from);
     const endDate = new Date(dateRange.to);
 
@@ -143,45 +142,95 @@ export default function LeaveManagement() {
           toast.error('Selected dates overlap with approved leave');
           return;
         }
-        selectedDates.push(dateStr);
       }
       currentDate = addDays(currentDate, 1);
     }
+    
+    // Calculate affected slots
+    const slots = getAffectedSlots(user?.id || '', dateRange.from, dateRange.to);
+    setAffectedSlots(slots);
+    
+    // Initialize empty assignments
+    const initialAssignments: SubstituteAssignment[] = slots.map(slot => ({
+      slot_id: slot.slot_id,
+      original_officer_id: user?.id || '',
+      substitute_officer_id: '',
+      substitute_officer_name: '',
+      date: slot.date,
+      hours: calculateSlotHours(slot.start_time, slot.end_time)
+    }));
+    setSubstituteAssignments(initialAssignments);
+    
+    setCurrentStep(2);
+  };
+
+  const handleSubstituteSelect = (index: number, officerId: string) => {
+    const officer = mockOfficerProfiles.find(o => o.id === officerId);
+    if (officer) {
+      const updatedAssignments = [...substituteAssignments];
+      updatedAssignments[index].substitute_officer_id = officerId;
+      updatedAssignments[index].substitute_officer_name = officer.name;
+      setSubstituteAssignments(updatedAssignments);
+    }
+  };
+
+  const allSubstitutesSelected = (): boolean => {
+    return substituteAssignments.every(a => a.substitute_officer_id !== '');
+  };
+
+  const handleProceedToReview = () => {
+    if (!allSubstitutesSelected()) {
+      toast.error('Please select substitutes for all affected classes');
+      return;
+    }
+    setCurrentStep(3);
+  };
+
+  const handleFinalSubmit = () => {
+    if (!dateRange?.from || !dateRange?.to || !user) return;
 
     setIsSubmitting(true);
 
     const newApplication: LeaveApplication = {
       id: `leave-${Date.now()}`,
-      officer_id: user?.id || '',
-      officer_name: user?.name || '',
+      officer_id: user.id,
+      officer_name: user.name,
       start_date: format(dateRange.from, 'yyyy-MM-dd'),
       end_date: format(dateRange.to, 'yyyy-MM-dd'),
-      leave_type: leaveType,
+      leave_type: leaveType as LeaveType,
       reason: reason.trim(),
       total_days: workingDays,
       status: 'pending',
       applied_at: new Date().toISOString(),
+      affected_slots: affectedSlots,
+      substitute_assignments: substituteAssignments,
     };
 
     try {
       addLeaveApplication(newApplication);
       
       // Refresh data
-      const applications = getLeaveApplicationsByOfficer(user?.id || '');
+      const applications = getLeaveApplicationsByOfficer(user.id);
       setLeaveApplications(applications);
 
       // Clear form
       setDateRange(undefined);
       setLeaveType('');
       setReason('');
+      setAffectedSlots([]);
+      setSubstituteAssignments([]);
+      setCurrentStep(1);
 
-      toast.success('Leave application submitted successfully!');
+      toast.success('Leave application with substitutes submitted successfully!');
+      setActiveTab('history');
     } catch (error) {
       toast.error('Failed to submit leave application');
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const handleSubmit = handleFinalSubmit;
 
   const handleViewDetails = (application: LeaveApplication) => {
     setSelectedApplication(application);
