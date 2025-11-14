@@ -14,6 +14,8 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { UserRole } from '@/types';
+import { SystemAdminFeature } from '@/types/permissions';
+import { canAccessFeature, isCEO } from '@/utils/permissionHelpers';
 import { OfficerSidebarProfile } from './OfficerSidebarProfile';
 import { getOfficerByEmail } from '@/data/mockOfficerData';
 import { OfficerDetails } from '@/services/systemadmin.service';
@@ -28,6 +30,8 @@ interface MenuItem {
   icon: React.ReactNode;
   path: string;
   roles: UserRole[];
+  feature?: SystemAdminFeature;
+  ceoOnly?: boolean;
 }
 
 // Role-based menu configuration
@@ -37,22 +41,24 @@ const menuItems: MenuItem[] = [
   { label: 'System Config', icon: <Settings className="h-5 w-5" />, path: '/system-config', roles: ['super_admin'] },
   { label: 'Audit Logs', icon: <FileText className="h-5 w-5" />, path: '/audit-logs', roles: ['super_admin'] },
   // System Admin menu items - Business operations
-  { label: 'Institution Management', icon: <Building2 className="h-5 w-5" />, path: '/institutions', roles: ['system_admin'] },
-  { label: 'Course Management', icon: <BookOpen className="h-5 w-5" />, path: '/course-management', roles: ['system_admin'] },
-  { label: 'Assessment Management', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['system_admin'] },
-  { label: 'Assignment Management', icon: <Briefcase className="h-5 w-5" />, path: '/assignment-management', roles: ['system_admin'] },
-  { label: 'Event Management', icon: <Trophy className="h-5 w-5" />, path: '/event-management', roles: ['system_admin'] },
+  { label: 'Institution Management', icon: <Building2 className="h-5 w-5" />, path: '/institutions', roles: ['system_admin'], feature: 'institution_management' },
+  { label: 'Course Management', icon: <BookOpen className="h-5 w-5" />, path: '/course-management', roles: ['system_admin'], feature: 'course_management' },
+  { label: 'Assessment Management', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['system_admin'], feature: 'assessment_management' },
+  { label: 'Assignment Management', icon: <Briefcase className="h-5 w-5" />, path: '/assignment-management', roles: ['system_admin'], feature: 'assignment_management' },
+  { label: 'Event Management', icon: <Trophy className="h-5 w-5" />, path: '/event-management', roles: ['system_admin'], feature: 'event_management' },
   // Officers Management
-  { label: 'Officer Management', icon: <Users className="h-5 w-5" />, path: '/officers', roles: ['system_admin'] },
+  { label: 'Officer Management', icon: <Users className="h-5 w-5" />, path: '/officers', roles: ['system_admin'], feature: 'officer_management' },
   // Project Management
-  { label: 'Project Management', icon: <Target className="h-5 w-5" />, path: '/project-management', roles: ['system_admin'] },
+  { label: 'Project Management', icon: <Target className="h-5 w-5" />, path: '/project-management', roles: ['system_admin'], feature: 'project_management' },
   // Inventory & Purchase
-  { label: 'Inventory Management', icon: <Package className="h-5 w-5" />, path: '/inventory-management', roles: ['system_admin'] },
-  { label: 'Attendance and Payroll', icon: <Clock className="h-5 w-5" />, path: '/officer-attendance', roles: ['system_admin'] },
-  { label: 'Leave Approvals', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-approvals', roles: ['system_admin'] },
-  { label: 'Institutional Calendar', icon: <Calendar className="h-5 w-5" />, path: '/institutional-calendar', roles: ['system_admin'] },
+  { label: 'Inventory Management', icon: <Package className="h-5 w-5" />, path: '/inventory-management', roles: ['system_admin'], feature: 'inventory_management' },
+  { label: 'Attendance and Payroll', icon: <Clock className="h-5 w-5" />, path: '/officer-attendance', roles: ['system_admin'], feature: 'attendance_payroll' },
+  { label: 'Leave Approvals', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-approvals', roles: ['system_admin'], feature: 'leave_approvals' },
+  { label: 'Institutional Calendar', icon: <Calendar className="h-5 w-5" />, path: '/institutional-calendar', roles: ['system_admin'], feature: 'institutional_calendar' },
+  // Position Management (CEO only)
+  { label: 'Position Management', icon: <Shield className="h-5 w-5" />, path: '/position-management', roles: ['system_admin'], ceoOnly: true },
   // Reports & Analytics
-  { label: 'Reports & Analytics', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['system_admin'] },
+  { label: 'Reports & Analytics', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['system_admin'], feature: 'reports_analytics' },
   // Teacher menu items
   { label: 'My Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['teacher'] },
   { label: 'Grades', icon: <Award className="h-5 w-5" />, path: '/grades', roles: ['teacher'] },
@@ -129,9 +135,20 @@ export function Sidebar() {
     window.location.href = '/login';
   };
 
-  const visibleMenuItems = menuItems.filter(
-    (item) => user && item.roles.includes(user.role)
-  );
+  const visibleMenuItems = menuItems.filter((item) => {
+    if (!user || !item.roles.includes(user.role)) return false;
+    
+    // If system_admin role, check position permissions
+    if (user.role === 'system_admin') {
+      // CEO-only items
+      if (item.ceoOnly && !isCEO(user)) return false;
+      
+      // Feature-based items
+      if (item.feature && !canAccessFeature(user, item.feature)) return false;
+    }
+    
+    return true;
+  });
 
   // Get base path for role-based routing
   const getFullPath = (path: string) => {

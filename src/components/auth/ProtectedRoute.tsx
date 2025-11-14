@@ -1,16 +1,20 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
+import { SystemAdminFeature } from '@/types/permissions';
+import { canAccessFeature } from '@/utils/permissionHelpers';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles?: UserRole[];
+  requiredFeature?: SystemAdminFeature;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children, 
-  allowedRoles 
+  allowedRoles,
+  requiredFeature
 }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
@@ -36,6 +40,18 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       path: location.pathname
     });
     return <Navigate to="/unauthorized" replace />;
+  }
+
+  // Check feature-based permission for system_admin
+  if (requiredFeature && user?.role === 'system_admin') {
+    if (!canAccessFeature(user, requiredFeature)) {
+      console.log('ProtectedRoute: Feature access denied', {
+        userPosition: user.position,
+        requiredFeature,
+        path: location.pathname
+      });
+      return <Navigate to="/unauthorized" replace />;
+    }
   }
 
   console.log('ProtectedRoute: Access granted', {

@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Layout } from '@/components/layout/Layout';
 import { getPendingLeaveCount } from '@/data/mockLeaveData';
+import { getPositionDisplayName } from '@/data/mockPositionPermissions';
 
 export default function SystemAdminDashboard() {
   const { user } = useAuth();
@@ -83,9 +84,16 @@ export default function SystemAdminDashboard() {
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold">System Admin Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, {user?.name}! Manage clients and customer operations</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">System Admin Dashboard</h1>
+            <p className="text-muted-foreground">Welcome back, {user?.name}! Manage clients and customer operations</p>
+          </div>
+          {user?.position && (
+            <Badge variant="outline" className="text-base px-4 py-2">
+              {getPositionDisplayName(user.position)}
+            </Badge>
+          )}
         </div>
 
         {/* Stats Grid */}
