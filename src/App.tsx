@@ -77,6 +77,7 @@ import ProjectManagement from "./pages/system-admin/ProjectManagement";
 import SystemAdminLeaveApprovals from "./pages/system-admin/LeaveApprovals";
 import EventManagement from "./pages/system-admin/EventManagement";
 import Performance from "./pages/management/Performance";
+import SystemAdminPositionManagement from "./pages/system-admin/PositionManagement";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -139,7 +140,7 @@ const App = () => (
             <Route
               path="/system-admin/institutions"
               element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="institution_management">
                   <InstitutionManagement />
                 </ProtectedRoute>
               }
@@ -147,7 +148,7 @@ const App = () => (
           <Route
             path="/system-admin/institutions/:institutionId"
             element={
-              <ProtectedRoute allowedRoles={['system_admin']}>
+              <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="institution_management">
                 <InstitutionDetail />
               </ProtectedRoute>
             }
@@ -155,7 +156,7 @@ const App = () => (
           <Route
             path="/system-admin/institutions/:institutionId/classes/:classId"
             element={
-              <ProtectedRoute allowedRoles={['system_admin']}>
+              <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="institution_management">
                 <ClassDetail />
               </ProtectedRoute>
             }
@@ -163,7 +164,7 @@ const App = () => (
           <Route
             path="/system-admin/officers/:officerId"
             element={
-              <ProtectedRoute allowedRoles={['system_admin']}>
+              <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="officer_management">
                 <OfficerDetail />
               </ProtectedRoute>
             }
@@ -171,7 +172,7 @@ const App = () => (
             <Route
               path="/system-admin/reports"
               element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="reports_analytics">
                   <SystemAdminReports />
                 </ProtectedRoute>
               }
@@ -179,7 +180,7 @@ const App = () => (
             <Route
               path="/system-admin/officers"
               element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="officer_management">
                   <OfficerManagement />
                 </ProtectedRoute>
               }
@@ -187,7 +188,7 @@ const App = () => (
             <Route
               path="/system-admin/officer-attendance"
               element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="attendance_payroll">
                   <SystemAdminOfficerAttendance />
                 </ProtectedRoute>
               }
@@ -195,7 +196,7 @@ const App = () => (
             <Route
               path="/system-admin/leave-approvals"
               element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="leave_approvals">
                   <SystemAdminLeaveApprovals />
                 </ProtectedRoute>
               }
@@ -203,7 +204,7 @@ const App = () => (
             <Route
               path="/system-admin/inventory-management"
               element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="inventory_management">
                   <InventoryManagement />
                 </ProtectedRoute>
               }
@@ -211,7 +212,7 @@ const App = () => (
             <Route
               path="/system-admin/inventory-management/:institutionId"
               element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="inventory_management">
                   <InstitutionInventoryDetail />
                 </ProtectedRoute>
               }
@@ -219,7 +220,7 @@ const App = () => (
             <Route
               path="/system-admin/course-management"
               element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="course_management">
                   <SystemAdminCourseManagement />
                 </ProtectedRoute>
               }
@@ -227,7 +228,7 @@ const App = () => (
             <Route
               path="/system-admin/courses/:courseId"
               element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="course_management">
                   <SystemAdminCourseDetail />
                 </ProtectedRoute>
               }
@@ -235,7 +236,7 @@ const App = () => (
             <Route
               path="/system-admin/assessments"
               element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="assessment_management">
                   <SystemAdminAssessmentManagement />
                 </ProtectedRoute>
               }
@@ -243,7 +244,7 @@ const App = () => (
             <Route
               path="/system-admin/assignment-management"
               element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="assignment_management">
                   <SystemAdminAssignmentManagement />
                 </ProtectedRoute>
               }
@@ -251,7 +252,7 @@ const App = () => (
             <Route
               path="/system-admin/institutional-calendar"
               element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="institutional_calendar">
                   <InstitutionalCalendar />
                 </ProtectedRoute>
               }
@@ -259,7 +260,7 @@ const App = () => (
             <Route
               path="/system-admin/project-management"
               element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="project_management">
                   <ProjectManagement />
                 </ProtectedRoute>
               }
@@ -267,8 +268,16 @@ const App = () => (
             <Route
               path="/system-admin/event-management"
               element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="event_management">
                   <EventManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/position-management"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminPositionManagement />
                 </ProtectedRoute>
               }
             />
