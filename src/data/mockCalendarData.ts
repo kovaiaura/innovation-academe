@@ -14,6 +14,7 @@ export const mockEvents: InstitutionEvent[] = [
     created_by: 'Admin',
     notify_participants: true,
     recurrence: 'none',
+    color: '#10b981',
     created_at: '2024-12-01T10:00:00',
   },
   {
@@ -28,6 +29,7 @@ export const mockEvents: InstitutionEvent[] = [
     created_by: 'System Admin',
     notify_participants: true,
     recurrence: 'none',
+    color: '#3b82f6',
     created_at: '2024-12-05T11:00:00',
   },
   {
@@ -58,6 +60,7 @@ export const mockEvents: InstitutionEvent[] = [
     created_by: 'Science Dept',
     notify_participants: true,
     recurrence: 'none',
+    color: '#a855f7',
     created_at: '2024-12-15T14:00:00',
   },
   {
@@ -71,6 +74,7 @@ export const mockEvents: InstitutionEvent[] = [
     created_by: 'HR Department',
     notify_participants: true,
     recurrence: 'none',
+    color: '#f59e0b',
     created_at: '2024-12-20T10:00:00',
   },
 ];
