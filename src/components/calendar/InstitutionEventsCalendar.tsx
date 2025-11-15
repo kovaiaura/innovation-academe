@@ -126,8 +126,8 @@ export function InstitutionEventsCalendar() {
     setIsCreateDialogOpen(true);
   }, []);
 
-  // Custom toolbar
-  const CustomToolbar = ({ label, onNavigate, onView, view: currentView }: any) => (
+  // Navigation toolbar (for Calendar views only)
+  const NavigationToolbar = ({ label, onNavigate }: any) => (
     <div className="flex items-center justify-between mb-4 p-4 bg-card border border-border rounded-lg">
       <div className="flex items-center gap-2">
         <Button onClick={() => onNavigate('TODAY')} variant="outline" size="sm">
@@ -141,7 +141,13 @@ export function InstitutionEventsCalendar() {
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
-      <div className="flex gap-1">
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* Always visible view switcher */}
+      <div className="flex items-center justify-center gap-1 p-4 bg-card border border-border rounded-lg">
         {(['month', 'week', 'day', 'agenda', 'year'] as (View | 'year')[]).map(v => (
           <Button
             key={v}
@@ -151,7 +157,6 @@ export function InstitutionEventsCalendar() {
               if (v === 'year') {
                 setView('year');
               } else {
-                onView(v as View);
                 setView(v as View);
               }
             }}
@@ -160,11 +165,7 @@ export function InstitutionEventsCalendar() {
           </Button>
         ))}
       </div>
-    </div>
-  );
 
-  return (
-    <div className="space-y-4">
       {view === 'year' ? (
         <YearView
           date={date}
@@ -200,7 +201,7 @@ export function InstitutionEventsCalendar() {
           resizable
           draggableAccessor={() => true}
           components={{
-            toolbar: CustomToolbar,
+            toolbar: NavigationToolbar,
           }}
         />
       )}
