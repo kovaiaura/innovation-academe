@@ -1,12 +1,14 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Calendar, dateFnsLocalizer, View } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay } from 'date-fns';
+import { format, parse, startOfWeek, getDay, addYears, subYears } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { mockEvents } from '@/data/mockCalendarData';
 import { InstitutionEvent } from '@/types/calendar';
 import { CreateEditEventDialog } from './CreateEditEventDialog';
 import { EventDialog } from './EventDialog';
+import { YearView } from './YearView';
+import { DayEventsPanel } from './DayEventsPanel';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import '@/styles/calendar.css';
@@ -31,6 +33,7 @@ export function InstitutionEventsCalendar() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [createSlotInfo, setCreateSlotInfo] = useState<{ start: Date; end: Date } | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   // Convert events to calendar format
   const calendarEvents = useMemo(() => {
@@ -69,12 +72,14 @@ export function InstitutionEventsCalendar() {
   const handleSelectSlot = useCallback((slotInfo: { start: Date; end: Date }) => {
     setCreateSlotInfo(slotInfo);
     setSelectedEvent(null);
+    setSelectedDate(slotInfo.start);
     setIsCreateDialogOpen(true);
   }, []);
 
   // Handle selecting an event (for viewing/editing)
   const handleSelectEvent = useCallback((event: any) => {
     setSelectedEvent(event);
+    setSelectedDate(new Date(event.start_datetime));
     setIsDetailsDialogOpen(true);
   }, []);
 
@@ -137,12 +142,12 @@ export function InstitutionEventsCalendar() {
         </Button>
       </div>
       <div className="flex gap-1">
-        {(['month', 'week', 'day', 'agenda'] as View[]).map(v => (
+        {(['month', 'week', 'day', 'agenda', 'year'] as (View | 'year')[]).map(v => (
           <Button
             key={v}
             variant={currentView === v ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => onView(v)}
+            onClick={() => onView(v as View)}
           >
             {v.charAt(0).toUpperCase() + v.slice(1)}
           </Button>
@@ -153,28 +158,54 @@ export function InstitutionEventsCalendar() {
 
   return (
     <div className="space-y-4">
-      <Calendar
-        localizer={localizer}
-        events={calendarEvents}
-        startAccessor="start"
-        endAccessor="end"
-        style={{ height: 'calc(100vh - 250px)', minHeight: '600px' }}
-        view={view}
-        onView={setView}
-        date={date}
-        onNavigate={setDate}
-        onSelectSlot={handleSelectSlot}
-        onSelectEvent={handleSelectEvent}
-        onEventDrop={handleEventDrop}
-        onEventResize={handleEventResize}
-        eventPropGetter={eventStyleGetter}
-        selectable
-        resizable
-        draggableAccessor={() => true}
-        components={{
-          toolbar: CustomToolbar,
-        }}
-      />
+      {view === 'year' ? (
+        <YearView
+          date={date}
+          events={calendarEvents}
+          onSelectDate={(date) => {
+            setSelectedDate(date);
+            setView('day');
+            setDate(date);
+          }}
+          onNavigate={(action) => {
+            const newDate = action === 'NEXT' ? addYears(date, 1) : subYears(date, 1);
+            setDate(newDate);
+          }}
+          selectedDate={selectedDate}
+        />
+      ) : (
+        <Calendar
+          localizer={localizer}
+          events={calendarEvents}
+          startAccessor="start"
+          endAccessor="end"
+          style={{ height: 'calc(100vh - 250px)', minHeight: '600px' }}
+          view={view}
+          onView={setView}
+          date={date}
+          onNavigate={setDate}
+          onSelectSlot={handleSelectSlot}
+          onSelectEvent={handleSelectEvent}
+          onEventDrop={handleEventDrop}
+          onEventResize={handleEventResize}
+          eventPropGetter={eventStyleGetter}
+          selectable
+          resizable
+          draggableAccessor={() => true}
+          components={{
+            toolbar: CustomToolbar,
+          }}
+        />
+      )}
+
+      {selectedDate && (
+        <DayEventsPanel
+          selectedDate={selectedDate}
+          events={calendarEvents}
+          onEventClick={handleSelectEvent}
+          onClose={() => setSelectedDate(null)}
+        />
+      )}
 
       <CreateEditEventDialog
         isOpen={isCreateDialogOpen}
