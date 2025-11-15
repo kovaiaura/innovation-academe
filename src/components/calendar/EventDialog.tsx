@@ -1,17 +1,19 @@
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { InstitutionEvent } from '@/types/calendar';
 import { Badge } from '@/components/ui/badge';
 import { getEventTypeColor } from '@/utils/calendarHelpers';
 import { format } from 'date-fns';
-import { Calendar, Clock, MapPin, User } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, Edit } from 'lucide-react';
 
 interface EventDialogProps {
   event?: InstitutionEvent;
   isOpen: boolean;
   onClose: () => void;
+  onEdit?: () => void;
 }
 
-export function EventDialog({ event, isOpen, onClose }: EventDialogProps) {
+export function EventDialog({ event, isOpen, onClose, onEdit }: EventDialogProps) {
   if (!event) return null;
 
   const typeColors = getEventTypeColor(event.event_type);
@@ -77,6 +79,18 @@ export function EventDialog({ event, isOpen, onClose }: EventDialogProps) {
             </div>
           </div>
         </div>
+
+        {onEdit && (
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>
+              Close
+            </Button>
+            <Button onClick={onEdit}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Event
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -17,6 +17,7 @@ export interface InstitutionEvent {
   created_by: string;
   notify_participants: boolean;
   recurrence: RecurrenceType;
+  color?: string; // Optional color tag (hex code)
   created_at: string;
 }
 
