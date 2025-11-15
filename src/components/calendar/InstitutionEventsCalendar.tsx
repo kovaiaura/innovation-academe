@@ -148,7 +148,7 @@ export function InstitutionEventsCalendar() {
     <div className="space-y-4">
       {/* Always visible view switcher */}
       <div className="flex items-center justify-center gap-1 p-4 bg-card border border-border rounded-lg">
-        {(['month', 'week', 'day', 'agenda', 'year'] as (View | 'year')[]).map(v => (
+        {(['year', 'month', 'week', 'day', 'agenda'] as (View | 'year')[]).map(v => (
           <Button
             key={v}
             variant={view === v ? 'default' : 'ghost'}
