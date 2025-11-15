@@ -27,7 +27,7 @@ const localizer = dateFnsLocalizer({
 
 export function InstitutionEventsCalendar() {
   const [events, setEvents] = useState<InstitutionEvent[]>(mockEvents);
-  const [view, setView] = useState<View>('month');
+  const [view, setView] = useState<View | 'year'>('month');
   const [date, setDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<InstitutionEvent | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -145,9 +145,16 @@ export function InstitutionEventsCalendar() {
         {(['month', 'week', 'day', 'agenda', 'year'] as (View | 'year')[]).map(v => (
           <Button
             key={v}
-            variant={currentView === v ? 'default' : 'ghost'}
+            variant={view === v ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => onView(v as View)}
+            onClick={() => {
+              if (v === 'year') {
+                setView('year');
+              } else {
+                onView(v as View);
+                setView(v as View);
+              }
+            }}
           >
             {v.charAt(0).toUpperCase() + v.slice(1)}
           </Button>
@@ -180,8 +187,8 @@ export function InstitutionEventsCalendar() {
           startAccessor="start"
           endAccessor="end"
           style={{ height: 'calc(100vh - 250px)', minHeight: '600px' }}
-          view={view}
-          onView={setView}
+          view={view === 'year' ? 'month' : view}
+          onView={(newView) => setView(newView)}
           date={date}
           onNavigate={setDate}
           onSelectSlot={handleSelectSlot}
