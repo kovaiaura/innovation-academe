@@ -258,3 +258,146 @@
     padding: 8px 2px;
   }
 }
+
+/* Year View */
+.year-view-container {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.year-view-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.year-view-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .year-view-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .year-view-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .year-view-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mini-month {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 0.75rem;
+  background: hsl(var(--background));
+}
+
+.mini-month-header {
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  color: hsl(var(--foreground));
+}
+
+.mini-month-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 0.25rem;
+}
+
+.mini-weekday {
+  text-align: center;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  padding: 0.25rem 0;
+}
+
+.mini-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.mini-day-empty {
+  aspect-ratio: 1;
+}
+
+.mini-day {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  cursor: pointer;
+  border-radius: 4px;
+  position: relative;
+  transition: all 0.2s;
+  color: hsl(var(--foreground));
+}
+
+.mini-day:hover {
+  background: hsl(var(--accent));
+}
+
+.mini-day.today {
+  background: hsl(var(--primary) / 0.1);
+  font-weight: bold;
+}
+
+.mini-day.selected {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.mini-day.other-month {
+  opacity: 0.3;
+}
+
+.mini-day-number {
+  line-height: 1;
+}
+
+.event-dots {
+  display: flex;
+  gap: 2px;
+  margin-top: 2px;
+  align-items: center;
+}
+
+.event-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+}
+
+/* Day Events Panel */
+.day-events-panel {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  background: hsl(var(--card));
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.event-card-important {
+  border-left: 4px solid hsl(var(--destructive));
+  background: hsl(var(--destructive) / 0.05);
+}

@@ -152,3 +152,38 @@ export function validateAcademicYearDates(startDate: string, endDate: string): b
   const end = new Date(endDate);
   return start < end;
 }
+
+// Get all events for a specific date
+export function getEventsForDate(
+  events: InstitutionEvent[], 
+  date: Date
+): InstitutionEvent[] {
+  return events.filter(event => {
+    const eventDate = new Date(event.start_datetime);
+    return format(eventDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
+  });
+}
+
+// Separate important events from others
+export function categorizeEventsByImportance(
+  events: InstitutionEvent[]
+): { important: InstitutionEvent[], others: InstitutionEvent[] } {
+  return {
+    important: events.filter(e => e.event_type === 'important'),
+    others: events.filter(e => e.event_type !== 'important'),
+  };
+}
+
+// Get event count by date for year view
+export function getEventCountByDate(
+  events: InstitutionEvent[]
+): Map<string, number> {
+  const countMap = new Map<string, number>();
+  
+  events.forEach(event => {
+    const dateKey = format(new Date(event.start_datetime), 'yyyy-MM-dd');
+    countMap.set(dateKey, (countMap.get(dateKey) || 0) + 1);
+  });
+  
+  return countMap;
+}
