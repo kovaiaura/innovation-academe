@@ -78,6 +78,9 @@ import SystemAdminLeaveApprovals from "./pages/system-admin/LeaveApprovals";
 import EventManagement from "./pages/system-admin/EventManagement";
 import Performance from "./pages/management/Performance";
 import SystemAdminPositionManagement from "./pages/system-admin/PositionManagement";
+import SystemAdminTaskManagement from "./pages/system-admin/TaskManagement";
+import SystemAdminTasks from "./pages/system-admin/Tasks";
+import OfficerTasks from "./pages/officer/Tasks";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -281,6 +284,22 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/system-admin/task-management"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminTaskManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/tasks"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminTasks />
+                </ProtectedRoute>
+              }
+            />
             {/* Teacher Routes (path-based multi-tenancy) */}
             <Route
               path="/tenant/:tenantId/teacher/dashboard"
@@ -374,10 +393,10 @@ const App = () => (
               }
             />
             <Route
-              path="/tenant/:tenantId/officer/course-management"
+              path="/tenant/:tenantId/officer/tasks"
               element={
                 <ProtectedRoute allowedRoles={['officer']}>
-                  <OfficerCourseManagement />
+                  <OfficerTasks />
                 </ProtectedRoute>
               }
             />

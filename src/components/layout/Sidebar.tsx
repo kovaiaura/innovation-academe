@@ -9,12 +9,12 @@ import {
   BookOpen, Target, Calendar, Award, BarChart,
   Building2, FileText, Trophy, Package, UserCheck, GraduationCap,
   Shield, Phone, Clock, ShoppingCart, PieChart, Briefcase, CalendarCheck,
-  LayoutDashboard
+  LayoutDashboard, CheckSquare
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { UserRole } from '@/types';
-import { SystemAdminFeature } from '@/types/permissions';
+import { SystemAdminFeature, SystemAdminPosition } from '@/types/permissions';
 import { canAccessFeature, isCEO } from '@/utils/permissionHelpers';
 import { OfficerSidebarProfile } from './OfficerSidebarProfile';
 import { getOfficerByEmail } from '@/data/mockOfficerData';
@@ -32,6 +32,7 @@ interface MenuItem {
   roles: UserRole[];
   feature?: SystemAdminFeature;
   ceoOnly?: boolean;
+  allowedPositions?: SystemAdminPosition[];
 }
 
 // Role-based menu configuration
@@ -57,6 +58,10 @@ const menuItems: MenuItem[] = [
   { label: 'Institutional Calendar', icon: <Calendar className="h-5 w-5" />, path: '/institutional-calendar', roles: ['system_admin'], feature: 'institutional_calendar' },
   // Position Management (CEO only)
   { label: 'Position Management', icon: <Shield className="h-5 w-5" />, path: '/position-management', roles: ['system_admin'], ceoOnly: true },
+  // Task Management (CEO, MD, AGM only)
+  { label: 'Task Management', icon: <CheckSquare className="h-5 w-5" />, path: '/task-management', roles: ['system_admin'], allowedPositions: ['ceo', 'md', 'agm'] },
+  // Task View (GM, Manager, Admin Staff)
+  { label: 'Task', icon: <CheckSquare className="h-5 w-5" />, path: '/tasks', roles: ['system_admin'], allowedPositions: ['gm', 'manager', 'admin_staff'] },
   // Reports & Analytics
   { label: 'Reports & Analytics', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['system_admin'], feature: 'reports_analytics' },
   // Teacher menu items
@@ -66,7 +71,7 @@ const menuItems: MenuItem[] = [
   { label: 'Schedule', icon: <Calendar className="h-5 w-5" />, path: '/schedule', roles: ['teacher'] },
   { label: 'Materials', icon: <FileText className="h-5 w-5" />, path: '/materials', roles: ['teacher'] },
   // Officer menu items
-  { label: 'Start Teaching', icon: <BookOpen className="h-5 w-5" />, path: '/course-management', roles: ['officer'] },
+  { label: 'Task', icon: <CheckSquare className="h-5 w-5" />, path: '/tasks', roles: ['officer'] },
   { label: 'My Timetable', icon: <Calendar className="h-5 w-5" />, path: '/sessions', roles: ['officer'] },
   { label: 'Assessments', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['officer'] },
   { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['officer'] },
@@ -145,6 +150,11 @@ export function Sidebar() {
       
       // Feature-based items
       if (item.feature && !canAccessFeature(user, item.feature)) return false;
+      
+      // Position-based filtering
+      if (item.allowedPositions && user.position) {
+        if (!item.allowedPositions.includes(user.position)) return false;
+      }
     }
     
     return true;
