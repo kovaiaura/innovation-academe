@@ -64,14 +64,15 @@ export default function Inventory() {
       total_estimated_cost: data.items.reduce((sum: number, item: any) => sum + item.estimated_total, 0),
       justification: data.justification,
       priority: data.priority,
-      status: 'pending_institution_approval',
+      status: 'pending_system_admin',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
     mockPurchaseRequests.push(newRequest);
     setPurchaseRequests(getPurchaseRequestsByOfficer('off-001'));
-    toast.success(`Purchase request ${newRequest.request_code} created successfully!`);
+    setIsCreateRequestOpen(false);
+    toast.success('Purchase request submitted to System Admin for review!');
   };
 
   // Component handlers

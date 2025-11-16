@@ -481,7 +481,7 @@ export const mockAuditRecords: Record<string, AuditRecord[]> = {
 };
 
 export const mockPurchaseRequests: PurchaseRequest[] = [
-  // Pending Institution Approval (Officer Created)
+  // Pending System Admin Review (First Stage - Officer just created)
   {
     id: 'pr-001',
     request_code: 'PR-001',
@@ -503,7 +503,7 @@ export const mockPurchaseRequests: PurchaseRequest[] = [
     total_estimated_cost: 5000,
     justification: 'Current stock depleted. Essential for planned workshops this month.',
     priority: 'normal',
-    status: 'pending_institution_approval',
+    status: 'pending_system_admin',
     created_at: '2024-03-10T10:00:00Z',
     updated_at: '2024-03-10T10:00:00Z',
   },
@@ -535,12 +535,12 @@ export const mockPurchaseRequests: PurchaseRequest[] = [
     total_estimated_cost: 23250,
     justification: 'Expanding IoT course capacity. Current Arduino Uno kits insufficient for advanced projects.',
     priority: 'urgent',
-    status: 'pending_institution_approval',
+    status: 'pending_system_admin',
     created_at: '2024-03-12T14:30:00Z',
     updated_at: '2024-03-12T14:30:00Z',
   },
 
-  // Approved by Institution (Waiting for System Admin)
+  // Approved by System Admin, Pending Institution (Second Stage)
   {
     id: 'pr-003',
     request_code: 'PR-003',
@@ -569,16 +569,16 @@ export const mockPurchaseRequests: PurchaseRequest[] = [
     total_estimated_cost: 8750,
     justification: 'Robotics project requirements for semester-end exhibition.',
     priority: 'normal',
-    status: 'approved_by_institution',
-    institution_approved_by: 'mgmt-001',
-    institution_approved_by_name: 'Dr. Sarah Williams',
-    institution_approved_at: '2024-03-08T11:00:00Z',
-    institution_comments: 'Approved. Essential for upcoming projects.',
+    status: 'pending_institution_approval',
+    system_admin_reviewed_by: 'sysadmin-001',
+    system_admin_reviewed_by_name: 'John Doe',
+    system_admin_reviewed_at: '2024-03-08T09:00:00Z',
+    system_admin_review_comments: 'Request verified. Forwarding to institution for budget approval.',
     created_at: '2024-03-05T09:00:00Z',
-    updated_at: '2024-03-08T11:00:00Z',
+    updated_at: '2024-03-08T09:00:00Z',
   },
 
-  // In Progress (System Admin Processing)
+  // Approved by Institution (Third Stage - Ready for System Admin to Process)
   {
     id: 'pr-004',
     request_code: 'PR-004',
@@ -599,23 +599,61 @@ export const mockPurchaseRequests: PurchaseRequest[] = [
     total_estimated_cost: 75000,
     justification: 'AI/ML course requires edge computing devices for hands-on projects.',
     priority: 'normal',
-    status: 'in_progress',
+    status: 'approved_by_institution',
+    system_admin_reviewed_by: 'sysadmin-001',
+    system_admin_reviewed_by_name: 'John Doe',
+    system_admin_reviewed_at: '2024-03-02T08:00:00Z',
+    system_admin_review_comments: 'Good justification. Forwarding to institution.',
     institution_approved_by: 'mgmt-001',
     institution_approved_by_name: 'Dr. Sarah Williams',
-    institution_approved_at: '2024-03-02T10:00:00Z',
+    institution_approved_at: '2024-03-04T10:00:00Z',
     institution_comments: 'Approved for AI/ML course expansion.',
+    created_at: '2024-03-01T08:00:00Z',
+    updated_at: '2024-03-04T10:00:00Z',
+  },
+
+  // In Progress (System Admin Processing Order)
+  {
+    id: 'pr-005',
+    request_code: 'PR-005',
+    officer_id: 'off-001',
+    officer_name: 'Dr. Rajesh Kumar',
+    institution_id: 'springfield',
+    institution_name: 'Springfield University',
+    items: [
+      {
+        item_name: 'Soldering Kits',
+        category: 'tools',
+        quantity: 20,
+        unit: 'sets',
+        estimated_unit_price: 2500,
+        estimated_total: 50000,
+      },
+    ],
+    total_estimated_cost: 50000,
+    justification: 'Electronics lab expansion for new batch of students.',
+    priority: 'normal',
+    status: 'in_progress',
+    system_admin_reviewed_by: 'sysadmin-001',
+    system_admin_reviewed_by_name: 'John Doe',
+    system_admin_reviewed_at: '2024-02-25T09:00:00Z',
+    system_admin_review_comments: 'Verified specifications. Forwarding to institution.',
+    institution_approved_by: 'mgmt-001',
+    institution_approved_by_name: 'Dr. Sarah Williams',
+    institution_approved_at: '2024-02-27T10:00:00Z',
+    institution_comments: 'Approved. Budget allocated.',
     system_admin_processed_by: 'sysadmin-001',
     system_admin_processed_by_name: 'John Doe',
-    system_admin_processed_at: '2024-03-04T14:00:00Z',
-    system_admin_comments: 'Order placed with supplier. Expected delivery in 7-10 days.',
-    created_at: '2024-03-01T08:00:00Z',
-    updated_at: '2024-03-04T14:00:00Z',
+    system_admin_processed_at: '2024-03-01T14:00:00Z',
+    system_admin_processing_comments: 'Order placed with supplier. Expected delivery in 7-10 days.',
+    created_at: '2024-02-24T08:00:00Z',
+    updated_at: '2024-03-01T14:00:00Z',
   },
 
   // Fulfilled
   {
-    id: 'pr-005',
-    request_code: 'PR-005',
+    id: 'pr-006',
+    request_code: 'PR-006',
     officer_id: 'off-001',
     officer_name: 'Dr. Rajesh Kumar',
     institution_id: 'springfield',
@@ -634,22 +672,28 @@ export const mockPurchaseRequests: PurchaseRequest[] = [
     justification: 'Mandatory safety equipment for all lab activities.',
     priority: 'urgent',
     status: 'fulfilled',
+    system_admin_reviewed_by: 'sysadmin-001',
+    system_admin_reviewed_by_name: 'John Doe',
+    system_admin_reviewed_at: '2024-02-19T09:00:00Z',
+    system_admin_review_comments: 'Safety equipment priority. Forwarding immediately.',
     institution_approved_by: 'mgmt-001',
     institution_approved_by_name: 'Dr. Sarah Williams',
     institution_approved_at: '2024-02-20T09:00:00Z',
+    institution_comments: 'Approved. Critical safety requirement.',
     system_admin_processed_by: 'sysadmin-001',
     system_admin_processed_by_name: 'John Doe',
     system_admin_processed_at: '2024-02-21T10:00:00Z',
+    system_admin_processing_comments: 'Expedited order placed.',
     fulfillment_details: 'Items delivered and added to Springfield inventory. Stock updated.',
     fulfillment_date: '2024-02-25T15:00:00Z',
     created_at: '2024-02-18T10:00:00Z',
     updated_at: '2024-02-25T15:00:00Z',
   },
 
-  // Rejected by Institution
+  // Rejected by Institution (System Admin approved, but Institution rejected)
   {
-    id: 'pr-006',
-    request_code: 'PR-006',
+    id: 'pr-007',
+    request_code: 'PR-007',
     officer_id: 'off-001',
     officer_name: 'Dr. Rajesh Kumar',
     institution_id: 'springfield',
@@ -668,15 +712,19 @@ export const mockPurchaseRequests: PurchaseRequest[] = [
     justification: 'Upgrade existing VR equipment for immersive learning experiences.',
     priority: 'low',
     status: 'rejected_by_institution',
+    system_admin_reviewed_by: 'sysadmin-001',
+    system_admin_reviewed_by_name: 'John Doe',
+    system_admin_reviewed_at: '2024-02-11T09:00:00Z',
+    system_admin_review_comments: 'Specifications verified. Forwarding to institution for budget approval.',
     institution_rejection_reason: 'Budget constraints. Current VR headsets are sufficient. Re-evaluate next fiscal year.',
     created_at: '2024-02-10T11:00:00Z',
     updated_at: '2024-02-12T14:00:00Z',
   },
 
-  // Rejected by System Admin
+  // Rejected by System Admin (First stage rejection)
   {
-    id: 'pr-007',
-    request_code: 'PR-007',
+    id: 'pr-008',
+    request_code: 'PR-008',
     officer_id: 'off-001',
     officer_name: 'Dr. Rajesh Kumar',
     institution_id: 'springfield',
@@ -695,15 +743,12 @@ export const mockPurchaseRequests: PurchaseRequest[] = [
     justification: 'Advanced fabrication capabilities for engineering projects.',
     priority: 'normal',
     status: 'rejected_by_system_admin',
-    institution_approved_by: 'mgmt-001',
-    institution_approved_by_name: 'Dr. Sarah Williams',
-    institution_approved_at: '2024-01-15T10:00:00Z',
-    system_admin_processed_by: 'sysadmin-001',
-    system_admin_processed_by_name: 'John Doe',
-    system_admin_processed_at: '2024-01-20T11:00:00Z',
+    system_admin_reviewed_by: 'sysadmin-001',
+    system_admin_reviewed_by_name: 'John Doe',
+    system_admin_reviewed_at: '2024-01-15T10:00:00Z',
     system_admin_rejection_reason: 'Central procurement policy requires tendering process for equipment above ₹500,000. Please submit formal tender request.',
     created_at: '2024-01-10T09:00:00Z',
-    updated_at: '2024-01-20T11:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z',
   },
 ];
 
