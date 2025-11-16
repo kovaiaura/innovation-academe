@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { IdConfigurationForm } from '@/components/settings/IdConfigurationForm';
@@ -9,7 +10,8 @@ export default function IdConfiguration() {
   const [activeTab, setActiveTab] = useState('employee');
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <Layout>
+      <div className="space-y-6">
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-2">
@@ -142,6 +144,7 @@ export default function IdConfiguration() {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </Layout>
   );
 }
