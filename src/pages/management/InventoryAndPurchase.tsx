@@ -110,8 +110,15 @@ const PurchaseRequestsTab = () => {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [actionRequest, setActionRequest] = useState<PurchaseRequest | null>(null);
 
-  const pendingRequests = requests.filter(r => r.status === 'pending_institution_approval');
-  const approvedRequests = requests.filter(r => r.status === 'approved_by_institution' || r.status === 'in_progress');
+  const pendingRequests = requests.filter(r => 
+    r.status === 'pending_institution_approval' || 
+    r.status === 'approved_by_system_admin'
+  );
+  const approvedRequests = requests.filter(r => 
+    r.status === 'approved_by_institution' || 
+    r.status === 'in_progress' || 
+    r.status === 'fulfilled'
+  );
 
   const handleApprove = (request: PurchaseRequest) => {
     setActionRequest(request);
@@ -180,6 +187,9 @@ const PurchaseRequestsTab = () => {
                           <PurchaseRequestStatusBadge status={request.status} size="sm" />
                           {request.priority === 'urgent' && (
                             <Badge variant="destructive" className="text-xs">🚨 URGENT</Badge>
+                          )}
+                          {request.status === 'approved_by_system_admin' && (
+                            <Badge variant="default" className="text-xs bg-blue-500">✓ System Admin Approved</Badge>
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground mb-2">{request.officer_name}</p>

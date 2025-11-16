@@ -80,31 +80,38 @@ export interface PurchaseRequest {
   justification: string;
   priority: 'urgent' | 'normal' | 'low';
   
-  // Approval workflow status
+  // Approval workflow status (New Flow: Officer → System Admin → Institution)
   status: 
-    | 'pending_institution_approval'
-    | 'approved_by_institution'
-    | 'rejected_by_institution'
-    | 'pending_system_admin'
-    | 'in_progress'
-    | 'fulfilled'
-    | 'rejected_by_system_admin';
+    | 'pending_system_admin'           // First stage: Waiting for System Admin review
+    | 'approved_by_system_admin'       // System Admin approved, forwarded to Institution
+    | 'rejected_by_system_admin'       // System Admin rejected
+    | 'pending_institution_approval'   // Second stage: Waiting for Institution approval
+    | 'approved_by_institution'        // Institution approved, ready for fulfillment
+    | 'rejected_by_institution'        // Institution rejected
+    | 'in_progress'                    // System Admin processing order
+    | 'fulfilled';                     // Completed
   
-  // Institution approval details
+  // System Admin initial review (First stage)
+  system_admin_reviewed_by?: string;
+  system_admin_reviewed_by_name?: string;
+  system_admin_reviewed_at?: string;
+  system_admin_review_comments?: string;
+  system_admin_rejection_reason?: string;
+  
+  // Institution approval details (Second stage)
   institution_approved_by?: string;
   institution_approved_by_name?: string;
   institution_approved_at?: string;
   institution_comments?: string;
   institution_rejection_reason?: string;
   
-  // System Admin processing details
+  // Final processing/fulfillment details (Third stage)
   system_admin_processed_by?: string;
   system_admin_processed_by_name?: string;
   system_admin_processed_at?: string;
-  system_admin_comments?: string;
+  system_admin_processing_comments?: string;
   fulfillment_details?: string;
   fulfillment_date?: string;
-  system_admin_rejection_reason?: string;
   
   // Tracking
   created_at: string;

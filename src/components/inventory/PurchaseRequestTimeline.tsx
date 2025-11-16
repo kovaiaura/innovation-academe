@@ -9,7 +9,7 @@ interface PurchaseRequestTimelineProps {
 export function PurchaseRequestTimeline({ request }: PurchaseRequestTimelineProps) {
   const timelineEvents = [];
 
-  // Created
+  // 1. Request Created
   timelineEvents.push({
     status: 'completed',
     title: 'Request Created',
@@ -17,69 +17,89 @@ export function PurchaseRequestTimeline({ request }: PurchaseRequestTimelineProp
     date: request.created_at,
   });
 
-  // Institution Review
-  if (request.status === 'pending_institution_approval') {
+  // 2. System Admin Review (First Stage)
+  if (request.status === 'pending_system_admin') {
     timelineEvents.push({
       status: 'pending',
-      title: 'Pending Institution Approval',
-      description: 'Waiting for management review',
+      title: 'Pending System Admin Review',
+      description: 'Waiting for initial approval from System Admin',
       date: null,
     });
-  } else if (request.status === 'rejected_by_institution') {
+  } else if (request.status === 'rejected_by_system_admin') {
     timelineEvents.push({
       status: 'rejected',
-      title: 'Rejected by Institution',
-      description: request.institution_rejection_reason || 'Request was rejected',
-      date: request.updated_at,
+      title: 'Rejected by System Admin',
+      description: request.system_admin_rejection_reason || 'Request was rejected',
+      date: request.system_admin_reviewed_at,
     });
   } else {
-    // Approved by institution
+    // System Admin approved - proceed to next stages
     timelineEvents.push({
       status: 'completed',
-      title: 'Approved by Institution',
-      description: `${request.institution_approved_by_name} approved the request`,
-      date: request.institution_approved_at,
-      comments: request.institution_comments,
+      title: 'Approved by System Admin',
+      description: `${request.system_admin_reviewed_by_name || 'System Admin'} reviewed and forwarded to institution`,
+      date: request.system_admin_reviewed_at,
+      comments: request.system_admin_review_comments,
     });
 
-    // System Admin Processing
-    if (request.status === 'approved_by_institution' || request.status === 'pending_system_admin') {
+    // 3. Institution Review (Second Stage)
+    if (request.status === 'approved_by_system_admin' || request.status === 'pending_institution_approval') {
       timelineEvents.push({
         status: 'pending',
-        title: 'Pending System Admin Processing',
-        description: 'Waiting for central procurement team',
+        title: 'Pending Institution Approval',
+        description: 'Waiting for institution management review',
         date: null,
       });
-    } else if (request.status === 'rejected_by_system_admin') {
+    } else if (request.status === 'rejected_by_institution') {
       timelineEvents.push({
         status: 'rejected',
-        title: 'Rejected by System Admin',
-        description: request.system_admin_rejection_reason || 'Request was rejected',
-        date: request.system_admin_processed_at,
+        title: 'Rejected by Institution',
+        description: request.institution_rejection_reason || 'Request was rejected by institution',
+        date: request.institution_approved_at,
       });
-    } else if (request.status === 'in_progress') {
+    } else {
+      // Institution approved - proceed to fulfillment
       timelineEvents.push({
         status: 'completed',
-        title: 'In Progress',
-        description: `${request.system_admin_processed_by_name} is processing the order`,
-        date: request.system_admin_processed_at,
-        comments: request.system_admin_comments,
-      });
-    } else if (request.status === 'fulfilled') {
-      timelineEvents.push({
-        status: 'completed',
-        title: 'Order Processed',
-        description: `${request.system_admin_processed_by_name} marked as in progress`,
-        date: request.system_admin_processed_at,
+        title: 'Approved by Institution',
+        description: `${request.institution_approved_by_name || 'Institution'} approved the request`,
+        date: request.institution_approved_at,
+        comments: request.institution_comments,
       });
 
-      timelineEvents.push({
-        status: 'completed',
-        title: 'Fulfilled',
-        description: 'Items delivered and added to inventory',
-        date: request.fulfillment_date,
-        comments: request.fulfillment_details,
-      });
+      // 4. Fulfillment Process (Third Stage)
+      if (request.status === 'approved_by_institution') {
+        timelineEvents.push({
+          status: 'pending',
+          title: 'Ready for Processing',
+          description: 'Approved by all parties, ready for System Admin to process',
+          date: null,
+        });
+      } else if (request.status === 'in_progress') {
+        timelineEvents.push({
+          status: 'completed',
+          title: 'In Progress',
+          description: `${request.system_admin_processed_by_name || 'System Admin'} is processing the order`,
+          date: request.system_admin_processed_at,
+          comments: request.system_admin_processing_comments,
+        });
+      } else if (request.status === 'fulfilled') {
+        timelineEvents.push({
+          status: 'completed',
+          title: 'In Progress',
+          description: `${request.system_admin_processed_by_name || 'System Admin'} processed the order`,
+          date: request.system_admin_processed_at,
+          comments: request.system_admin_processing_comments,
+        });
+
+        timelineEvents.push({
+          status: 'completed',
+          title: 'Fulfilled',
+          description: 'Items delivered and added to inventory',
+          date: request.fulfillment_date,
+          comments: request.fulfillment_details,
+        });
+      }
     }
   }
 

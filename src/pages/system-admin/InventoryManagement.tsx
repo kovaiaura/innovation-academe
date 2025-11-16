@@ -17,6 +17,7 @@ import { PurchaseRequestStatusBadge } from '@/components/inventory/PurchaseReque
 import { PurchaseRequestDetailDialog } from '@/components/inventory/PurchaseRequestDetailDialog';
 import { ApproveRejectDialog } from '@/components/inventory/ApproveRejectDialog';
 import { FulfillRequestDialog } from '@/components/inventory/FulfillRequestDialog';
+import { SystemAdminApprovalDialog } from '@/components/inventory/SystemAdminApprovalDialog';
 import { format } from 'date-fns';
 
 export default function InventoryManagement() {
@@ -29,6 +30,8 @@ export default function InventoryManagement() {
   const [fulfillDialogOpen, setFulfillDialogOpen] = useState(false);
   const [fulfillMode, setFulfillMode] = useState<'in_progress' | 'fulfilled'>('in_progress');
   const [actionRequest, setActionRequest] = useState<PurchaseRequest | null>(null);
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
+  const [approvalMode, setApprovalMode] = useState<'approve' | 'reject'>('approve');
   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -42,9 +45,12 @@ export default function InventoryManagement() {
   const criticalCount = inventory.filter((inv) => inv.status === 'critical').length;
   const needsReviewCount = inventory.filter((inv) => inv.status === 'needs_review').length;
 
-  // Purchase Request Stats
-  const pendingRequests = purchaseRequests.filter(r => r.status === 'approved_by_institution' || r.status === 'pending_system_admin').length;
-  const pendingValue = purchaseRequests.filter(r => r.status === 'approved_by_institution' || r.status === 'pending_system_admin').reduce((sum, r) => sum + r.total_estimated_cost, 0);
+  // Purchase Request Stats (Updated for new workflow)
+  const pendingReviewRequests = purchaseRequests.filter(r => r.status === 'pending_system_admin').length;
+  const forwardedToInstitutions = purchaseRequests.filter(r => r.status === 'approved_by_system_admin' || r.status === 'pending_institution_approval').length;
+  const readyForProcessing = purchaseRequests.filter(r => r.status === 'approved_by_institution').length;
+  const inProgress = purchaseRequests.filter(r => r.status === 'in_progress').length;
+  const pendingValue = purchaseRequests.filter(r => r.status === 'pending_system_admin' || r.status === 'approved_by_system_admin' || r.status === 'pending_institution_approval').reduce((sum, r) => sum + r.total_estimated_cost, 0);
   const approvedThisMonth = purchaseRequests.filter(r => (r.status === 'fulfilled' || r.status === 'in_progress') && new Date(r.created_at).getMonth() === new Date().getMonth()).length;
 
   // Filters
@@ -84,6 +90,48 @@ export default function InventoryManagement() {
     return diffDays;
   };
 
+  const handleApproveRequest = (request: PurchaseRequest) => {
+    setActionRequest(request);
+    setApprovalMode('approve');
+    setApprovalDialogOpen(true);
+  };
+
+  const handleRejectInitialRequest = (request: PurchaseRequest) => {
+    setActionRequest(request);
+    setApprovalMode('reject');
+    setApprovalDialogOpen(true);
+  };
+
+  const confirmApproval = (comments: string) => {
+    if (actionRequest) {
+      updateMockPurchaseRequest(actionRequest.id, {
+        status: 'approved_by_system_admin',
+        system_admin_reviewed_by: 'sysadmin-001',
+        system_admin_reviewed_by_name: 'John Doe',
+        system_admin_reviewed_at: new Date().toISOString(),
+        system_admin_review_comments: comments,
+      });
+      setPurchaseRequests([...mockPurchaseRequests]);
+      toast.success(`Request ${actionRequest.request_code} approved and forwarded to institution`);
+      setActionRequest(null);
+    }
+  };
+
+  const confirmInitialRejection = (reason: string) => {
+    if (actionRequest) {
+      updateMockPurchaseRequest(actionRequest.id, {
+        status: 'rejected_by_system_admin',
+        system_admin_reviewed_by: 'sysadmin-001',
+        system_admin_reviewed_by_name: 'John Doe',
+        system_admin_reviewed_at: new Date().toISOString(),
+        system_admin_rejection_reason: reason,
+      });
+      setPurchaseRequests([...mockPurchaseRequests]);
+      toast.error(`Request ${actionRequest.request_code} rejected`);
+      setActionRequest(null);
+    }
+  };
+
   const handleMarkInProgress = (request: PurchaseRequest) => {
     setActionRequest(request);
     setFulfillMode('in_progress');
@@ -109,7 +157,7 @@ export default function InventoryManagement() {
           system_admin_processed_by: 'sysadmin-001',
           system_admin_processed_by_name: 'John Doe',
           system_admin_processed_at: new Date().toISOString(),
-          system_admin_comments: data.comments,
+          system_admin_processing_comments: data.comments,
         });
         toast.success(`Request ${actionRequest.request_code} marked as in progress`);
       } else {
@@ -157,7 +205,7 @@ export default function InventoryManagement() {
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList>
             <TabsTrigger value="overview">Inventory Overview</TabsTrigger>
-            <TabsTrigger value="purchases">Purchase Requests ({pendingRequests})</TabsTrigger>
+            <TabsTrigger value="purchases">Purchase Requests ({pendingReviewRequests + readyForProcessing})</TabsTrigger>
           </TabsList>
 
           {/* Inventory Overview Tab */}
@@ -325,13 +373,79 @@ export default function InventoryManagement() {
 
           {/* Purchase Requests Tab */}
           <TabsContent value="purchases" className="space-y-6">
-            {/* Approved by Institutions Section */}
+            {/* 1. Pending System Admin Review Section (NEW - First Stage) */}
+            {filteredRequests.filter(r => r.status === 'pending_system_admin').length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-yellow-500" />
+                    <CardTitle>Pending Your Review - Action Required</CardTitle>
+                  </div>
+                  <CardDescription>New purchase requests awaiting initial approval</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {filteredRequests.filter(r => r.status === 'pending_system_admin').map((req) => (
+                    <Card key={req.id}>
+                      <CardContent className="pt-6 space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <h3 className="font-semibold">{req.request_code}</h3>
+                              <PurchaseRequestStatusBadge status={req.status} size="sm" />
+                              {req.priority === 'urgent' && <Badge variant="destructive">URGENT</Badge>}
+                            </div>
+                            <p className="text-sm text-muted-foreground">{req.institution_name} • {req.officer_name}</p>
+                          </div>
+                          <p className="text-xl font-bold">₹{req.total_estimated_cost.toLocaleString()}</p>
+                        </div>
+                        <div className="flex gap-2 pt-2 border-t">
+                          <Button size="sm" variant="outline" onClick={() => setSelectedRequest(req)}>View Details</Button>
+                          <Button size="sm" onClick={() => handleApproveRequest(req)}><CheckCircle className="h-4 w-4 mr-1" />Approve & Forward</Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleRejectInitialRequest(req)}><XCircle className="h-4 w-4 mr-1" />Reject</Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 2. Forwarded to Institutions Section (NEW - Awaiting Institution Response) */}
+            {filteredRequests.filter(r => r.status === 'approved_by_system_admin' || r.status === 'pending_institution_approval').length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5 text-blue-500" />Forwarded to Institutions</CardTitle>
+                  <CardDescription>Awaiting institution management approval</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {filteredRequests.filter(r => r.status === 'approved_by_system_admin' || r.status === 'pending_institution_approval').map((req) => (
+                    <Card key={req.id} className="cursor-pointer" onClick={() => setSelectedRequest(req)}>
+                      <CardContent className="pt-6">
+                        <div className="flex justify-between">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold">{req.request_code}</h3>
+                              <PurchaseRequestStatusBadge status={req.status} size="sm" />
+                            </div>
+                            <p className="text-sm text-muted-foreground">{req.institution_name}</p>
+                            <p className="text-xs text-muted-foreground mt-2">Forwarded: {req.system_admin_reviewed_at && format(new Date(req.system_admin_reviewed_at), 'MMM dd, yyyy')}</p>
+                          </div>
+                          <p className="font-bold">₹{req.total_estimated_cost.toLocaleString()}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 3. Approved by Institutions Section (Ready for Final Processing) */}
             {filteredRequests.filter(r => r.status === 'approved_by_institution').length > 0 && (
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-blue-500" />
-                    <CardTitle>Approved by Institutions - Action Required</CardTitle>
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                    <CardTitle>Approved by Institutions - Ready to Process</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -356,7 +470,6 @@ export default function InventoryManagement() {
                           <Button size="sm" variant="outline" onClick={() => setSelectedRequest(req)}>View Details</Button>
                           <Button size="sm" onClick={() => handleMarkInProgress(req)}><Loader2 className="h-4 w-4 mr-1" />Mark In Progress</Button>
                           <Button size="sm" variant="default" onClick={() => handleMarkFulfilled(req)}><CheckCircle className="h-4 w-4 mr-1" />Mark Fulfilled</Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleReject(req)}>Reject</Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -427,6 +540,13 @@ export default function InventoryManagement() {
       </div>
 
       <PurchaseRequestDetailDialog isOpen={!!selectedRequest} onOpenChange={(open) => !open && setSelectedRequest(null)} request={selectedRequest} />
+      <SystemAdminApprovalDialog
+        isOpen={approvalDialogOpen}
+        onOpenChange={setApprovalDialogOpen}
+        onApprove={confirmApproval}
+        onReject={confirmInitialRejection}
+        mode={approvalMode}
+      />
       <ApproveRejectDialog isOpen={rejectDialogOpen} onOpenChange={setRejectDialogOpen} request={actionRequest} mode="reject" onConfirm={confirmReject} title="Reject Purchase Request" />
       <FulfillRequestDialog isOpen={fulfillDialogOpen} onOpenChange={setFulfillDialogOpen} request={actionRequest} mode={fulfillMode} onConfirm={confirmFulfill} />
     </Layout>
