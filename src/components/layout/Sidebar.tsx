@@ -58,10 +58,8 @@ const menuItems: MenuItem[] = [
   { label: 'Institutional Calendar', icon: <Calendar className="h-5 w-5" />, path: '/institutional-calendar', roles: ['system_admin'], feature: 'institutional_calendar' },
   // Position Management (CEO only)
   { label: 'Position Management', icon: <Shield className="h-5 w-5" />, path: '/position-management', roles: ['system_admin'], ceoOnly: true },
-  // Task Management (CEO, MD, AGM only)
-  { label: 'Task Management', icon: <CheckSquare className="h-5 w-5" />, path: '/task-management', roles: ['system_admin'], allowedPositions: ['ceo', 'md', 'agm'] },
-  // Task View (GM, Manager, Admin Staff)
-  { label: 'Task', icon: <CheckSquare className="h-5 w-5" />, path: '/tasks', roles: ['system_admin'], allowedPositions: ['gm', 'manager', 'admin_staff'] },
+  // Task Management (CEO, MD, AGM, GM, Manager, Admin Staff)
+  { label: 'Task Management', icon: <CheckSquare className="h-5 w-5" />, path: '/task-management', roles: ['system_admin'], allowedPositions: ['ceo', 'md', 'agm', 'gm', 'manager', 'admin_staff'] },
   // Reports & Analytics
   { label: 'Reports & Analytics', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['system_admin'], feature: 'reports_analytics' },
   // Teacher menu items
