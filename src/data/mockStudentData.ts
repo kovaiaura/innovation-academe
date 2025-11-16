@@ -27,6 +27,7 @@ const generateStudentsForClass = (classId: string, className: string, section: s
     
     students.push({
       id: `stu-1-${classId}-${i + 1}`,
+      student_id: `STU-2024-${String(index).padStart(5, '0')}`, // Lifelong student ID
       student_name: `${firstName} ${lastName}`,
       roll_number: `${classNumber}${section}${String(i + 1).padStart(3, '0')}`,
       admission_number: `ADM1-2024-${String(index).padStart(5, '0')}`,

@@ -14,6 +14,7 @@ export interface InstitutionClass {
 
 export interface Student {
   id: string;
+  student_id: string; // Unique lifelong ID generated from ID configuration
   student_name: string;
   roll_number: string;
   admission_number: string;
