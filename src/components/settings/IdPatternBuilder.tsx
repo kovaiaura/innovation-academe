@@ -60,8 +60,8 @@ export function IdPatternBuilder({ pattern, onChange, entityType }: IdPatternBui
           <div>
             <Label htmlFor="separator">Separator</Label>
             <Select
-              value={pattern.separator}
-              onValueChange={(value) => updatePattern({ separator: value })}
+              value={pattern.separator || "none"}
+              onValueChange={(value) => updatePattern({ separator: value === "none" ? "" : value })}
             >
               <SelectTrigger id="separator">
                 <SelectValue />
@@ -70,7 +70,7 @@ export function IdPatternBuilder({ pattern, onChange, entityType }: IdPatternBui
                 <SelectItem value="-">Hyphen (-)</SelectItem>
                 <SelectItem value="_">Underscore (_)</SelectItem>
                 <SelectItem value="/">Slash (/)</SelectItem>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground mt-1">
