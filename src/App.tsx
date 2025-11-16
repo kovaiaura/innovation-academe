@@ -81,6 +81,7 @@ import SystemAdminPositionManagement from "./pages/system-admin/PositionManageme
 import SystemAdminTaskManagement from "./pages/system-admin/TaskManagement";
 import SystemAdminTasks from "./pages/system-admin/Tasks";
 import OfficerTasks from "./pages/officer/Tasks";
+import IdConfiguration from "./pages/system-admin/IdConfiguration";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -297,6 +298,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <SystemAdminTasks />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/id-configuration"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <IdConfiguration />
                 </ProtectedRoute>
               }
             />

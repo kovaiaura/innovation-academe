@@ -90,6 +90,10 @@ const menuItems: MenuItem[] = [
   { label: 'Certificates', icon: <Award className="h-5 w-5" />, path: '/certificates', roles: ['student'] },
   { label: 'Gamification', icon: <BarChart className="h-5 w-5" />, path: '/gamification', roles: ['student'] },
   { label: 'Resume', icon: <FileText className="h-5 w-5" />, path: '/resume', roles: ['student'] },
+  // System Admin - Task & Configuration
+  { label: 'Task Management', icon: <CheckSquare className="h-5 w-5" />, path: '/task-management', roles: ['system_admin'], allowedPositions: ['ceo', 'md', 'agm'] },
+  { label: 'Task', icon: <CheckSquare className="h-5 w-5" />, path: '/tasks', roles: ['system_admin'], allowedPositions: ['gm', 'manager', 'admin_staff'] },
+  { label: 'ID Configuration', icon: <Settings className="h-5 w-5" />, path: '/id-configuration', roles: ['system_admin'], allowedPositions: ['ceo', 'md', 'agm'] },
   // Management menu items (merged with institution admin functionality)
   { label: 'Teachers', icon: <Users className="h-5 w-5" />, path: '/teachers', roles: ['management'] },
   { label: 'Students', icon: <GraduationCap className="h-5 w-5" />, path: '/students', roles: ['management'] },

@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Student } from "@/types/student";
 import { InstitutionClass } from "@/types/institution";
 import { generateRollNumber, generateAdmissionNumber, validatePhoneNumber } from "@/utils/studentHelpers";
+import { idGenerationService } from '@/services/id-generation.service';
 import { useState, useEffect } from "react";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
@@ -138,8 +139,15 @@ export function AddStudentToClassDialog({
 
     setIsSubmitting(true);
     try {
+      // Generate student_id using ID generation service
+      const idResponse = await idGenerationService.generateId({
+        entity_type: 'student',
+        institution_id: institutionId,
+      });
+
       const studentData = {
         ...formData,
+        student_id: idResponse.success ? idResponse.data.id : `STU-TEMP-${Date.now()}`,
         institution_id: institutionId,
         class_id: classData.id,
         class: classData.class_name,

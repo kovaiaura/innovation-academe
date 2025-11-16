@@ -8,6 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Student } from "@/types/student";
 import { generateRollNumber, generateAdmissionNumber, generateStudentId, validatePhoneNumber } from "@/utils/studentHelpers";
+import { idGenerationService } from '@/services/id-generation.service';
 import { getClassesByInstitution } from "@/data/mockClassData";
 import { useState, useEffect } from "react";
 import { CalendarIcon } from "lucide-react";
@@ -166,7 +167,7 @@ export function AddEditStudentDialog({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validate()) {
       toast.error('Please fix all validation errors');
       return;
@@ -180,8 +181,15 @@ export function AddEditStudentDialog({
       };
       onSave(updatedStudent);
     } else {
+      // Generate student_id for new student
+      const idResponse = await idGenerationService.generateId({
+        entity_type: 'student',
+        institution_id: institutionId,
+      });
+
       const newStudent = {
         ...formData,
+        student_id: idResponse.success ? idResponse.data.id : `STU-TEMP-${Date.now()}`,
         institution_id: institutionId,
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.student_name}`,
       };
