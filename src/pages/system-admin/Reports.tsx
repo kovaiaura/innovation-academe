@@ -16,12 +16,13 @@ import {
 import { 
   FileText, Download, TrendingUp, DollarSign, Shield, Activity, 
   Users, GraduationCap, BarChart3, PieChart as PieChartIcon, 
-  LineChart as LineChartIcon 
+  LineChart as LineChartIcon, Printer
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Layout } from '@/components/layout/Layout';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { mockInvoices, getInvoiceByMonthYear } from '@/data/mockInvoiceData';
 
 // ============ System Reports Mock Data ============
 const mockSystemReports = [
@@ -174,6 +175,11 @@ export default function SystemAdminReports() {
   const [chartType, setChartType] = useState<'bar' | 'line' | 'pie'>('bar');
   const [dateRange, setDateRange] = useState('month');
 
+  // Invoice Generation state
+  const [selectedInstitution, setSelectedInstitution] = useState('');
+  const [selectedInvoiceMonth, setSelectedInvoiceMonth] = useState('');
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+
   // Tab management
   const [activeTab, setActiveTab] = useState('system');
 
@@ -320,8 +326,8 @@ export default function SystemAdminReports() {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Reports & Analytics</h1>
-          <p className="text-muted-foreground">System reports, monthly insights, and custom analytics</p>
+          <h1 className="text-3xl font-bold">Reports & Invoice</h1>
+          <p className="text-muted-foreground">System reports, monthly insights, custom analytics, and invoice generation</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
@@ -329,6 +335,7 @@ export default function SystemAdminReports() {
             <TabsTrigger value="system">System Reports</TabsTrigger>
             <TabsTrigger value="monthly">Monthly Reports</TabsTrigger>
             <TabsTrigger value="custom">Custom Analytics</TabsTrigger>
+            <TabsTrigger value="invoices">Invoice Generation</TabsTrigger>
           </TabsList>
 
           {/* ==================== TAB 1: SYSTEM REPORTS ==================== */}
@@ -745,6 +752,215 @@ export default function SystemAdminReports() {
                     </tbody>
                   </table>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ==================== TAB 4: INVOICE GENERATION ==================== */}
+          <TabsContent value="invoices" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Generate Monthly Invoice</CardTitle>
+                <CardDescription>
+                  Create monthly trainer activity reports and invoices for institutions
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Institution and Month Selectors */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Select Institution</Label>
+                    <Select 
+                      value={selectedInstitution} 
+                      onValueChange={(value) => {
+                        setSelectedInstitution(value);
+                        setSelectedInvoice(null);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose institution..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="inst-msd-001">Modern School Vasant Vihar</SelectItem>
+                        <SelectItem value="inst-kga-001">Kikani Global Academy</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label>Select Month</Label>
+                    <Select 
+                      value={selectedInvoiceMonth} 
+                      onValueChange={(value) => {
+                        setSelectedInvoiceMonth(value);
+                        setSelectedInvoice(null);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose month..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="August-2025">August 2025</SelectItem>
+                        <SelectItem value="September-2025">September 2025</SelectItem>
+                        <SelectItem value="October-2025">October 2025</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Generate Invoice Button */}
+                <div className="flex gap-3">
+                  <Button 
+                    onClick={() => {
+                      if (!selectedInstitution || !selectedInvoiceMonth) {
+                        toast.error('Please select both institution and month');
+                        return;
+                      }
+                      const [month, year] = selectedInvoiceMonth.split('-');
+                      const invoice = getInvoiceByMonthYear(selectedInstitution, month, year);
+                      if (invoice) {
+                        setSelectedInvoice(invoice);
+                        toast.success('Invoice generated successfully!');
+                      } else {
+                        toast.error('No invoice data found for selected period');
+                      }
+                    }}
+                    disabled={!selectedInstitution || !selectedInvoiceMonth}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Generate Invoice
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      if (selectedInvoice) {
+                        window.print();
+                        toast.success('Opening print dialog...');
+                      }
+                    }}
+                    disabled={!selectedInvoice}
+                  >
+                    <Printer className="mr-2 h-4 w-4" />
+                    Print Invoice
+                  </Button>
+                </div>
+
+                {/* Invoice Preview */}
+                {selectedInvoice && (
+                  <div className="border rounded-lg p-8 bg-white" id="invoice-content">
+                    {/* Invoice Header */}
+                    <div className="text-center mb-8">
+                      <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                        {selectedInvoice.month.toUpperCase()}&apos;{selectedInvoice.year.slice(-2)} Activity Report
+                      </h2>
+                      <p className="text-lg text-gray-700">
+                        <span className="font-semibold">Client Name:</span> {selectedInvoice.institution_name}, {selectedInvoice.institution_location}
+                      </p>
+                    </div>
+
+                    {/* Trainers Table */}
+                    <div className="mb-6">
+                      <h3 className="font-semibold text-gray-900 mb-3 text-lg">Trainer(s) Name and Designation</h3>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Designation</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {selectedInvoice.trainers.map((trainer: any, idx: number) => (
+                            <TableRow key={idx}>
+                              <TableCell className="font-medium">{trainer.name}</TableCell>
+                              <TableCell>{trainer.designation}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Attendance Table */}
+                    <div className="mb-6">
+                      <h3 className="font-semibold text-gray-900 mb-3 text-lg">Trainer(s) Attendance</h3>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Attendance %</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {selectedInvoice.trainers.map((trainer: any, idx: number) => (
+                            <TableRow key={idx}>
+                              <TableCell className="font-medium">{trainer.name}</TableCell>
+                              <TableCell>
+                                <Badge variant={trainer.attendance_percentage >= 95 ? 'default' : 'secondary'}>
+                                  {trainer.attendance_percentage}%
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Metrics Section */}
+                    <div className="space-y-3 mb-6 bg-gray-50 p-4 rounded-lg">
+                      <div className="flex justify-between">
+                        <span className="font-semibold text-gray-700">No. of hours handled in this month:</span>
+                        <span className="font-bold text-gray-900">{selectedInvoice.hours_handled} Hours</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-semibold text-gray-700">Percentage of portion covered:</span>
+                        <span className="font-bold text-gray-900">{selectedInvoice.portion_covered_percentage}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-semibold text-gray-700">No. of Assessment completed:</span>
+                        <span className="font-bold text-gray-900">{selectedInvoice.assessments_completed}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-semibold text-gray-700">Results of assessment:</span>
+                        <span className="text-gray-900">{selectedInvoice.assessment_results}</span>
+                      </div>
+                    </div>
+
+                    {/* Activities Table */}
+                    <div className="mb-8">
+                      <h3 className="font-semibold text-gray-900 mb-3 text-lg">Details of other activities completed</h3>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Activity</TableHead>
+                            <TableHead>Remarks</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {selectedInvoice.activities.map((activity: any, idx: number) => (
+                            <TableRow key={idx}>
+                              <TableCell className="font-medium">{activity.activity}</TableCell>
+                              <TableCell>{activity.remarks}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Signature Section */}
+                    <div className="text-right mt-12 pt-8 border-t">
+                      <p className="font-bold text-gray-900 mb-1">-SD-</p>
+                      <p className="text-gray-700 font-semibold">{selectedInvoice.signed_by}</p>
+                      <p className="text-gray-700">{selectedInvoice.signed_name}</p>
+                      <p className="text-sm text-gray-500 mt-2">Generated on: {selectedInvoice.generation_date}</p>
+                    </div>
+                  </div>
+                )}
+
+                {!selectedInvoice && (selectedInstitution || selectedInvoiceMonth) && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Select institution and month, then click "Generate Invoice" to view the report</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

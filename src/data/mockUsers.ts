@@ -19,6 +19,7 @@ const createMockJWT = (userId: string, role: string, tenantId?: string) => {
 };
 
 export const mockUsers: MockUser[] = [
+  // System Admin accounts (CEO, MD, AGM, GM, Manager, Admin Staff)
   {
     id: '1',
     email: 'admin@metainnova.com',
@@ -26,50 +27,6 @@ export const mockUsers: MockUser[] = [
     name: 'Super Admin',
     role: 'super_admin',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SuperAdmin',
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    email: 'student@college.edu',
-    password: 'student123',
-    name: 'John Student',
-    role: 'student',
-    tenant_id: 'college-1',
-    institution_id: 'inst-1',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JohnStudent',
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    email: 'officer@college.edu',
-    password: 'officer123',
-    name: 'Innovation Officer',
-    role: 'officer',
-    tenant_id: 'college-1',
-    institution_id: 'inst-1',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Officer',
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: '4',
-    email: 'teacher@college.edu',
-    password: 'teacher123',
-    name: 'Dr. Sarah Teacher',
-    role: 'teacher',
-    tenant_id: 'college-1',
-    institution_id: 'inst-1',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Teacher',
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: '5',
-    email: 'admin@college.edu',
-    password: 'admin123',
-    name: 'Management Admin',
-    role: 'management',
-    tenant_id: 'college-1',
-    institution_id: 'inst-1',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=InstAdmin',
     created_at: new Date().toISOString(),
   },
   {
@@ -116,13 +73,151 @@ export const mockUsers: MockUser[] = [
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AGM',
     created_at: new Date().toISOString(),
   },
+  {
+    id: '10',
+    email: 'gm@metainnova.com',
+    password: 'gm123',
+    name: 'General Manager',
+    role: 'system_admin',
+    position: 'gm',
+    is_ceo: false,
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=GM',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: '11',
+    email: 'adminstaff@metainnova.com',
+    password: 'staff123',
+    name: 'Admin Staff',
+    role: 'system_admin',
+    position: 'admin_staff',
+    is_ceo: false,
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AdminStaff',
+    created_at: new Date().toISOString(),
+  },
+
+  // Modern School Vasant Vihar - Management
+  {
+    id: 'msd-mgmt-001',
+    email: 'admin@modernschool.edu.in',
+    password: 'modern123',
+    name: 'Dr. Vijay Datta',
+    role: 'management',
+    tenant_id: 'modern-school',
+    institution_id: 'inst-msd-001',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=VijayDatta',
+    created_at: new Date().toISOString(),
+  },
+
+  // Modern School Vasant Vihar - Innovation Officer
+  {
+    id: 'off-msd-001',
+    email: 'atif.ansari@modernschool.edu.in',
+    password: 'atif123',
+    name: 'Mr. Atif Ansari',
+    role: 'officer',
+    tenant_id: 'modern-school',
+    institution_id: 'inst-msd-001',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AtifAnsari',
+    created_at: new Date().toISOString(),
+  },
+
+  // Modern School Vasant Vihar - Sample Students
+  {
+    id: 'stu-inst-msd-001-class-msd-9a-1',
+    email: 'aarav.sharma.msd@student.com',
+    password: 'student123',
+    name: 'Aarav Sharma',
+    role: 'student',
+    tenant_id: 'modern-school',
+    institution_id: 'inst-msd-001',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AaravSharma',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'stu-inst-msd-001-class-msd-10a-1',
+    email: 'ananya.verma.msd@student.com',
+    password: 'student123',
+    name: 'Ananya Verma',
+    role: 'student',
+    tenant_id: 'modern-school',
+    institution_id: 'inst-msd-001',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AnanyaVerma',
+    created_at: new Date().toISOString(),
+  },
+
+  // Kikani Global Academy - Management
+  {
+    id: 'kga-mgmt-001',
+    email: 'admin@kikaniacademy.com',
+    password: 'kikani123',
+    name: 'Mr. Rajesh Kikani',
+    role: 'management',
+    tenant_id: 'kikani-global',
+    institution_id: 'inst-kga-001',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=RajeshKikani',
+    created_at: new Date().toISOString(),
+  },
+
+  // Kikani Global Academy - Innovation Officers
+  {
+    id: 'off-kga-001',
+    email: 'saran.t@kikaniacademy.com',
+    password: 'saran123',
+    name: 'Mr. Saran T',
+    role: 'officer',
+    tenant_id: 'kikani-global',
+    institution_id: 'inst-kga-001',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SaranT',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'off-kga-002',
+    email: 'sreeram.r@kikaniacademy.com',
+    password: 'sreeram123',
+    name: 'Mr. Sreeram R',
+    role: 'officer',
+    tenant_id: 'kikani-global',
+    institution_id: 'inst-kga-001',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SreeramR',
+    created_at: new Date().toISOString(),
+  },
+
+  // Kikani Global Academy - Sample Students
+  {
+    id: 'stu-inst-kga-001-class-kga-9a-1',
+    email: 'karthik.nair.kga@student.com',
+    password: 'student123',
+    name: 'Karthik Nair',
+    role: 'student',
+    tenant_id: 'kikani-global',
+    institution_id: 'inst-kga-001',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=KarthikNair',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'stu-inst-kga-001-class-kga-10a-1',
+    email: 'priya.iyer.kga@student.com',
+    password: 'student123',
+    name: 'Priya Iyer',
+    role: 'student',
+    tenant_id: 'kikani-global',
+    institution_id: 'inst-kga-001',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=PriyaIyer',
+    created_at: new Date().toISOString(),
+  },
 ];
 
 export const mockTenants = [
   {
-    id: 'college-1',
-    name: 'Springfield College',
-    slug: 'springfield',
+    id: 'modern-school',
+    name: 'Modern School Vasant Vihar',
+    slug: 'modern-school-vasant-vihar',
+  },
+  {
+    id: 'kikani-global',
+    name: 'Kikani Global Academy',
+    slug: 'kikani-global-academy',
   },
 ];
 
