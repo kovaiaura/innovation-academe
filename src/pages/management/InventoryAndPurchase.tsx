@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Package, ShoppingCart, FileText, AlertTriangle, CheckCircle } from "lucide-react";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
+import { getInstitutionBySlug } from "@/data/mockInstitutionData";
+import { useLocation } from "react-router-dom";
 import { PurchaseRequestStatusBadge } from "@/components/inventory/PurchaseRequestStatusBadge";
 import { PurchaseRequestDetailDialog } from "@/components/inventory/PurchaseRequestDetailDialog";
 import { ApproveRejectDialog } from "@/components/inventory/ApproveRejectDialog";
@@ -421,10 +423,27 @@ const AuditReportsTab = () => {
 };
 
 const InventoryAndPurchase = () => {
+  // Extract institution from URL
+  const location = useLocation();
+  const institutionSlug = location.pathname.split('/')[2];
+  const institution = getInstitutionBySlug(institutionSlug);
+
   return (
     <Layout>
       <div className="space-y-6">
-        <InstitutionHeader />
+        {institution && (
+          <InstitutionHeader 
+            institutionName={institution.name}
+            establishedYear={institution.established_year}
+            location={institution.location}
+            totalStudents={institution.total_students}
+            totalFaculty={institution.total_faculty}
+            totalDepartments={institution.total_departments}
+            academicYear={institution.academic_year}
+            userRole="Management Portal"
+            assignedOfficers={institution.assigned_officers.map(o => o.officer_name)}
+          />
+        )}
         
         <div>
           <h1 className="text-3xl font-bold">Inventory & Purchase</h1>

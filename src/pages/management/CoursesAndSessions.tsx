@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Plus, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
+import { getInstitutionBySlug } from "@/data/mockInstitutionData";
+import { useLocation } from "react-router-dom";
 
 const TimetableTab = () => {
   const sessions = [
@@ -120,10 +122,27 @@ const TimetableTab = () => {
 };
 
 const CoursesAndSessions = () => {
+  // Extract institution from URL
+  const location = useLocation();
+  const institutionSlug = location.pathname.split('/')[2];
+  const institution = getInstitutionBySlug(institutionSlug);
+
   return (
     <Layout>
       <div className="space-y-6">
-        <InstitutionHeader />
+        {institution && (
+          <InstitutionHeader 
+            institutionName={institution.name}
+            establishedYear={institution.established_year}
+            location={institution.location}
+            totalStudents={institution.total_students}
+            totalFaculty={institution.total_faculty}
+            totalDepartments={institution.total_departments}
+            academicYear={institution.academic_year}
+            userRole="Management Portal"
+            assignedOfficers={institution.assigned_officers.map(o => o.officer_name)}
+          />
+        )}
         
         <div>
           <h1 className="text-3xl font-bold">Courses & Sessions</h1>

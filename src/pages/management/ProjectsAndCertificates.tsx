@@ -9,6 +9,8 @@ import { Progress } from "@/components/ui/progress";
 import { Eye, FileDown, Award, Lock, Target, Users, Calendar, TrendingUp } from "lucide-react";
 import { getProjectsByInstitution, getShowcaseProjects, Project } from "@/data/mockProjectData";
 import { ProjectDetailsDialog } from "@/components/project/ProjectDetailsDialog";
+import { getInstitutionBySlug } from "@/data/mockInstitutionData";
+import { useLocation } from "react-router-dom";
 
 const sdgNames: Record<number, string> = {
   1: 'No Poverty',
@@ -289,10 +291,27 @@ function ProjectGalleryTab() {
 }
 
 export default function ProjectsAndCertificates() {
+  // Extract institution from URL
+  const location = useLocation();
+  const institutionSlug = location.pathname.split('/')[2];
+  const institution = getInstitutionBySlug(institutionSlug);
+
   return (
     <Layout>
       <div className="space-y-8">
-        <InstitutionHeader />
+        {institution && (
+          <InstitutionHeader 
+            institutionName={institution.name}
+            establishedYear={institution.established_year}
+            location={institution.location}
+            totalStudents={institution.total_students}
+            totalFaculty={institution.total_faculty}
+            totalDepartments={institution.total_departments}
+            academicYear={institution.academic_year}
+            userRole="Management Portal"
+            assignedOfficers={institution.assigned_officers.map(o => o.officer_name)}
+          />
+        )}
         <div>
           <h1 className="text-3xl font-bold">Projects & Certificates</h1>
           <p className="text-muted-foreground">View innovation projects and certificates managed by officers</p>

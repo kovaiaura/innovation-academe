@@ -13,6 +13,9 @@ import { updateMockOfficerTimetable } from "@/data/mockOfficerTimetable";
 import { mockOfficerProfiles, getOfficerById } from "@/data/mockOfficerData";
 import { OfficerDetails } from "@/services/systemadmin.service";
 import { toast } from "sonner";
+import { getInstitutionBySlug } from "@/data/mockInstitutionData";
+import { getInstitutionOfficers } from "@/data/mockInstitutionOfficers";
+import { useLocation } from "react-router-dom";
 
 const Officers = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -20,20 +23,28 @@ const Officers = () => {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
 
-  // Transform mockOfficerProfiles to match display format
-  const officers = mockOfficerProfiles
-    .filter(officer => officer.assigned_institutions.includes('springfield'))
-    .map(officer => ({
-      id: officer.id,
-      name: officer.name,
-      email: officer.email,
-      assignedInstitution: officer.assigned_institutions[0],
-      coursesAssigned: 5, // Will be dynamic later
-      sessionsThisMonth: 12, // Will be dynamic later
-      status: officer.status,
-      expertise: officer.skills.join(', '),
-      lastActive: new Date().toISOString().split('T')[0],
-    }));
+  // Extract institution from URL
+  const location = useLocation();
+  const institutionSlug = location.pathname.split('/')[2];
+  const institution = getInstitutionBySlug(institutionSlug);
+
+  // Get officers assigned to this institution
+  const officers = institution 
+    ? getInstitutionOfficers(institution.id).map(officer => {
+        const officerDetails = getOfficerById(officer.officer_id);
+        return {
+          id: officer.officer_id,
+          name: officer.officer_name,
+          email: officer.email,
+          assignedInstitution: institution.name,
+          coursesAssigned: officer.total_courses,
+          sessionsThisMonth: 12,
+          status: officer.status,
+          expertise: officerDetails?.skills.join(', ') || '',
+          lastActive: new Date().toISOString().split('T')[0],
+        };
+      })
+    : [];
 
   const filteredOfficers = officers.filter((officer) =>
     officer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -59,7 +70,19 @@ const Officers = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <InstitutionHeader />
+        {institution && (
+          <InstitutionHeader 
+            institutionName={institution.name}
+            establishedYear={institution.established_year}
+            location={institution.location}
+            totalStudents={institution.total_students}
+            totalFaculty={institution.total_faculty}
+            totalDepartments={institution.total_departments}
+            academicYear={institution.academic_year}
+            userRole="Management Portal"
+            assignedOfficers={institution.assigned_officers.map(o => o.officer_name)}
+          />
+        )}
         
         <div>
           <h1 className="text-3xl font-bold">Innovation Officers</h1>
