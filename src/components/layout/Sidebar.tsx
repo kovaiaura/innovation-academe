@@ -64,6 +64,8 @@ const menuItems: MenuItem[] = [
   { label: 'Gamification', icon: <Trophy className="h-5 w-5" />, path: '/gamification', roles: ['system_admin'], allowedPositions: ['ceo', 'md', 'agm', 'gm', 'manager', 'admin_staff'] },
   // Reports & Invoice
   { label: 'Reports & Invoice', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['system_admin'], feature: 'reports_analytics' },
+  // SDG Management
+  { label: 'SDG Management', icon: <Target className="h-5 w-5" />, path: '/sdg-management', roles: ['system_admin'], feature: 'sdg_management' },
   // Teacher menu items
   { label: 'My Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['teacher'] },
   { label: 'Grades', icon: <Award className="h-5 w-5" />, path: '/grades', roles: ['teacher'] },

@@ -83,6 +83,7 @@ import SystemAdminTasks from "./pages/system-admin/Tasks";
 import SystemAdminGamification from "./pages/system-admin/GamificationManagement";
 import OfficerTasks from "./pages/officer/Tasks";
 import IdConfiguration from "./pages/system-admin/IdConfiguration";
+import SDGManagement from "./pages/system-admin/SDGManagement";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -179,6 +180,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="reports_analytics">
                   <SystemAdminReports />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/sdg-management"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="sdg_management">
+                  <SDGManagement />
                 </ProtectedRoute>
               }
             />

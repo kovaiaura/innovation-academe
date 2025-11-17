@@ -41,7 +41,8 @@ const allFeatures: { value: SystemAdminFeature; label: string }[] = [
   { value: 'attendance_payroll', label: 'Attendance and Payroll' },
   { value: 'leave_approvals', label: 'Leave Approvals' },
   { value: 'institutional_calendar', label: 'Institutional Calendar' },
-  { value: 'reports_analytics', label: 'Reports & Analytics' },
+  { value: 'reports_analytics', label: 'Reports & Invoice' },
+  { value: 'sdg_management', label: 'SDG Management' },
 ];
 
 export default function PositionManagement() {
