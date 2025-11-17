@@ -9,7 +9,10 @@ import { Progress } from '@/components/ui/progress';
 import { BookOpen, Video, FileText, CheckCircle, Clock, PlayCircle, Link as LinkIcon } from 'lucide-react';
 import { mockCourses, mockModules, mockSessions, mockContent, mockAssignments, mockQuizzes } from '@/data/mockCourseData';
 import { useAuth } from '@/contexts/AuthContext';
-import { useContentProgress } from '@/hooks/useContentProgress';
+import { getStudentCompletions, isContentCompletedByStudent, getContentCompletion, getStudentSessionsAttended } from '@/utils/studentCompletionHelpers';
+import { StudentContentCompletion } from '@/types/contentCompletion';
+import { LearningLogTimeline } from '@/components/student/LearningLogTimeline';
+import { formatDistanceToNow } from 'date-fns';
 import { ContentViewerDialog } from '@/components/student/ContentViewerDialog';
 import { CourseCompletionBanner } from '@/components/student/CourseCompletionBanner';
 import { CertificatePreviewDialog } from '@/components/student/CertificatePreviewDialog';
@@ -35,7 +38,18 @@ export default function StudentCourseDetail() {
   const student = mockStudents.find(s => s.id === studentId);
   const officer = getOfficerByTenant(tenantId || 'springfield');
   
-  const { completedContentIds, markContentComplete, isContentComplete } = useContentProgress(studentId, courseId || '');
+  const [completions, setCompletions] = useState<StudentContentCompletion[]>([]);
+
+  useEffect(() => {
+    if (studentId && courseId) {
+      const studentCompletions = getStudentCompletions(studentId, courseId);
+      setCompletions(studentCompletions);
+    }
+  }, [studentId, courseId]);
+
+  const isContentComplete = (contentId: string) => {
+    return isContentCompletedByStudent(studentId, contentId);
+  };
   
   const course = mockCourses.find(c => c.id === courseId);
   const modules = mockModules.filter(m => m.course_id === courseId).sort((a, b) => a.order - b.order);
@@ -88,6 +102,7 @@ export default function StudentCourseDetail() {
   useEffect(() => {
     if (!courseId || !student || !officer) return;
     
+    const completedContentIds = completions.map(c => c.content_id);
     const result = checkCourseCompletion(courseId, studentId, completedContentIds, content, submissions, assignments, quizAttempts, quizzes);
     
     if (result.completed && !courseCompleted) {
@@ -100,11 +115,12 @@ export default function StudentCourseDetail() {
         toast.success('🎉 Certificate generated!');
       }
     }
-  }, [completedContentIds, submissions, quizAttempts]);
+  }, [completions, submissions, quizAttempts, courseId, studentId, student, officer, courseCompleted, course, content, assignments, quizzes]);
 
   if (!course) return <Layout><div>Course not found</div></Layout>;
 
   const certificate = getCertificateByCourse(studentId, courseId || '');
+  const completedContentIds = completions.map(c => c.content_id);
   const { progressPercentage } = checkCourseCompletion(courseId || '', studentId, completedContentIds, content, submissions, assignments, quizAttempts, quizzes);
 
   return (
@@ -126,6 +142,12 @@ export default function StudentCourseDetail() {
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="content">Content</TabsTrigger>
+            <TabsTrigger value="learning-log">
+              Learning Log
+              {completions.length > 0 && (
+                <Badge className="ml-2" variant="secondary">{completions.length}</Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -250,6 +272,21 @@ export default function StudentCourseDetail() {
               );
             })}
           </TabsContent>
+
+          {/* Learning Log Tab */}
+          <TabsContent value="learning-log">
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Learning Log</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Track what you've learned, who taught it, and when
+                </p>
+              </CardHeader>
+              <CardContent>
+                <LearningLogTimeline completions={completions} />
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
 
         <ContentViewerDialog
@@ -258,7 +295,8 @@ export default function StudentCourseDetail() {
           content={selectedContent}
           isCompleted={selectedContent ? isContentComplete(selectedContent.id) : false}
           onMarkComplete={() => {
-            if (selectedContent) markContentComplete(selectedContent.id);
+            // Content is automatically marked complete when officer marks progress in session
+            // Students just view content that was taught
           }}
         />
 
