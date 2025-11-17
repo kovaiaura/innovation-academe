@@ -39,6 +39,14 @@ export interface Institution {
   };
   attendance_radius_meters?: number; // Validation radius, default 200m
   normal_working_hours?: number; // Default 8 hours per day
+  // Detailed Pricing Model
+  pricing_model?: {
+    per_student_cost: number;
+    lms_cost?: number;
+    lap_setup_cost: number;
+    monthly_recurring_cost: number;
+    trainer_monthly_fee: number;
+  };
 }
 
 // Inventory Summary type from InventoryManagement
@@ -98,7 +106,14 @@ const mockInstitutions: Institution[] = [
       address: 'Sector C, Pocket C, Vasant Kunj, New Delhi'
     },
     attendance_radius_meters: 200,
-    normal_working_hours: 8
+    normal_working_hours: 8,
+    pricing_model: {
+      per_student_cost: 800,
+      lms_cost: 75000,
+      lap_setup_cost: 300000,
+      monthly_recurring_cost: 25000,
+      trainer_monthly_fee: 50000,
+    }
   },
   {
     id: '2',
@@ -135,7 +150,14 @@ const mockInstitutions: Institution[] = [
       address: 'Goregaon West, Mumbai'
     },
     attendance_radius_meters: 250,
-    normal_working_hours: 8
+    normal_working_hours: 8,
+    pricing_model: {
+      per_student_cost: 1000,
+      lms_cost: 100000,
+      lap_setup_cost: 500000,
+      monthly_recurring_cost: 35000,
+      trainer_monthly_fee: 60000,
+    }
   },
   {
     id: '3',
@@ -172,7 +194,14 @@ const mockInstitutions: Institution[] = [
       address: 'Anna Nagar, Chennai'
     },
     attendance_radius_meters: 150,
-    normal_working_hours: 8
+    normal_working_hours: 8,
+    pricing_model: {
+      per_student_cost: 450,
+      lms_cost: 40000,
+      lap_setup_cost: 150000,
+      monthly_recurring_cost: 12000,
+      trainer_monthly_fee: 38000,
+    }
   }
 ];
 

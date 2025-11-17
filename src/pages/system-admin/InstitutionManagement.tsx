@@ -12,9 +12,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Search, Plus, Building2, Upload, Calendar, FileText, AlertCircle, CheckCircle, Clock, DollarSign, Users, Shield, TrendingUp } from 'lucide-react';
+import { Search, Plus, Building2, Upload, Calendar, FileText, AlertCircle, CheckCircle, Clock, DollarSign, Users, Shield, TrendingUp, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import ViewMouDialog from '@/components/institution/ViewMouDialog';
+import { PinLockDialog } from '@/components/system-admin/PinLockDialog';
 
 export default function InstitutionManagement() {
   const navigate = useNavigate();
@@ -29,6 +30,11 @@ export default function InstitutionManagement() {
   const [activeTab, setActiveTab] = useState('list');
   const [isMouDialogOpen, setIsMouDialogOpen] = useState(false);
   const [selectedInstitutionForMou, setSelectedInstitutionForMou] = useState<Institution | null>(null);
+  
+  // PIN protection state
+  const [isPinVerified, setIsPinVerified] = useState(false);
+  const [showPinDialog, setShowPinDialog] = useState(false);
+  const [requestedTab, setRequestedTab] = useState<string>('');
 
   // Add institution form state
   const [formData, setFormData] = useState({
@@ -44,6 +50,13 @@ export default function InstitutionManagement() {
     license_type: 'basic' as Institution['license_type'],
     max_users: 500,
     subscription_plan: 'basic' as Institution['subscription_plan'],
+    pricing_model: {
+      per_student_cost: 0,
+      lms_cost: 0,
+      lap_setup_cost: 0,
+      monthly_recurring_cost: 0,
+      trainer_monthly_fee: 0,
+    }
   });
 
   const getStatusBadge = (status: string) => {
@@ -136,6 +149,13 @@ export default function InstitutionManagement() {
       license_type: 'basic',
       max_users: 500,
       subscription_plan: 'basic',
+      pricing_model: {
+        per_student_cost: 0,
+        lms_cost: 0,
+        lap_setup_cost: 0,
+        monthly_recurring_cost: 0,
+        trainer_monthly_fee: 0,
+      }
     });
     setActiveTab('list');
   };
@@ -161,6 +181,26 @@ export default function InstitutionManagement() {
     renewalPipeline: institutions.filter(i => getDaysUntilExpiry(i.contract_expiry_date) <= 60).reduce((sum, i) => sum + i.contract_value, 0)
   };
 
+  // Handle tab changes with PIN protection
+  const handleTabChange = (value: string) => {
+    const protectedTabs = ['licenses', 'renewals'];
+    
+    if (protectedTabs.includes(value) && !isPinVerified) {
+      setRequestedTab(value);
+      setShowPinDialog(true);
+    } else {
+      setActiveTab(value);
+    }
+  };
+
+  const handlePinSuccess = () => {
+    setIsPinVerified(true);
+    if (requestedTab) {
+      setActiveTab(requestedTab);
+      setRequestedTab('');
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -169,7 +209,7 @@ export default function InstitutionManagement() {
           <p className="text-muted-foreground">Manage clients, agreements, and contracts in one place</p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="list">
               Institutions ({stats.total})
@@ -178,10 +218,16 @@ export default function InstitutionManagement() {
               Add Institution
             </TabsTrigger>
             <TabsTrigger value="licenses">
-              Agreement Management
+              <div className="flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                Agreement Management
+              </div>
             </TabsTrigger>
             <TabsTrigger value="renewals">
-              Renewals & Contracts
+              <div className="flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                Renewals & Contracts
+              </div>
             </TabsTrigger>
           </TabsList>
 
@@ -422,18 +468,69 @@ export default function InstitutionManagement() {
                   <div className="font-semibold text-lg">Agreement Configuration</div>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="license_type">Agreement Type *</Label>
-                      <Select value={formData.license_type} onValueChange={(value: Institution['license_type']) => setFormData({ ...formData, license_type: value })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="basic">Basic - ₹150k/year</SelectItem>
-                          <SelectItem value="standard">Standard - ₹350k/year</SelectItem>
-                          <SelectItem value="premium">Premium - ₹500k/year</SelectItem>
-                          <SelectItem value="enterprise">Enterprise - ₹1M/year</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="per_student_cost">Per Student Cost (₹) *</Label>
+                      <Input
+                        id="per_student_cost"
+                        type="number"
+                        value={formData.pricing_model.per_student_cost}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          pricing_model: { ...formData.pricing_model, per_student_cost: parseInt(e.target.value) || 0 }
+                        })}
+                        placeholder="500"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lms_cost">LMS Cost (₹)</Label>
+                      <Input
+                        id="lms_cost"
+                        type="number"
+                        value={formData.pricing_model.lms_cost}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          pricing_model: { ...formData.pricing_model, lms_cost: parseInt(e.target.value) || 0 }
+                        })}
+                        placeholder="LMS platform cost"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lap_setup_cost">Lap Setup - One Time (₹) *</Label>
+                      <Input
+                        id="lap_setup_cost"
+                        type="number"
+                        value={formData.pricing_model.lap_setup_cost}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          pricing_model: { ...formData.pricing_model, lap_setup_cost: parseInt(e.target.value) || 0 }
+                        })}
+                        placeholder="200000"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="monthly_pay">Monthly Pay (₹) *</Label>
+                      <Input
+                        id="monthly_pay"
+                        type="number"
+                        value={formData.pricing_model.monthly_recurring_cost}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          pricing_model: { ...formData.pricing_model, monthly_recurring_cost: parseInt(e.target.value) || 0 }
+                        })}
+                        placeholder="15000"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="trainer_fee">Trainer Monthly Fee (₹) *</Label>
+                      <Input
+                        id="trainer_fee"
+                        type="number"
+                        value={formData.pricing_model.trainer_monthly_fee}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          pricing_model: { ...formData.pricing_model, trainer_monthly_fee: parseInt(e.target.value) || 0 }
+                        })}
+                        placeholder="40000"
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="max_users">Max Users</Label>
@@ -763,6 +860,13 @@ export default function InstitutionManagement() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* PIN Lock Dialog */}
+        <PinLockDialog
+          open={showPinDialog}
+          onOpenChange={setShowPinDialog}
+          onSuccess={handlePinSuccess}
+        />
       </div>
     </Layout>
   );
