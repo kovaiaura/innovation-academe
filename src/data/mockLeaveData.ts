@@ -63,11 +63,39 @@ export const getLeaveApplicationsByOfficer = (officerId: string): LeaveApplicati
   return mockLeaveApplications.filter((app) => app.officer_id === officerId);
 };
 
+export const initializeLeaveBalance = (balance: LeaveBalance): void => {
+  // Add to in-memory array
+  const existingIndex = mockLeaveBalances.findIndex(
+    (b) => b.officer_id === balance.officer_id && b.year === balance.year
+  );
+  
+  if (existingIndex >= 0) {
+    mockLeaveBalances[existingIndex] = balance;
+  } else {
+    mockLeaveBalances.push(balance);
+  }
+  
+  // Store in localStorage for persistence
+  localStorage.setItem(`leave_balance_${balance.officer_id}_${balance.year}`, JSON.stringify(balance));
+};
+
 export const getLeaveBalance = (officerId: string, year: string): LeaveBalance => {
+  // Check localStorage first
+  const stored = localStorage.getItem(`leave_balance_${officerId}_${year}`);
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch (e) {
+      console.error("Failed to parse leave balance from localStorage", e);
+    }
+  }
+  
+  // Then check in-memory
   const balance = mockLeaveBalances.find(
     (b) => b.officer_id === officerId && b.year === year
   );
   
+  // Return found balance or defaults
   return balance || {
     officer_id: officerId,
     sick_leave: 10,

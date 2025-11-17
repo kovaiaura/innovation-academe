@@ -117,6 +117,28 @@ export default function LeaveApprovals() {
 
     try {
       if (actionMode === "approve") {
+        // Get current balance and deduct leave
+        const currentYear = new Date().getFullYear().toString();
+        const { getLeaveBalance, initializeLeaveBalance } = require('@/data/mockLeaveData');
+        const balance = getLeaveBalance(selectedApplication.officer_id, currentYear);
+
+        // Deduct based on leave type
+        const updatedBalance = { ...balance };
+        switch (selectedApplication.leave_type) {
+          case 'casual':
+            updatedBalance.casual_leave -= selectedApplication.total_days;
+            break;
+          case 'sick':
+            updatedBalance.sick_leave -= selectedApplication.total_days;
+            break;
+          case 'earned':
+            updatedBalance.earned_leave -= selectedApplication.total_days;
+            break;
+        }
+
+        // Save updated balance
+        initializeLeaveBalance(updatedBalance);
+
         approveLeaveApplication(selectedApplication.id, user.name, comments);
         
         // Update timetables and notify substitutes
@@ -165,7 +187,7 @@ export default function LeaveApprovals() {
           });
         }
         
-        toast.success("Leave approved and substitutes assigned successfully");
+        toast.success(`Leave approved. ${selectedApplication.total_days} ${selectedApplication.leave_type} days deducted from balance.`);
       } else if (actionMode === "reject") {
         rejectLeaveApplication(selectedApplication.id, user.name, rejectionReason!);
         toast.success("Leave application rejected");
