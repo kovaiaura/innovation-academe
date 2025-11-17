@@ -388,6 +388,11 @@ export default function CourseContentViewer() {
           <StudentEngagementPanel
             courseId={courseId || ''}
             contentId={selectedContentId}
+            sessionId={sessionId || undefined}
+            className={className || undefined}
+            onAttendanceSaved={() => {
+              toast.success("Attendance saved successfully");
+            }}
           />
         )}
       </div>
