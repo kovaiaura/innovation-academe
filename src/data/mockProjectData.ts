@@ -55,136 +55,152 @@ export interface Project {
 }
 
 export const mockProjects: Record<string, Project[]> = {
-  'springfield': [
+  'inst-msd-001': [
     {
-      id: '1',
-      title: 'IoT-Based Smart Home Automation',
-      description: 'Complete home automation system using IoT sensors and cloud connectivity',
+      id: 'proj-msd-001',
+      title: 'Smart Waste Management System',
+      description: 'IoT-based waste segregation and monitoring system for schools',
       category: 'IoT',
       team_members: [
-        { id: 'springfield-8-A-001', name: 'Aarav Sharma', role: 'leader', class: 'Class 8', section: 'A' },
-        { id: '2', name: 'John Student', role: 'member', class: 'Class 10', section: 'B' },
-        { id: 'springfield-8-A-002', name: 'Vivaan Verma', role: 'member', class: 'Class 8', section: 'A' },
-        { id: 'springfield-8-A-003', name: 'Aditya Gupta', role: 'member', class: 'Class 9', section: 'C' }
+        { id: 'stu-inst-msd-001-class-msd-9a-1', name: 'Aarav Sharma', role: 'leader', class: 'Grade 9', section: 'A' },
+        { id: 'stu-inst-msd-001-class-msd-9a-2', name: 'Vivaan Verma', role: 'member', class: 'Grade 9', section: 'A' },
+        { id: 'stu-inst-msd-001-class-msd-9b-1', name: 'Aditya Gupta', role: 'member', class: 'Grade 9', section: 'B' }
       ],
-      created_by_officer_id: 'off1',
-      created_by_officer_name: 'Dr. Rajesh Kumar',
-      institution_id: 'springfield',
-      class: '3rd Year CSE - Section A',
-      event_id: 'evt-004',
-      event_title: 'Innovation Exhibition 2025',
+      created_by_officer_id: 'off-msd-001',
+      created_by_officer_name: 'Mr. Atif Ansari',
+      institution_id: 'inst-msd-001',
+      class: 'Grade 9',
       status: 'in_progress',
-      progress: 65,
-      start_date: '2024-01-15',
-      sdg_goals: [7, 11],
-      last_updated: '2024-03-20',
+      progress: 55,
+      start_date: '2025-07-01',
+      sdg_goals: [11, 12],
+      last_updated: '2025-09-15',
       progress_updates: [
         {
-          date: '2024-03-20',
-          notes: 'Completed sensor integration module. All ESP32 modules are now communicating with the central hub.',
-          updated_by: 'Dr. Rajesh Kumar',
-          files: ['sensor_report.pdf']
-        },
-        {
-          date: '2024-02-15',
-          notes: 'Initial prototype testing completed. Basic home automation features working.',
-          updated_by: 'Dr. Rajesh Kumar'
+          date: '2025-09-15',
+          notes: 'Prototype testing completed. Sensor integration successful.',
+          updated_by: 'Mr. Atif Ansari'
         }
       ],
       is_showcase: false
     },
     {
-      id: '2',
-      title: 'AI-Powered Agriculture Monitoring',
-      description: 'Machine learning system for crop health monitoring and irrigation optimization',
-      category: 'AI/ML',
+      id: 'proj-msd-002',
+      title: 'Solar-Powered Water Purifier',
+      description: 'Low-cost water purification system using solar energy',
+      category: 'Renewable Energy',
       team_members: [
-        { id: '2', name: 'John Student', role: 'leader', class: 'Class 10', section: 'B' },
-        { id: 'springfield-10-B-001', name: 'Aadhya Reddy', role: 'member', class: 'Class 10', section: 'B' },
-        { id: 'springfield-10-B-002', name: 'Ananya Nair', role: 'member', class: 'Class 11', section: 'A' }
+        { id: 'stu-inst-msd-001-class-msd-10a-1', name: 'Ananya Verma', role: 'leader', class: 'Grade 10', section: 'A' },
+        { id: 'stu-inst-msd-001-class-msd-10a-2', name: 'Diya Reddy', role: 'member', class: 'Grade 10', section: 'A' }
       ],
-      created_by_officer_id: 'off1',
-      created_by_officer_name: 'Dr. Rajesh Kumar',
-      institution_id: 'springfield',
-      class: '4th Year CSE - Section B',
-      event_id: 'evt-002',
-      event_title: 'Science Fair - Springfield High 2025',
-      status: 'completed',
-      progress: 100,
-      start_date: '2023-08-01',
-      completion_date: '2024-01-15',
-      sdg_goals: [2, 12, 13],
-      last_updated: '2024-01-15',
+      created_by_officer_id: 'off-msd-001',
+      created_by_officer_name: 'Mr. Atif Ansari',
+      institution_id: 'inst-msd-001',
+      class: 'Grade 10',
+      event_id: 'evt-inspire-2025',
+      event_title: 'Inspire Awards 2025',
+      status: 'approved',
+      progress: 30,
+      start_date: '2025-08-01',
+      sdg_goals: [6, 7],
+      last_updated: '2025-09-10',
       progress_updates: [
         {
-          date: '2024-01-15',
-          notes: 'Project completed successfully. Final presentation received excellent feedback.',
-          updated_by: 'Dr. Rajesh Kumar'
-        },
+          date: '2025-09-10',
+          notes: 'Initial design approved. Working on solar panel integration.',
+          updated_by: 'Mr. Atif Ansari'
+        }
+      ],
+      is_showcase: false
+    }
+  ],
+  'inst-kga-001': [
+    {
+      id: 'proj-kga-001',
+      title: 'AI-Based Traffic Management',
+      description: 'Machine learning system for optimizing traffic flow in urban areas',
+      category: 'AI/ML',
+      team_members: [
+        { id: 'stu-inst-kga-001-class-kga-9a-1', name: 'Karthik Nair', role: 'leader', class: 'Grade 9', section: 'A' },
+        { id: 'stu-inst-kga-001-class-kga-9a-2', name: 'Saran Kumar', role: 'member', class: 'Grade 9', section: 'A' },
+        { id: 'stu-inst-kga-001-class-kga-9b-1', name: 'Meera Iyer', role: 'member', class: 'Grade 9', section: 'B' }
+      ],
+      created_by_officer_id: 'off-kga-001',
+      created_by_officer_name: 'Mr. Saran T',
+      institution_id: 'inst-kga-001',
+      class: 'Grade 9',
+      event_id: 'evt-ignitia-2025',
+      event_title: 'Ignitia 2025 (Sahodaya)',
+      status: 'completed',
+      progress: 100,
+      start_date: '2025-06-01',
+      completion_date: '2025-09-01',
+      sdg_goals: [9, 11],
+      last_updated: '2025-09-01',
+      progress_updates: [
         {
-          date: '2023-12-10',
-          notes: 'Field testing completed with 95% accuracy in disease detection.',
-          updated_by: 'Dr. Rajesh Kumar'
+          date: '2025-09-01',
+          notes: 'Project completed. Secured 3rd place at Ignitia 2025!',
+          updated_by: 'Mr. Saran T'
         }
       ],
       is_showcase: true,
-      achievements: [
-        'National Innovation Award 2024',
-        'Best AI Project - State Level',
-        'Published paper in IJAER journal'
-      ],
-      awards: ['Gold Medal - Smart India Hackathon'],
+      achievements: ['3rd Place - Ignitia 2025 (Sahodaya)'],
       showcase_image: '/placeholder.svg'
     },
     {
-      id: '3',
-      title: 'Blockchain-Based Supply Chain',
-      description: 'Transparent supply chain management using blockchain technology',
-      category: 'Blockchain',
+      id: 'proj-kga-002',
+      title: 'Automated Plant Care System',
+      description: 'IoT-based automated watering and monitoring system for plants',
+      category: 'IoT',
       team_members: [
-        { id: 'springfield-9-C-001', name: 'Arjun Singh', role: 'leader', class: 'Class 9', section: 'C' },
-        { id: 'springfield-9-C-002', name: 'Sai Patel', role: 'member', class: 'Class 9', section: 'C' },
-        { id: 'springfield-9-C-003', name: 'Reyansh Gupta', role: 'member', class: 'Class 10', section: 'A' },
-        { id: 'springfield-9-C-004', name: 'Krishna Kumar', role: 'member', class: 'Class 8', section: 'B' }
+        { id: 'stu-inst-kga-001-class-kga-10a-1', name: 'Priya Iyer', role: 'leader', class: 'Grade 10', section: 'A' },
+        { id: 'stu-inst-kga-001-class-kga-10a-2', name: 'Ravi Sharma', role: 'member', class: 'Grade 10', section: 'A' },
+        { id: 'stu-inst-kga-001-class-kga-10b-1', name: 'Lakshmi Reddy', role: 'member', class: 'Grade 10', section: 'B' }
       ],
-      created_by_officer_id: 'off1',
-      created_by_officer_name: 'Dr. Rajesh Kumar',
-      institution_id: 'springfield',
-      class: '3rd Year CSE - Section C',
-      status: 'proposal',
-      progress: 0,
-      start_date: '2024-04-01',
-      sdg_goals: [9, 12],
-      last_updated: '2024-03-25',
-      progress_updates: [],
+      created_by_officer_id: 'off-kga-002',
+      created_by_officer_name: 'Mr. Sreeram R',
+      institution_id: 'inst-kga-001',
+      class: 'Grade 10',
+      status: 'in_progress',
+      progress: 70,
+      start_date: '2025-07-15',
+      sdg_goals: [12, 15],
+      last_updated: '2025-09-20',
+      progress_updates: [
+        {
+          date: '2025-09-20',
+          notes: 'Hardware assembly complete. Testing automation algorithms.',
+          updated_by: 'Mr. Sreeram R'
+        }
+      ],
       is_showcase: false
     },
     {
-      id: '4',
-      title: 'Solar-Powered Water Purification',
-      description: 'Low-cost water purification system powered by solar energy for rural areas',
-      category: 'Renewable Energy',
+      id: 'proj-kga-003',
+      title: 'Smart Energy Monitor',
+      description: 'Real-time electricity consumption tracking and optimization system',
+      category: 'IoT',
       team_members: [
-        { id: 'springfield-11-A-001', name: 'Diya Sharma', role: 'leader', class: 'Class 11', section: 'A' },
-        { id: '2', name: 'John Student', role: 'member', class: 'Class 10', section: 'B' },
-        { id: 'springfield-11-A-002', name: 'Isha Verma', role: 'member', class: 'Class 11', section: 'A' }
+        { id: 'stu-inst-kga-001-class-kga-11a-1', name: 'Arun Krishnan', role: 'leader', class: 'Grade 11', section: 'A' },
+        { id: 'stu-inst-kga-001-class-kga-11a-2', name: 'Divya Nair', role: 'member', class: 'Grade 11', section: 'A' }
       ],
-      created_by_officer_id: 'off1',
-      created_by_officer_name: 'Dr. Rajesh Kumar',
-      institution_id: 'springfield',
-      class: '2nd Year Mechanical - Section A',
-      event_id: 'evt-004',
-      event_title: 'Innovation Exhibition 2025',
+      created_by_officer_id: 'off-kga-001',
+      created_by_officer_name: 'Mr. Saran T',
+      institution_id: 'inst-kga-001',
+      class: 'Grade 11',
+      event_id: 'evt-eureka-2025',
+      event_title: 'Eureka Junior 2025',
       status: 'in_progress',
-      progress: 40,
-      start_date: '2024-02-01',
-      sdg_goals: [6, 7, 11],
-      last_updated: '2024-03-18',
+      progress: 45,
+      start_date: '2025-08-10',
+      sdg_goals: [7, 11, 12],
+      last_updated: '2025-09-25',
       progress_updates: [
         {
-          date: '2024-03-18',
-          notes: 'Solar panel installation completed. Now working on filtration module.',
-          updated_by: 'Dr. Rajesh Kumar'
+          date: '2025-09-25',
+          notes: 'Selected for Eureka Junior Phase 2. Preparing for state level competition.',
+          updated_by: 'Mr. Saran T'
         }
       ],
       is_showcase: false

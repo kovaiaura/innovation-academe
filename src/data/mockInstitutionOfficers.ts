@@ -1,67 +1,43 @@
 import { OfficerAssignment } from '@/types/institution';
 
 export const mockInstitutionOfficers: Record<string, OfficerAssignment[]> = {
-  '1': [
+  'inst-msd-001': [
     {
-      officer_id: 'officer-1',
-      officer_name: 'Dr. Sarah Johnson',
-      employee_id: 'EMP001',
-      email: 'sarah.johnson@springfield.edu',
-      phone: '+1 234-567-8901',
+      officer_id: 'off-msd-001',
+      officer_name: 'Mr. Atif Ansari',
+      employee_id: 'EMP-MSD-IOF-001',
+      email: 'atif.ansari@modernschool.edu.in',
+      phone: '+91-9876543210',
       avatar: undefined,
-      assigned_date: '2024-01-15T00:00:00Z',
-      total_courses: 3,
-      total_teaching_hours: 18,
-      status: 'active'
-    },
-    {
-      officer_id: 'officer-2',
-      officer_name: 'Prof. Michael Chen',
-      employee_id: 'EMP002',
-      email: 'michael.chen@springfield.edu',
-      phone: '+1 234-567-8902',
-      avatar: undefined,
-      assigned_date: '2024-01-20T00:00:00Z',
-      total_courses: 2,
-      total_teaching_hours: 12,
-      status: 'active'
-    },
-    {
-      officer_id: 'officer-3',
-      officer_name: 'Dr. Emily Rodriguez',
-      employee_id: 'EMP003',
-      email: 'emily.rodriguez@springfield.edu',
-      phone: '+1 234-567-8903',
-      avatar: undefined,
-      assigned_date: '2024-02-01T00:00:00Z',
+      assigned_date: '2025-04-01T00:00:00Z',
       total_courses: 4,
-      total_teaching_hours: 24,
+      total_teaching_hours: 28,
       status: 'active'
     }
   ],
-  '2': [
+  'inst-kga-001': [
     {
-      officer_id: 'officer-4',
-      officer_name: 'Mr. David Kumar',
-      employee_id: 'EMP004',
-      email: 'david.kumar@riverside.edu',
-      phone: '+1 234-567-8904',
+      officer_id: 'off-kga-001',
+      officer_name: 'Mr. Saran T',
+      employee_id: 'EMP-KGA-IOF-001',
+      email: 'saran.t@kikaniacademy.com',
+      phone: '+91-9876543211',
       avatar: undefined,
-      assigned_date: '2024-01-10T00:00:00Z',
-      total_courses: 2,
-      total_teaching_hours: 14,
+      assigned_date: '2024-06-01T00:00:00Z',
+      total_courses: 5,
+      total_teaching_hours: 35,
       status: 'active'
     },
     {
-      officer_id: 'officer-5',
-      officer_name: 'Ms. Lisa Anderson',
-      employee_id: 'EMP005',
-      email: 'lisa.anderson@riverside.edu',
-      phone: '+1 234-567-8905',
+      officer_id: 'off-kga-002',
+      officer_name: 'Mr. Sreeram R',
+      employee_id: 'EMP-KGA-IOF-002',
+      email: 'sreeram.r@kikaniacademy.com',
+      phone: '+91-9876543212',
       avatar: undefined,
-      assigned_date: '2024-02-15T00:00:00Z',
+      assigned_date: '2025-01-15T00:00:00Z',
       total_courses: 3,
-      total_teaching_hours: 16,
+      total_teaching_hours: 21,
       status: 'active'
     }
   ]
@@ -70,75 +46,39 @@ export const mockInstitutionOfficers: Record<string, OfficerAssignment[]> = {
 // All officers for assignment selection
 export const mockAllOfficers: OfficerAssignment[] = [
   {
-    officer_id: 'officer-1',
-    officer_name: 'Dr. Sarah Johnson',
-    employee_id: 'EMP001',
-    email: 'sarah.johnson@springfield.edu',
-    phone: '+1 234-567-8901',
+    officer_id: 'off-msd-001',
+    officer_name: 'Mr. Atif Ansari',
+    employee_id: 'EMP-MSD-IOF-001',
+    email: 'atif.ansari@modernschool.edu.in',
+    phone: '+91-9876543210',
     avatar: undefined,
-    assigned_date: '2024-01-15T00:00:00Z',
-    total_courses: 3,
-    total_teaching_hours: 18,
-    status: 'active'
-  },
-  {
-    officer_id: 'officer-2',
-    officer_name: 'Prof. Michael Chen',
-    employee_id: 'EMP002',
-    email: 'michael.chen@springfield.edu',
-    phone: '+1 234-567-8902',
-    avatar: undefined,
-    assigned_date: '2024-01-20T00:00:00Z',
-    total_courses: 2,
-    total_teaching_hours: 12,
-    status: 'active'
-  },
-  {
-    officer_id: 'officer-3',
-    officer_name: 'Dr. Emily Rodriguez',
-    employee_id: 'EMP003',
-    email: 'emily.rodriguez@springfield.edu',
-    phone: '+1 234-567-8903',
-    avatar: undefined,
-    assigned_date: '2024-02-01T00:00:00Z',
+    assigned_date: '2025-04-01T00:00:00Z',
     total_courses: 4,
-    total_teaching_hours: 24,
+    total_teaching_hours: 28,
     status: 'active'
   },
   {
-    officer_id: 'officer-4',
-    officer_name: 'Mr. David Kumar',
-    employee_id: 'EMP004',
-    email: 'david.kumar@riverside.edu',
-    phone: '+1 234-567-8904',
+    officer_id: 'off-kga-001',
+    officer_name: 'Mr. Saran T',
+    employee_id: 'EMP-KGA-IOF-001',
+    email: 'saran.t@kikaniacademy.com',
+    phone: '+91-9876543211',
     avatar: undefined,
-    assigned_date: '2024-01-10T00:00:00Z',
-    total_courses: 2,
-    total_teaching_hours: 14,
+    assigned_date: '2024-06-01T00:00:00Z',
+    total_courses: 5,
+    total_teaching_hours: 35,
     status: 'active'
   },
   {
-    officer_id: 'officer-5',
-    officer_name: 'Ms. Lisa Anderson',
-    employee_id: 'EMP005',
-    email: 'lisa.anderson@riverside.edu',
-    phone: '+1 234-567-8905',
+    officer_id: 'off-kga-002',
+    officer_name: 'Mr. Sreeram R',
+    employee_id: 'EMP-KGA-IOF-002',
+    email: 'sreeram.r@kikaniacademy.com',
+    phone: '+91-9876543212',
     avatar: undefined,
-    assigned_date: '2024-02-15T00:00:00Z',
+    assigned_date: '2025-01-15T00:00:00Z',
     total_courses: 3,
-    total_teaching_hours: 16,
-    status: 'active'
-  },
-  {
-    officer_id: 'officer-6',
-    officer_name: 'Dr. Robert Williams',
-    employee_id: 'EMP006',
-    email: 'robert.williams@tech.edu',
-    phone: '+1 234-567-8906',
-    avatar: undefined,
-    assigned_date: '2024-03-01T00:00:00Z',
-    total_courses: 2,
-    total_teaching_hours: 10,
+    total_teaching_hours: 21,
     status: 'active'
   }
 ];
