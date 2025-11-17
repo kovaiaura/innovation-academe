@@ -16,6 +16,7 @@ import {
   Trash2,
   BarChart3
 } from "lucide-react";
+import { Layout } from "@/components/layout/Layout";
 import { GamificationStatsCards } from "@/components/gamification/GamificationStatsCards";
 import { ActivityFeed } from "@/components/gamification/ActivityFeed";
 import { BadgeConfigDialog } from "@/components/gamification/BadgeConfigDialog";
@@ -122,7 +123,8 @@ export default function GamificationManagement() {
   }))));
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <Layout>
+      <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -448,6 +450,7 @@ export default function GamificationManagement() {
         student={selectedStudent}
         onAdjustPoints={handleAdjustPoints}
       />
-    </div>
+      </div>
+    </Layout>
   );
 }
