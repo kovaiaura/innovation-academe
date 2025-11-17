@@ -73,7 +73,7 @@ export function AssignCourseToClassDialog({
           course_code: 'WEB-101',
           title: 'Full Stack Web Development',
           description: 'Learn to build modern web applications from scratch',
-          category: 'web_dev',
+          category: 'communication',
           difficulty: 'beginner',
           duration_weeks: 12,
           learning_outcomes: ['HTML/CSS', 'JavaScript', 'React', 'Node.js'],

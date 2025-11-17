@@ -1,6 +1,30 @@
 // Course Management Type Definitions
 
-export type CourseCategory = 'ai_ml' | 'web_dev' | 'iot' | 'robotics' | 'data_science' | 'business' | 'design' | 'other';
+export type CourseCategory = 
+  | 'electronics' 
+  | 'iot' 
+  | 'robotics' 
+  | 'ai_ml' 
+  | 'data_science' 
+  | 'ar_vr' 
+  | 'blockchain' 
+  | 'drones' 
+  | 'cybersecurity'
+  | 'design_thinking' 
+  | 'product_design' 
+  | 'prototyping' 
+  | 'environmental_tech' 
+  | 'sdg' 
+  | 'ethics' 
+  | 'etiquettes' 
+  | 'human_values'
+  | 'digital_media' 
+  | 'communication' 
+  | 'prompt_engineering' 
+  | 'entrepreneurship' 
+  | 'financial_literacy' 
+  | 'career_prep'
+  | 'other';
 export type CourseDifficulty = 'beginner' | 'intermediate' | 'advanced';
 export type CourseStatus = 'draft' | 'active' | 'archived';
 export type ContentType = 'pdf' | 'ppt' | 'video' | 'youtube' | 'simulation' | 'link';
