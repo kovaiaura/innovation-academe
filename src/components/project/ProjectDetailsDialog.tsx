@@ -112,8 +112,11 @@ export function ProjectDetailsDialog({
             </div>
             <div className="space-y-2">
               {project.team_members.map((member) => (
-                <div key={member.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                  <span className="text-sm">{member.name}</span>
+                <div key={member.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-medium">{member.name}</span>
+                    <span className="text-xs text-muted-foreground">{member.class} - Section {member.section}</span>
+                  </div>
                   <Badge variant="outline" className="text-xs">
                     {member.role === 'leader' ? 'Team Leader' : 'Member'}
                   </Badge>

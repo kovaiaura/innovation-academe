@@ -7,10 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Project } from "@/data/mockProjectData";
-import { getStudentsByInstitution, getStudentsByClassAndSection } from "@/data/mockStudentData";
+import { getStudentsByInstitution } from "@/data/mockStudentData";
 import { Student } from "@/types/student";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, UserPlus } from "lucide-react";
 
 interface CreateProjectDialogProps {
   open: boolean;
@@ -48,6 +48,13 @@ const sdgGoals = [
   { value: 13, label: '13. Climate Action' },
 ];
 
+interface TeamMember {
+  id: string;
+  name: string;
+  class: string;
+  section: string;
+}
+
 export function CreateProjectDialog({
   open,
   onOpenChange,
@@ -59,11 +66,22 @@ export function CreateProjectDialog({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
-  const [selectedClass, setSelectedClass] = useState("");
-  const [selectedSection, setSelectedSection] = useState("");
   const [selectedSdgs, setSelectedSdgs] = useState<number[]>([]);
-  const [teamLeader, setTeamLeader] = useState<Student | null>(null);
-  const [teamMembers, setTeamMembers] = useState<Student[]>([]);
+  
+  // Team Leader State
+  const [leaderData, setLeaderData] = useState({
+    student: null as Student | null,
+    class: '',
+    section: ''
+  });
+
+  // Team Members State
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [memberInput, setMemberInput] = useState({
+    class: '',
+    section: '',
+    student: null as Student | null
+  });
 
   // Get all students for this institution
   const allStudents = useMemo(() => 
@@ -81,54 +99,97 @@ export function CreateProjectDialog({
     return Array.from(classes).sort((a, b) => parseInt(a) - parseInt(b));
   }, [allStudents]);
 
-  // Get sections for selected class
-  const availableSections = useMemo(() => {
-    if (!selectedClass) return [];
+  // Get sections for a specific class
+  const getSectionsForClass = (classNum: string) => {
+    if (!classNum) return [];
     const sections = new Set<string>();
     allStudents.forEach(student => {
-      const classNum = student.class.replace('Class ', '');
-      if (classNum === selectedClass) {
+      const cls = student.class.replace('Class ', '');
+      if (cls === classNum) {
         sections.add(student.section);
       }
     });
     return Array.from(sections).sort();
-  }, [allStudents, selectedClass]);
+  };
 
-  // Get students for selected class and section
-  const availableStudents = useMemo(() => {
-    if (!selectedClass || !selectedSection) return [];
-    return getStudentsByClassAndSection(
-      institutionId, 
-      `Class ${selectedClass}`, 
-      selectedSection
-    ).filter(s => s.status === 'active');
-  }, [institutionId, selectedClass, selectedSection]);
+  // Get students for a specific class and section
+  const getStudentsForClassSection = (classNum: string, section: string) => {
+    if (!classNum || !section) return [];
+    return allStudents.filter(s => 
+      s.class === `Class ${classNum}` && 
+      s.section === section &&
+      s.status === 'active'
+    );
+  };
 
+  // Add team member with class/section info
+  const handleAddMember = () => {
+    if (!memberInput.student) {
+      toast.error("Please select a student");
+      return;
+    }
+    
+    // Check if already added
+    if (teamMembers.some(m => m.id === memberInput.student!.id)) {
+      toast.error("This student is already added");
+      return;
+    }
+    
+    // Check if same as leader
+    if (memberInput.student.id === leaderData.student?.id) {
+      toast.error("Team leader cannot be added as a member");
+      return;
+    }
+    
+    setTeamMembers([...teamMembers, {
+      id: memberInput.student.id,
+      name: memberInput.student.student_name,
+      class: `Class ${memberInput.class}`,
+      section: memberInput.section
+    }]);
+    
+    // Reset input
+    setMemberInput({ class: '', section: '', student: null });
+    toast.success("Team member added");
+  };
+
+  // Remove team member
+  const handleRemoveMember = (memberId: string) => {
+    setTeamMembers(teamMembers.filter(m => m.id !== memberId));
+  };
 
   const handleSubmit = () => {
-    if (!title || !description || !category || !selectedClass || !selectedSection || !teamLeader) {
-      toast.error("Please fill in all required fields");
+    if (!title || !description || !category || !leaderData.student) {
+      toast.error("Please fill in all required fields and select a team leader");
       return;
     }
 
-    const members = teamMembers.map(student => ({
-      id: student.id,
-      name: student.student_name,
-      role: 'member' as const
-    }));
+    const members = [
+      {
+        id: leaderData.student.id,
+        name: leaderData.student.student_name,
+        role: 'leader' as const,
+        class: `Class ${leaderData.class}`,
+        section: leaderData.section
+      },
+      ...teamMembers.map(member => ({
+        id: member.id,
+        name: member.name,
+        role: 'member' as const,
+        class: member.class,
+        section: member.section
+      }))
+    ];
 
     const newProject: Omit<Project, 'id'> = {
       title,
       description,
       category,
-      team_members: [
-        { id: teamLeader.id, name: teamLeader.student_name, role: 'leader' },
-        ...members
-      ],
+      team_members: members,
       created_by_officer_id: officerId,
       created_by_officer_name: officerName,
       institution_id: institutionId,
-      class: `Class ${selectedClass} - Section ${selectedSection}`,
+      class: `Multi-Class Team`, // Generic label since team is multi-class
       status: 'approved',
       progress: 0,
       start_date: new Date().toISOString().split('T')[0],
@@ -139,48 +200,32 @@ export function CreateProjectDialog({
     };
 
     onCreateProject(newProject);
-    
-    // Reset form
+    handleClose();
+    toast.success("Project created successfully");
+  };
+
+  const handleClose = () => {
     setTitle("");
     setDescription("");
     setCategory("");
-    setSelectedClass("");
-    setSelectedSection("");
     setSelectedSdgs([]);
-    setTeamLeader(null);
+    setLeaderData({ student: null, class: '', section: '' });
     setTeamMembers([]);
-    
-    toast.success("Project created successfully");
+    setMemberInput({ class: '', section: '', student: null });
     onOpenChange(false);
-  };
-
-  const addTeamMember = (student: Student) => {
-    if (teamLeader?.id === student.id) {
-      toast.error("Team leader is already selected");
-      return;
-    }
-    if (teamMembers.some(m => m.id === student.id)) {
-      toast.error("Student already added to team");
-      return;
-    }
-    setTeamMembers([...teamMembers, student]);
-  };
-
-  const removeTeamMember = (studentId: string) => {
-    setTeamMembers(teamMembers.filter(m => m.id !== studentId));
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Innovation Project</DialogTitle>
           <DialogDescription>
-            Add a new project and assign it to student teams
+            Add a new project and assign it to student teams from any class
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div>
             <Label htmlFor="title">Project Title *</Label>
             <Input
@@ -216,49 +261,6 @@ export function CreateProjectDialog({
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="class">Class *</Label>
-              <Select value={selectedClass} onValueChange={(val) => {
-                setSelectedClass(val);
-                setSelectedSection("");
-                setTeamLeader(null);
-                setTeamMembers([]);
-              }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select class" />
-                </SelectTrigger>
-                <SelectContent>
-                  {uniqueClasses.map(cls => (
-                    <SelectItem key={cls} value={cls}>Class {cls}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="section">Section *</Label>
-              <Select 
-                value={selectedSection} 
-                onValueChange={(val) => {
-                  setSelectedSection(val);
-                  setTeamLeader(null);
-                  setTeamMembers([]);
-                }}
-                disabled={!selectedClass}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select section" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableSections.map(sec => (
-                    <SelectItem key={sec} value={sec}>Section {sec}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
           <div>
             <Label>SDG Goals (Select applicable goals)</Label>
             <div className="grid grid-cols-2 gap-2 mt-2">
@@ -285,104 +287,208 @@ export function CreateProjectDialog({
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="teamLeader">Team Leader *</Label>
-            {teamLeader ? (
-              <div className="flex items-center justify-between p-3 border rounded-md bg-muted">
+          {/* Team Leader Selection */}
+          <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+            <Label className="text-base font-semibold">Team Leader *</Label>
+            
+            {leaderData.student ? (
+              <div className="flex items-center justify-between p-3 border rounded-md bg-background">
                 <div>
-                  <div className="font-medium">{teamLeader.student_name}</div>
+                  <div className="font-medium">{leaderData.student.student_name}</div>
                   <div className="text-sm text-muted-foreground">
-                    Roll: {teamLeader.roll_number}
+                    Class {leaderData.class} - Section {leaderData.section}
                   </div>
                 </div>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setTeamLeader(null)}
+                  onClick={() => setLeaderData({ student: null, class: '', section: '' })}
                 >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             ) : (
-              <Select 
-                disabled={!selectedClass || !selectedSection}
-                onValueChange={(val) => {
-                  const student = availableStudents.find(s => s.id === val);
-                  if (student) {
-                    setTeamLeader(student);
-                    setTeamMembers(teamMembers.filter(m => m.id !== student.id));
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={
-                    !selectedClass || !selectedSection 
-                      ? "Select class and section first" 
-                      : "Select team leader"
-                  } />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableStudents.map(student => (
-                    <SelectItem key={student.id} value={student.id}>
-                      {student.student_name} - {student.roll_number}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-3 gap-4">
+                {/* Select Class */}
+                <div>
+                  <Label>Class</Label>
+                  <Select 
+                    value={leaderData.class} 
+                    onValueChange={(val) => setLeaderData({...leaderData, class: val, section: '', student: null})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select class" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {uniqueClasses.map(cls => (
+                        <SelectItem key={cls} value={cls}>Class {cls}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Select Section */}
+                <div>
+                  <Label>Section</Label>
+                  <Select 
+                    value={leaderData.section} 
+                    onValueChange={(val) => setLeaderData({...leaderData, section: val, student: null})}
+                    disabled={!leaderData.class}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select section" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getSectionsForClass(leaderData.class).map(sec => (
+                        <SelectItem key={sec} value={sec}>Section {sec}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Select Student */}
+                <div>
+                  <Label>Student</Label>
+                  <Select 
+                    value={leaderData.student?.id || ''} 
+                    onValueChange={(val) => {
+                      const student = getStudentsForClassSection(leaderData.class, leaderData.section).find(s => s.id === val);
+                      if (student) {
+                        setLeaderData({...leaderData, student});
+                      }
+                    }}
+                    disabled={!leaderData.class || !leaderData.section}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select student" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getStudentsForClassSection(leaderData.class, leaderData.section).map(student => (
+                        <SelectItem key={student.id} value={student.id}>
+                          {student.student_name} - {student.roll_number}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             )}
           </div>
 
-          <div>
-            <Label htmlFor="teamMembers">Team Members</Label>
-            <div className="space-y-2">
-              {teamMembers.length > 0 && (
+          {/* Team Members Selection */}
+          <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+            <div className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              <Label className="text-base font-semibold">Team Members (Optional)</Label>
+            </div>
+            
+            {/* Add Member Form */}
+            <div className="grid grid-cols-4 gap-4 items-end">
+              {/* Select Class */}
+              <div>
+                <Label>Class</Label>
+                <Select 
+                  value={memberInput.class} 
+                  onValueChange={(val) => setMemberInput({...memberInput, class: val, section: '', student: null})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {uniqueClasses.map(cls => (
+                      <SelectItem key={cls} value={cls}>Class {cls}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Select Section */}
+              <div>
+                <Label>Section</Label>
+                <Select 
+                  value={memberInput.section} 
+                  onValueChange={(val) => setMemberInput({...memberInput, section: val, student: null})}
+                  disabled={!memberInput.class}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select section" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getSectionsForClass(memberInput.class).map(sec => (
+                      <SelectItem key={sec} value={sec}>Section {sec}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Select Student */}
+              <div>
+                <Label>Student</Label>
+                <Select 
+                  value={memberInput.student?.id || ''} 
+                  onValueChange={(val) => {
+                    const student = getStudentsForClassSection(memberInput.class, memberInput.section).find(s => s.id === val);
+                    if (student) {
+                      setMemberInput({...memberInput, student});
+                    }
+                  }}
+                  disabled={!memberInput.class || !memberInput.section}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select student" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getStudentsForClassSection(memberInput.class, memberInput.section)
+                      .filter(s => s.id !== leaderData.student?.id && !teamMembers.some(m => m.id === s.id))
+                      .map(student => (
+                        <SelectItem key={student.id} value={student.id}>
+                          {student.student_name} - {student.roll_number}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Add Button */}
+              <Button 
+                type="button" 
+                onClick={handleAddMember}
+                disabled={!memberInput.student}
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add
+              </Button>
+            </div>
+
+            {/* Display Added Members */}
+            {teamMembers.length > 0 && (
+              <div className="space-y-2 mt-4">
+                <Label className="text-sm text-muted-foreground">Added Members ({teamMembers.length})</Label>
                 <div className="flex flex-wrap gap-2">
-                  {teamMembers.map(member => (
-                    <Badge key={member.id} variant="secondary" className="gap-2">
-                      {member.student_name}
+                  {teamMembers.map((member) => (
+                    <Badge key={member.id} variant="secondary" className="gap-2 py-2 px-3">
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">{member.name}</span>
+                        <span className="text-xs text-muted-foreground">{member.class} - Section {member.section}</span>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => removeTeamMember(member.id)}
-                        className="hover:text-destructive"
+                        onClick={() => handleRemoveMember(member.id)}
+                        className="hover:text-destructive ml-2"
                       >
                         <X className="h-3 w-3" />
                       </button>
                     </Badge>
                   ))}
                 </div>
-              )}
-              <Select
-                value=""
-                onValueChange={(val) => {
-                  const student = availableStudents.find(s => s.id === val);
-                  if (student) addTeamMember(student);
-                }}
-                disabled={!selectedClass || !selectedSection}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={
-                    !selectedClass || !selectedSection 
-                      ? "Select class and section first" 
-                      : "Add team member"
-                  } />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableStudents
-                    .filter(s => s.id !== teamLeader?.id && !teamMembers.some(m => m.id === s.id))
-                    .map(student => (
-                      <SelectItem key={student.id} value={student.id}>
-                        {student.student_name} - {student.roll_number}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
           <Button onClick={handleSubmit}>
