@@ -37,3 +37,29 @@ export interface CompletionTimelineItem extends ContentCompletion {
   module_title: string;
   content_type: string;
 }
+
+export interface StudentContentCompletion {
+  id: string;
+  student_id: string;
+  student_name: string;
+  content_id: string;
+  content_title: string;
+  module_id: string;
+  module_title: string;
+  session_id: string;
+  course_id: string;
+  course_name: string;
+  officer_id: string;
+  officer_name: string;
+  completed_at: string; // ISO timestamp
+  class_name: string;
+  content_type: 'video' | 'pdf' | 'ppt' | 'link' | 'simulation' | 'youtube';
+}
+
+export interface StudentLearningLog {
+  student_id: string;
+  course_id: string;
+  completions: StudentContentCompletion[];
+  total_completed: number;
+  last_updated: string;
+}

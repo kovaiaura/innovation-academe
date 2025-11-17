@@ -1,5 +1,6 @@
 import { CourseSessionDelivery, SessionProgress } from '@/types/session';
 import { mockModules } from '@/data/mockCourseData';
+import { recordStudentCompletions } from './studentCompletionHelpers';
 
 const STORAGE_KEY = 'officer_session_deliveries';
 
@@ -54,6 +55,18 @@ export function updateSessionProgress(
     if (moduleContent && !session.modules_covered.includes(moduleId)) {
       // Add to covered modules (you might want more sophisticated logic here)
       session.modules_covered.push(moduleId);
+    }
+    
+    // Record completion for all students present in the session
+    if (session.students_present.length > 0) {
+      recordStudentCompletions(
+        sessionId,
+        contentId,
+        moduleId,
+        session.course_id,
+        session.officer_id,
+        session.students_present
+      );
     }
     
     localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
