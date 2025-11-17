@@ -14,23 +14,25 @@ import {
   CourseAnalytics
 } from '@/types/course';
 
-// Mock Courses
+// Mock Courses - Comprehensive STEM Curriculum
 export const mockCourses: Course[] = [
+  // A. Core STEM & Technology (9 courses)
   {
     id: 'course-1',
-    course_code: 'AI101',
-    title: 'Introduction to Artificial Intelligence',
-    description: 'Learn the fundamentals of AI, machine learning, and neural networks. This course covers basic concepts, algorithms, and practical applications.',
-    category: 'ai_ml',
-    thumbnail_url: 'https://images.unsplash.com/photo-1677442136019-21780ecad995',
+    course_code: 'ELEC101',
+    title: 'Basic Electronics',
+    description: 'Learn fundamental electronics concepts including circuits, components, and basic electrical principles. Perfect starting point for aspiring engineers and makers.',
+    category: 'electronics',
+    thumbnail_url: 'https://images.unsplash.com/photo-1518770660439-4636190af475',
     difficulty: 'beginner',
     duration_weeks: 8,
-    prerequisites: 'Basic programming knowledge',
+    prerequisites: 'Basic mathematics',
     learning_outcomes: [
-      'Understand core AI concepts and terminology',
-      'Implement basic machine learning algorithms',
-      'Apply AI techniques to real-world problems',
-      'Evaluate AI model performance'
+      'Understand electrical circuits and Ohm\'s law',
+      'Identify and use electronic components',
+      'Design simple circuits',
+      'Use multimeters and basic testing equipment',
+      'Apply safety practices in electronics'
     ],
     status: 'active',
     created_by: 'admin-1',
@@ -39,85 +41,495 @@ export const mockCourses: Course[] = [
   },
   {
     id: 'course-2',
-    course_code: 'WEB201',
-    title: 'Full Stack Web Development',
-    description: 'Master modern web development with React, Node.js, and databases. Build complete web applications from frontend to backend.',
-    category: 'web_dev',
-    thumbnail_url: 'https://images.unsplash.com/photo-1627398242454-45a1465c2479',
+    course_code: 'IOT201',
+    title: 'IoT - Internet of Things',
+    description: 'Explore IoT fundamentals, sensor networks, and smart device programming. Build connected devices and applications that communicate over the internet.',
+    category: 'iot',
+    thumbnail_url: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f',
     difficulty: 'intermediate',
-    duration_weeks: 12,
-    prerequisites: 'HTML, CSS, JavaScript basics',
+    duration_weeks: 10,
+    prerequisites: 'Basic Electronics, programming basics',
     learning_outcomes: [
-      'Build responsive web applications with React',
-      'Create RESTful APIs with Node.js',
-      'Manage databases with SQL and NoSQL',
-      'Deploy applications to production'
+      'Design IoT system architectures',
+      'Program microcontrollers and sensors',
+      'Implement IoT communication protocols (MQTT, HTTP)',
+      'Develop smart home applications',
+      'Secure IoT devices and networks'
     ],
     status: 'active',
     created_by: 'admin-1',
-    created_at: '2024-01-10T10:00:00Z',
-    updated_at: '2024-01-10T10:00:00Z'
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
   },
   {
     id: 'course-3',
-    course_code: 'IOT301',
-    title: 'Internet of Things & Smart Devices',
-    description: 'Explore IoT fundamentals, sensor networks, and smart device programming. Build connected devices and applications.',
-    category: 'iot',
-    thumbnail_url: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f',
-    difficulty: 'advanced',
-    duration_weeks: 10,
-    prerequisites: 'Electronics basics, programming experience',
-    learning_outcomes: [
-      'Design IoT architectures',
-      'Program microcontrollers and sensors',
-      'Implement IoT communication protocols',
-      'Develop smart home applications'
-    ],
-    status: 'active',
-    created_by: 'admin-1',
-    created_at: '2024-02-01T10:00:00Z',
-    updated_at: '2024-02-01T10:00:00Z'
-  },
-  {
-    id: 'course-4',
-    course_code: 'ROB401',
-    title: 'Robotics & Automation',
-    description: 'Learn robotics principles, control systems, and automation techniques. Program robots for various tasks.',
+    course_code: 'ROB301',
+    title: 'Robotics',
+    description: 'Master robotics principles, control systems, and automation techniques. Program and build robots for various real-world applications.',
     category: 'robotics',
+    thumbnail_url: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e',
     difficulty: 'advanced',
-    duration_weeks: 14,
-    prerequisites: 'Programming, basic mechanics',
+    duration_weeks: 12,
+    prerequisites: 'Electronics, programming experience',
     learning_outcomes: [
       'Understand robot kinematics and dynamics',
       'Program robot control systems',
       'Implement computer vision for robots',
-      'Design automated solutions'
+      'Design automated solutions',
+      'Build and test robotic prototypes'
     ],
     status: 'active',
     created_by: 'admin-1',
-    created_at: '2024-01-20T10:00:00Z',
-    updated_at: '2024-01-20T10:00:00Z'
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  {
+    id: 'course-4',
+    course_code: 'AI201',
+    title: 'Artificial Intelligence',
+    description: 'Learn AI fundamentals, machine learning algorithms, and neural networks. Apply AI techniques to solve real-world problems across various domains.',
+    category: 'ai_ml',
+    thumbnail_url: 'https://images.unsplash.com/photo-1677442136019-21780ecad995',
+    difficulty: 'intermediate',
+    duration_weeks: 10,
+    prerequisites: 'Programming, basic mathematics',
+    learning_outcomes: [
+      'Understand core AI concepts and terminology',
+      'Implement machine learning algorithms',
+      'Build neural networks',
+      'Apply AI to practical problems',
+      'Evaluate and optimize AI models'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
   },
   {
     id: 'course-5',
     course_code: 'DS201',
-    title: 'Data Science Fundamentals',
-    description: 'Master data analysis, visualization, and statistical modeling. Work with real datasets to extract insights.',
+    title: 'Data Science',
+    description: 'Master data analysis, visualization, statistical modeling, and big data techniques. Extract actionable insights from complex datasets.',
     category: 'data_science',
+    thumbnail_url: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71',
     difficulty: 'intermediate',
     duration_weeks: 10,
-    prerequisites: 'Mathematics, basic programming',
+    prerequisites: 'Mathematics, programming basics',
     learning_outcomes: [
       'Perform exploratory data analysis',
-      'Create data visualizations',
+      'Create compelling data visualizations',
       'Build predictive models',
+      'Apply statistical techniques',
       'Communicate data insights effectively'
     ],
     status: 'active',
     created_by: 'admin-1',
-    created_at: '2024-01-25T10:00:00Z',
-    updated_at: '2024-01-25T10:00:00Z'
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  {
+    id: 'course-6',
+    course_code: 'ARVR301',
+    title: 'AR/VR/MR/XR - Extended Reality',
+    description: 'Explore augmented, virtual, mixed, and extended reality technologies. Create immersive experiences and applications for next-generation computing.',
+    category: 'ar_vr',
+    thumbnail_url: 'https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac',
+    difficulty: 'advanced',
+    duration_weeks: 8,
+    prerequisites: '3D graphics basics, programming',
+    learning_outcomes: [
+      'Understand XR technologies and platforms',
+      'Develop AR applications',
+      'Create VR experiences',
+      'Implement spatial computing interfaces',
+      'Design immersive user experiences'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  {
+    id: 'course-7',
+    course_code: 'BLOCK201',
+    title: 'Blockchain Technology',
+    description: 'Learn blockchain fundamentals, cryptocurrency concepts, and decentralized application development. Build secure distributed systems.',
+    category: 'blockchain',
+    thumbnail_url: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0',
+    difficulty: 'intermediate',
+    duration_weeks: 8,
+    prerequisites: 'Programming, basic cryptography',
+    learning_outcomes: [
+      'Understand blockchain architecture',
+      'Develop smart contracts',
+      'Implement cryptocurrency concepts',
+      'Build decentralized applications (dApps)',
+      'Apply blockchain to real-world use cases'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  {
+    id: 'course-8',
+    course_code: 'DRONE301',
+    title: 'Drones & UAV Technology',
+    description: 'Master drone technology, flight mechanics, and autonomous navigation. Build and program unmanned aerial vehicles for various applications.',
+    category: 'drones',
+    thumbnail_url: 'https://images.unsplash.com/photo-1473968512647-3e447244af8f',
+    difficulty: 'advanced',
+    duration_weeks: 10,
+    prerequisites: 'Electronics, programming, basic physics',
+    learning_outcomes: [
+      'Understand UAV flight principles',
+      'Program autonomous navigation systems',
+      'Implement computer vision for drones',
+      'Design drone applications',
+      'Comply with aviation regulations'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  {
+    id: 'course-9',
+    course_code: 'CYBER201',
+    title: 'Cybersecurity',
+    description: 'Learn cybersecurity principles, ethical hacking, and defense strategies. Protect systems and networks from digital threats.',
+    category: 'cybersecurity',
+    thumbnail_url: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b',
+    difficulty: 'intermediate',
+    duration_weeks: 10,
+    prerequisites: 'Networking basics, operating systems',
+    learning_outcomes: [
+      'Identify security vulnerabilities',
+      'Implement security best practices',
+      'Conduct ethical penetration testing',
+      'Secure networks and applications',
+      'Respond to security incidents'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  
+  // B. Design, Making & Innovation (3 courses)
+  {
+    id: 'course-10',
+    course_code: 'DT101',
+    title: 'Design Thinking',
+    description: 'Learn human-centered design methodology to solve complex problems. Develop innovative solutions through empathy, ideation, and prototyping.',
+    category: 'design_thinking',
+    thumbnail_url: 'https://images.unsplash.com/photo-1531403009284-440f080d1e12',
+    difficulty: 'beginner',
+    duration_weeks: 6,
+    prerequisites: 'None',
+    learning_outcomes: [
+      'Apply design thinking framework',
+      'Conduct user research and empathy mapping',
+      'Generate creative solutions through ideation',
+      'Build rapid prototypes',
+      'Test and iterate designs'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  {
+    id: 'course-11',
+    course_code: 'PD201',
+    title: 'Product Design',
+    description: 'Master product design principles from concept to market. Create user-friendly, aesthetically pleasing products that solve real problems.',
+    category: 'product_design',
+    thumbnail_url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64',
+    difficulty: 'intermediate',
+    duration_weeks: 8,
+    prerequisites: 'Design Thinking basics',
+    learning_outcomes: [
+      'Develop product concepts',
+      'Create detailed design specifications',
+      'Use CAD tools for product modeling',
+      'Conduct usability testing',
+      'Understand manufacturing considerations'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  {
+    id: 'course-12',
+    course_code: 'PROTO301',
+    title: 'Prototyping - 3D Printing, Laser, Wood',
+    description: 'Master advanced prototyping techniques using 3D printers, laser cutters, and woodworking tools. Transform digital designs into physical prototypes.',
+    category: 'prototyping',
+    thumbnail_url: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837',
+    difficulty: 'advanced',
+    duration_weeks: 10,
+    prerequisites: 'Product Design, CAD basics',
+    learning_outcomes: [
+      'Operate 3D printers and laser cutters',
+      'Choose appropriate materials for prototypes',
+      'Apply woodworking techniques',
+      'Optimize designs for manufacturing',
+      'Produce functional prototypes'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  
+  // C. Sustainability & Social Sciences (5 courses)
+  {
+    id: 'course-13',
+    course_code: 'ENVT201',
+    title: 'Environmental Technology',
+    description: 'Explore green technologies and sustainable solutions for environmental challenges. Learn to create eco-friendly innovations.',
+    category: 'environmental_tech',
+    thumbnail_url: 'https://images.unsplash.com/photo-1497436072909-60f360e1d4b1',
+    difficulty: 'intermediate',
+    duration_weeks: 8,
+    prerequisites: 'Basic science knowledge',
+    learning_outcomes: [
+      'Understand environmental challenges',
+      'Apply renewable energy technologies',
+      'Design sustainable systems',
+      'Measure environmental impact',
+      'Implement green solutions'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  {
+    id: 'course-14',
+    course_code: 'SDG101',
+    title: 'Sustainable Development Goals',
+    description: 'Learn about UN SDGs and how to contribute to global sustainability. Develop solutions aligned with the 2030 agenda.',
+    category: 'sdg',
+    thumbnail_url: 'https://images.unsplash.com/photo-1532629345422-7515f3d16bb6',
+    difficulty: 'beginner',
+    duration_weeks: 6,
+    prerequisites: 'None',
+    learning_outcomes: [
+      'Understand all 17 SDGs',
+      'Identify local sustainability challenges',
+      'Design SDG-aligned projects',
+      'Measure impact on SDGs',
+      'Collaborate for sustainable development'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  {
+    id: 'course-15',
+    course_code: 'ETH101',
+    title: 'Ethics in Technology',
+    description: 'Explore ethical considerations in technology development and deployment. Make responsible decisions in the digital age.',
+    category: 'ethics',
+    thumbnail_url: 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85',
+    difficulty: 'beginner',
+    duration_weeks: 4,
+    prerequisites: 'None',
+    learning_outcomes: [
+      'Understand technology ethics frameworks',
+      'Identify ethical dilemmas in tech',
+      'Apply ethical decision-making',
+      'Consider privacy and data rights',
+      'Promote responsible innovation'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  {
+    id: 'course-16',
+    course_code: 'ETIQ101',
+    title: 'Professional Etiquettes',
+    description: 'Master professional behavior, workplace etiquette, and interpersonal skills. Build a strong professional presence.',
+    category: 'etiquettes',
+    thumbnail_url: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902',
+    difficulty: 'beginner',
+    duration_weeks: 4,
+    prerequisites: 'None',
+    learning_outcomes: [
+      'Practice professional communication',
+      'Demonstrate workplace etiquette',
+      'Build professional relationships',
+      'Handle difficult situations gracefully',
+      'Present yourself professionally'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  {
+    id: 'course-17',
+    course_code: 'HV101',
+    title: 'Human Values & Wellbeing',
+    description: 'Develop core human values and personal wellbeing practices. Build emotional intelligence and resilience for life success.',
+    category: 'human_values',
+    thumbnail_url: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773',
+    difficulty: 'beginner',
+    duration_weeks: 6,
+    prerequisites: 'None',
+    learning_outcomes: [
+      'Understand core human values',
+      'Develop emotional intelligence',
+      'Practice mindfulness and wellbeing',
+      'Build resilience and adaptability',
+      'Foster empathy and compassion'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  
+  // D. Digital Media & Communication (2 courses)
+  {
+    id: 'course-18',
+    course_code: 'DM201',
+    title: 'Digital Media - Photo, Video, Graphics, Podcast',
+    description: 'Master digital content creation across multiple formats. Produce professional-quality photos, videos, graphics, and podcasts.',
+    category: 'digital_media',
+    thumbnail_url: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113',
+    difficulty: 'intermediate',
+    duration_weeks: 8,
+    prerequisites: 'Basic computer skills',
+    learning_outcomes: [
+      'Create professional photography',
+      'Produce and edit videos',
+      'Design graphics and visual content',
+      'Record and edit podcasts',
+      'Build a digital media portfolio'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  {
+    id: 'course-19',
+    course_code: 'COMM101',
+    title: 'Communication & Soft Skills',
+    description: 'Develop essential communication and interpersonal skills. Master public speaking, teamwork, and leadership abilities.',
+    category: 'communication',
+    thumbnail_url: 'https://images.unsplash.com/photo-1557804506-669a67965ba0',
+    difficulty: 'beginner',
+    duration_weeks: 6,
+    prerequisites: 'None',
+    learning_outcomes: [
+      'Communicate effectively in various contexts',
+      'Deliver compelling presentations',
+      'Work collaboratively in teams',
+      'Resolve conflicts constructively',
+      'Demonstrate leadership skills'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  
+  // E. Future Skills & Career Enablement (4 courses)
+  {
+    id: 'course-20',
+    course_code: 'PE201',
+    title: 'Prompt Engineering',
+    description: 'Master AI prompt engineering to maximize AI tool effectiveness. Create powerful prompts for various AI applications.',
+    category: 'prompt_engineering',
+    thumbnail_url: 'https://images.unsplash.com/photo-1676277791608-ac3b8c68b2b3',
+    difficulty: 'intermediate',
+    duration_weeks: 6,
+    prerequisites: 'Basic AI understanding',
+    learning_outcomes: [
+      'Understand prompt engineering principles',
+      'Write effective AI prompts',
+      'Optimize AI responses',
+      'Apply prompts to various domains',
+      'Integrate AI into workflows'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  {
+    id: 'course-21',
+    course_code: 'ENT201',
+    title: 'Entrepreneurship',
+    description: 'Learn to start and grow successful ventures. Develop business acumen, pitch skills, and entrepreneurial mindset.',
+    category: 'entrepreneurship',
+    thumbnail_url: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd',
+    difficulty: 'intermediate',
+    duration_weeks: 8,
+    prerequisites: 'None',
+    learning_outcomes: [
+      'Develop business models',
+      'Create business plans',
+      'Pitch ideas to investors',
+      'Understand startup ecosystems',
+      'Apply lean startup methodology'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  {
+    id: 'course-22',
+    course_code: 'FIN101',
+    title: 'Financial Literacy',
+    description: 'Master personal finance, investing, and money management. Build a strong foundation for financial independence.',
+    category: 'financial_literacy',
+    thumbnail_url: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e',
+    difficulty: 'beginner',
+    duration_weeks: 6,
+    prerequisites: 'None',
+    learning_outcomes: [
+      'Understand personal finance basics',
+      'Create and manage budgets',
+      'Make informed investment decisions',
+      'Plan for financial goals',
+      'Understand taxes and credit'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
+  },
+  {
+    id: 'course-23',
+    course_code: 'CAREER101',
+    title: 'Career Preparation',
+    description: 'Prepare for career success with resume building, interview skills, and professional networking. Launch your career confidently.',
+    category: 'career_prep',
+    thumbnail_url: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40',
+    difficulty: 'beginner',
+    duration_weeks: 8,
+    prerequisites: 'None',
+    learning_outcomes: [
+      'Create compelling resumes and portfolios',
+      'Master interview techniques',
+      'Build professional networks',
+      'Develop personal branding',
+      'Navigate job search effectively'
+    ],
+    status: 'active',
+    created_by: 'admin-1',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z'
   }
 ];
 
