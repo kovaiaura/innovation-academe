@@ -2,6 +2,8 @@ export interface ProjectMember {
   id: string;
   name: string;
   role: 'leader' | 'member';
+  class: string;
+  section: string;
 }
 
 export interface ProgressUpdate {
@@ -60,10 +62,10 @@ export const mockProjects: Record<string, Project[]> = {
       description: 'Complete home automation system using IoT sensors and cloud connectivity',
       category: 'IoT',
       team_members: [
-        { id: 'springfield-8-A-001', name: 'Aarav Sharma', role: 'leader' },
-        { id: '2', name: 'John Student', role: 'member' },
-        { id: 'springfield-8-A-002', name: 'Vivaan Verma', role: 'member' },
-        { id: 'springfield-8-A-003', name: 'Aditya Gupta', role: 'member' }
+        { id: 'springfield-8-A-001', name: 'Aarav Sharma', role: 'leader', class: 'Class 8', section: 'A' },
+        { id: '2', name: 'John Student', role: 'member', class: 'Class 10', section: 'B' },
+        { id: 'springfield-8-A-002', name: 'Vivaan Verma', role: 'member', class: 'Class 8', section: 'A' },
+        { id: 'springfield-8-A-003', name: 'Aditya Gupta', role: 'member', class: 'Class 9', section: 'C' }
       ],
       created_by_officer_id: 'off1',
       created_by_officer_name: 'Dr. Rajesh Kumar',
@@ -97,9 +99,9 @@ export const mockProjects: Record<string, Project[]> = {
       description: 'Machine learning system for crop health monitoring and irrigation optimization',
       category: 'AI/ML',
       team_members: [
-        { id: '2', name: 'John Student', role: 'leader' },
-        { id: 'springfield-10-B-001', name: 'Aadhya Reddy', role: 'member' },
-        { id: 'springfield-10-B-002', name: 'Ananya Nair', role: 'member' }
+        { id: '2', name: 'John Student', role: 'leader', class: 'Class 10', section: 'B' },
+        { id: 'springfield-10-B-001', name: 'Aadhya Reddy', role: 'member', class: 'Class 10', section: 'B' },
+        { id: 'springfield-10-B-002', name: 'Ananya Nair', role: 'member', class: 'Class 11', section: 'A' }
       ],
       created_by_officer_id: 'off1',
       created_by_officer_name: 'Dr. Rajesh Kumar',
@@ -140,10 +142,10 @@ export const mockProjects: Record<string, Project[]> = {
       description: 'Transparent supply chain management using blockchain technology',
       category: 'Blockchain',
       team_members: [
-        { id: 'springfield-9-C-001', name: 'Arjun Singh', role: 'leader' },
-        { id: 'springfield-9-C-002', name: 'Sai Patel', role: 'member' },
-        { id: 'springfield-9-C-003', name: 'Reyansh Gupta', role: 'member' },
-        { id: 'springfield-9-C-004', name: 'Krishna Kumar', role: 'member' }
+        { id: 'springfield-9-C-001', name: 'Arjun Singh', role: 'leader', class: 'Class 9', section: 'C' },
+        { id: 'springfield-9-C-002', name: 'Sai Patel', role: 'member', class: 'Class 9', section: 'C' },
+        { id: 'springfield-9-C-003', name: 'Reyansh Gupta', role: 'member', class: 'Class 10', section: 'A' },
+        { id: 'springfield-9-C-004', name: 'Krishna Kumar', role: 'member', class: 'Class 8', section: 'B' }
       ],
       created_by_officer_id: 'off1',
       created_by_officer_name: 'Dr. Rajesh Kumar',
@@ -163,9 +165,9 @@ export const mockProjects: Record<string, Project[]> = {
       description: 'Low-cost water purification system powered by solar energy for rural areas',
       category: 'Renewable Energy',
       team_members: [
-        { id: 'springfield-11-A-001', name: 'Diya Sharma', role: 'leader' },
-        { id: '2', name: 'John Student', role: 'member' },
-        { id: 'springfield-11-A-002', name: 'Isha Verma', role: 'member' }
+        { id: 'springfield-11-A-001', name: 'Diya Sharma', role: 'leader', class: 'Class 11', section: 'A' },
+        { id: '2', name: 'John Student', role: 'member', class: 'Class 10', section: 'B' },
+        { id: 'springfield-11-A-002', name: 'Isha Verma', role: 'member', class: 'Class 11', section: 'A' }
       ],
       created_by_officer_id: 'off1',
       created_by_officer_name: 'Dr. Rajesh Kumar',
