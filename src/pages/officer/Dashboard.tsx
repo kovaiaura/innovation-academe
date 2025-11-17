@@ -36,6 +36,7 @@ import {
   getApprovedLeaveDates,
   getTodayLeaveDetails,
   getAllLeaveApplications,
+  getLeaveBalance,
 } from '@/data/mockLeaveData';
 import type { LeaveApplication } from '@/types/attendance';
 import { getRoleBasePath } from '@/utils/roleHelpers';
@@ -132,6 +133,10 @@ export default function OfficerDashboard() {
   const [last7Days, setLast7Days] = useState<
     Array<{ date: string; day: string; status: 'present' | 'absent' | 'leave' | 'weekend' | null; leaveType?: string }>
   >([]);
+  
+  // Get leave balance
+  const currentYear = new Date().getFullYear().toString();
+  const leaveBalance = user?.id ? getLeaveBalance(user.id, currentYear) : null;
   
   // Substitute assignments state
   const [substituteAssignments, setSubstituteAssignments] = useState<any[]>([]);
@@ -844,6 +849,40 @@ export default function OfficerDashboard() {
             </Card>
           )}
         </div>
+
+        {/* Leave Balance - Full Width */}
+        {leaveBalance && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Leave Balance ({currentYear})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="flex flex-col items-center p-4 bg-muted/50 rounded-lg">
+                  <span className="text-sm text-muted-foreground mb-2">Casual Leave</span>
+                  <Badge variant={leaveBalance.casual_leave > 5 ? "default" : "destructive"} className="text-lg px-4 py-2">
+                    {leaveBalance.casual_leave} days
+                  </Badge>
+                </div>
+                <div className="flex flex-col items-center p-4 bg-muted/50 rounded-lg">
+                  <span className="text-sm text-muted-foreground mb-2">Sick Leave</span>
+                  <Badge variant={leaveBalance.sick_leave > 3 ? "default" : "destructive"} className="text-lg px-4 py-2">
+                    {leaveBalance.sick_leave} days
+                  </Badge>
+                </div>
+                <div className="flex flex-col items-center p-4 bg-muted/50 rounded-lg">
+                  <span className="text-sm text-muted-foreground mb-2">Earned Leave</span>
+                  <Badge variant={leaveBalance.earned_leave > 7 ? "default" : "destructive"} className="text-lg px-4 py-2">
+                    {leaveBalance.earned_leave} days
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* My Salary Tracker - Full Width */}
         <SalaryTrackerCard

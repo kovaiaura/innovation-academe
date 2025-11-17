@@ -10,8 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { UserPlus, Search, Mail, Phone, Building2, UserCheck, Plus, X } from 'lucide-react';
+import { UserPlus, Search, Mail, Phone, Building2, UserCheck, Plus, X, DollarSign, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
+import type { LeaveBalance } from '@/types/attendance';
 
 interface Officer {
   id: string;
@@ -119,11 +120,35 @@ export default function OfficerManagement() {
     phone: '',
     employment_type: 'full_time',
     salary: '',
+    // Payroll Configuration
+    hourly_rate: '',
+    overtime_rate_multiplier: '1.5',
+    normal_working_hours: '8',
+    // Leave Balance Configuration
+    casual_leave: '12',
+    sick_leave: '10',
+    earned_leave: '15',
   });
 
   const handleAddOfficer = () => {
+    // Validation
+    if (!formData.name || !formData.email || !formData.phone || !formData.salary) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    if (!formData.hourly_rate || !formData.overtime_rate_multiplier || !formData.normal_working_hours) {
+      toast.error("Please fill in payroll configuration");
+      return;
+    }
+
+    if (!formData.casual_leave || !formData.sick_leave || !formData.earned_leave) {
+      toast.error("Please fill in leave allowances");
+      return;
+    }
+
     const newOfficer: Officer = {
-      id: String(officers.length + 1),
+      id: `officer-${Date.now()}`,
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
@@ -135,9 +160,46 @@ export default function OfficerManagement() {
     };
 
     setOfficers([...officers, newOfficer]);
+
+    // Store payroll configuration (for GPS-based payroll system)
+    const payrollConfig = {
+      officer_id: newOfficer.id,
+      hourly_rate: parseFloat(formData.hourly_rate),
+      overtime_rate_multiplier: parseFloat(formData.overtime_rate_multiplier),
+      normal_working_hours: parseFloat(formData.normal_working_hours),
+    };
+    localStorage.setItem(`payroll_config_${newOfficer.id}`, JSON.stringify(payrollConfig));
+
+    // Create initial leave balance
+    const leaveBalance: LeaveBalance = {
+      officer_id: newOfficer.id,
+      sick_leave: parseInt(formData.sick_leave),
+      casual_leave: parseInt(formData.casual_leave),
+      earned_leave: parseInt(formData.earned_leave),
+      year: new Date().getFullYear().toString(),
+    };
+    
+    // Store in mockLeaveBalances
+    const { initializeLeaveBalance } = require('@/data/mockLeaveData');
+    initializeLeaveBalance(leaveBalance);
+
+    toast.success(`Officer ${formData.name} added successfully`);
     setIsAddDialogOpen(false);
-    setFormData({ name: '', email: '', phone: '', employment_type: 'full_time', salary: '' });
-    toast.success('Innovation Officer added successfully');
+    
+    // Reset form
+    setFormData({
+      name: '',
+      email: '',
+      phone: '',
+      employment_type: 'full_time',
+      salary: '',
+      hourly_rate: '',
+      overtime_rate_multiplier: '1.5',
+      normal_working_hours: '8',
+      casual_leave: '12',
+      sick_leave: '10',
+      earned_leave: '15',
+    });
   };
 
   const handleAddAssignment = () => {
@@ -295,6 +357,93 @@ export default function OfficerManagement() {
                         placeholder="65000"
                       />
                     </div>
+                    
+                    {/* Payroll Configuration Section */}
+                    <div className="border-t pt-4 mt-4">
+                      <h3 className="font-semibold mb-3 flex items-center gap-2">
+                        <DollarSign className="h-4 w-4" />
+                        Payroll Configuration
+                      </h3>
+                      
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <Label htmlFor="hourly_rate">Hourly Rate (₹)</Label>
+                          <Input
+                            id="hourly_rate"
+                            type="number"
+                            value={formData.hourly_rate}
+                            onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
+                            placeholder="500"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="overtime_multiplier">Overtime Rate</Label>
+                          <Input
+                            id="overtime_multiplier"
+                            type="number"
+                            step="0.1"
+                            value={formData.overtime_rate_multiplier}
+                            onChange={(e) => setFormData({ ...formData, overtime_rate_multiplier: e.target.value })}
+                            placeholder="1.5"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="working_hours">Working Hrs/Day</Label>
+                          <Input
+                            id="working_hours"
+                            type="number"
+                            value={formData.normal_working_hours}
+                            onChange={(e) => setFormData({ ...formData, normal_working_hours: e.target.value })}
+                            placeholder="8"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Leave Balance Configuration Section */}
+                    <div className="border-t pt-4 mt-4">
+                      <h3 className="font-semibold mb-3 flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Annual Leave Allowance
+                      </h3>
+                      
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <Label htmlFor="casual_leave">Casual Leave</Label>
+                          <Input
+                            id="casual_leave"
+                            type="number"
+                            value={formData.casual_leave}
+                            onChange={(e) => setFormData({ ...formData, casual_leave: e.target.value })}
+                            placeholder="12"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">days/year</p>
+                        </div>
+                        <div>
+                          <Label htmlFor="sick_leave">Sick Leave</Label>
+                          <Input
+                            id="sick_leave"
+                            type="number"
+                            value={formData.sick_leave}
+                            onChange={(e) => setFormData({ ...formData, sick_leave: e.target.value })}
+                            placeholder="10"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">days/year</p>
+                        </div>
+                        <div>
+                          <Label htmlFor="earned_leave">Earned Leave</Label>
+                          <Input
+                            id="earned_leave"
+                            type="number"
+                            value={formData.earned_leave}
+                            onChange={(e) => setFormData({ ...formData, earned_leave: e.target.value })}
+                            placeholder="15"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">days/year</p>
+                        </div>
+                      </div>
+                    </div>
+                    
                     <Button onClick={handleAddOfficer} className="w-full">
                       Add Officer
                     </Button>
