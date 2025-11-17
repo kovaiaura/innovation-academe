@@ -1,6 +1,10 @@
 import { Layout } from "@/components/layout/Layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, BookOpen, GraduationCap, TrendingUp, AlertCircle, Award, Calendar } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { 
+  Users, BookOpen, GraduationCap, TrendingUp, AlertCircle, Award, 
+  CheckCircle, Target, Briefcase, MapPin, Clock, Trophy, 
+  Shield, BarChart, Star, Zap, Rocket
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -15,11 +19,224 @@ const Dashboard = () => {
   const { user } = useAuth();
   const tenant = authService.getTenant();
 
-  const metrics = [
-    { title: "Total Faculty", value: "186", change: "+8", icon: Users, color: "text-blue-500", bgColor: "bg-blue-500/10" },
-    { title: "Total Students", value: "2,845", change: "+12%", icon: GraduationCap, color: "text-green-500", bgColor: "bg-green-500/10" },
-    { title: "Active Courses", value: "245", change: "+15", icon: BookOpen, color: "text-purple-500", bgColor: "bg-purple-500/10" },
-    { title: "Avg. CGPA", value: "7.8", change: "+0.3", icon: TrendingUp, color: "text-orange-500", bgColor: "bg-orange-500/10" },
+  // Platform Value Metrics - What makes this LMS attractive
+  const platformValueMetrics = [
+    { 
+      title: "Student Engagement Rate", 
+      value: "94%", 
+      change: "+12%", 
+      icon: TrendingUp,
+      description: "Students actively using the platform daily",
+      color: "text-green-500", 
+      bgColor: "bg-green-500/10" 
+    },
+    { 
+      title: "Course Completion Rate", 
+      value: "87%", 
+      change: "+18%", 
+      icon: CheckCircle,
+      description: "Students completing assigned courses on time",
+      color: "text-blue-500", 
+      bgColor: "bg-blue-500/10" 
+    },
+    { 
+      title: "Project-Based Learning", 
+      value: "45", 
+      change: "+23", 
+      icon: Target,
+      description: "Active innovation projects this term",
+      color: "text-purple-500", 
+      bgColor: "bg-purple-500/10" 
+    },
+    { 
+      title: "Industry Connections", 
+      value: "12", 
+      change: "+4", 
+      icon: Briefcase,
+      description: "Partner companies for events & mentorship",
+      color: "text-orange-500", 
+      bgColor: "bg-orange-500/10" 
+    },
+    {
+      title: "Certification Rate",
+      value: "78%",
+      change: "+15%",
+      icon: Award,
+      description: "Students earning course certificates",
+      color: "text-indigo-500",
+      bgColor: "bg-indigo-500/10"
+    },
+    {
+      title: "Attendance Tracking",
+      value: "Real-time",
+      change: "GPS Verified",
+      icon: MapPin,
+      description: "Automated attendance with GPS validation",
+      color: "text-teal-500",
+      bgColor: "bg-teal-500/10"
+    }
+  ];
+
+  // ROI Highlights - Why this platform saves money and improves outcomes
+  const roiHighlights = [
+    {
+      title: "Time Saved on Administration",
+      value: "40 hours/week",
+      description: "Automated attendance, grading, and reporting reduce manual administrative workload",
+      icon: Clock,
+      benefit: "Cost Savings",
+      color: "text-emerald-500",
+      bgColor: "bg-emerald-500/10"
+    },
+    {
+      title: "Improved Student Outcomes",
+      value: "+23% Performance",
+      description: "Gamification and personalized learning paths increase student engagement and grades",
+      icon: TrendingUp,
+      benefit: "Academic Excellence",
+      color: "text-blue-500",
+      bgColor: "bg-blue-500/10"
+    },
+    {
+      title: "Parent Satisfaction",
+      value: "4.8/5 Rating",
+      description: "Real-time progress tracking and transparent communication increase parent trust",
+      icon: Users,
+      benefit: "Reputation",
+      color: "text-purple-500",
+      bgColor: "bg-purple-500/10"
+    },
+    {
+      title: "Accreditation Ready",
+      value: "100% Compliant",
+      description: "Comprehensive audit logs and SDG alignment support accreditation requirements",
+      icon: Shield,
+      benefit: "Compliance",
+      color: "text-orange-500",
+      bgColor: "bg-orange-500/10"
+    }
+  ];
+
+  // Platform Features Showcase
+  const platformFeatures = [
+    {
+      category: "Learning Management",
+      features: [
+        "23 STEM Courses with modular content",
+        "Assignment & Assessment management",
+        "Real-time progress tracking",
+        "Certificate generation"
+      ],
+      icon: BookOpen,
+      color: "text-blue-500",
+      bgColor: "bg-blue-500/10"
+    },
+    {
+      category: "Student Engagement",
+      features: [
+        "Gamification with XP & badges",
+        "Project-based learning",
+        "Event participation tracking",
+        "Portfolio & resume builder"
+      ],
+      icon: Trophy,
+      color: "text-purple-500",
+      bgColor: "bg-purple-500/10"
+    },
+    {
+      category: "Operations Management",
+      features: [
+        "GPS-based attendance & payroll",
+        "Inventory & purchase management",
+        "Leave & schedule management",
+        "Automated invoicing"
+      ],
+      icon: Briefcase,
+      color: "text-orange-500",
+      bgColor: "bg-orange-500/10"
+    },
+    {
+      category: "Analytics & Reporting",
+      features: [
+        "Real-time dashboards",
+        "SDG impact tracking",
+        "Performance analytics",
+        "Compliance reports"
+      ],
+      icon: BarChart,
+      color: "text-green-500",
+      bgColor: "bg-green-500/10"
+    }
+  ];
+
+  // Impact Metrics - Success stories
+  const impactMetrics = [
+    {
+      metric: "Student Projects Completed",
+      value: "124",
+      period: "This Academic Year",
+      trend: "+45% vs last year",
+      icon: Target,
+      color: "text-purple-500"
+    },
+    {
+      metric: "Innovation Events Participated",
+      value: "8",
+      period: "This Term",
+      trend: "3 National-level competitions",
+      icon: Trophy,
+      color: "text-yellow-500"
+    },
+    {
+      metric: "SDG Goals Addressed",
+      value: "12/17",
+      period: "Through Curriculum",
+      trend: "Highest in region",
+      icon: Target,
+      color: "text-green-500"
+    },
+    {
+      metric: "Student Employability Score",
+      value: "8.2/10",
+      period: "Based on Skills Tracking",
+      trend: "+1.8 points improvement",
+      icon: TrendingUp,
+      color: "text-blue-500"
+    }
+  ];
+
+  // Competitive Advantages
+  const competitiveAdvantages = [
+    {
+      advantage: "All-in-One Platform",
+      description: "LMS + ERP + Project Management in one unified system",
+      badge: "No Integration Hassles",
+      icon: Zap
+    },
+    {
+      advantage: "STEM-Focused Curriculum",
+      description: "23 industry-relevant courses from Electronics to AI to Entrepreneurship",
+      badge: "Future-Ready Skills",
+      icon: Rocket
+    },
+    {
+      advantage: "Automated Operations",
+      description: "GPS attendance, auto-grading, invoice generation reduce overhead",
+      badge: "40% Cost Reduction",
+      icon: Clock
+    },
+    {
+      advantage: "Accreditation Support",
+      description: "SDG alignment, audit logs, and compliance reporting built-in",
+      badge: "Inspection Ready",
+      icon: Shield
+    },
+    {
+      advantage: "Student Portfolio Builder",
+      description: "Automatic resume generation with projects, certificates, and skills",
+      badge: "Career Advantage",
+      icon: Star
+    }
   ];
 
   const departmentPerformance = [
@@ -48,9 +265,72 @@ const Dashboard = () => {
       <div className="space-y-6">
         <InstitutionHeader />
         
+        {/* Welcome Section with Value Proposition */}
+        <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background rounded-lg p-6 border">
+          <h1 className="text-3xl font-bold mb-2">Your Innovation Platform Dashboard</h1>
+          <p className="text-muted-foreground text-lg">Welcome back, {user?.name}! See how Meta-Innova transforms education management</p>
+        </div>
+
+        {/* Platform Value Metrics */}
         <div>
-          <h1 className="text-3xl font-bold">Management Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, {user?.name}! Complete institution and department overview</p>
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold">Platform Performance</h2>
+            <p className="text-sm text-muted-foreground">Real-time metrics showing platform impact and engagement</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {platformValueMetrics.map((metric) => {
+              const Icon = metric.icon;
+              return (
+                <Card key={metric.title} className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
+                    <div className={`${metric.bgColor} p-2 rounded-lg`}>
+                      <Icon className={`h-4 w-4 ${metric.color}`} />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{metric.value}</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="secondary" className="text-xs">{metric.change}</Badge>
+                      <p className="text-xs text-muted-foreground">{metric.description}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ROI Highlights */}
+        <div>
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold">Return on Investment</h2>
+            <p className="text-sm text-muted-foreground">How Meta-Innova delivers measurable value</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {roiHighlights.map((roi) => {
+              const Icon = roi.icon;
+              return (
+                <Card key={roi.title} className="hover:shadow-lg transition-shadow border-2">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className={`${roi.bgColor} p-3 rounded-lg`}>
+                        <Icon className={`h-5 w-5 ${roi.color}`} />
+                      </div>
+                      <Badge variant="outline" className="text-xs">{roi.benefit}</Badge>
+                    </div>
+                    <CardTitle className="text-lg mt-3">{roi.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                      {roi.value}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{roi.description}</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </div>
 
         {/* Critical Actions Section */}
@@ -68,103 +348,174 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Key Metrics */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {metrics.map((metric) => {
-            const Icon = metric.icon;
-            return (
-              <Card key={metric.title}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
-                  <div className={`${metric.bgColor} p-2 rounded-lg`}>
-                    <Icon className={`h-4 w-4 ${metric.color}`} />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{metric.value}</div>
-                  <p className="text-xs text-muted-foreground">
-                    <span className="text-green-500">{metric.change}</span> from last semester
-                  </p>
-                </CardContent>
-              </Card>
-            );
-          })}
+        {/* Platform Features Showcase */}
+        <div>
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold">Platform Capabilities</h2>
+            <p className="text-sm text-muted-foreground">Complete suite of features for modern education</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {platformFeatures.map((feature) => {
+              const Icon = feature.icon;
+              return (
+                <Card key={feature.category} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className={`${feature.bgColor} p-3 rounded-lg w-fit`}>
+                      <Icon className={`h-6 w-6 ${feature.color}`} />
+                    </div>
+                    <CardTitle className="text-lg mt-3">{feature.category}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {feature.features.map((item, idx) => (
+                        <li key={idx} className="text-sm flex items-start gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Alerts */}
+        {/* Impact Metrics */}
+        <div>
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold">Impact & Success Stories</h2>
+            <p className="text-sm text-muted-foreground">Real results from your institution</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {impactMetrics.map((impact) => {
+              const Icon = impact.icon;
+              return (
+                <Card key={impact.metric} className="hover:shadow-lg transition-shadow bg-gradient-to-br from-background to-muted/20">
+                  <CardHeader>
+                    <Icon className={`h-8 w-8 ${impact.color} mb-2`} />
+                    <CardTitle className="text-sm font-medium">{impact.metric}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold mb-1">{impact.value}</div>
+                    <p className="text-xs text-muted-foreground mb-2">{impact.period}</p>
+                    <Badge variant="secondary" className="text-xs">{impact.trend}</Badge>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Competitive Advantages */}
+        <div>
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold">Why Choose Meta-Innova</h2>
+            <p className="text-sm text-muted-foreground">Competitive advantages that set us apart</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {competitiveAdvantages.map((adv) => {
+              const Icon = adv.icon;
+              return (
+                <Card key={adv.advantage} className="hover:shadow-lg transition-shadow border-primary/20">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <Icon className="h-6 w-6 text-primary" />
+                      <Badge className="text-xs bg-primary/10 text-primary hover:bg-primary/20">{adv.badge}</Badge>
+                    </div>
+                    <CardTitle className="text-lg mt-3">{adv.advantage}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">{adv.description}</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Department Performance */}
         <Card>
           <CardHeader>
-            <CardTitle>Important Alerts</CardTitle>
+            <CardTitle>Department Performance</CardTitle>
+            <CardDescription>Overview of all academic departments</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {alerts.map((alert, index) => (
-              <div key={index} className="flex items-start gap-4 p-4 border rounded-lg">
-                <alert.icon className={`h-5 w-5 mt-0.5 ${
-                  alert.type === 'warning' ? 'text-yellow-500' :
-                  alert.type === 'success' ? 'text-green-500' : 'text-blue-500'
-                }`} />
-                <div className="flex-1">
-                  <p className="text-sm">{alert.message}</p>
+          <CardContent>
+            <div className="space-y-4">
+              {departmentPerformance.map((dept) => (
+                <div key={dept.name} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{dept.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {dept.teachers} Teachers • {dept.students} Students
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{dept.performance}%</span>
+                      <TrendingUp className={`h-4 w-4 ${dept.trend === 'up' ? 'text-green-500' : 'text-muted-foreground'}`} />
+                    </div>
+                  </div>
+                  <Progress value={dept.performance} className="h-2" />
                 </div>
-                <Badge variant={alert.type === 'warning' ? 'destructive' : 'secondary'}>
-                  {alert.type}
-                </Badge>
-              </div>
-            ))}
+              ))}
+            </div>
           </CardContent>
         </Card>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Department Performance */}
+        {/* Recent Activities and Alerts */}
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Recent Activities */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Department Performance Overview</CardTitle>
-              <Button variant="outline" size="sm">View All</Button>
+            <CardHeader>
+              <CardTitle>Recent Activities</CardTitle>
+              <CardDescription>Latest updates and changes</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {departmentPerformance.map((dept) => (
-                  <div key={dept.name} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-semibold">{dept.name}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {dept.teachers} Teachers • {dept.students} Students
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <Badge variant={dept.trend === 'up' ? 'default' : 'secondary'}>
-                          {dept.trend === 'up' ? '↑' : '→'} {dept.trend}
-                        </Badge>
-                        <span className="text-xl font-bold">{dept.performance}%</span>
-                      </div>
+                {recentActivities.map((activity) => (
+                  <div key={activity.id} className="flex items-start gap-3">
+                    <div className="bg-primary/10 p-2 rounded-lg">
+                      <GraduationCap className="h-4 w-4 text-primary" />
                     </div>
-                    <Progress value={dept.performance} className="h-2" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{activity.title}</p>
+                      <p className="text-xs text-muted-foreground">{activity.time}</p>
+                    </div>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
 
-          {/* Recent Activities */}
+          {/* Alerts */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Recent Activities</CardTitle>
-              <Button variant="outline" size="sm">View All</Button>
+            <CardHeader>
+              <CardTitle>System Alerts</CardTitle>
+              <CardDescription>Important notifications</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {recentActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-start gap-3 border-b pb-3 last:border-0">
-                    <div className="bg-primary/10 p-2 rounded-lg mt-1">
-                      <Calendar className="h-4 w-4 text-primary" />
+              <div className="space-y-3">
+                {alerts.map((alert, index) => {
+                  const Icon = alert.icon;
+                  return (
+                    <div
+                      key={index}
+                      className={`flex items-start gap-3 p-3 rounded-lg ${
+                        alert.type === 'warning' ? 'bg-yellow-500/10' :
+                        alert.type === 'success' ? 'bg-green-500/10' :
+                        'bg-blue-500/10'
+                      }`}
+                    >
+                      <Icon className={`h-4 w-4 mt-0.5 ${
+                        alert.type === 'warning' ? 'text-yellow-500' :
+                        alert.type === 'success' ? 'text-green-500' :
+                        'text-blue-500'
+                      }`} />
+                      <p className="text-sm">{alert.message}</p>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{activity.title}</p>
-                      <p className="text-xs text-muted-foreground">{activity.time}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -174,31 +525,32 @@ const Dashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
+            <CardDescription>Common management tasks</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-4">
-              <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-                <Link to={`/tenant/${tenant?.slug}/management/teachers`}>
-                  <Users className="h-6 w-6" />
-                  People Management
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Button variant="outline" asChild className="h-auto flex-col gap-2 py-4">
+                <Link to={tenant?.slug ? `/tenant/${tenant.slug}/management/students` : '/management/students'}>
+                  <Users className="h-5 w-5" />
+                  <span className="text-sm">Manage People</span>
                 </Link>
               </Button>
-              <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-                <Link to={`/tenant/${tenant?.slug}/management/courses-sessions`}>
-                  <BookOpen className="h-6 w-6" />
-                  Courses & Sessions
+              <Button variant="outline" asChild className="h-auto flex-col gap-2 py-4">
+                <Link to={tenant?.slug ? `/tenant/${tenant.slug}/management/courses` : '/management/courses'}>
+                  <BookOpen className="h-5 w-5" />
+                  <span className="text-sm">Manage Courses</span>
                 </Link>
               </Button>
-              <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-                <Link to={`/tenant/${tenant?.slug}/management/inventory-purchase`}>
-                  <TrendingUp className="h-6 w-6" />
-                  Inventory & Purchase
+              <Button variant="outline" asChild className="h-auto flex-col gap-2 py-4">
+                <Link to={tenant?.slug ? `/tenant/${tenant.slug}/management/inventory` : '/management/inventory'}>
+                  <Briefcase className="h-5 w-5" />
+                  <span className="text-sm">Inventory</span>
                 </Link>
               </Button>
-              <Button variant="outline" className="h-24 flex-col gap-2" asChild>
-                <Link to={`/tenant/${tenant?.slug}/management/reports`}>
-                  <TrendingUp className="h-6 w-6" />
-                  Reports
+              <Button variant="outline" asChild className="h-auto flex-col gap-2 py-4">
+                <Link to={tenant?.slug ? `/tenant/${tenant.slug}/management/reports` : '/management/reports'}>
+                  <BarChart className="h-5 w-5" />
+                  <span className="text-sm">Reports</span>
                 </Link>
               </Button>
             </div>
