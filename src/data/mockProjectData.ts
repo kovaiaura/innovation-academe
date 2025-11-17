@@ -41,7 +41,7 @@ export interface Project {
   completion_date?: string;
   
   // SDG Goals
-  sdg_goals: number[];
+  sdg_goals: string[]; // SDG goal IDs (e.g., ['SDG11', 'SDG12'])
   
   // Progress Tracking
   last_updated: string;
@@ -73,7 +73,7 @@ export const mockProjects: Record<string, Project[]> = {
       status: 'in_progress',
       progress: 55,
       start_date: '2025-07-01',
-      sdg_goals: [11, 12],
+      sdg_goals: ['SDG11', 'SDG12'],
       last_updated: '2025-09-15',
       progress_updates: [
         {
@@ -102,7 +102,7 @@ export const mockProjects: Record<string, Project[]> = {
       status: 'approved',
       progress: 30,
       start_date: '2025-08-01',
-      sdg_goals: [6, 7],
+      sdg_goals: ['SDG6', 'SDG7'],
       last_updated: '2025-09-10',
       progress_updates: [
         {
@@ -135,7 +135,7 @@ export const mockProjects: Record<string, Project[]> = {
       progress: 100,
       start_date: '2025-06-01',
       completion_date: '2025-09-01',
-      sdg_goals: [9, 11],
+      sdg_goals: ['SDG9', 'SDG11'],
       last_updated: '2025-09-01',
       progress_updates: [
         {
@@ -165,7 +165,7 @@ export const mockProjects: Record<string, Project[]> = {
       status: 'in_progress',
       progress: 70,
       start_date: '2025-07-15',
-      sdg_goals: [12, 15],
+      sdg_goals: ['SDG12', 'SDG15'],
       last_updated: '2025-09-20',
       progress_updates: [
         {
@@ -194,7 +194,7 @@ export const mockProjects: Record<string, Project[]> = {
       status: 'in_progress',
       progress: 45,
       start_date: '2025-08-10',
-      sdg_goals: [7, 11, 12],
+      sdg_goals: ['SDG7', 'SDG11', 'SDG12'],
       last_updated: '2025-09-25',
       progress_updates: [
         {

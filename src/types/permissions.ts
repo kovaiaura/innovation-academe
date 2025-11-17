@@ -20,7 +20,8 @@ export type SystemAdminFeature =
   | 'attendance_payroll'
   | 'leave_approvals'
   | 'institutional_calendar'
-  | 'reports_analytics';
+  | 'reports_analytics'
+  | 'sdg_management';
 
 export interface PositionPermissions {
   position: SystemAdminPosition;

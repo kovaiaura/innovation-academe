@@ -45,6 +45,7 @@ export interface Course {
   duration_weeks: number;
   prerequisites?: string;
   learning_outcomes: string[];
+  sdg_goals?: string[]; // SDG goal IDs (e.g., ['SDG4', 'SDG9'])
   status: CourseStatus;
   created_by: string;
   created_at: string;

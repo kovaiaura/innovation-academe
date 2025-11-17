@@ -35,17 +35,17 @@ const categories = [
 ];
 
 const sdgGoals = [
-  { value: 1, label: '1. No Poverty' },
-  { value: 2, label: '2. Zero Hunger' },
-  { value: 3, label: '3. Good Health' },
-  { value: 4, label: '4. Quality Education' },
-  { value: 6, label: '6. Clean Water' },
-  { value: 7, label: '7. Affordable Energy' },
-  { value: 8, label: '8. Economic Growth' },
-  { value: 9, label: '9. Industry Innovation' },
-  { value: 11, label: '11. Sustainable Cities' },
-  { value: 12, label: '12. Responsible Consumption' },
-  { value: 13, label: '13. Climate Action' },
+  { value: 'SDG1', label: '1. No Poverty' },
+  { value: 'SDG2', label: '2. Zero Hunger' },
+  { value: 'SDG3', label: '3. Good Health' },
+  { value: 'SDG4', label: '4. Quality Education' },
+  { value: 'SDG6', label: '6. Clean Water' },
+  { value: 'SDG7', label: '7. Affordable Energy' },
+  { value: 'SDG8', label: '8. Economic Growth' },
+  { value: 'SDG9', label: '9. Industry Innovation' },
+  { value: 'SDG11', label: '11. Sustainable Cities' },
+  { value: 'SDG12', label: '12. Responsible Consumption' },
+  { value: 'SDG13', label: '13. Climate Action' },
 ];
 
 interface TeamMember {
@@ -66,7 +66,7 @@ export function CreateProjectDialog({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
-  const [selectedSdgs, setSelectedSdgs] = useState<number[]>([]);
+  const [selectedSdgs, setSelectedSdgs] = useState<string[]>([]);
   
   // Team Leader State
   const [leaderData, setLeaderData] = useState({
