@@ -80,6 +80,7 @@ import Performance from "./pages/management/Performance";
 import SystemAdminPositionManagement from "./pages/system-admin/PositionManagement";
 import SystemAdminTaskManagement from "./pages/system-admin/TaskManagement";
 import SystemAdminTasks from "./pages/system-admin/Tasks";
+import SystemAdminGamification from "./pages/system-admin/GamificationManagement";
 import OfficerTasks from "./pages/officer/Tasks";
 import IdConfiguration from "./pages/system-admin/IdConfiguration";
 
@@ -293,13 +294,21 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/system-admin/tasks"
+            <Route 
+              path="/system-admin/tasks" 
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <SystemAdminTasks />
                 </ProtectedRoute>
-              }
+              } 
+            />
+            <Route 
+              path="/system-admin/gamification" 
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminGamification />
+                </ProtectedRoute>
+              } 
             />
             <Route
               path="/system-admin/id-configuration"
