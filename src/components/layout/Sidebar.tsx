@@ -62,8 +62,8 @@ const menuItems: MenuItem[] = [
   { label: 'Task Management', icon: <CheckSquare className="h-5 w-5" />, path: '/task-management', roles: ['system_admin'], allowedPositions: ['ceo', 'md', 'agm', 'gm', 'manager', 'admin_staff'] },
   // Gamification (All System Admin positions)
   { label: 'Gamification', icon: <Trophy className="h-5 w-5" />, path: '/gamification', roles: ['system_admin'], allowedPositions: ['ceo', 'md', 'agm', 'gm', 'manager', 'admin_staff'] },
-  // Reports & Analytics
-  { label: 'Reports & Analytics', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['system_admin'], feature: 'reports_analytics' },
+  // Reports & Invoice
+  { label: 'Reports & Invoice', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['system_admin'], feature: 'reports_analytics' },
   // Teacher menu items
   { label: 'My Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['teacher'] },
   { label: 'Grades', icon: <Award className="h-5 w-5" />, path: '/grades', roles: ['teacher'] },
