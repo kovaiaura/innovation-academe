@@ -23,10 +23,18 @@ import { Download, Upload, Search, Users, UserCheck, UserX, GraduationCap, Phone
 import { toast } from "sonner";
 import { useParams } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
+import { InstitutionHeader } from "@/components/management/InstitutionHeader";
+import { getInstitutionBySlug } from "@/data/mockInstitutionData";
+import { useLocation } from "react-router-dom";
 
 export default function Students() {
   const { tenantId } = useParams();
   const institutionId = tenantId || '1';
+  
+  // Extract institution from URL
+  const location = useLocation();
+  const institutionSlug = location.pathname.split('/')[2];
+  const institution = getInstitutionBySlug(institutionSlug);
   
   const [students, setStudents] = useState<Student[]>(
     mockStudents.filter(s => s.institution_id === institutionId)
@@ -135,6 +143,19 @@ export default function Students() {
   return (
     <Layout>
       <div className="container mx-auto py-6 space-y-6">
+      {institution && (
+        <InstitutionHeader 
+          institutionName={institution.name}
+          establishedYear={institution.established_year}
+          location={institution.location}
+          totalStudents={institution.total_students}
+          totalFaculty={institution.total_faculty}
+          totalDepartments={institution.total_departments}
+          academicYear={institution.academic_year}
+          userRole="Management Portal"
+          assignedOfficers={institution.assigned_officers.map(o => o.officer_name)}
+        />
+      )}
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>

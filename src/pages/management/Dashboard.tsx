@@ -14,10 +14,17 @@ import { authService } from "@/services/auth.service";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { CriticalActionsCard } from "@/components/management/CriticalActionsCard";
 import { mockCriticalActions } from "@/data/mockManagementData";
+import { getInstitutionBySlug } from "@/data/mockInstitutionData";
+import { useLocation } from "react-router-dom";
 
 const Dashboard = () => {
   const { user } = useAuth();
   const tenant = authService.getTenant();
+  
+  // Extract institution from URL
+  const location = useLocation();
+  const institutionSlug = location.pathname.split('/')[2];
+  const institution = getInstitutionBySlug(institutionSlug);
 
   // Platform Value Metrics - What makes this LMS attractive
   const platformValueMetrics = [
@@ -263,7 +270,19 @@ const Dashboard = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <InstitutionHeader />
+        {institution && (
+          <InstitutionHeader 
+            institutionName={institution.name}
+            establishedYear={institution.established_year}
+            location={institution.location}
+            totalStudents={institution.total_students}
+            totalFaculty={institution.total_faculty}
+            totalDepartments={institution.total_departments}
+            academicYear={institution.academic_year}
+            userRole="Management Portal"
+            assignedOfficers={institution.assigned_officers.map(o => o.officer_name)}
+          />
+        )}
         
         {/* Welcome Section with Value Proposition */}
         <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background rounded-lg p-6 border">

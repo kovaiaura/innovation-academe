@@ -11,9 +11,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
+import { InstitutionHeader } from "@/components/management/InstitutionHeader";
+import { getInstitutionBySlug } from "@/data/mockInstitutionData";
+import { useLocation } from "react-router-dom";
 
 const Performance = () => {
   const [period, setPeriod] = useState("monthly");
+  
+  // Extract institution from URL
+  const location = useLocation();
+  const institutionSlug = location.pathname.split('/')[2];
+  const institution = getInstitutionBySlug(institutionSlug);
 
   const performanceMetrics = [
     {
@@ -112,6 +120,20 @@ const Performance = () => {
   return (
     <Layout>
       <div className="space-y-6">
+        {institution && (
+          <InstitutionHeader 
+            institutionName={institution.name}
+            establishedYear={institution.established_year}
+            location={institution.location}
+            totalStudents={institution.total_students}
+            totalFaculty={institution.total_faculty}
+            totalDepartments={institution.total_departments}
+            academicYear={institution.academic_year}
+            userRole="Management Portal"
+            assignedOfficers={institution.assigned_officers.map(o => o.officer_name)}
+          />
+        )}
+        
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Performance Metrics</h1>

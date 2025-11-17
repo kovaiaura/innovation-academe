@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Building2, MapPin, Calendar, Users, GraduationCap, BookOpen } from "lucide-react";
+import { Building2, MapPin, Calendar, Users, GraduationCap, BookOpen, UserCheck } from "lucide-react";
 
 interface InstitutionHeaderProps {
   institutionName?: string;
@@ -12,6 +12,7 @@ interface InstitutionHeaderProps {
   totalDepartments?: number;
   academicYear?: string;
   userRole?: string;
+  assignedOfficers?: string[];
 }
 
 export const InstitutionHeader = ({
@@ -22,7 +23,8 @@ export const InstitutionHeader = ({
   totalFaculty = 186,
   totalDepartments = 5,
   academicYear = "2024-25 (Semester 2)",
-  userRole = "Management Portal"
+  userRole = "Management Portal",
+  assignedOfficers
 }: InstitutionHeaderProps) => {
   return (
     <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5">
@@ -71,6 +73,12 @@ export const InstitutionHeader = ({
                   <span className="text-muted-foreground">Academic Year:</span>
                   <span className="font-semibold">{academicYear}</span>
                 </div>
+                {assignedOfficers && assignedOfficers.length > 0 && (
+                  <div className="flex items-center gap-2 bg-background/50 px-3 py-1.5 rounded-md border">
+                    <UserCheck className="h-4 w-4 text-indigo-500" />
+                    <span className="font-semibold">{assignedOfficers.join(', ')}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
