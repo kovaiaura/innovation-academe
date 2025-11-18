@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AssignmentCard } from '@/components/assignment-management/AssignmentCard';
 import { AssignmentPublishingSelector, PublishingSelection } from '@/components/assignment-management/AssignmentPublishingSelector';
 import { AssignmentQuestionBuilder } from '@/components/assignment-management/AssignmentQuestionBuilder';
+import { AssignmentDetailsDialog } from '@/components/assignment-management/AssignmentDetailsDialog';
+import { DeleteAssignmentDialog } from '@/components/assignment-management/DeleteAssignmentDialog';
 import { mockAssignments, mockAssignmentStats, getAssignmentsByStatus } from '@/data/mockAssignmentManagement';
 import { mockInstitutionClasses } from '@/data/mockClassData';
 import { StandaloneAssignment, AssignmentType, LateSubmissionPolicy, AssignmentQuestion } from '@/types/assignment-management';
@@ -20,6 +22,17 @@ export default function AssignmentManagement() {
   const [activeTab, setActiveTab] = useState('all');
   const [createStep, setCreateStep] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Assignment state
+  const [assignments, setAssignments] = useState(mockAssignments);
+  
+  // View dialog state
+  const [selectedAssignment, setSelectedAssignment] = useState<StandaloneAssignment | null>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  
+  // Delete dialog state
+  const [assignmentToDelete, setAssignmentToDelete] = useState<StandaloneAssignment | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -37,12 +50,16 @@ export default function AssignmentManagement() {
   const [questions, setQuestions] = useState<AssignmentQuestion[]>([]);
 
   const stats = mockAssignmentStats;
-  const assignments = searchQuery
-    ? mockAssignments.filter(a =>
+  
+  // Filter assignments based on search and active tab
+  const filteredAssignments = searchQuery
+    ? assignments.filter(a =>
         a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         a.description.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : getAssignmentsByStatus(activeTab);
+    : activeTab === 'all'
+      ? assignments
+      : assignments.filter(a => a.status === activeTab);
 
   // Mock institutions with classes
   const institutions = [
@@ -91,6 +108,41 @@ export default function AssignmentManagement() {
     if (createStep > 1) {
       setCreateStep(createStep - 1);
     }
+  };
+
+  const handleViewAssignment = (assignment: StandaloneAssignment) => {
+    setSelectedAssignment(assignment);
+    setViewDialogOpen(true);
+  };
+
+  const handleDuplicateAssignment = (assignment: StandaloneAssignment) => {
+    const newAssignment: StandaloneAssignment = {
+      ...assignment,
+      id: `assign-${Date.now()}`,
+      title: `${assignment.title} (Copy)`,
+      status: 'draft',
+      created_at: new Date().toISOString(),
+      published_at: undefined,
+      total_submissions: 0,
+      graded_submissions: 0,
+    };
+    
+    setAssignments([newAssignment, ...assignments]);
+    toast.success(`Assignment duplicated: ${newAssignment.title}`);
+  };
+
+  const handleDeleteAssignment = (assignment: StandaloneAssignment) => {
+    setAssignmentToDelete(assignment);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteAssignment = () => {
+    if (!assignmentToDelete) return;
+    
+    setAssignments(assignments.filter(a => a.id !== assignmentToDelete.id));
+    toast.success(`Assignment deleted: ${assignmentToDelete.title}`);
+    setDeleteDialogOpen(false);
+    setAssignmentToDelete(null);
   };
 
   const handleCreateAssignment = (isDraft: boolean) => {
@@ -224,19 +276,19 @@ export default function AssignmentManagement() {
 
           {/* Assignments Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {assignments.map((assignment) => (
+            {filteredAssignments.map((assignment) => (
               <AssignmentCard
                 key={assignment.id}
                 assignment={assignment}
                 mode="manage"
-                onView={(a) => toast.info(`Viewing: ${a.title}`)}
-                onDuplicate={(a) => toast.success(`Duplicated: ${a.title}`)}
-                onDelete={(a) => toast.success(`Deleted: ${a.title}`)}
+                onView={handleViewAssignment}
+                onDuplicate={handleDuplicateAssignment}
+                onDelete={handleDeleteAssignment}
               />
             ))}
           </div>
 
-          {assignments.length === 0 && (
+          {filteredAssignments.length === 0 && (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <FileText className="h-12 w-12 text-muted-foreground mb-4" />
@@ -545,6 +597,20 @@ export default function AssignmentManagement() {
           </div>
         </TabsContent>
       </Tabs>
+      
+      {/* Dialogs */}
+      <AssignmentDetailsDialog
+        assignment={selectedAssignment}
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+      />
+      
+      <DeleteAssignmentDialog
+        assignment={assignmentToDelete}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={confirmDeleteAssignment}
+      />
     </div>
     </Layout>
   );
