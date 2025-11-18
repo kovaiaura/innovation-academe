@@ -74,18 +74,18 @@ export function AssignmentCard({
         )}
       </CardContent>
 
-      <CardFooter className="flex gap-2">
+      <CardFooter className="flex flex-wrap gap-2">
         {mode === 'manage' && (
           <>
-            <Button variant="outline" size="sm" onClick={() => onView?.(assignment)}>
+            <Button variant="outline" size="sm" onClick={() => onView?.(assignment)} className="flex-1 min-w-[90px]">
               <Eye className="h-4 w-4 mr-1" />
               View
             </Button>
-            <Button variant="outline" size="sm" onClick={() => onDuplicate?.(assignment)}>
+            <Button variant="outline" size="sm" onClick={() => onDuplicate?.(assignment)} className="flex-1 min-w-[110px]">
               <Copy className="h-4 w-4 mr-1" />
               Duplicate
             </Button>
-            <Button variant="outline" size="sm" onClick={() => onDelete?.(assignment)}>
+            <Button variant="outline" size="sm" onClick={() => onDelete?.(assignment)} className="flex-1 min-w-[90px]">
               <Trash2 className="h-4 w-4 mr-1" />
               Delete
             </Button>
