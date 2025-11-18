@@ -34,6 +34,8 @@ import DocumentCard from '@/components/officer/DocumentCard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getLeaveBalance, initializeLeaveBalance } from '@/data/mockLeaveData';
+import { LeaveBalance } from '@/types/attendance';
 
 // Mock institutions for assignment
 const mockInstitutions = [
@@ -66,6 +68,9 @@ const mockOfficerDetails: Record<string, OfficerDetails> = {
     bank_name: 'Chase Bank',
     bank_ifsc: 'CHAS0001234',
     bank_branch: 'Springfield Branch',
+    hourly_rate: 312.50,
+    overtime_rate_multiplier: 1.5,
+    normal_working_hours: 8,
     statutory_info: {
       pf_number: 'PF123456789',
       uan_number: 'UAN987654321',
@@ -198,6 +203,7 @@ export default function OfficerDetail() {
   const [isAssignInstitutionOpen, setIsAssignInstitutionOpen] = useState(false);
   const [selectedDocumentType, setSelectedDocumentType] = useState<string>('');
   const [selectedInstitution, setSelectedInstitution] = useState<string>('');
+  const [leaveBalance, setLeaveBalance] = useState<LeaveBalance | null>(null);
 
   useEffect(() => {
     const fetchOfficerData = async () => {
@@ -214,6 +220,11 @@ export default function OfficerDetail() {
           setOfficer(officerData);
           setDocuments(documentsData);
           setActivityLog(activityData);
+          
+          // Fetch leave balance
+          const currentYear = new Date().getFullYear().toString();
+          const leaveData = getLeaveBalance(officerId, currentYear);
+          setLeaveBalance(leaveData);
         } else {
           toast.error('Officer not found');
           navigate('/system-admin/officers');
@@ -228,15 +239,31 @@ export default function OfficerDetail() {
     fetchOfficerData();
   }, [officerId, navigate]);
 
-  const handleProfileUpdate = async (updatedData: Partial<OfficerDetails>) => {
+  const handleProfileUpdate = async (updatedData: Partial<OfficerDetails> & { casual_leave?: number; sick_leave?: number; earned_leave?: number }) => {
     if (!officerId) return;
     
     try {
       toast.loading('Updating profile...', { id: 'update' });
-      // API call would go here
-      // const result = await systemAdminService.updateOfficerProfile(officerId, updatedData);
       
-      setOfficer(prev => prev ? { ...prev, ...updatedData } : null);
+      const { casual_leave, sick_leave, earned_leave, ...officerData } = updatedData;
+      
+      // Update officer details
+      setOfficer(prev => prev ? { ...prev, ...officerData } : null);
+      
+      // Update leave balance if leave fields are present
+      if (casual_leave !== undefined || sick_leave !== undefined || earned_leave !== undefined) {
+        const currentYear = new Date().getFullYear().toString();
+        const updatedLeaveBalance: LeaveBalance = {
+          officer_id: officerId,
+          year: currentYear,
+          casual_leave: casual_leave ?? leaveBalance?.casual_leave ?? 12,
+          sick_leave: sick_leave ?? leaveBalance?.sick_leave ?? 12,
+          earned_leave: earned_leave ?? leaveBalance?.earned_leave ?? 15,
+        };
+        initializeLeaveBalance(updatedLeaveBalance);
+        setLeaveBalance(updatedLeaveBalance);
+      }
+      
       setIsEditProfileOpen(false);
       toast.success('Profile updated successfully', { id: 'update' });
     } catch (error) {
@@ -901,6 +928,7 @@ export default function OfficerDetail() {
           isOpen={isEditProfileOpen}
           onOpenChange={setIsEditProfileOpen}
           officer={officer}
+          leaveBalance={leaveBalance}
           onSaveSuccess={handleProfileUpdate}
         />
 

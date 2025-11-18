@@ -8,21 +8,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { OfficerDetails } from '@/services/systemadmin.service';
+import { LeaveBalance } from '@/types/attendance';
 
 interface EditOfficerDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   officer: OfficerDetails;
-  onSaveSuccess: (updatedOfficer: Partial<OfficerDetails>) => void;
+  leaveBalance?: LeaveBalance | null;
+  onSaveSuccess: (updatedOfficer: Partial<OfficerDetails> & { casual_leave?: number; sick_leave?: number; earned_leave?: number }) => void;
 }
 
 export default function EditOfficerDialog({
   isOpen,
   onOpenChange,
   officer,
+  leaveBalance,
   onSaveSuccess,
 }: EditOfficerDialogProps) {
-  const [formData, setFormData] = useState<Partial<OfficerDetails>>({});
+  const [formData, setFormData] = useState<Partial<OfficerDetails> & { casual_leave?: number; sick_leave?: number; earned_leave?: number }>({});
 
   useEffect(() => {
     if (officer) {
@@ -38,11 +41,17 @@ export default function EditOfficerDialog({
         salary: officer.salary,
         department: officer.department,
         status: officer.status,
+        hourly_rate: officer.hourly_rate,
+        overtime_rate_multiplier: officer.overtime_rate_multiplier,
+        normal_working_hours: officer.normal_working_hours,
+        casual_leave: leaveBalance?.casual_leave,
+        sick_leave: leaveBalance?.sick_leave,
+        earned_leave: leaveBalance?.earned_leave,
       });
     }
-  }, [officer]);
+  }, [officer, leaveBalance]);
 
-  const handleChange = (field: keyof OfficerDetails, value: any) => {
+  const handleChange = (field: keyof OfficerDetails | 'casual_leave' | 'sick_leave' | 'earned_leave', value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -198,6 +207,90 @@ export default function EditOfficerDialog({
                     <SelectItem value="terminated">Terminated</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Salary Configuration Section */}
+          <Separator />
+          <div className="space-y-4">
+            <h3 className="font-semibold text-sm text-muted-foreground">Salary Configuration</h3>
+            
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="hourly_rate">Hourly Rate (₹)</Label>
+                <Input
+                  id="hourly_rate"
+                  type="number"
+                  step="0.01"
+                  value={formData.hourly_rate || ''}
+                  onChange={(e) => handleChange('hourly_rate', Number(e.target.value))}
+                  placeholder="312.50"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="overtime_rate_multiplier">Overtime Multiplier</Label>
+                <Input
+                  id="overtime_rate_multiplier"
+                  type="number"
+                  step="0.1"
+                  value={formData.overtime_rate_multiplier || ''}
+                  onChange={(e) => handleChange('overtime_rate_multiplier', Number(e.target.value))}
+                  placeholder="1.5"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="normal_working_hours">Working Hours/Day</Label>
+                <Input
+                  id="normal_working_hours"
+                  type="number"
+                  value={formData.normal_working_hours || ''}
+                  onChange={(e) => handleChange('normal_working_hours', Number(e.target.value))}
+                  placeholder="8"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Leave Allowances Section */}
+          <Separator />
+          <div className="space-y-4">
+            <h3 className="font-semibold text-sm text-muted-foreground">Leave Allowances</h3>
+            
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="casual_leave">Casual Leave (days)</Label>
+                <Input
+                  id="casual_leave"
+                  type="number"
+                  value={formData.casual_leave ?? ''}
+                  onChange={(e) => handleChange('casual_leave', Number(e.target.value))}
+                  placeholder="12"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="sick_leave">Sick Leave (days)</Label>
+                <Input
+                  id="sick_leave"
+                  type="number"
+                  value={formData.sick_leave ?? ''}
+                  onChange={(e) => handleChange('sick_leave', Number(e.target.value))}
+                  placeholder="12"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="earned_leave">Earned Leave (days)</Label>
+                <Input
+                  id="earned_leave"
+                  type="number"
+                  value={formData.earned_leave ?? ''}
+                  onChange={(e) => handleChange('earned_leave', Number(e.target.value))}
+                  placeholder="15"
+                />
               </div>
             </div>
           </div>
