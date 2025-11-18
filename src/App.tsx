@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { InstitutionDataProvider } from "@/contexts/InstitutionDataContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
 import SuperAdminDashboard from "./pages/super-admin/Dashboard";
@@ -106,6 +107,7 @@ const App = () => (
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
             
             {/* Super Admin Routes - Technical Platform Oversight */}
