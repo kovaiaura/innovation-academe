@@ -115,20 +115,34 @@ export default function AssignmentManagement() {
     setViewDialogOpen(true);
   };
 
-  const handleDuplicateAssignment = (assignment: StandaloneAssignment) => {
-    const newAssignment: StandaloneAssignment = {
-      ...assignment,
-      id: `assign-${Date.now()}`,
-      title: `${assignment.title} (Copy)`,
-      status: 'draft',
-      created_at: new Date().toISOString(),
-      published_at: undefined,
-      total_submissions: 0,
-      graded_submissions: 0,
-    };
+  const handleEditAssignment = (assignment: StandaloneAssignment) => {
+    // Pre-populate form with assignment data
+    setTitle(assignment.title);
+    setDescription(assignment.description);
+    setInstructions(assignment.instructions || '');
+    setAssignmentType(assignment.assignment_type);
+    setDueDate(assignment.due_date);
+    setDueTime(assignment.due_time || '23:59');
+    setTotalPoints(assignment.total_points);
+    setLatePolicy(assignment.late_submission_policy);
+    setLatePenalty(assignment.late_penalty_percentage || 10);
+    setAllowedFileTypes(assignment.allowed_file_types?.join(',') || 'pdf,docx');
+    setMaxFileSize(assignment.max_file_size_mb || 10);
+    setQuestions(assignment.questions || []);
+    setPublishing(assignment.publishing.map(pub => ({
+      institution_id: pub.institution_id,
+      institution_name: pub.institution_name,
+      class_ids: pub.class_ids,
+    })));
     
-    setAssignments([newAssignment, ...assignments]);
-    toast.success(`Assignment duplicated: ${newAssignment.title}`);
+    // Store the assignment being edited
+    setSelectedAssignment(assignment);
+    
+    // Switch to create tab to show the wizard
+    const createTab = document.querySelector('[value="create"]') as HTMLElement;
+    createTab?.click();
+    
+    toast.info('Editing assignment in wizard');
   };
 
   const handleDeleteAssignment = (assignment: StandaloneAssignment) => {
@@ -282,7 +296,7 @@ export default function AssignmentManagement() {
                 assignment={assignment}
                 mode="manage"
                 onView={handleViewAssignment}
-                onDuplicate={handleDuplicateAssignment}
+                onEdit={handleEditAssignment}
                 onDelete={handleDeleteAssignment}
               />
             ))}

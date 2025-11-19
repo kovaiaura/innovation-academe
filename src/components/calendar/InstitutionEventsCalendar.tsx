@@ -25,8 +25,16 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
-export function InstitutionEventsCalendar() {
-  const [events, setEvents] = useState<InstitutionEvent[]>(mockEvents);
+interface InstitutionEventsCalendarProps {
+  mode?: 'company' | 'institution';
+  institutionId?: string;
+}
+
+export function InstitutionEventsCalendar({ 
+  mode = 'company', 
+  institutionId 
+}: InstitutionEventsCalendarProps) {
+  const [allEvents, setAllEvents] = useState<InstitutionEvent[]>(mockEvents);
   const [view, setView] = useState<View | 'year'>('month');
   const [date, setDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<InstitutionEvent | null>(null);
@@ -34,6 +42,18 @@ export function InstitutionEventsCalendar() {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [createSlotInfo, setCreateSlotInfo] = useState<{ start: Date; end: Date } | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  // Filter events based on mode
+  const events = useMemo(() => {
+    if (mode === 'company') {
+      // Company mode: show all events
+      return allEvents;
+    } else if (mode === 'institution' && institutionId) {
+      // Institution mode: show only events for selected institution
+      return allEvents.filter(e => e.institution_id === institutionId);
+    }
+    return [];
+  }, [allEvents, mode, institutionId]);
 
   // Convert events to calendar format
   const calendarEvents = useMemo(() => {
@@ -85,7 +105,7 @@ export function InstitutionEventsCalendar() {
 
   // Handle event drop (drag and drop)
   const handleEventDrop = useCallback(({ event, start, end }: any) => {
-    setEvents(prev => prev.map(e => 
+    setAllEvents(prev => prev.map(e => 
       e.id === event.id 
         ? { ...e, start_datetime: start.toISOString(), end_datetime: end.toISOString() }
         : e
@@ -94,7 +114,7 @@ export function InstitutionEventsCalendar() {
 
   // Handle event resize
   const handleEventResize = useCallback(({ event, start, end }: any) => {
-    setEvents(prev => prev.map(e => 
+    setAllEvents(prev => prev.map(e => 
       e.id === event.id 
         ? { ...e, start_datetime: start.toISOString(), end_datetime: end.toISOString() }
         : e
@@ -105,116 +125,171 @@ export function InstitutionEventsCalendar() {
   const handleEventSave = useCallback((eventData: InstitutionEvent) => {
     if (selectedEvent) {
       // Update existing event
-      setEvents(prev => prev.map(e => e.id === eventData.id ? eventData : e));
+      setAllEvents(prev => prev.map(e => e.id === eventData.id ? eventData : e));
     } else {
       // Create new event
-      setEvents(prev => [...prev, eventData]);
+      setAllEvents(prev => [...prev, eventData]);
     }
     setIsCreateDialogOpen(false);
   }, [selectedEvent]);
 
   // Handle event delete
   const handleEventDelete = useCallback((eventId: string) => {
-    setEvents(prev => prev.filter(e => e.id !== eventId));
+    setAllEvents(prev => prev.filter(e => e.id !== eventId));
     setIsCreateDialogOpen(false);
     setIsDetailsDialogOpen(false);
+    setSelectedEvent(null);
   }, []);
 
-  // Handle editing from details dialog
-  const handleEditFromDetails = useCallback(() => {
+  // Handle edit from details dialog
+  const handleEditEvent = useCallback(() => {
     setIsDetailsDialogOpen(false);
     setIsCreateDialogOpen(true);
   }, []);
 
-  // Navigation toolbar (for Calendar views only)
-  const NavigationToolbar = ({ label, onNavigate }: any) => (
-    <div className="flex items-center justify-between mb-4 p-4 bg-card border border-border rounded-lg">
-      <div className="flex items-center gap-2">
-        <Button onClick={() => onNavigate('TODAY')} variant="outline" size="sm">
-          Today
-        </Button>
-        <Button variant="ghost" size="icon" onClick={() => onNavigate('PREV')}>
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <h2 className="text-lg font-semibold min-w-[200px] text-center">{label}</h2>
-        <Button variant="ghost" size="icon" onClick={() => onNavigate('NEXT')}>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+  // Navigation handlers
+  const handleNavigate = useCallback((action: 'PREV' | 'NEXT' | 'TODAY') => {
+    if (view === 'year') {
+      if (action === 'PREV') setDate(subYears(date, 1));
+      else if (action === 'NEXT') setDate(addYears(date, 1));
+      else setDate(new Date());
+    } else {
+      // For other views, use Calendar's built-in navigation
+      const newDate = new Date(date);
+      if (action === 'PREV') {
+        if (view === 'month') newDate.setMonth(newDate.getMonth() - 1);
+        else if (view === 'week') newDate.setDate(newDate.getDate() - 7);
+        else if (view === 'day') newDate.setDate(newDate.getDate() - 1);
+      } else if (action === 'NEXT') {
+        if (view === 'month') newDate.setMonth(newDate.getMonth() + 1);
+        else if (view === 'week') newDate.setDate(newDate.getDate() + 7);
+        else if (view === 'day') newDate.setDate(newDate.getDate() + 1);
+      } else {
+        setDate(new Date());
+        return;
+      }
+      setDate(newDate);
+    }
+  }, [date, view]);
+
+  // Custom toolbar
+  const NavigationToolbar = useCallback(({ label, date }: { label: string; date: Date }) => {
+    return (
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => handleNavigate('PREV')}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => handleNavigate('TODAY')}>
+            Today
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => handleNavigate('NEXT')}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        <h2 className="text-xl font-semibold">{label}</h2>
+        <div className="w-[120px]" /> {/* Spacer for alignment */}
       </div>
-    </div>
-  );
+    );
+  }, [handleNavigate]);
 
   return (
     <div className="space-y-4">
-      {/* Always visible view switcher */}
-      <div className="flex items-center justify-center gap-1 p-4 bg-card border border-border rounded-lg">
-        {(['year', 'month', 'week', 'day', 'agenda'] as (View | 'year')[]).map(v => (
-          <Button
-            key={v}
-            variant={view === v ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => {
-              if (v === 'year') {
-                setView('year');
-              } else {
-                setView(v as View);
-              }
-            }}
-          >
-            {v.charAt(0).toUpperCase() + v.slice(1)}
-          </Button>
-        ))}
+      {/* View Switcher */}
+      <div className="flex gap-2">
+        <Button
+          variant={view === 'year' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setView('year')}
+        >
+          Year
+        </Button>
+        <Button
+          variant={view === 'month' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setView('month')}
+        >
+          Month
+        </Button>
+        <Button
+          variant={view === 'week' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setView('week')}
+        >
+          Week
+        </Button>
+        <Button
+          variant={view === 'day' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setView('day')}
+        >
+          Day
+        </Button>
+        <Button
+          variant={view === 'agenda' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setView('agenda')}
+        >
+          Agenda
+        </Button>
       </div>
 
-      {view === 'year' ? (
-        <YearView
-          date={date}
-          events={calendarEvents}
-          onSelectDate={(date) => {
-            setSelectedDate(date);
-            setView('day');
-            setDate(date);
-          }}
-          onNavigate={(action) => {
-            const newDate = action === 'NEXT' ? addYears(date, 1) : subYears(date, 1);
-            setDate(newDate);
-          }}
-          selectedDate={selectedDate}
-        />
-      ) : (
-        <Calendar
-          localizer={localizer}
-          events={calendarEvents}
-          startAccessor="start"
-          endAccessor="end"
-          style={{ height: 'calc(100vh - 250px)', minHeight: '600px' }}
-          view={view === 'year' ? 'month' : view}
-          onView={(newView) => setView(newView)}
-          date={date}
-          onNavigate={setDate}
-          onSelectSlot={handleSelectSlot}
-          onSelectEvent={handleSelectEvent}
-          onEventDrop={handleEventDrop}
-          onEventResize={handleEventResize}
-          eventPropGetter={eventStyleGetter}
-          selectable
-          resizable
-          draggableAccessor={() => true}
-          components={{
-            toolbar: NavigationToolbar,
-          }}
-        />
-      )}
+      {/* Calendar or Year View */}
+      <div className="bg-card rounded-lg border">
+        {view === 'year' ? (
+          <YearView
+            date={date}
+            events={calendarEvents}
+            onSelectDate={(selectedDate) => {
+              setSelectedDate(selectedDate);
+              setView('day');
+              setDate(selectedDate);
+            }}
+            onNavigate={(action) => handleNavigate(action)}
+            selectedDate={selectedDate}
+          />
+        ) : (
+          <>
+            <NavigationToolbar 
+              label={format(date, view === 'month' ? 'MMMM yyyy' : view === 'week' ? "'Week of' MMM d, yyyy" : view === 'day' ? 'MMMM d, yyyy' : 'Agenda')} 
+              date={date} 
+            />
+            <Calendar
+              localizer={localizer}
+              events={calendarEvents}
+              startAccessor="start"
+              endAccessor="end"
+              style={{ height: 600 }}
+              view={view as View}
+              onView={setView}
+              date={date}
+              onNavigate={setDate}
+              onSelectSlot={handleSelectSlot}
+              onSelectEvent={handleSelectEvent}
+              onEventDrop={handleEventDrop}
+              onEventResize={handleEventResize}
+              selectable
+              resizable
+              eventPropGetter={eventStyleGetter}
+              components={{
+                toolbar: () => null, // Hide default toolbar since we have custom one
+              }}
+            />
+          </>
+        )}
+      </div>
 
+      {/* Day Events Panel */}
       {selectedDate && (
         <DayEventsPanel
           selectedDate={selectedDate}
-          events={calendarEvents}
+          events={events}
           onEventClick={handleSelectEvent}
           onClose={() => setSelectedDate(null)}
         />
       )}
 
+      {/* Create/Edit Event Dialog */}
       <CreateEditEventDialog
         isOpen={isCreateDialogOpen}
         onClose={() => {
@@ -227,16 +302,19 @@ export function InstitutionEventsCalendar() {
         event={selectedEvent || undefined}
         initialStart={createSlotInfo?.start}
         initialEnd={createSlotInfo?.end}
+        mode={mode}
+        institutionId={institutionId}
       />
 
+      {/* Event Details Dialog */}
       <EventDialog
-        event={selectedEvent || undefined}
         isOpen={isDetailsDialogOpen}
         onClose={() => {
           setIsDetailsDialogOpen(false);
           setSelectedEvent(null);
         }}
-        onEdit={handleEditFromDetails}
+        event={selectedEvent || undefined}
+        onEdit={handleEditEvent}
       />
     </div>
   );
