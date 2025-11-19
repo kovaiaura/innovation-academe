@@ -4,13 +4,13 @@ import { Badge } from '@/components/ui/badge';
 import { AssignmentStatusBadge } from './AssignmentStatusBadge';
 import { StandaloneAssignment } from '@/types/assignment-management';
 import { formatDueDate, getDueDateCountdown, getSubmissionTypeLabel } from '@/utils/assignmentHelpers';
-import { Calendar, FileText, Users, Eye, Copy, Trash2 } from 'lucide-react';
+import { Calendar, FileText, Users, Eye, Edit, Trash2 } from 'lucide-react';
 
 interface AssignmentCardProps {
   assignment: StandaloneAssignment;
   mode?: 'manage' | 'student-view';
   onView?: (assignment: StandaloneAssignment) => void;
-  onDuplicate?: (assignment: StandaloneAssignment) => void;
+  onEdit?: (assignment: StandaloneAssignment) => void;
   onDelete?: (assignment: StandaloneAssignment) => void;
   onStart?: (assignment: StandaloneAssignment) => void;
 }
@@ -19,7 +19,7 @@ export function AssignmentCard({
   assignment,
   mode = 'manage',
   onView,
-  onDuplicate,
+  onEdit,
   onDelete,
   onStart,
 }: AssignmentCardProps) {
@@ -81,9 +81,9 @@ export function AssignmentCard({
               <Eye className="h-4 w-4 mr-1" />
               View
             </Button>
-            <Button variant="outline" size="sm" onClick={() => onDuplicate?.(assignment)} className="flex-1 min-w-[110px]">
-              <Copy className="h-4 w-4 mr-1" />
-              Duplicate
+            <Button variant="outline" size="sm" onClick={() => onEdit?.(assignment)} className="flex-1 min-w-[90px]">
+              <Edit className="h-4 w-4 mr-1" />
+              Edit
             </Button>
             <Button variant="outline" size="sm" onClick={() => onDelete?.(assignment)} className="flex-1 min-w-[90px]">
               <Trash2 className="h-4 w-4 mr-1" />

@@ -6,8 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { InstitutionEvent, EventType } from '@/types/calendar';
-import { Trash2 } from 'lucide-react';
+import { mockInstitutions } from '@/data/mockInstitutionData';
+import { Trash2, Building } from 'lucide-react';
 
 interface CreateEditEventDialogProps {
   isOpen: boolean;
@@ -17,6 +19,8 @@ interface CreateEditEventDialogProps {
   event?: InstitutionEvent;
   initialStart?: Date;
   initialEnd?: Date;
+  mode?: 'company' | 'institution';
+  institutionId?: string;
 }
 
 const colorOptions = [
@@ -47,8 +51,17 @@ export function CreateEditEventDialog({
   event,
   initialStart,
   initialEnd,
+  mode = 'company',
+  institutionId,
 }: CreateEditEventDialogProps) {
   const isEditMode = !!event;
+  
+  // Get institution name from ID
+  const getInstitutionName = (id?: string) => {
+    if (!id) return undefined;
+    const institutionsArray = Object.values(mockInstitutions);
+    return institutionsArray.find(inst => inst.id === id)?.name;
+  };
 
   const [formData, setFormData] = useState({
     title: '',
@@ -101,7 +114,10 @@ export function CreateEditEventDialog({
       title: formData.title,
       description: formData.description,
       event_type: formData.event_type,
-      institution_name: formData.institution_name || 'All Institutions',
+      institution_id: mode === 'institution' ? institutionId : undefined,
+      institution_name: mode === 'institution' && institutionId 
+        ? getInstitutionName(institutionId) 
+        : formData.institution_name || undefined,
       start_datetime: new Date(formData.start_datetime).toISOString(),
       end_datetime: new Date(formData.end_datetime).toISOString(),
       location: formData.location,
