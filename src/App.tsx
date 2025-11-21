@@ -19,6 +19,7 @@ import InstitutionManagement from "./pages/system-admin/InstitutionManagement";
 import SystemAdminReports from "./pages/system-admin/Reports";
 import OfficerManagement from "./pages/system-admin/OfficerManagement";
 import SystemAdminOfficerAttendance from "./pages/system-admin/OfficerAttendance";
+import StaffAttendancePayroll from "./pages/system-admin/StaffAttendancePayroll";
 import InventoryManagement from "./pages/system-admin/InventoryManagement";
 import InstitutionInventoryDetail from "./pages/system-admin/InstitutionInventoryDetail";
 import StudentDashboard from "./pages/student/Dashboard";
@@ -206,6 +207,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="attendance_payroll">
                   <SystemAdminOfficerAttendance />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/staff-attendance-payroll"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <StaffAttendancePayroll />
                 </ProtectedRoute>
               }
             />
