@@ -21,6 +21,10 @@ export interface User {
   tenant_id?: string; // null for super_admin
   institution_id?: string;
   created_at: string;
+  // Salary configuration (for meta staff and officers)
+  hourly_rate?: number;
+  overtime_rate_multiplier?: number;
+  normal_working_hours?: number;
 }
 
 // Auth Response

@@ -92,6 +92,7 @@ let mockLeaveApplications: LeaveApplication[] = [
 
 // Mock leave balances
 const mockLeaveBalances: LeaveBalance[] = [
+  // Innovation Officers
   {
     officer_id: "off-msd-001",
     sick_leave: 8,
@@ -111,6 +112,49 @@ const mockLeaveBalances: LeaveBalance[] = [
     sick_leave: 10,
     casual_leave: 12,
     earned_leave: 18,
+    year: "2025",
+  },
+  // Meta Staff
+  {
+    officer_id: "6", // CEO
+    sick_leave: 11,
+    casual_leave: 11,
+    earned_leave: 12,
+    year: "2025",
+  },
+  {
+    officer_id: "7", // MD
+    sick_leave: 11,
+    casual_leave: 11,
+    earned_leave: 12,
+    year: "2025",
+  },
+  {
+    officer_id: "9", // AGM
+    sick_leave: 12,
+    casual_leave: 12,
+    earned_leave: 12,
+    year: "2025",
+  },
+  {
+    officer_id: "10", // GM
+    sick_leave: 12,
+    casual_leave: 12,
+    earned_leave: 12,
+    year: "2025",
+  },
+  {
+    officer_id: "8", // Manager
+    sick_leave: 12,
+    casual_leave: 12,
+    earned_leave: 12,
+    year: "2025",
+  },
+  {
+    officer_id: "11", // Admin Staff
+    sick_leave: 12,
+    casual_leave: 12,
+    earned_leave: 12,
     year: "2025",
   },
 ];

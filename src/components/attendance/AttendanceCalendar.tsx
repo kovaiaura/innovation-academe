@@ -21,7 +21,7 @@ export function AttendanceCalendar({ attendance, isOpen, onClose }: AttendanceCa
   const totalDays = attendance.present_days + attendance.absent_days + attendance.leave_days;
   const attendanceRate = calculateAttendancePercentage(attendance.present_days, totalDays);
 
-  const getStatusColor = (status: 'present' | 'absent' | 'leave' | undefined) => {
+  const getStatusColor = (status: 'present' | 'absent' | 'leave' | 'half_day' | undefined) => {
     switch (status) {
       case 'present':
         return 'bg-green-500/20 border-green-500 text-green-700';
@@ -29,6 +29,8 @@ export function AttendanceCalendar({ attendance, isOpen, onClose }: AttendanceCa
         return 'bg-red-500/20 border-red-500 text-red-700';
       case 'leave':
         return 'bg-yellow-500/20 border-yellow-500 text-yellow-700';
+      case 'half_day':
+        return 'bg-orange-500/20 border-orange-500 text-orange-700';
       default:
         return 'bg-muted border-muted-foreground/20 text-muted-foreground';
     }

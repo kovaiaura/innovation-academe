@@ -1,4 +1,4 @@
-export type AttendanceStatus = 'present' | 'absent' | 'leave';
+export type AttendanceStatus = 'present' | 'absent' | 'leave' | 'half_day';
 export type LeaveType = 'sick' | 'casual' | 'earned';
 export type PayrollStatus = 'draft' | 'pending' | 'approved' | 'forwarded' | 'paid';
 
@@ -29,6 +29,7 @@ export interface DailyAttendance {
   check_in_time?: string; // "09:15 AM"
   check_out_time?: string; // "05:30 PM"
   hours_worked?: number;
+  total_hours?: number;
   leave_type?: LeaveType;
   leave_reason?: string;
   notes?: string;
@@ -227,4 +228,68 @@ export interface LeaveBalance {
   casual_leave: number;
   earned_leave: number;
   year: string; // "2025"
+}
+
+/**
+ * Staff Attendance Record (for meta staff: CEO, MD, AGM, GM, Manager, Admin Staff)
+ */
+export interface StaffAttendanceRecord {
+  staff_id: string;
+  staff_name: string;
+  employee_id?: string;
+  position: 'ceo' | 'md' | 'agm' | 'gm' | 'manager' | 'admin_staff';
+  department?: string;
+  month: string; // Format: YYYY-MM
+  daily_records: DailyAttendance[];
+  present_days: number;
+  absent_days: number;
+  leave_days: number;
+  total_hours_worked: number;
+  overtime_hours: number;
+}
+
+/**
+ * Staff Payroll Record (for meta staff)
+ */
+export interface StaffPayrollRecord {
+  id: string;
+  staff_id: string;
+  staff_name: string;
+  position: 'ceo' | 'md' | 'agm' | 'gm' | 'manager' | 'admin_staff';
+  department?: string;
+  month: string;
+  working_days: number;
+  present_days: number;
+  absent_days: number;
+  leave_days: number;
+  
+  // Salary Components
+  salary_components: SalaryComponent[];
+  total_earnings: number;
+  
+  // Deductions
+  deductions: Deduction[];
+  total_deductions: number;
+  
+  // Final Amounts
+  gross_salary: number;
+  net_pay: number;
+  
+  // Statutory Compliance
+  pf_employee?: number;
+  pf_employer?: number;
+  esi_employee?: number;
+  esi_employer?: number;
+  tds?: number;
+  professional_tax?: number;
+  
+  // Workflow
+  status: PayrollStatus;
+  approved_by?: string;
+  approved_at?: string;
+  generated_at?: string;
+  paid_date?: string;
+  payment_mode?: 'bank_transfer' | 'cash' | 'cheque';
+  payment_reference?: string;
+  notes?: string;
 }

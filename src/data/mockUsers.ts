@@ -39,6 +39,9 @@ export const mockUsers: MockUser[] = [
     is_ceo: true,
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SystemAdmin',
     created_at: new Date().toISOString(),
+    hourly_rate: 1500,
+    overtime_rate_multiplier: 1.5,
+    normal_working_hours: 8,
   },
   {
     id: '7',
@@ -50,6 +53,9 @@ export const mockUsers: MockUser[] = [
     is_ceo: false,
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=MD',
     created_at: new Date().toISOString(),
+    hourly_rate: 1200,
+    overtime_rate_multiplier: 1.5,
+    normal_working_hours: 8,
   },
   {
     id: '8',
@@ -61,6 +67,9 @@ export const mockUsers: MockUser[] = [
     is_ceo: false,
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Manager',
     created_at: new Date().toISOString(),
+    hourly_rate: 480,
+    overtime_rate_multiplier: 1.5,
+    normal_working_hours: 8,
   },
   {
     id: '9',
@@ -72,6 +81,9 @@ export const mockUsers: MockUser[] = [
     is_ceo: false,
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AGM',
     created_at: new Date().toISOString(),
+    hourly_rate: 900,
+    overtime_rate_multiplier: 1.5,
+    normal_working_hours: 8,
   },
   {
     id: '10',
@@ -83,6 +95,9 @@ export const mockUsers: MockUser[] = [
     is_ceo: false,
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=GM',
     created_at: new Date().toISOString(),
+    hourly_rate: 720,
+    overtime_rate_multiplier: 1.5,
+    normal_working_hours: 8,
   },
   {
     id: '11',
@@ -94,6 +109,9 @@ export const mockUsers: MockUser[] = [
     is_ceo: false,
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AdminStaff',
     created_at: new Date().toISOString(),
+    hourly_rate: 300,
+    overtime_rate_multiplier: 1.5,
+    normal_working_hours: 8,
   },
 
   // Modern School Vasant Vihar - Management

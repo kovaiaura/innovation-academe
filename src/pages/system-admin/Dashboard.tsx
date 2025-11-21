@@ -96,6 +96,9 @@ export default function SystemAdminDashboard() {
           )}
         </div>
 
+        {/* Staff Attendance Card */}
+        <StaffAttendanceCard />
+
         {/* Stats Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           {stats.map((stat) => {
