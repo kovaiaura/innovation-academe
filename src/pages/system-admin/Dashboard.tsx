@@ -6,6 +6,7 @@ import { Building2, Users, GraduationCap, Key, TrendingUp, AlertCircle, Phone, P
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Layout } from '@/components/layout/Layout';
+import { StaffAttendanceCard } from '@/components/attendance/StaffAttendanceCard';
 import { getPendingLeaveCount } from '@/data/mockLeaveData';
 import { getPositionDisplayName } from '@/data/mockPositionPermissions';
 
