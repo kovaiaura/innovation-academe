@@ -4,16 +4,19 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { mockAttendanceData, getAttendanceByInstitution, mockPayrollData } from '@/data/mockAttendanceData';
 import { mockOfficerProfiles, getOfficerById } from '@/data/mockOfficerData';
 import { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Download, DollarSign, Clock, TrendingUp, FileText, CheckCircle, Eye, MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, DollarSign, Clock, TrendingUp, FileText, CheckCircle, Eye, MapPin, Users, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
 import { generateMonthCalendarDays, getAttendanceForDate, calculateAttendancePercentage, exportToCSV, formatCurrency, calculateMonthlyOvertime } from '@/utils/attendanceHelpers';
 import { format } from 'date-fns';
 import { PayrollRecord } from '@/types/attendance';
+import { MetaEmployeeAttendanceTab } from '@/components/attendance/MetaEmployeeAttendanceTab';
 
 export default function OfficerAttendance() {
+  const [activeTab, setActiveTab] = useState<'officers' | 'employees'>('officers');
   const [selectedInstitution, setSelectedInstitution] = useState<string>('all');
   const [selectedOfficerId, setSelectedOfficerId] = useState('');
   const [currentMonth, setCurrentMonth] = useState('2024-01');
@@ -350,11 +353,26 @@ export default function OfficerAttendance() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Innovation Officer Attendance & Payroll</h1>
+          <h1 className="text-3xl font-bold text-foreground">Attendance & Payroll Management</h1>
           <p className="text-muted-foreground mt-2">
-            View attendance records and payroll details for innovation officers
+            Track attendance and payroll for innovation officers and meta employees
           </p>
         </div>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+          <TabsList className="grid w-full grid-cols-2 max-w-2xl">
+            <TabsTrigger value="officers" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Innovation Officers
+            </TabsTrigger>
+            <TabsTrigger value="employees" className="flex items-center gap-2">
+              <Briefcase className="h-4 w-4" />
+              Meta Employees
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="officers" className="mt-6 space-y-6">
 
         {/* Filters */}
         <Card>
@@ -836,6 +854,12 @@ export default function OfficerAttendance() {
             </CardContent>
           </Card>
         )}
+          </TabsContent>
+
+          <TabsContent value="employees" className="mt-6">
+            <MetaEmployeeAttendanceTab />
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
