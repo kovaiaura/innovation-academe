@@ -18,12 +18,11 @@ import { DuplicateAssessmentDialog } from '@/components/assessment/DuplicateAsse
 import { mockAssessments, mockAssessmentQuestions } from '@/data/mockAssessmentData';
 import { Assessment, AssessmentQuestion, AssessmentPublishing } from '@/types/assessment';
 import { getAssessmentStatus, formatDuration, calculateTotalPoints } from '@/utils/assessmentHelpers';
-import { Search, Plus, Calendar, Clock, Award, Users, FileText, Copy, Trash2, Eye } from 'lucide-react';
+import { Search, Plus, Calendar, Clock, Award, Users, FileText, Edit, Trash2, Eye } from 'lucide-react';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
+import { AssessmentDetailsDialog } from '@/components/assessment/AssessmentDetailsDialog';
 
 export default function AssessmentManagement() {
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,7 +48,9 @@ export default function AssessmentManagement() {
   // Dialogs
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
+  const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null);
 
   const filteredAssessments = mockAssessments.filter((assessment) => {
     const matchesSearch = assessment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -87,13 +88,38 @@ export default function AssessmentManagement() {
   };
 
   const handleCreateAssessment = (isDraft: boolean) => {
-    toast.success(isDraft ? 'Assessment saved as draft' : 'Assessment created and published');
+    toast.success(editingAssessment 
+      ? 'Assessment updated successfully' 
+      : (isDraft ? 'Assessment saved as draft' : 'Assessment created and published')
+    );
     // Reset form
     setStep(1);
     setTitle('');
     setDescription('');
     setQuestions([]);
     setPublishing([]);
+    setEditingAssessment(null);
+    setActiveTab('all');
+  };
+
+  const handleEditAssessment = (assessment: Assessment) => {
+    setEditingAssessment(assessment);
+    // Pre-fill form
+    setTitle(assessment.title);
+    setDescription(assessment.description);
+    setDurationMinutes(assessment.duration_minutes);
+    setStartTime(assessment.start_time.slice(0, 16)); // Format for datetime-local
+    setEndTime(assessment.end_time.slice(0, 16));
+    setPassPercentage([assessment.pass_percentage]);
+    setAutoSubmit(assessment.auto_submit);
+    setAutoEvaluate(assessment.auto_evaluate);
+    setShuffleQuestions(assessment.shuffle_questions);
+    setShowResultsImmediately(assessment.show_results_immediately);
+    setAllowReview(assessment.allow_review_after_submission);
+    setQuestions(assessment.questions || []);
+    setPublishing(assessment.published_to);
+    setActiveTab('create');
+    setStep(1);
   };
 
   return (
@@ -205,11 +231,22 @@ export default function AssessmentManagement() {
                         </div>
 
                         <div className="flex gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => navigate(`/system-admin/assessments/${assessment.id}`)}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => { 
+                              setSelectedAssessment(assessment); 
+                              setViewDialogOpen(true); 
+                            }}
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => { setSelectedAssessment(assessment); setDuplicateDialogOpen(true); }}>
-                            <Copy className="h-4 w-4" />
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleEditAssessment(assessment)}
+                          >
+                            <Edit className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon">
                             <Trash2 className="h-4 w-4 text-destructive" />
@@ -224,6 +261,16 @@ export default function AssessmentManagement() {
           </TabsContent>
 
           <TabsContent value="create" className="space-y-6">
+            {editingAssessment && (
+              <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                <CardContent className="pt-6">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    Editing: <strong>{editingAssessment.title}</strong>
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+            
             {/* Step Indicator */}
             <div className="flex items-center justify-between mb-8">
               {[1, 2, 3, 4, 5].map((s) => (
@@ -239,7 +286,9 @@ export default function AssessmentManagement() {
             {/* Step 1: Basic Info */}
             {step === 1 && (
               <Card>
-                <CardHeader><CardTitle>Basic Information</CardTitle></CardHeader>
+                <CardHeader>
+                  <CardTitle>{editingAssessment ? 'Edit' : 'Create'} Assessment - Basic Information</CardTitle>
+                </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label>Title *</Label>
@@ -376,8 +425,12 @@ export default function AssessmentManagement() {
                   </div>
                   <div className="flex gap-3">
                     <Button variant="outline" onClick={() => setStep(4)}>Back</Button>
-                    <Button variant="outline" onClick={() => handleCreateAssessment(true)}>Save as Draft</Button>
-                    <Button onClick={() => handleCreateAssessment(false)}>Create & Publish</Button>
+                    <Button onClick={() => handleCreateAssessment(false)}>
+                      {editingAssessment ? 'Update Assessment' : 'Create Assessment'}
+                    </Button>
+                    {!editingAssessment && (
+                      <Button variant="outline" onClick={() => handleCreateAssessment(true)}>Save as Draft</Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -405,6 +458,12 @@ export default function AssessmentManagement() {
           />
         </>
       )}
+      
+      <AssessmentDetailsDialog
+        assessment={selectedAssessment}
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+      />
     </Layout>
   );
 }
