@@ -19,6 +19,7 @@ import { ModuleBuilder } from '@/components/course/ModuleBuilder';
 import { CreateAssignmentDialog } from '@/components/course/CreateAssignmentDialog';
 import { CreateQuizDialog } from '@/components/course/CreateQuizDialog';
 import { AssignCourseDialog } from '@/components/course/AssignCourseDialog';
+import { CertificateSelector } from '@/components/gamification/CertificateSelector';
 import { courseService } from '@/services/course.service';
 import { Assignment, Quiz, CourseAssignmentRequest } from '@/types/course';
 
@@ -45,6 +46,7 @@ export default function CourseManagement() {
     duration_weeks: 8,
     prerequisites: '',
     learning_outcomes: [''],
+    certificate_template_id: undefined as string | undefined,
     modules: [] as any[]
   });
 
@@ -82,6 +84,7 @@ export default function CourseManagement() {
       duration_weeks: 8,
       prerequisites: '',
       learning_outcomes: [''],
+      certificate_template_id: undefined,
       modules: []
     });
     setThumbnailPreview('');
@@ -544,6 +547,12 @@ export default function CourseManagement() {
                     Add Outcome
                   </Button>
                 </div>
+
+                <CertificateSelector
+                  category="course"
+                  selectedTemplateId={newCourse.certificate_template_id}
+                  onSelect={(templateId) => setNewCourse({ ...newCourse, certificate_template_id: templateId })}
+                />
               </CardContent>
             </Card>
 
@@ -587,6 +596,7 @@ export default function CourseManagement() {
                         duration_weeks: 8,
                         prerequisites: '',
                         learning_outcomes: [''],
+                        certificate_template_id: undefined,
                         modules: []
                       });
                       setThumbnailPreview('');

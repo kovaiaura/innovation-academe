@@ -15,6 +15,7 @@ import { QuestionList } from '@/components/assessment/QuestionList';
 import { PublishingSelector } from '@/components/assessment/PublishingSelector';
 import { PublishAssessmentDialog } from '@/components/assessment/PublishAssessmentDialog';
 import { DuplicateAssessmentDialog } from '@/components/assessment/DuplicateAssessmentDialog';
+import { CertificateSelector } from '@/components/gamification/CertificateSelector';
 import { mockAssessments, mockAssessmentQuestions } from '@/data/mockAssessmentData';
 import { Assessment, AssessmentQuestion, AssessmentPublishing } from '@/types/assessment';
 import { getAssessmentStatus, formatDuration, calculateTotalPoints } from '@/utils/assessmentHelpers';
@@ -44,6 +45,7 @@ export default function AssessmentManagement() {
   const [editingQuestion, setEditingQuestion] = useState<Partial<AssessmentQuestion> | null>(null);
   const [showQuestionBuilder, setShowQuestionBuilder] = useState(false);
   const [publishing, setPublishing] = useState<AssessmentPublishing[]>([]);
+  const [certificateTemplateId, setCertificateTemplateId] = useState<string | undefined>(undefined);
   
   // Dialogs
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
@@ -312,6 +314,13 @@ export default function AssessmentManagement() {
                       <Input type="datetime-local" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
                     </div>
                   </div>
+
+                  <CertificateSelector
+                    category="assessment"
+                    selectedTemplateId={certificateTemplateId}
+                    onSelect={setCertificateTemplateId}
+                  />
+
                   <Button onClick={() => setStep(2)}>Next</Button>
                 </CardContent>
               </Card>

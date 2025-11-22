@@ -54,6 +54,9 @@ export interface ActivityEvent {
   banner_image?: string;
   attachments?: string[];
   
+  // Certificate
+  certificate_template_id?: string; // Certificate template to award on participation
+  
   // Metadata
   created_by: string; // System Admin ID
   created_at: string;

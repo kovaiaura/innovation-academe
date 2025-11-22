@@ -29,6 +29,9 @@ export interface Assessment {
   question_count: number;
   questions?: AssessmentQuestion[];
   
+  // Certificate
+  certificate_template_id?: string; // Certificate template to award on completion
+  
   // Metadata
   created_by: string;
   created_by_role: 'system_admin' | 'officer'; // NEW: Track who created it
