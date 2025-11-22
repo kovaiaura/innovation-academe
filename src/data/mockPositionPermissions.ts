@@ -15,7 +15,9 @@ export const defaultPositionPermissions: PositionPermissions[] = [
       'officer_management',
       'reports_analytics',
       'leave_approvals',
-      'attendance_payroll'
+      'attendance_payroll',
+      'task_management',
+      'task_allotment'
     ],
     description: 'Senior management with oversight access'
   },
@@ -26,7 +28,9 @@ export const defaultPositionPermissions: PositionPermissions[] = [
       'institution_management',
       'course_management',
       'officer_management',
-      'reports_analytics'
+      'reports_analytics',
+      'task_management',
+      'task_allotment'
     ],
     description: 'Operational management access'
   },
@@ -37,7 +41,9 @@ export const defaultPositionPermissions: PositionPermissions[] = [
       'institution_management',
       'reports_analytics',
       'leave_approvals',
-      'attendance_payroll'
+      'attendance_payroll',
+      'task_management',
+      'task_allotment'
     ],
     description: 'General management operations'
   },
@@ -48,7 +54,8 @@ export const defaultPositionPermissions: PositionPermissions[] = [
       'course_management',
       'assessment_management',
       'assignment_management',
-      'project_management'
+      'project_management',
+      'task_allotment'
     ],
     description: 'Academic operations management'
   },
@@ -58,7 +65,8 @@ export const defaultPositionPermissions: PositionPermissions[] = [
     allowed_features: [
       'officer_management',
       'inventory_management',
-      'institutional_calendar'
+      'institutional_calendar',
+      'task_allotment'
     ],
     description: 'Administrative support functions'
   }

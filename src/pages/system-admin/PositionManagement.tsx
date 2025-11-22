@@ -43,6 +43,8 @@ const allFeatures: { value: SystemAdminFeature; label: string }[] = [
   { value: 'institutional_calendar', label: 'Institutional Calendar' },
   { value: 'reports_analytics', label: 'Reports & Invoice' },
   { value: 'sdg_management', label: 'SDG Management' },
+  { value: 'task_management', label: 'Task Management (Create & Assign)' },
+  { value: 'task_allotment', label: 'Task Allotment (View Assigned)' },
 ];
 
 export default function PositionManagement() {

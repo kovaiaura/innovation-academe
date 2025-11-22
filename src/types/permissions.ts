@@ -21,7 +21,9 @@ export type SystemAdminFeature =
   | 'leave_approvals'
   | 'institutional_calendar'
   | 'reports_analytics'
-  | 'sdg_management';
+  | 'sdg_management'
+  | 'task_management'
+  | 'task_allotment';
 
 export interface PositionPermissions {
   position: SystemAdminPosition;

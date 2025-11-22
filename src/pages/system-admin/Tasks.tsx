@@ -7,9 +7,29 @@ import { TaskCard } from '@/components/task/TaskCard';
 import { TaskDetailDialog } from '@/components/task/TaskDetailDialog';
 import { getTasksByAssignee, getTaskStats } from '@/data/mockTaskData';
 import { useAuth } from '@/contexts/AuthContext';
+import { canAccessFeature } from '@/utils/permissionHelpers';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 export default function Tasks() {
   const { user } = useAuth();
+
+  // Check if user has task_allotment feature
+  if (!canAccessFeature(user, 'task_allotment')) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-screen">
+          <Alert variant="destructive" className="max-w-md">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Access Denied</AlertTitle>
+            <AlertDescription>
+              You do not have permission to view assigned tasks. Contact your administrator for access.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </Layout>
+    );
+  }
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
