@@ -19,7 +19,8 @@ export const defaultPositionPermissions: PositionPermissions[] = [
       'reports_analytics',
       'sdg_management',
       'task_management',
-      'task_allotment'
+      'task_allotment',
+      'credential_management'
     ],
     description: 'Complete system access and permission management'
   },
@@ -33,7 +34,8 @@ export const defaultPositionPermissions: PositionPermissions[] = [
       'leave_approvals',
       'attendance_payroll',
       'task_management',
-      'task_allotment'
+      'task_allotment',
+      'credential_management'
     ],
     description: 'Senior management with oversight access'
   },
@@ -46,7 +48,8 @@ export const defaultPositionPermissions: PositionPermissions[] = [
       'officer_management',
       'reports_analytics',
       'task_management',
-      'task_allotment'
+      'task_allotment',
+      'credential_management'
     ],
     description: 'Operational management access'
   },
@@ -59,7 +62,8 @@ export const defaultPositionPermissions: PositionPermissions[] = [
       'leave_approvals',
       'attendance_payroll',
       'task_management',
-      'task_allotment'
+      'task_allotment',
+      'credential_management'
     ],
     description: 'General management operations'
   },
