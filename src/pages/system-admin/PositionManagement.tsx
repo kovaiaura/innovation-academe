@@ -21,9 +21,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Shield, Users, Plus, Trash2, Key, Copy, AlertTriangle } from 'lucide-react';
+import { Shield, Users, Plus, Trash2, Key, Copy, AlertTriangle, Crown, Info } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { metaStaffService } from '@/services/metastaff.service';
 import { getAllPositions, getPositionDisplayName } from '@/data/mockPositionPermissions';
 import { SystemAdminPosition, SystemAdminFeature } from '@/types/permissions';
@@ -49,7 +50,9 @@ const allFeatures: { value: SystemAdminFeature; label: string }[] = [
 
 export default function PositionManagement() {
   const { user } = useAuth();
-  const [selectedPosition, setSelectedPosition] = useState<SystemAdminPosition>('md');
+  const [selectedPosition, setSelectedPosition] = useState<SystemAdminPosition>(
+    user?.position === 'ceo' ? 'ceo' : 'md'
+  );
   const [positionFeatures, setPositionFeatures] = useState<SystemAdminFeature[]>([]);
   const [metaStaffUsers, setMetaStaffUsers] = useState<User[]>([]);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
@@ -71,7 +74,7 @@ export default function PositionManagement() {
     name: '',
   });
 
-  const positions = getAllPositions().filter(p => p.position !== 'ceo');
+  const positions = getAllPositions();
 
   useEffect(() => {
     loadMetaStaff();
@@ -85,7 +88,7 @@ export default function PositionManagement() {
   const loadMetaStaff = async () => {
     try {
       const staff = await metaStaffService.getMetaStaff();
-      setMetaStaffUsers(staff.filter(s => s.position !== 'ceo'));
+      setMetaStaffUsers(staff);
     } catch (error) {
       toast.error('Failed to load meta staff');
     }
@@ -208,7 +211,7 @@ export default function PositionManagement() {
         </div>
 
         {/* Position Cards */}
-        <div className="grid gap-4 md:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
           {positions.map((position) => (
             <Card
               key={position.position}
@@ -220,7 +223,14 @@ export default function PositionManagement() {
               onClick={() => setSelectedPosition(position.position)}
             >
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">{position.display_name}</CardTitle>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  {position.display_name}
+                  {position.position === 'ceo' && user?.position === 'ceo' && (
+                    <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 border-yellow-500/20 text-xs">
+                      <Crown className="h-3 w-3 mr-1" /> You
+                    </Badge>
+                  )}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
@@ -244,6 +254,14 @@ export default function PositionManagement() {
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
+              {selectedPosition === 'ceo' && (
+                <Alert className="bg-yellow-500/10 border-yellow-500/20">
+                  <Info className="h-4 w-4 text-yellow-700" />
+                  <AlertDescription className="text-yellow-700">
+                    Note: Position Management is always accessible to CEO and cannot be disabled. Customize your sidebar by selecting the features you need.
+                  </AlertDescription>
+                </Alert>
+              )}
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {allFeatures.map((feature) => (
                   <div key={feature.value} className="flex items-center space-x-2">

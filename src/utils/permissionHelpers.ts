@@ -5,9 +5,6 @@ import { getPositionPermissions } from '@/data/mockPositionPermissions';
 export const canAccessFeature = (user: User | null, feature: SystemAdminFeature): boolean => {
   if (!user || user.role !== 'system_admin') return false;
   
-  // CEO has full access
-  if (user.position === 'ceo' || user.is_ceo) return true;
-  
   // Check position permissions
   if (!user.position) return false;
   
@@ -22,8 +19,6 @@ export const canAccessFeature = (user: User | null, feature: SystemAdminFeature)
 
 export const getAccessibleFeatures = (user: User | null): SystemAdminFeature[] | ['ALL'] => {
   if (!user || user.role !== 'system_admin') return [];
-  
-  if (user.position === 'ceo' || user.is_ceo) return ['ALL'];
   
   if (!user.position) return [];
   
