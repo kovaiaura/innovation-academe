@@ -7,7 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { CertificateTemplate } from '@/types/gamification';
-import { Upload } from 'lucide-react';
+import { Upload, X, FileImage } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface CertificateTemplateDialogProps {
   open: boolean;
@@ -33,7 +34,10 @@ export function CertificateTemplateDialog({
   const [fontFamily, setFontFamily] = useState('serif');
   const [isActive, setIsActive] = useState(true);
   const [sampleName, setSampleName] = useState('Student Name');
+  const [isDragging, setIsDragging] = useState(false);
+  const [fileName, setFileName] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (template) {
@@ -107,6 +111,69 @@ export function CertificateTemplateDialog({
     setNameY(Math.round(y));
   };
 
+  const validateFile = (file: File): boolean => {
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+
+    if (!validTypes.includes(file.type)) {
+      toast.error('Invalid file type. Please upload PNG or JPG images only.');
+      return false;
+    }
+
+    if (file.size > maxSize) {
+      toast.error('File size exceeds 5MB. Please upload a smaller image.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleFileUpload = (file: File) => {
+    if (!validateFile(file)) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setImageUrl(result);
+      setFileName(file.name);
+      toast.success('Template image uploaded successfully!');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleRemoveImage = () => {
+    setImageUrl('');
+    setFileName('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -145,13 +212,53 @@ export function CertificateTemplateDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Template Image URL *</Label>
-            <Input 
-              value={imageUrl} 
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://example.com/certificate-template.jpg"
-            />
-            <p className="text-xs text-muted-foreground">Enter the URL of your certificate background image (1200x900px recommended)</p>
+            <Label>Template Image *</Label>
+            {!imageUrl ? (
+              <div
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                  isDragging 
+                    ? 'border-primary bg-primary/5' 
+                    : 'border-border hover:border-primary/50 hover:bg-accent'
+                }`}
+              >
+                <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-sm font-medium mb-1">
+                  {isDragging ? 'Drop image here' : 'Click to upload or drag and drop'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  PNG or JPG (max 5MB) • 1200x900px recommended
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
+                  onChange={handleFileInput}
+                  className="hidden"
+                />
+              </div>
+            ) : (
+              <div className="relative border rounded-lg p-4 bg-accent/50">
+                <div className="flex items-center gap-3">
+                  <FileImage className="w-10 h-10 text-primary" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{fileName || 'Template Image'}</p>
+                    <p className="text-xs text-muted-foreground">Image uploaded successfully</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleRemoveImage}
+                    className="shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           {imageUrl && (
