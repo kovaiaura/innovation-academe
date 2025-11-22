@@ -5,6 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { AssessmentPublishing } from '@/types/assessment';
 import { mockInstitutionClasses } from '@/data/mockClassData';
 
@@ -15,7 +17,7 @@ const mockInstitutions = [
   { id: 'ryan', name: 'Ryan International', location: 'Mumbai, India' },
   { id: 'dps', name: 'Delhi Public School', location: 'New Delhi, India' }
 ];
-import { Search, Building2, GraduationCap } from 'lucide-react';
+import { Search, Building2, GraduationCap, AlertTriangle, CheckSquare } from 'lucide-react';
 
 interface PublishingSelectorProps {
   value: AssessmentPublishing[];
@@ -71,6 +73,16 @@ export const PublishingSelector = ({ value, onChange, restrictToInstitution }: P
     }
     
     newMap.set(institutionId, classes);
+    setSelectedInstitutions(newMap);
+    updatePublishing(newMap);
+  };
+
+  const selectAllClasses = (institutionId: string) => {
+    const newMap = new Map(selectedInstitutions);
+    const classes = getInstitutionClasses(institutionId);
+    const allClassIds = new Set(classes.map(c => c.id));
+    
+    newMap.set(institutionId, allClassIds);
     setSelectedInstitutions(newMap);
     updatePublishing(newMap);
   };
@@ -137,10 +149,14 @@ export const PublishingSelector = ({ value, onChange, restrictToInstitution }: P
               </div>
             </div>
           </div>
-          {counts.classes === 0 && (
-            <p className="text-sm text-amber-600 mt-3">
-              Please select at least one institution and class to proceed
-            </p>
+          {counts.institutions > 0 && counts.classes === 0 && (
+            <Alert variant="destructive" className="mt-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Action Required</AlertTitle>
+              <AlertDescription>
+                You've selected {counts.institutions} {counts.institutions === 1 ? 'institution' : 'institutions'} but no classes. Please select at least one class from your selected institutions to proceed.
+              </AlertDescription>
+            </Alert>
           )}
         </CardContent>
       </Card>
@@ -163,27 +179,60 @@ export const PublishingSelector = ({ value, onChange, restrictToInstitution }: P
             const isSelected = selectedInstitutions.has(institution.id);
             const selectedClassIds = selectedInstitutions.get(institution.id) || new Set();
             const classes = getInstitutionClasses(institution.id);
+            const hasClasses = classes.length > 0;
+            const needsAction = isSelected && hasClasses && selectedClassIds.size === 0;
+            const hasSelection = isSelected && selectedClassIds.size > 0;
 
             return (
-              <Card key={institution.id}>
+              <Card 
+                key={institution.id}
+                className={
+                  needsAction 
+                    ? "border-amber-500 border-2" 
+                    : hasSelection 
+                    ? "border-green-500 border-2" 
+                    : ""
+                }
+              >
                 <CardHeader className="pb-3">
-                  <div className="flex items-start gap-3">
-                    <Checkbox
-                      id={`inst-${institution.id}`}
-                      checked={isSelected}
-                      onCheckedChange={(checked) => toggleInstitution(institution.id, checked as boolean)}
-                    />
-                    <div className="flex-1">
-                      <Label htmlFor={`inst-${institution.id}`} className="text-base font-semibold cursor-pointer">
-                        {institution.name}
-                      </Label>
-                      <p className="text-sm text-muted-foreground">{institution.location}</p>
-                      {selectedClassIds.size > 0 && (
-                        <Badge variant="secondary" className="mt-2">
-                          {selectedClassIds.size} {selectedClassIds.size === 1 ? 'class' : 'classes'} selected
-                        </Badge>
-                      )}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1">
+                      <Checkbox
+                        id={`inst-${institution.id}`}
+                        checked={isSelected}
+                        onCheckedChange={(checked) => toggleInstitution(institution.id, checked as boolean)}
+                      />
+                      <div className="flex-1">
+                        <Label htmlFor={`inst-${institution.id}`} className="text-base font-semibold cursor-pointer">
+                          {institution.name}
+                        </Label>
+                        <p className="text-sm text-muted-foreground">{institution.location}</p>
+                        <div className="flex gap-2 mt-2">
+                          {selectedClassIds.size > 0 && (
+                            <Badge variant="secondary">
+                              {selectedClassIds.size} {selectedClassIds.size === 1 ? 'class' : 'classes'} selected
+                            </Badge>
+                          )}
+                          {needsAction && (
+                            <Badge variant="destructive" className="gap-1">
+                              <AlertTriangle className="h-3 w-3" />
+                              Please select classes
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                     </div>
+                    {isSelected && hasClasses && (
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => selectAllClasses(institution.id)}
+                        className="gap-2"
+                      >
+                        <CheckSquare className="h-4 w-4" />
+                        Select All
+                      </Button>
+                    )}
                   </div>
                 </CardHeader>
                 

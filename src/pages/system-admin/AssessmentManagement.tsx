@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AssessmentStatusBadge } from '@/components/assessment/AssessmentStatusBadge';
 import { QuestionBuilder } from '@/components/assessment/QuestionBuilder';
 import { QuestionList } from '@/components/assessment/QuestionList';
@@ -19,7 +20,7 @@ import { CertificateSelector } from '@/components/gamification/CertificateSelect
 import { mockAssessments, mockAssessmentQuestions } from '@/data/mockAssessmentData';
 import { Assessment, AssessmentQuestion, AssessmentPublishing } from '@/types/assessment';
 import { getAssessmentStatus, formatDuration, calculateTotalPoints } from '@/utils/assessmentHelpers';
-import { Search, Plus, Calendar, Clock, Award, Users, FileText, Edit, Trash2, Eye } from 'lucide-react';
+import { Search, Plus, Calendar, Clock, Award, Users, FileText, Edit, Trash2, Eye, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { AssessmentDetailsDialog } from '@/components/assessment/AssessmentDetailsDialog';
 
@@ -407,13 +408,30 @@ export default function AssessmentManagement() {
                   <PublishingSelector value={publishing} onChange={setPublishing} />
                   <div className="flex gap-3">
                     <Button variant="outline" onClick={() => setStep(3)}>Back</Button>
-                    <Button 
-                      onClick={() => setStep(5)} 
-                      disabled={publishing.length === 0}
-                      title={publishing.length === 0 ? "Please select at least one class to proceed" : ""}
-                    >
-                      Next
-                    </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <Button 
+                              onClick={() => setStep(5)} 
+                              disabled={publishing.length === 0}
+                              className="gap-2"
+                            >
+                              {publishing.length === 0 && <Info className="h-4 w-4" />}
+                              Next
+                            </Button>
+                          </div>
+                        </TooltipTrigger>
+                        {publishing.length === 0 && (
+                          <TooltipContent side="top" className="max-w-xs">
+                            <p className="font-medium">Cannot proceed</p>
+                            <p className="text-sm text-muted-foreground">
+                              Select at least one class from the institutions above to continue
+                            </p>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </CardContent>
               </Card>
