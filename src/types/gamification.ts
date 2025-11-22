@@ -91,3 +91,38 @@ export interface ActivityLog {
   points_earned: number;
   description: string;
 }
+
+export interface CertificateTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: 'course' | 'assignment' | 'assessment' | 'event';
+  template_image_url: string;
+  name_position: {
+    x: number;
+    y: number;
+    fontSize: number;
+    color: string;
+    fontFamily: string;
+  };
+  created_by: string;
+  created_at: string;
+  is_active: boolean;
+}
+
+export interface StudentCertificate {
+  id: string;
+  student_id: string;
+  student_name: string;
+  template_id: string;
+  activity_type: 'course' | 'assignment' | 'assessment' | 'event';
+  activity_id: string;
+  activity_name: string;
+  institution_name: string;
+  issued_date: string;
+  completion_date: string;
+  certificate_url: string;
+  verification_code: string;
+  qr_code_url: string;
+  grade?: string;
+}

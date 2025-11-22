@@ -14,7 +14,8 @@ import {
   Plus, 
   Pencil, 
   Trash2,
-  BarChart3
+  BarChart3,
+  FileText
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { GamificationStatsCards } from "@/components/gamification/GamificationStatsCards";
@@ -25,6 +26,7 @@ import { RewardConfigDialog } from "@/components/gamification/RewardConfigDialog
 import { StudentPerformanceTable } from "@/components/gamification/StudentPerformanceTable";
 import { StudentPerformanceModal } from "@/components/gamification/StudentPerformanceModal";
 import { LeaderboardConfigCard } from "@/components/gamification/LeaderboardConfigCard";
+import { CertificateTemplateManager } from "@/components/gamification/CertificateTemplateManager";
 import {
   mockGamificationStats,
   mockActivityLogs,
@@ -138,7 +140,7 @@ export default function GamificationManagement() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">
             <BarChart3 className="h-4 w-4 mr-2" />
             Overview
@@ -150,6 +152,10 @@ export default function GamificationManagement() {
           <TabsTrigger value="rewards">
             <Gift className="h-4 w-4 mr-2" />
             Rewards
+          </TabsTrigger>
+          <TabsTrigger value="certificates">
+            <FileText className="h-4 w-4 mr-2" />
+            Certificates
           </TabsTrigger>
           <TabsTrigger value="performance">
             <TrendingUp className="h-4 w-4 mr-2" />
@@ -371,7 +377,12 @@ export default function GamificationManagement() {
           </Card>
         </TabsContent>
 
-        {/* Tab 4: Student Performance Monitoring */}
+        {/* Tab 4: Certificate Templates */}
+        <TabsContent value="certificates" className="space-y-6">
+          <CertificateTemplateManager />
+        </TabsContent>
+
+        {/* Tab 5: Student Performance Monitoring */}
         <TabsContent value="performance" className="space-y-6">
           <Card>
             <CardHeader>
@@ -414,7 +425,7 @@ export default function GamificationManagement() {
           </Card>
         </TabsContent>
 
-        {/* Tab 5: Leaderboards Management */}
+        {/* Tab 6: Leaderboards Management */}
         <TabsContent value="leaderboards" className="space-y-6">
           <div className="space-y-6">
             {leaderboards.map((leaderboard) => (
