@@ -1,4 +1,7 @@
 import { CourseContent, Assignment, Quiz, AssignmentSubmission, QuizAttempt } from '@/types/course';
+import { awardCourseCompletionCertificate } from './certificateAutoAward';
+import { Student } from '@/types/student';
+import { Course } from '@/types/course';
 
 export interface CompletionRequirements {
   allContentViewed: boolean;
@@ -107,4 +110,16 @@ export function checkCourseCompletion(
   );
 
   return { completed, requirements, progressPercentage };
+}
+
+/**
+ * Award certificate when course is completed (call this after checkCourseCompletion returns completed: true)
+ */
+export async function awardCertificateOnCourseCompletion(
+  student: Student,
+  course: Course,
+  institutionName: string,
+  completionDate: string = new Date().toISOString()
+): Promise<void> {
+  await awardCourseCompletionCertificate(student, course, institutionName, completionDate);
 }

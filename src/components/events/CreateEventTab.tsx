@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CertificateSelector } from '@/components/gamification/CertificateSelector';
 import { format } from 'date-fns';
 import { CalendarIcon, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ export function CreateEventTab() {
   const [registrationEnd, setRegistrationEnd] = useState<Date>();
   const [eventStart, setEventStart] = useState<Date>();
   const [eventEnd, setEventEnd] = useState<Date>();
+  const [certificateTemplateId, setCertificateTemplateId] = useState<string | undefined>(undefined);
   const { toast } = useToast();
 
   const handleAddPrize = () => {
@@ -363,6 +365,13 @@ export function CreateEventTab() {
               ))}
             </div>
           </div>
+
+          {/* Certificate */}
+          <CertificateSelector
+            category="event"
+            selectedTemplateId={certificateTemplateId}
+            onSelect={setCertificateTemplateId}
+          />
 
           {/* Actions */}
           <div className="flex gap-4 pt-4">

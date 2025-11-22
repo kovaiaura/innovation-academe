@@ -46,6 +46,7 @@ export interface Course {
   prerequisites?: string;
   learning_outcomes: string[];
   sdg_goals?: string[]; // SDG goal IDs (e.g., ['SDG4', 'SDG9'])
+  certificate_template_id?: string; // Certificate template to award on completion
   status: CourseStatus;
   created_by: string;
   created_at: string;

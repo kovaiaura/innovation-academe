@@ -13,6 +13,7 @@ import { AssignmentQuestionBuilder } from '@/components/assignment-management/As
 import { AssignmentDetailsDialog } from '@/components/assignment-management/AssignmentDetailsDialog';
 import { DeleteAssignmentDialog } from '@/components/assignment-management/DeleteAssignmentDialog';
 import { EditAssignmentDialog } from '@/components/assignment-management/EditAssignmentDialog';
+import { CertificateSelector } from '@/components/gamification/CertificateSelector';
 import { mockAssignments, mockAssignmentStats, getAssignmentsByStatus } from '@/data/mockAssignmentManagement';
 import { mockInstitutionClasses } from '@/data/mockClassData';
 import { StandaloneAssignment, AssignmentType, LateSubmissionPolicy, AssignmentQuestion } from '@/types/assignment-management';
@@ -53,6 +54,7 @@ export default function AssignmentManagement() {
   const [maxFileSize, setMaxFileSize] = useState(10);
   const [publishing, setPublishing] = useState<PublishingSelection[]>([]);
   const [questions, setQuestions] = useState<AssignmentQuestion[]>([]);
+  const [certificateTemplateId, setCertificateTemplateId] = useState<string | undefined>(undefined);
 
   const stats = mockAssignmentStats;
   
@@ -409,6 +411,12 @@ export default function AssignmentManagement() {
                     />
                   </div>
                 </div>
+
+                <CertificateSelector
+                  category="assignment"
+                  selectedTemplateId={certificateTemplateId}
+                  onSelect={setCertificateTemplateId}
+                />
               </CardContent>
             </Card>
           )}

@@ -73,6 +73,9 @@ export interface StandaloneAssignment {
   // Attachments/Resources
   attachments?: AssignmentAttachment[];
   
+  // Certificate
+  certificate_template_id?: string; // Certificate template to award on completion
+  
   // Stats
   total_submissions?: number;
   graded_submissions?: number;
