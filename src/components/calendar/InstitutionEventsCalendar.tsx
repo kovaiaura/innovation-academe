@@ -251,7 +251,7 @@ export function InstitutionEventsCalendar({
         ) : (
           <>
             <NavigationToolbar 
-              label={format(date, view === 'month' ? 'MMMM yyyy' : view === 'week' ? "'Week of' MMM d, yyyy" : view === 'day' ? 'MMMM d, yyyy' : 'Agenda')} 
+              label={view === 'agenda' ? 'Agenda' : format(date, view === 'month' ? 'MMMM yyyy' : view === 'week' ? "'Week of' MMM d, yyyy" : 'MMMM d, yyyy')} 
               date={date} 
             />
             <Calendar
