@@ -12,6 +12,7 @@ import { AssignmentPublishingSelector, PublishingSelection } from '@/components/
 import { AssignmentQuestionBuilder } from '@/components/assignment-management/AssignmentQuestionBuilder';
 import { AssignmentDetailsDialog } from '@/components/assignment-management/AssignmentDetailsDialog';
 import { DeleteAssignmentDialog } from '@/components/assignment-management/DeleteAssignmentDialog';
+import { EditAssignmentDialog } from '@/components/assignment-management/EditAssignmentDialog';
 import { mockAssignments, mockAssignmentStats, getAssignmentsByStatus } from '@/data/mockAssignmentManagement';
 import { mockInstitutionClasses } from '@/data/mockClassData';
 import { StandaloneAssignment, AssignmentType, LateSubmissionPolicy, AssignmentQuestion } from '@/types/assignment-management';
@@ -33,6 +34,10 @@ export default function AssignmentManagement() {
   // Delete dialog state
   const [assignmentToDelete, setAssignmentToDelete] = useState<StandaloneAssignment | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Edit dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [assignmentToEdit, setAssignmentToEdit] = useState<StandaloneAssignment | null>(null);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -116,33 +121,8 @@ export default function AssignmentManagement() {
   };
 
   const handleEditAssignment = (assignment: StandaloneAssignment) => {
-    // Pre-populate form with assignment data
-    setTitle(assignment.title);
-    setDescription(assignment.description);
-    setInstructions(assignment.instructions || '');
-    setAssignmentType(assignment.assignment_type);
-    setDueDate(assignment.due_date);
-    setDueTime(assignment.due_time || '23:59');
-    setTotalPoints(assignment.total_points);
-    setLatePolicy(assignment.late_submission_policy);
-    setLatePenalty(assignment.late_penalty_percentage || 10);
-    setAllowedFileTypes(assignment.allowed_file_types?.join(',') || 'pdf,docx');
-    setMaxFileSize(assignment.max_file_size_mb || 10);
-    setQuestions(assignment.questions || []);
-    setPublishing(assignment.publishing.map(pub => ({
-      institution_id: pub.institution_id,
-      institution_name: pub.institution_name,
-      class_ids: pub.class_ids,
-    })));
-    
-    // Store the assignment being edited
-    setSelectedAssignment(assignment);
-    
-    // Switch to create tab to show the wizard
-    const createTab = document.querySelector('[value="create"]') as HTMLElement;
-    createTab?.click();
-    
-    toast.info('Editing assignment in wizard');
+    setAssignmentToEdit(assignment);
+    setEditDialogOpen(true);
   };
 
   const handleDeleteAssignment = (assignment: StandaloneAssignment) => {
@@ -157,6 +137,15 @@ export default function AssignmentManagement() {
     toast.success(`Assignment deleted: ${assignmentToDelete.title}`);
     setDeleteDialogOpen(false);
     setAssignmentToDelete(null);
+  };
+
+  const handleSaveEdit = (updatedAssignment: StandaloneAssignment) => {
+    setAssignments(assignments.map(a => 
+      a.id === updatedAssignment.id ? updatedAssignment : a
+    ));
+    toast.success('Assignment updated successfully');
+    setEditDialogOpen(false);
+    setAssignmentToEdit(null);
   };
 
   const handleCreateAssignment = (isDraft: boolean) => {
@@ -624,6 +613,14 @@ export default function AssignmentManagement() {
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={confirmDeleteAssignment}
+      />
+
+      <EditAssignmentDialog
+        assignment={assignmentToEdit}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSave={handleSaveEdit}
+        institutions={institutions}
       />
     </div>
     </Layout>
