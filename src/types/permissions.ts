@@ -23,7 +23,8 @@ export type SystemAdminFeature =
   | 'reports_analytics'
   | 'sdg_management'
   | 'task_management'
-  | 'task_allotment';
+  | 'task_allotment'
+  | 'credential_management';
 
 export interface PositionPermissions {
   position: SystemAdminPosition;

@@ -11,10 +11,13 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import loginBg from '@/assets/login-background.svg';
 import logoImage from '@/assets/logo.png';
+import { ForgotPasswordDialog } from '@/components/auth/ForgotPasswordDialog';
+import { passwordService } from '@/services/password.service';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const {
@@ -75,7 +78,18 @@ export default function Login() {
               <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required disabled={isLoading} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="px-0 text-sm h-auto"
+                  onClick={() => setForgotPasswordOpen(true)}
+                  disabled={isLoading}
+                >
+                  Forgot Password?
+                </Button>
+              </div>
               <Input id="password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required disabled={isLoading} />
             </div>
             <Button type="submit" className="w-full bg-meta-dark hover:bg-meta-dark-lighter" disabled={isLoading}>
@@ -87,5 +101,13 @@ export default function Login() {
           </form>
         </CardContent>
       </Card>
+
+      <ForgotPasswordDialog 
+        open={forgotPasswordOpen}
+        onClose={() => setForgotPasswordOpen(false)}
+        onRequestReset={async (email) => {
+          await passwordService.requestPasswordReset(email);
+        }}
+      />
     </div>;
 }
