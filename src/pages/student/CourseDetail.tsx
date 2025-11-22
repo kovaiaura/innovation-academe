@@ -110,7 +110,15 @@ export default function StudentCourseDetail() {
       
       const existingCert = getCertificateByCourse(studentId, courseId);
       if (!existingCert) {
-        const cert = generateCourseCertificate(student, course!, officer.name, student.institution_id, new Date().toISOString());
+        const cert = generateCourseCertificate(
+          student, 
+          course!, 
+          officer.name, 
+          student.institution_id, 
+          new Date().toISOString(),
+          'cert-temp-001', // Default course certificate template
+          'A' // Default grade
+        );
         storeCertificate(cert);
         toast.success('🎉 Certificate generated!');
       }

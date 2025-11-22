@@ -2,10 +2,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Award, Download, Eye } from 'lucide-react';
-import { CertificateData } from '@/utils/certificateGenerator';
+import { StudentCertificate } from '@/types/gamification';
 
 interface CertificateCardProps {
-  certificate: CertificateData;
+  certificate: StudentCertificate;
   onView: () => void;
 }
 
@@ -26,8 +26,8 @@ export function CertificateCard({ certificate, onView }: CertificateCardProps) {
           </div>
           
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold truncate">{certificate.course_title}</h3>
-            <p className="text-sm text-muted-foreground">{certificate.course_code}</p>
+            <h3 className="font-semibold truncate">{certificate.activity_name}</h3>
+            <p className="text-sm text-muted-foreground capitalize">{certificate.activity_type.replace('_', ' ')}</p>
             <div className="flex items-center gap-2 mt-2">
               <Badge variant="outline" className="text-xs">
                 {new Date(certificate.completion_date).toLocaleDateString()}
