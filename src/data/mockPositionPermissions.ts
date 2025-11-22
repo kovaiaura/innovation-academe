@@ -4,7 +4,23 @@ export const defaultPositionPermissions: PositionPermissions[] = [
   {
     position: 'ceo',
     display_name: 'CEO (System Admin)',
-    allowed_features: ['ALL'],
+    allowed_features: [
+      'institution_management',
+      'course_management',
+      'assessment_management',
+      'assignment_management',
+      'event_management',
+      'officer_management',
+      'project_management',
+      'inventory_management',
+      'attendance_payroll',
+      'leave_approvals',
+      'institutional_calendar',
+      'reports_analytics',
+      'sdg_management',
+      'task_management',
+      'task_allotment'
+    ],
     description: 'Complete system access and permission management'
   },
   {
@@ -74,6 +90,7 @@ export const defaultPositionPermissions: PositionPermissions[] = [
 
 // Store current permissions configuration
 let permissionsConfig: PermissionsConfig = {
+  ceo: defaultPositionPermissions.find(p => p.position === 'ceo')!.allowed_features as SystemAdminFeature[],
   md: defaultPositionPermissions.find(p => p.position === 'md')!.allowed_features as SystemAdminFeature[],
   agm: defaultPositionPermissions.find(p => p.position === 'agm')!.allowed_features as SystemAdminFeature[],
   gm: defaultPositionPermissions.find(p => p.position === 'gm')!.allowed_features as SystemAdminFeature[],
@@ -82,14 +99,11 @@ let permissionsConfig: PermissionsConfig = {
 };
 
 export const getPositionPermissions = (position: SystemAdminPosition): SystemAdminFeature[] | ['ALL'] => {
-  if (position === 'ceo') return ['ALL'];
   return permissionsConfig[position] || [];
 };
 
 export const updatePositionPermissions = (position: SystemAdminPosition, features: SystemAdminFeature[]) => {
-  if (position !== 'ceo') {
-    permissionsConfig[position] = features;
-  }
+  permissionsConfig[position] = features;
 };
 
 export const getAllPositions = () => defaultPositionPermissions;
