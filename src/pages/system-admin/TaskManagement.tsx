@@ -7,13 +7,32 @@ import { TaskCard } from '@/components/task/TaskCard';
 import { CreateTaskDialog } from '@/components/task/CreateTaskDialog';
 import { TaskDetailDialog } from '@/components/task/TaskDetailDialog';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, AlertCircle } from 'lucide-react';
 import { mockTasks, getTaskStats } from '@/data/mockTaskData';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { canAccessFeature } from '@/utils/permissionHelpers';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function TaskManagement() {
   const { user } = useAuth();
+
+  // Check if user has task_management feature
+  if (!canAccessFeature(user, 'task_management')) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-screen">
+          <Alert variant="destructive" className="max-w-md">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Access Denied</AlertTitle>
+            <AlertDescription>
+              You do not have permission to create or manage tasks. Contact your administrator for access.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </Layout>
+    );
+  }
   const [tasks, setTasks] = useState<Task[]>(mockTasks);
   const [filteredTasks, setFilteredTasks] = useState<Task[]>(mockTasks);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);

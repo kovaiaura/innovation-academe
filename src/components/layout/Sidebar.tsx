@@ -9,7 +9,7 @@ import {
   BookOpen, Target, Calendar, Award, BarChart,
   Building2, FileText, Trophy, Package, UserCheck, GraduationCap,
   Shield, Phone, Clock, ShoppingCart, PieChart, Briefcase, CalendarCheck,
-  LayoutDashboard, CheckSquare
+  LayoutDashboard, CheckSquare, ListTodo
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
@@ -58,10 +58,9 @@ const menuItems: MenuItem[] = [
   { label: 'Institutional Calendar', icon: <Calendar className="h-5 w-5" />, path: '/institutional-calendar', roles: ['system_admin'], feature: 'institutional_calendar' },
   // Position Management (CEO only)
   { label: 'Position Management', icon: <Shield className="h-5 w-5" />, path: '/position-management', roles: ['system_admin'], ceoOnly: true },
-  // Task Management (CEO, MD, AGM, GM, Manager, Admin Staff)
-  { label: 'Task Management', icon: <CheckSquare className="h-5 w-5" />, path: '/task-management', roles: ['system_admin'], allowedPositions: ['ceo', 'md', 'agm', 'gm', 'manager', 'admin_staff'] },
-  // Tasks - For Manager & Admin Staff to view their assigned tasks
-  { label: 'Tasks', icon: <CheckSquare className="h-5 w-5" />, path: '/tasks', roles: ['system_admin'], allowedPositions: ['manager', 'admin_staff'] },
+  // Task Management & Task Allotment (Feature-based permissions)
+  { label: 'Task Management', icon: <CheckSquare className="h-5 w-5" />, path: '/task-management', roles: ['system_admin'], feature: 'task_management' },
+  { label: 'Task Allotment', icon: <ListTodo className="h-5 w-5" />, path: '/tasks', roles: ['system_admin'], feature: 'task_allotment' },
   // Gamification (All System Admin positions)
   { label: 'Gamification', icon: <Trophy className="h-5 w-5" />, path: '/gamification', roles: ['system_admin'], allowedPositions: ['ceo', 'md', 'agm', 'gm', 'manager', 'admin_staff'] },
   // Reports & Invoice
