@@ -22,6 +22,7 @@ import SystemAdminOfficerAttendance from "./pages/system-admin/OfficerAttendance
 import StaffAttendancePayroll from "./pages/system-admin/StaffAttendancePayroll";
 import InventoryManagement from "./pages/system-admin/InventoryManagement";
 import InstitutionInventoryDetail from "./pages/system-admin/InstitutionInventoryDetail";
+import CredentialManagement from "./pages/system-admin/CredentialManagement";
 import StudentDashboard from "./pages/student/Dashboard";
 import StudentCourses from "./pages/student/Courses";
 import StudentProjects from "./pages/student/Projects";
@@ -303,6 +304,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <SystemAdminPositionManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/credential-management"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="credential_management">
+                  <CredentialManagement />
                 </ProtectedRoute>
               }
             />

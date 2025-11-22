@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, Lock, CheckCircle, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { passwordService } from '@/services/password.service';
 
 const passwordSchema = z.object({
   password: z.string()
@@ -60,11 +61,11 @@ export default function ResetPassword() {
 
     setIsLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // await authService.resetPassword(token, password);
+      if (!token) {
+        throw new Error('No token provided');
+      }
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await passwordService.resetPasswordWithToken(token, password);
       
       setIsSuccess(true);
       toast.success('Password reset successfully');

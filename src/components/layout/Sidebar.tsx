@@ -9,7 +9,7 @@ import {
   BookOpen, Target, Calendar, Award, BarChart,
   Building2, FileText, Trophy, Package, UserCheck, GraduationCap,
   Shield, Phone, Clock, ShoppingCart, PieChart, Briefcase, CalendarCheck,
-  LayoutDashboard, CheckSquare, ListTodo
+  LayoutDashboard, CheckSquare, ListTodo, Key
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
@@ -58,6 +58,8 @@ const menuItems: MenuItem[] = [
   { label: 'Institutional Calendar', icon: <Calendar className="h-5 w-5" />, path: '/institutional-calendar', roles: ['system_admin'], feature: 'institutional_calendar' },
   // Position Management (CEO only)
   { label: 'Position Management', icon: <Shield className="h-5 w-5" />, path: '/position-management', roles: ['system_admin'], ceoOnly: true },
+  // Credential Management (Feature-based permissions)
+  { label: 'Credential Management', icon: <Key className="h-5 w-5" />, path: '/credential-management', roles: ['system_admin'], feature: 'credential_management' },
   // Task Management & Task Allotment (Feature-based permissions)
   { label: 'Task Management', icon: <CheckSquare className="h-5 w-5" />, path: '/task-management', roles: ['system_admin'], feature: 'task_management' },
   { label: 'Task Allotment', icon: <ListTodo className="h-5 w-5" />, path: '/tasks', roles: ['system_admin'], feature: 'task_allotment' },
