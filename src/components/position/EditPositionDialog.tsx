@@ -106,7 +106,8 @@ export function EditPositionDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="overflow-y-auto max-h-[50vh] px-1">
+          <div className="space-y-4 pr-2">
           {position.is_ceo_position && (
             <Alert className="bg-primary/5 border-primary/20">
               <Shield className="h-4 w-4 text-primary" />
@@ -150,7 +151,7 @@ export function EditPositionDialog({
 
           <div>
             <Label className="mb-3 block">Visible Sidebar Menus *</Label>
-            <ScrollArea className="h-64 border rounded-md p-4">
+            <ScrollArea className="h-40 border rounded-md p-4">
               <div className="space-y-3">
                 {allFeatures.map((feature) => (
                   <div key={feature.value} className="flex items-center space-x-2">
@@ -169,6 +170,7 @@ export function EditPositionDialog({
             <p className="text-xs text-muted-foreground mt-2">
               Selected: {formData.visible_features.length} menus
             </p>
+          </div>
           </div>
         </div>
 
