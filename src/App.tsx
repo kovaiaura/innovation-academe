@@ -78,6 +78,10 @@ import ClassDetail from "./pages/system-admin/ClassDetail";
 import OfficerDetail from "./pages/system-admin/OfficerDetail";
 import ProjectManagement from "./pages/system-admin/ProjectManagement";
 import SystemAdminLeaveApprovals from "./pages/system-admin/LeaveApprovals";
+import MetaStaffLeaveManagement from "./pages/system-admin/MetaStaffLeaveManagement";
+import ManagerLeaveApprovals from "./pages/system-admin/ManagerLeaveApprovals";
+import AGMLeaveApprovals from "./pages/system-admin/AGMLeaveApprovals";
+import CEOLeaveApprovals from "./pages/system-admin/CEOLeaveApprovals";
 import EventManagement from "./pages/system-admin/EventManagement";
 import Performance from "./pages/management/Performance";
 import SystemAdminPositionManagement from "./pages/system-admin/PositionManagement";
@@ -224,6 +228,38 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="leave_approvals">
                   <SystemAdminLeaveApprovals />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/leave-management"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <MetaStaffLeaveManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/manager-leave-approvals"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <ManagerLeaveApprovals />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/agm-leave-approvals"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <AGMLeaveApprovals />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/ceo-leave-approvals"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <CEOLeaveApprovals />
                 </ProtectedRoute>
               }
             />

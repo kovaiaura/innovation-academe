@@ -204,6 +204,8 @@ export interface LeaveApplication {
   id: string;
   officer_id: string;
   officer_name: string;
+  applicant_type: 'innovation_officer' | 'meta_staff'; // NEW: Differentiate applicant type
+  position?: string; // NEW: For meta staff (ceo, md, agm, etc.)
   institution_id?: string;
   institution_name?: string;
   start_date: string; // "2025-10-30"
@@ -212,13 +214,26 @@ export interface LeaveApplication {
   reason: string;
   total_days: number;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  approval_stage?: 'manager_pending' | 'agm_pending' | 'ceo_pending' | 'approved' | 'rejected'; // NEW: Multi-stage approval
   applied_at: string;
+  // Manager approval (Innovation Officers only)
+  approved_by_manager?: string;
+  approved_by_manager_at?: string;
+  manager_comments?: string;
+  // AGM approval (Innovation Officers only)
+  approved_by_agm?: string;
+  approved_by_agm_at?: string;
+  agm_comments?: string;
+  // Final reviewer (AGM for officers, CEO for meta staff)
   reviewed_by?: string;
   reviewed_at?: string;
   rejection_reason?: string;
+  rejected_by?: string; // NEW: Who rejected the leave
+  rejected_at?: string;
+  rejection_stage?: 'manager' | 'agm' | 'ceo'; // NEW: At which stage was it rejected
   admin_comments?: string;
-  affected_slots?: AffectedSlot[];
-  substitute_assignments?: SubstituteAssignment[];
+  affected_slots?: AffectedSlot[]; // Optional: Only for Innovation Officers
+  substitute_assignments?: SubstituteAssignment[]; // Optional: Only for Innovation Officers
 }
 
 // Leave Balance

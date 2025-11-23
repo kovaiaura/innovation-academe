@@ -195,6 +195,8 @@ export default function LeaveManagement() {
       id: `leave-${Date.now()}`,
       officer_id: user.id,
       officer_name: user.name,
+      applicant_type: "innovation_officer", // NEW
+      approval_stage: "manager_pending", // NEW
       start_date: format(dateRange.from, 'yyyy-MM-dd'),
       end_date: format(dateRange.to, 'yyyy-MM-dd'),
       leave_type: leaveType as LeaveType,

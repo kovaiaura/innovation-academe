@@ -134,6 +134,8 @@ export function LeaveApplicationDialog({
         id: `leave-${Date.now()}`,
         officer_id: officerId,
         officer_name: officerName,
+        applicant_type: "innovation_officer", // NEW
+        approval_stage: "manager_pending", // NEW
         start_date: format(dateRange.from, "yyyy-MM-dd"),
         end_date: format(dateRange.to || dateRange.from, "yyyy-MM-dd"),
         leave_type: leaveType,

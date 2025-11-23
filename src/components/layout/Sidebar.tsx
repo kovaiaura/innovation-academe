@@ -53,7 +53,11 @@ const menuItems: MenuItem[] = [
   // Inventory & Purchase
   { label: 'Inventory Management', icon: <Package className="h-5 w-5" />, path: '/inventory-management', roles: ['system_admin'], feature: 'inventory_management' },
   { label: 'Attendance and Payroll', icon: <Clock className="h-5 w-5" />, path: '/officer-attendance', roles: ['system_admin'], feature: 'attendance_payroll' },
-  { label: 'Leave Approvals', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-approvals', roles: ['system_admin'], feature: 'leave_approvals' },
+  // Hierarchical Leave Management
+  { label: 'Leave Management', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-management', roles: ['system_admin'] },
+  { label: 'Manager Approvals', icon: <CalendarCheck className="h-5 w-5" />, path: '/manager-leave-approvals', roles: ['system_admin'] },
+  { label: 'AGM Approvals', icon: <CalendarCheck className="h-5 w-5" />, path: '/agm-leave-approvals', roles: ['system_admin'] },
+  { label: 'CEO Approvals', icon: <CalendarCheck className="h-5 w-5" />, path: '/ceo-leave-approvals', roles: ['system_admin'], ceoOnly: true },
   { label: 'Institutional Calendar', icon: <Calendar className="h-5 w-5" />, path: '/institutional-calendar', roles: ['system_admin'], feature: 'institutional_calendar' },
   // Position Management (CEO only)
   { label: 'Position Management', icon: <Shield className="h-5 w-5" />, path: '/position-management', roles: ['system_admin'], ceoOnly: true },
@@ -116,6 +120,9 @@ export function Sidebar() {
   const [officerProfile, setOfficerProfile] = useState<OfficerDetails | null>(null);
   const [teacherProfile, setTeacherProfile] = useState<SchoolTeacher | null>(null);
   const [pendingLeaveCount, setPendingLeaveCount] = useState(0);
+  const [managerLeaveCount, setManagerLeaveCount] = useState(0);
+  const [agmLeaveCount, setAgmLeaveCount] = useState(0);
+  const [ceoLeaveCount, setCeoLeaveCount] = useState(0);
 
   useEffect(() => {
     // Fetch officer profile if user is an officer
@@ -130,12 +137,36 @@ export function Sidebar() {
       setTeacherProfile(profile || null);
     }
     
-    // Load pending leave count for system admin
+    // Load pending leave counts for system admin by position
     if (user?.role === 'system_admin') {
-      setPendingLeaveCount(getPendingLeaveCount());
+      const { getPendingLeaveCountByStage } = require('@/data/mockLeaveData');
+      
+      // Manager sees manager_pending count
+      if (user.position_name === 'manager') {
+        setManagerLeaveCount(getPendingLeaveCountByStage('manager_pending'));
+      }
+      
+      // AGM sees agm_pending count
+      if (user.position_name === 'agm') {
+        setAgmLeaveCount(getPendingLeaveCountByStage('agm_pending'));
+      }
+      
+      // CEO sees ceo_pending count
+      if (user.is_ceo) {
+        setCeoLeaveCount(getPendingLeaveCountByStage('ceo_pending'));
+      }
+      
       // Refresh every 30 seconds
       const interval = setInterval(() => {
-        setPendingLeaveCount(getPendingLeaveCount());
+        if (user.position_name === 'manager') {
+          setManagerLeaveCount(getPendingLeaveCountByStage('manager_pending'));
+        }
+        if (user.position_name === 'agm') {
+          setAgmLeaveCount(getPendingLeaveCountByStage('agm_pending'));
+        }
+        if (user.is_ceo) {
+          setCeoLeaveCount(getPendingLeaveCountByStage('ceo_pending'));
+        }
       }, 30000);
       return () => clearInterval(interval);
     }
@@ -245,7 +276,14 @@ export function Sidebar() {
           {visibleMenuItems.map((item) => {
             const fullPath = getFullPath(item.path);
             const isActive = location.pathname.includes(item.path);
-            const showBadge = item.label === 'Leave Approvals' && pendingLeaveCount > 0;
+            const showBadge = 
+              (item.label === 'Manager Approvals' && managerLeaveCount > 0) ||
+              (item.label === 'AGM Approvals' && agmLeaveCount > 0) ||
+              (item.label === 'CEO Approvals' && ceoLeaveCount > 0);
+            const badgeCount = 
+              item.label === 'Manager Approvals' ? managerLeaveCount :
+              item.label === 'AGM Approvals' ? agmLeaveCount :
+              item.label === 'CEO Approvals' ? ceoLeaveCount : 0;
             
             return (
               <Link key={item.path} to={fullPath}>
@@ -263,7 +301,7 @@ export function Sidebar() {
                       <span className="ml-3">{item.label}</span>
                       {showBadge && (
                         <Badge variant="destructive" className="ml-auto">
-                          {pendingLeaveCount}
+                          {badgeCount}
                         </Badge>
                       )}
                     </>
