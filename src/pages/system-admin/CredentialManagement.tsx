@@ -47,7 +47,7 @@ export default function CredentialManagement() {
                          emp.email.toLowerCase().includes(metaSearch.toLowerCase());
     const matchesPosition = positionFilter === 'all' || 
                            (emp.role === 'officer' && positionFilter === 'officer') ||
-                           (emp.position === positionFilter);
+                           (emp.position_name === positionFilter);
     return matchesSearch && matchesPosition;
   });
 
@@ -157,7 +157,7 @@ export default function CredentialManagement() {
                           <TableCell>
                             <Badge variant="secondary">
                               {emp.role === 'officer' ? 'Innovation Officer' : 
-                               emp.position?.toUpperCase().replace('_', ' ')}
+                               emp.position_name?.toUpperCase().replace('_', ' ')}
                             </Badge>
                           </TableCell>
                           <TableCell>

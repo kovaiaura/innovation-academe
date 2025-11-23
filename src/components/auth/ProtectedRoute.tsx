@@ -46,7 +46,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (requiredFeature && user?.role === 'system_admin') {
     if (!canAccessFeature(user, requiredFeature)) {
       console.log('ProtectedRoute: Feature access denied', {
-        userPosition: user.position,
+        userPositionId: user.position_id,
         requiredFeature,
         path: location.pathname
       });

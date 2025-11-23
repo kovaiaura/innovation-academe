@@ -21,11 +21,14 @@ interface CreateTaskDialogProps {
 
 // Mock assignees - in real app, fetch from API
 const mockAssignees = [
-  { id: 'sys-admin-002', name: 'Jane Smith', position: 'GM', role: 'system_admin' },
-  { id: 'sys-admin-003', name: 'Robert Johnson', position: 'Manager', role: 'system_admin' },
-  { id: 'sys-admin-005', name: 'Emily Davis', position: 'Admin Staff', role: 'system_admin' },
-  { id: 'officer-001', name: 'Sarah Williams', position: 'Innovation Officer', role: 'officer' },
-  { id: 'officer-002', name: 'David Martinez', position: 'Innovation Officer', role: 'officer' },
+  { id: '7', name: 'Managing Director', position_name: 'md', role: 'system_admin' },
+  { id: '8', name: 'Operations Manager', position_name: 'manager', role: 'system_admin' },
+  { id: '9', name: 'AGM Operations', position_name: 'agm', role: 'system_admin' },
+  { id: '10', name: 'General Manager', position_name: 'gm', role: 'system_admin' },
+  { id: '11', name: 'Admin Staff', position_name: 'admin_staff', role: 'system_admin' },
+  { id: 'off-msd-001', name: 'Mr. Atif Ansari', position_name: 'Innovation Officer', role: 'officer' },
+  { id: 'off-kga-001', name: 'Mr. Saran T', position_name: 'Sr. Innovation Officer', role: 'officer' },
+  { id: 'off-kga-002', name: 'Mr. Sreeram R', position_name: 'Innovation Officer', role: 'officer' },
 ];
 
 export function CreateTaskDialog({ open, onOpenChange, onCreateTask, currentUser }: CreateTaskDialogProps) {
@@ -69,7 +72,7 @@ export function CreateTaskDialog({ open, onOpenChange, onCreateTask, currentUser
       created_by_position: currentUser.position,
       assigned_to_id: assignee.id,
       assigned_to_name: assignee.name,
-      assigned_to_position: assignee.position,
+      assigned_to_position: assignee.position_name || '',
       assigned_to_role: assignee.role,
       due_date: new Date(formData.due_date).toISOString(),
       progress_percentage: 0,
@@ -171,7 +174,7 @@ export function CreateTaskDialog({ open, onOpenChange, onCreateTask, currentUser
               <SelectContent>
                 {mockAssignees.map((assignee) => (
                   <SelectItem key={assignee.id} value={assignee.id}>
-                    {assignee.name} ({assignee.position})
+                    {assignee.name} ({assignee.position_name || assignee.role})
                   </SelectItem>
                 ))}
               </SelectContent>

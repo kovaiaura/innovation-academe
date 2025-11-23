@@ -1,5 +1,3 @@
-import { SystemAdminPosition } from './permissions';
-
 // User Role Enum
 export type UserRole = 
   | 'super_admin'
@@ -16,8 +14,9 @@ export interface User {
   name: string;
   avatar?: string;
   role: UserRole;
-  position?: SystemAdminPosition; // For system_admin role only
-  is_ceo?: boolean; // True for main System Admin (CEO)
+  position_id?: string; // Dynamic position reference
+  position_name?: string; // Display name for position
+  is_ceo?: boolean; // True for CEO position
   tenant_id?: string; // null for super_admin
   institution_id?: string;
   created_at: string;
