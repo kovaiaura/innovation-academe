@@ -239,14 +239,18 @@ export default function MetaStaffLeaveManagement() {
 
                 <div>
                   <Label>Select Dates *</Label>
-                  <Calendar
-                    mode="range"
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    disabled={disabledDates}
-                    numberOfMonths={2}
-                    className="rounded-md border"
-                  />
+                  <div className="w-full overflow-x-auto">
+                    <div className="scale-90 md:scale-95 lg:scale-100 origin-left transition-transform">
+                      <Calendar
+                        mode="range"
+                        selected={dateRange}
+                        onSelect={setDateRange}
+                        disabled={disabledDates}
+                        numberOfMonths={2}
+                        className="rounded-md border"
+                      />
+                    </div>
+                  </div>
                   {dateRange?.from && dateRange?.to && (
                     <p className="text-sm text-muted-foreground mt-2">
                       Working Days: {calculateWorkingDays(dateRange.from, dateRange.to)}
