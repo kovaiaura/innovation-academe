@@ -244,6 +244,7 @@ export default function MetaStaffLeaveManagement() {
                     selected={dateRange}
                     onSelect={setDateRange}
                     disabled={disabledDates}
+                    numberOfMonths={2}
                     className="rounded-md border"
                   />
                   {dateRange?.from && dateRange?.to && (
