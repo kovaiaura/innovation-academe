@@ -49,6 +49,8 @@ export default function PositionManagement() {
     name: '',
     email: '',
     position_id: '',
+    password_mode: 'auto' as 'auto' | 'custom',
+    custom_password: '',
   });
   const [credentialsDialog, setCredentialsDialog] = useState<{
     open: boolean;
@@ -162,12 +164,27 @@ export default function PositionManagement() {
       return;
     }
 
+    if (newUserData.password_mode === 'custom' && !newUserData.custom_password) {
+      toast.error('Please enter a custom password');
+      return;
+    }
+
+    if (newUserData.password_mode === 'custom' && newUserData.custom_password.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const result = await metaStaffService.createMetaStaff(newUserData);
+      const result = await metaStaffService.createMetaStaff({
+        name: newUserData.name,
+        email: newUserData.email,
+        position_id: newUserData.position_id,
+        custom_password: newUserData.password_mode === 'custom' ? newUserData.custom_password : undefined,
+      });
       toast.success('User added successfully');
       setIsAddUserDialogOpen(false);
-      setNewUserData({ name: '', email: '', position_id: '' });
+      setNewUserData({ name: '', email: '', position_id: '', password_mode: 'auto', custom_password: '' });
 
       setCredentialsDialog({
         open: true,
@@ -386,7 +403,7 @@ export default function PositionManagement() {
 
       {/* Add User Dialog */}
       <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add User to Position</DialogTitle>
             <DialogDescription>Create a new user and assign them to a position</DialogDescription>
@@ -413,6 +430,9 @@ export default function PositionManagement() {
             </div>
             <div>
               <Label htmlFor="position">Position</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Don't see the position you need? Click <strong>Create Position</strong> to add custom positions like Project Coordinator, Intern, or Sales Executive first.
+              </p>
               <Select
                 value={newUserData.position_id}
                 onValueChange={(value) => setNewUserData({ ...newUserData, position_id: value })}
@@ -429,6 +449,51 @@ export default function PositionManagement() {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Password Generation</Label>
+              <div className="space-y-3 mt-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="auto-password"
+                    checked={newUserData.password_mode === 'auto'}
+                    onChange={() => setNewUserData({ ...newUserData, password_mode: 'auto', custom_password: '' })}
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="auto-password" className="font-normal cursor-pointer">
+                    Auto-generate secure password
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="custom-password"
+                    checked={newUserData.password_mode === 'custom'}
+                    onChange={() => setNewUserData({ ...newUserData, password_mode: 'custom' })}
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="custom-password" className="font-normal cursor-pointer">
+                    Set custom temporary password
+                  </Label>
+                </div>
+              </div>
+            </div>
+            {newUserData.password_mode === 'custom' && (
+              <div>
+                <Label htmlFor="custom-password-input">Custom Password</Label>
+                <Input
+                  id="custom-password-input"
+                  type="password"
+                  value={newUserData.custom_password}
+                  onChange={(e) => setNewUserData({ ...newUserData, custom_password: e.target.value })}
+                  placeholder="Enter temporary password (min 8 characters)"
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Minimum 8 characters required
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddUserDialogOpen(false)}>

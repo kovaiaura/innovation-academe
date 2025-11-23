@@ -17,6 +17,7 @@ export const metaStaffService = {
     name: string;
     email: string;
     position_id: string;
+    custom_password?: string;
   }): Promise<{ user: User; password: string }> => {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -25,8 +26,8 @@ export const metaStaffService = {
     const position = getPositionById(data.position_id);
     if (!position) throw new Error('Position not found');
     
-    // Generate random temporary password
-    const tempPassword = `Meta${Math.random().toString(36).slice(-8).toUpperCase()}!`;
+    // Use custom password if provided, otherwise generate random
+    const tempPassword = data.custom_password || `Meta${Math.random().toString(36).slice(-8).toUpperCase()}!`;
     
     const newUser: any = {
       id: `meta-${Date.now()}`,
