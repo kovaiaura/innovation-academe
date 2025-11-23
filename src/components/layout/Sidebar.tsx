@@ -22,7 +22,7 @@ import { OfficerDetails } from '@/services/systemadmin.service';
 import { TeacherSidebarProfile } from '@/components/teacher/TeacherSidebarProfile';
 import { getTeacherByEmail } from '@/data/mockTeacherData';
 import { SchoolTeacher } from '@/types/teacher';
-import { getPendingLeaveCount } from '@/data/mockLeaveData';
+import { getPendingLeaveCount, getPendingLeaveCountByStage } from '@/data/mockLeaveData';
 import { NotificationBell } from './NotificationBell';
 
 interface MenuItem {
@@ -139,8 +139,6 @@ export function Sidebar() {
     
     // Load pending leave counts for system admin by position
     if (user?.role === 'system_admin') {
-      const { getPendingLeaveCountByStage } = require('@/data/mockLeaveData');
-      
       // Manager sees manager_pending count
       if (user.position_name === 'manager') {
         setManagerLeaveCount(getPendingLeaveCountByStage('manager_pending'));
