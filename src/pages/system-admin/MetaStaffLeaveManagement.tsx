@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CalendarCheck, Clock, CheckCircle, XCircle, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import { format, differenceInBusinessDays } from 'date-fns';
 import { DateRange } from 'react-day-picker';
@@ -26,6 +27,7 @@ import { LeaveApprovalTimeline } from '@/components/officer/LeaveApprovalTimelin
 
 export default function MetaStaffLeaveManagement() {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [leaveBalance, setLeaveBalance] = useState({ sick_leave: 0, casual_leave: 0, earned_leave: 0 });
   const [applications, setApplications] = useState<LeaveApplication[]>([]);
   const [approvedDates, setApprovedDates] = useState<string[]>([]);
@@ -239,18 +241,14 @@ export default function MetaStaffLeaveManagement() {
 
                 <div>
                   <Label>Select Dates *</Label>
-                  <div className="w-full overflow-x-auto">
-                    <div className="scale-90 md:scale-95 lg:scale-100 origin-left transition-transform">
-                      <Calendar
-                        mode="range"
-                        selected={dateRange}
-                        onSelect={setDateRange}
-                        disabled={disabledDates}
-                        numberOfMonths={2}
-                        className="rounded-md border"
-                      />
-                    </div>
-                  </div>
+                  <Calendar
+                    mode="range"
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    disabled={disabledDates}
+                    numberOfMonths={isMobile ? 1 : 2}
+                    className="rounded-md border"
+                  />
                   {dateRange?.from && dateRange?.to && (
                     <p className="text-sm text-muted-foreground mt-2">
                       Working Days: {calculateWorkingDays(dateRange.from, dateRange.to)}
