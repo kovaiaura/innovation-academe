@@ -1,4 +1,5 @@
 import type { LeaveApplication, LeaveBalance } from "@/types/attendance";
+import { createNotification, createNotificationForSystemAdmin } from '@/hooks/useNotifications';
 
 // Mock leave applications storage
 let mockLeaveApplications: LeaveApplication[] = [
@@ -290,7 +291,6 @@ export const addLeaveApplication = (application: LeaveApplication): void => {
   localStorage.setItem(`leave_applications_${officerId}`, JSON.stringify(applications));
   
   // Create notification for system admin
-  const { createNotificationForSystemAdmin } = require('@/hooks/useNotifications');
   createNotificationForSystemAdmin(
     'leave_application_submitted',
     'New Leave Application',
@@ -402,7 +402,6 @@ export const approveLeaveApplication = (
     }
     
     // Notify the officer
-    const { createNotification } = require('@/hooks/useNotifications');
     createNotification(
       allApps[appIndex].officer_id,
       'officer',
@@ -447,7 +446,6 @@ export const rejectLeaveApplication = (
     }
     
     // Notify the officer
-    const { createNotification } = require('@/hooks/useNotifications');
     createNotification(
       allApps[appIndex].officer_id,
       'officer',
@@ -509,11 +507,10 @@ export const approveLeaveApplicationManager = (
     }
     
     // Notify the officer
-    const { createNotification } = require('@/hooks/useNotifications');
     createNotification(
       allApps[appIndex].officer_id,
       'officer',
-      'leave_manager_approved',
+      'leave_application_approved',
       'Leave Application - Manager Approved',
       `Your ${allApps[appIndex].leave_type} leave has been approved by ${managerName}. Awaiting AGM approval.`,
       '/officer/leave-management',
@@ -572,7 +569,6 @@ export const approveLeaveApplicationAGM = (
     }
     
     // Notify the officer
-    const { createNotification } = require('@/hooks/useNotifications');
     createNotification(
       allApps[appIndex].officer_id,
       'officer',
@@ -633,7 +629,6 @@ export const approveLeaveApplicationCEO = (
     }
     
     // Notify the meta staff user
-    const { createNotification } = require('@/hooks/useNotifications');
     createNotification(
       allApps[appIndex].officer_id,
       'system_admin',
@@ -686,7 +681,6 @@ export const rejectLeaveApplicationHierarchical = (
     }
     
     // Notify the user
-    const { createNotification } = require('@/hooks/useNotifications');
     const userRole = allApps[appIndex].applicant_type === 'innovation_officer' ? 'officer' : 'system_admin';
     const redirectPath = allApps[appIndex].applicant_type === 'innovation_officer' 
       ? '/officer/leave-management' 
