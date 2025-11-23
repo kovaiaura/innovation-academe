@@ -90,7 +90,8 @@ export function CreatePositionDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="overflow-y-auto max-h-[50vh] px-1">
+          <div className="space-y-4 pr-2">
           <div>
             <Label htmlFor="position_name">Position Name *</Label>
             <Input
@@ -124,7 +125,7 @@ export function CreatePositionDialog({
 
           <div>
             <Label className="mb-3 block">Visible Sidebar Menus *</Label>
-            <ScrollArea className="h-64 border rounded-md p-4">
+            <ScrollArea className="h-40 border rounded-md p-4">
               <div className="space-y-3">
                 {allFeatures.map((feature) => (
                   <div key={feature.value} className="flex items-center space-x-2">
@@ -143,6 +144,7 @@ export function CreatePositionDialog({
             <p className="text-xs text-muted-foreground mt-2">
               Selected: {formData.visible_features.length} menus
             </p>
+          </div>
           </div>
         </div>
 
