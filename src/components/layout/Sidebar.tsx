@@ -14,7 +14,7 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { UserRole } from '@/types';
-import { SystemAdminFeature, SystemAdminPosition } from '@/types/permissions';
+import { SystemAdminFeature } from '@/types/permissions';
 import { canAccessFeature, isCEO } from '@/utils/permissionHelpers';
 import { OfficerSidebarProfile } from './OfficerSidebarProfile';
 import { getOfficerByEmail } from '@/data/mockOfficerData';
@@ -32,7 +32,6 @@ interface MenuItem {
   roles: UserRole[];
   feature?: SystemAdminFeature;
   ceoOnly?: boolean;
-  allowedPositions?: SystemAdminPosition[];
 }
 
 // Role-based menu configuration
@@ -63,8 +62,8 @@ const menuItems: MenuItem[] = [
   // Task Management & Task Allotment (Feature-based permissions)
   { label: 'Task Management', icon: <CheckSquare className="h-5 w-5" />, path: '/task-management', roles: ['system_admin'], feature: 'task_management' },
   { label: 'Task Allotment', icon: <ListTodo className="h-5 w-5" />, path: '/tasks', roles: ['system_admin'], feature: 'task_allotment' },
-  // Gamification (All System Admin positions)
-  { label: 'Gamification', icon: <Trophy className="h-5 w-5" />, path: '/gamification', roles: ['system_admin'], allowedPositions: ['ceo', 'md', 'agm', 'gm', 'manager', 'admin_staff'] },
+  // Gamification
+  { label: 'Gamification', icon: <Trophy className="h-5 w-5" />, path: '/gamification', roles: ['system_admin'], feature: 'gamification' },
   // Reports & Invoice
   { label: 'Reports & Invoice', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['system_admin'], feature: 'reports_analytics' },
   // SDG Management
@@ -96,7 +95,7 @@ const menuItems: MenuItem[] = [
   { label: 'Gamification', icon: <BarChart className="h-5 w-5" />, path: '/gamification', roles: ['student'] },
   { label: 'Resume', icon: <FileText className="h-5 w-5" />, path: '/resume', roles: ['student'] },
   // System Admin - Configuration
-  { label: 'ID Configuration', icon: <Settings className="h-5 w-5" />, path: '/id-configuration', roles: ['system_admin'], allowedPositions: ['ceo', 'md', 'agm'] },
+  { label: 'ID Configuration', icon: <Settings className="h-5 w-5" />, path: '/id-configuration', roles: ['system_admin'], feature: 'id_configuration' },
   // Management menu items (merged with institution admin functionality)
   { label: 'Teachers', icon: <Users className="h-5 w-5" />, path: '/teachers', roles: ['management'] },
   { label: 'Students', icon: <GraduationCap className="h-5 w-5" />, path: '/students', roles: ['management'] },
@@ -157,11 +156,6 @@ export function Sidebar() {
       
       // Feature-based items
       if (item.feature && !canAccessFeature(user, item.feature)) return false;
-      
-      // Position-based filtering
-      if (item.allowedPositions && user.position) {
-        if (!item.allowedPositions.includes(user.position)) return false;
-      }
     }
     
     return true;

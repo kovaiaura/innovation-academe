@@ -1,12 +1,17 @@
 import { UserRole } from './index';
 
-export type SystemAdminPosition = 
-  | 'ceo'           // Full access, can configure permissions
-  | 'manager'       // Meta staff
-  | 'admin_staff'   // Meta staff
-  | 'agm'          // Meta staff (Assistant General Manager)
-  | 'md'           // Meta staff (Managing Director)
-  | 'gm';          // Meta staff (General Manager)
+// Dynamic custom position interface
+export interface CustomPosition {
+  id: string;
+  position_name: string;
+  display_name: string;
+  visible_features: SystemAdminFeature[];
+  description: string;
+  created_at: string;
+  created_by: string;
+  user_count?: number;
+  is_ceo_position?: boolean;
+}
 
 export type SystemAdminFeature = 
   | 'institution_management'
@@ -24,15 +29,26 @@ export type SystemAdminFeature =
   | 'sdg_management'
   | 'task_management'
   | 'task_allotment'
-  | 'credential_management';
+  | 'credential_management'
+  | 'gamification'
+  | 'id_configuration';
 
 export interface PositionPermissions {
-  position: SystemAdminPosition;
-  display_name: string;
-  allowed_features: SystemAdminFeature[] | ['ALL'];
-  description: string;
+  position_id: string;
+  position_name: string;
+  allowed_features: SystemAdminFeature[];
 }
 
-export interface PermissionsConfig {
-  [key: string]: SystemAdminFeature[]; // key = position
+export interface CreatePositionRequest {
+  position_name: string;
+  display_name?: string;
+  description?: string;
+  visible_features: SystemAdminFeature[];
+}
+
+export interface UpdatePositionRequest {
+  position_name?: string;
+  display_name?: string;
+  description?: string;
+  visible_features?: SystemAdminFeature[];
 }

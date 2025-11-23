@@ -1,7 +1,7 @@
 import { User } from '@/types';
-import { SystemAdminPosition, SystemAdminFeature } from '@/types/permissions';
+import { SystemAdminFeature } from '@/types/permissions';
 import { mockUsers } from '@/data/mockUsers';
-import { updatePositionPermissions as updatePermissionsConfig } from '@/data/mockPositionPermissions';
+import { getPositionById } from '@/data/mockPositions';
 
 export const metaStaffService = {
   getMetaStaff: async (): Promise<User[]> => {
@@ -16,10 +16,14 @@ export const metaStaffService = {
   createMetaStaff: async (data: {
     name: string;
     email: string;
-    position: SystemAdminPosition;
+    position_id: string;
   }): Promise<{ user: User; password: string }> => {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Get position details
+    const position = getPositionById(data.position_id);
+    if (!position) throw new Error('Position not found');
     
     // Generate random temporary password
     const tempPassword = `Meta${Math.random().toString(36).slice(-8).toUpperCase()}!`;
@@ -29,8 +33,9 @@ export const metaStaffService = {
       email: data.email,
       name: data.name,
       role: 'system_admin',
-      position: data.position,
-      is_ceo: false,
+      position_id: data.position_id,
+      position_name: position.position_name,
+      is_ceo: position.is_ceo_position || false,
       password: tempPassword,
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.name}`,
       created_at: new Date().toISOString(),
@@ -44,13 +49,17 @@ export const metaStaffService = {
     return { user: userWithoutPassword, password: tempPassword };
   },
 
-  updatePosition: async (userId: string, position: SystemAdminPosition): Promise<void> => {
+  updatePosition: async (userId: string, position_id: string): Promise<void> => {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 300));
     
+    const position = getPositionById(position_id);
+    if (!position) throw new Error('Position not found');
+    
     const user = mockUsers.find(u => u.id === userId);
     if (user) {
-      user.position = position;
+      user.position_id = position_id;
+      user.position_name = position.position_name;
     }
   },
 
@@ -64,23 +73,31 @@ export const metaStaffService = {
     }
   },
 
-  getPositionPermissions: async (position: SystemAdminPosition): Promise<SystemAdminFeature[]> => {
+  getPositionPermissions: async (position_id: string): Promise<SystemAdminFeature[]> => {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 200));
     
-    const { getPositionPermissions } = await import('@/data/mockPositionPermissions');
-    const perms = getPositionPermissions(position);
-    return perms[0] === 'ALL' ? [] : perms as SystemAdminFeature[];
+    const position = getPositionById(position_id);
+    return position?.visible_features || [];
   },
 
   updatePositionPermissions: async (
-    position: SystemAdminPosition,
+    position_id: string,
     features: SystemAdminFeature[]
   ): Promise<void> => {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    updatePermissionsConfig(position, features);
+    const { updatePositionInStore } = await import('@/data/mockPositions');
+    const { getPositionById } = await import('@/data/mockPositions');
+    
+    const position = getPositionById(position_id);
+    if (position) {
+      updatePositionInStore(position_id, {
+        ...position,
+        visible_features: features
+      });
+    }
   },
 
   resetPassword: async (userId: string): Promise<string> => {

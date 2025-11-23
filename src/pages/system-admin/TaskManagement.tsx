@@ -197,7 +197,7 @@ export default function TaskManagement() {
         currentUser={{
           id: user?.id || '',
           name: user?.name || '',
-          position: user?.position || 'CEO',
+          position: user?.position_name || 'CEO',
         }}
       />
 

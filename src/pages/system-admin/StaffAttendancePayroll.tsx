@@ -20,7 +20,7 @@ export default function StaffAttendancePayroll() {
   const metaStaff = mockUsers.filter(
     (user) =>
       user.role === 'system_admin' &&
-      ['ceo', 'md', 'agm', 'gm', 'manager', 'admin_staff'].includes(user.position || '')
+      ['ceo', 'md', 'agm', 'gm', 'manager', 'admin_staff'].includes(user.position_name || '')
   );
 
   const currentStaff = metaStaff.find((s) => s.id === selectedStaff);
@@ -102,7 +102,7 @@ export default function StaffAttendancePayroll() {
                       <div className="flex flex-col">
                         <span className="font-medium">{staff.name}</span>
                         <span className="text-xs text-muted-foreground">
-                          {getPositionDisplay(staff.position || '')}
+                          {getPositionDisplay(staff.position_name || '')}
                         </span>
                       </div>
                     </SelectItem>
@@ -197,7 +197,7 @@ export default function StaffAttendancePayroll() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Position</p>
-                  <p className="font-medium">{getPositionDisplay(currentStaff.position || '')}</p>
+                  <p className="font-medium">{getPositionDisplay(currentStaff.position_name || '')}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Hourly Rate</p>
