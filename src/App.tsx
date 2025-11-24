@@ -28,6 +28,8 @@ import StudentCourses from "./pages/student/Courses";
 import StudentProjects from "./pages/student/Projects";
 import StudentTimetable from "./pages/student/Timetable";
 import StudentCertificates from "./pages/student/Certificates";
+import AskMetova from "./pages/student/AskMetova";
+import FeedbackSurvey from "./pages/student/FeedbackSurvey";
 import StudentGamification from "./pages/student/Gamification";
 import StudentResume from "./pages/student/Resume";
 import StudentEvents from "./pages/student/Events";
@@ -728,6 +730,22 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['student']}>
                   <StudentSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/ask-metova"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <AskMetova />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/feedback"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <FeedbackSurvey />
                 </ProtectedRoute>
               }
             />
