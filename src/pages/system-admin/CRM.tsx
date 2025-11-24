@@ -11,12 +11,6 @@ import { BillingDashboard } from "@/components/crm/BillingDashboard";
 import { CRMTaskManager } from "@/components/crm/CRMTaskManager";
 import { CommunicationTimeline } from "@/components/crm/CommunicationTimeline";
 import { AddCommunicationDialog } from "@/components/crm/AddCommunicationDialog";
-import { ContactsManager } from "@/components/crm/contacts/ContactsManager";
-import { SalesPipelineBoard } from "@/components/crm/pipeline/SalesPipelineBoard";
-import { AddLeadDialog } from "@/components/crm/pipeline/AddLeadDialog";
-import { LeadDetailView } from "@/components/crm/pipeline/LeadDetailView";
-import { SalesForecast } from "@/components/crm/pipeline/SalesForecast";
-import { AnalyticsDashboard } from "@/components/crm/analytics/AnalyticsDashboard";
 import { 
   mockCommunicationLogs, 
   mockContracts, 
@@ -24,19 +18,12 @@ import {
   mockCRMTasks,
   type CommunicationLog 
 } from "@/data/mockCRMData";
-import { mockContacts, type InstitutionContact } from "@/data/mockCRMContacts";
-import { mockSalesLeads, type SalesLead } from "@/data/mockSalesPipeline";
 import { toast } from "sonner";
 
 export default function CRM() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isAddLeadDialogOpen, setIsAddLeadDialogOpen] = useState(false);
   const [communicationLogs, setCommunicationLogs] = useState<CommunicationLog[]>(mockCommunicationLogs);
-  const [contacts, setContacts] = useState<InstitutionContact[]>(mockContacts);
-  const [leads, setLeads] = useState<SalesLead[]>(mockSalesLeads);
-  const [selectedLead, setSelectedLead] = useState<SalesLead | null>(null);
-  const [isLeadDetailOpen, setIsLeadDetailOpen] = useState(false);
 
   // Extract unique institutions from existing logs
   const getUniqueInstitutions = (logs: CommunicationLog[]) => {
@@ -87,68 +74,6 @@ export default function CRM() {
     toast.success("Task marked as completed");
   };
 
-  const handleAddContact = (newContact: Omit<InstitutionContact, 'id' | 'date_added' | 'last_contacted' | 'total_interactions'>) => {
-    const contactWithId: InstitutionContact = {
-      ...newContact,
-      id: `contact-${Date.now()}`,
-      date_added: new Date().toISOString().split('T')[0],
-      last_contacted: new Date().toISOString().split('T')[0],
-      total_interactions: 0,
-    };
-    
-    setContacts(prev => [...prev, contactWithId]);
-    toast.success("Contact added successfully");
-  };
-
-  const handleEditContact = (id: string, updatedContact: Partial<InstitutionContact>) => {
-    setContacts(prev => 
-      prev.map(contact => 
-        contact.id === id ? { ...contact, ...updatedContact } : contact
-      )
-    );
-    toast.success("Contact updated successfully");
-  };
-
-  const handleAddLead = (newLead: Omit<SalesLead, 'id' | 'created_date' | 'stage_updated_date' | 'days_in_current_stage' | 'last_activity_date' | 'communication_ids'>) => {
-    const today = new Date().toISOString().split('T')[0];
-    const leadWithId: SalesLead = {
-      ...newLead,
-      id: `lead-${Date.now()}`,
-      created_date: today,
-      stage_updated_date: today,
-      days_in_current_stage: 0,
-      last_activity_date: today,
-      communication_ids: [],
-    };
-    
-    setLeads(prev => [...prev, leadWithId]);
-    toast.success("Lead added successfully");
-  };
-
-  const handleLeadMove = (leadId: string, newStage: SalesLead['stage']) => {
-    setLeads(prev => 
-      prev.map(lead => {
-        if (lead.id === leadId) {
-          const today = new Date().toISOString().split('T')[0];
-          return {
-            ...lead,
-            stage: newStage,
-            stage_updated_date: today,
-            days_in_current_stage: 0,
-            last_activity_date: today,
-          };
-        }
-        return lead;
-      })
-    );
-    toast.success("Lead moved successfully");
-  };
-
-  const handleViewLeadDetails = (lead: SalesLead) => {
-    setSelectedLead(lead);
-    setIsLeadDetailOpen(true);
-  };
-
   return (
     <Layout>
       <div className="container mx-auto p-6 space-y-6">
@@ -169,15 +94,12 @@ export default function CRM() {
       </div>
 
       <Tabs defaultValue="communications" className="w-full">
-        <TabsList className="grid w-full grid-cols-8">
-          <TabsTrigger value="communications">Communications</TabsTrigger>
-          <TabsTrigger value="contacts">Contacts</TabsTrigger>
-          <TabsTrigger value="pipeline">Sales Pipeline</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="contracts">Contracts</TabsTrigger>
-          <TabsTrigger value="billing">Billing</TabsTrigger>
-          <TabsTrigger value="tasks">Tasks</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="communications">Communication Tracking</TabsTrigger>
+          <TabsTrigger value="contracts">Renewals & Contracts</TabsTrigger>
+          <TabsTrigger value="billing">Billing & Invoices</TabsTrigger>
+          <TabsTrigger value="tasks">Tasks & Reminders</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline View</TabsTrigger>
         </TabsList>
 
         {/* Communication Tracking Tab */}
@@ -228,63 +150,6 @@ export default function CRM() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* Contacts Directory Tab */}
-        <TabsContent value="contacts">
-          <ContactsManager
-            contacts={contacts}
-            institutions={getUniqueInstitutions(communicationLogs)}
-            onAddContact={handleAddContact}
-            onEditContact={handleEditContact}
-            communicationLogs={communicationLogs}
-          />
-        </TabsContent>
-
-        {/* Sales Pipeline Tab */}
-        <TabsContent value="pipeline" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold">Sales Pipeline</h3>
-              <p className="text-sm text-muted-foreground">
-                Track leads through the sales process from initial contact to contract signing
-              </p>
-            </div>
-            <Button onClick={() => setIsAddLeadDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Lead
-            </Button>
-          </div>
-
-          <SalesPipelineBoard 
-            leads={leads}
-            onLeadMove={handleLeadMove}
-            onViewDetails={handleViewLeadDetails}
-          />
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Sales Forecast & Analytics</CardTitle>
-              <CardDescription>
-                Pipeline metrics and revenue forecasting
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <SalesForecast leads={leads} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Analytics Dashboard Tab */}
-        <TabsContent value="analytics" className="space-y-6">
-          <div>
-            <h3 className="text-lg font-semibold">Analytics Dashboard</h3>
-            <p className="text-sm text-muted-foreground">
-              Track sales performance, revenue metrics, and customer health scores
-            </p>
-          </div>
-
-          <AnalyticsDashboard />
         </TabsContent>
 
         {/* Contracts Tab */}
@@ -365,19 +230,6 @@ export default function CRM() {
           onOpenChange={setIsAddDialogOpen}
           onSave={handleSaveCommunication}
           institutions={getUniqueInstitutions(communicationLogs)}
-          contacts={contacts}
-        />
-
-        <AddLeadDialog
-          open={isAddLeadDialogOpen}
-          onOpenChange={setIsAddLeadDialogOpen}
-          onSave={handleAddLead}
-        />
-
-        <LeadDetailView
-          lead={selectedLead}
-          open={isLeadDetailOpen}
-          onOpenChange={setIsLeadDetailOpen}
         />
       </div>
     </Layout>

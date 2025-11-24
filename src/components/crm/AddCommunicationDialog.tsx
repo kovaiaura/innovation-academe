@@ -35,9 +35,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { CalendarIcon, Upload, X, Plus } from 'lucide-react';
+import { CalendarIcon, Upload, X } from 'lucide-react';
 import { CommunicationLog } from '@/data/mockCRMData';
-import { InstitutionContact } from '@/data/mockCRMContacts';
 
 const communicationSchema = z.object({
   institution_id: z.string().min(1, 'Institution is required'),
@@ -47,7 +46,6 @@ const communicationSchema = z.object({
     required_error: 'Date is required',
   }),
   subject: z.string().min(5, 'Subject must be at least 5 characters').max(200, 'Subject must be less than 200 characters'),
-  contact_id: z.string().optional(),
   contact_person: z.string().min(2, 'Contact person is required'),
   contact_role: z.string().min(2, 'Contact role is required'),
   conducted_by: z.string().min(2, 'Conducted by is required'),
@@ -74,7 +72,6 @@ interface AddCommunicationDialogProps {
   onOpenChange: (open: boolean) => void;
   onSave: (log: Omit<CommunicationLog, 'id'>) => void;
   institutions: Array<{ id: string; name: string }>;
-  contacts: InstitutionContact[];
 }
 
 export function AddCommunicationDialog({
@@ -82,10 +79,8 @@ export function AddCommunicationDialog({
   onOpenChange,
   onSave,
   institutions,
-  contacts,
 }: AddCommunicationDialogProps) {
   const [attachments, setAttachments] = useState<string[]>([]);
-  const [showManualContact, setShowManualContact] = useState(false);
 
   const form = useForm<CommunicationFormValues>({
     resolver: zodResolver(communicationSchema),
@@ -103,37 +98,10 @@ export function AddCommunicationDialog({
   const watchInstitutionId = form.watch('institution_id');
   const watchNotes = form.watch('notes');
 
-  // Filter contacts for selected institution
-  const institutionContacts = contacts.filter(
-    (c) => c.institution_id === watchInstitutionId
-  );
-
   const handleInstitutionChange = (value: string) => {
     const institution = institutions.find((i) => i.id === value);
     if (institution) {
       form.setValue('institution_name', institution.name);
-      // Reset contact selection when institution changes
-      form.setValue('contact_id', '');
-      form.setValue('contact_person', '');
-      form.setValue('contact_role', '');
-      setShowManualContact(false);
-    }
-  };
-
-  const handleContactChange = (value: string) => {
-    if (value === 'manual') {
-      setShowManualContact(true);
-      form.setValue('contact_id', '');
-      form.setValue('contact_person', '');
-      form.setValue('contact_role', '');
-    } else {
-      const contact = contacts.find((c) => c.id === value);
-      if (contact) {
-        setShowManualContact(false);
-        form.setValue('contact_id', contact.id);
-        form.setValue('contact_person', contact.full_name);
-        form.setValue('contact_role', contact.designation);
-      }
     }
   };
 
@@ -162,7 +130,6 @@ export function AddCommunicationDialog({
       notes: data.notes,
       contact_person: data.contact_person,
       contact_role: data.contact_role,
-      contact_id: data.contact_id,
       conducted_by: data.conducted_by,
       next_action: data.next_action || '',
       next_action_date: data.next_action_date?.toISOString() || '',
@@ -174,7 +141,6 @@ export function AddCommunicationDialog({
     onSave(newLog);
     form.reset();
     setAttachments([]);
-    setShowManualContact(false);
   };
 
   return (
@@ -322,85 +288,37 @@ export function AddCommunicationDialog({
               )}
             />
 
-            {/* Contact Selection */}
-            {watchInstitutionId && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Contact Person */}
               <FormField
                 control={form.control}
-                name="contact_id"
+                name="contact_person"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Contact Person *</FormLabel>
-                    <Select
-                      onValueChange={handleContactChange}
-                      value={field.value || (showManualContact ? 'manual' : '')}
-                      disabled={!watchInstitutionId}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={
-                            institutionContacts.length > 0 
-                              ? "Select a contact" 
-                              : "No contacts available - enter manually"
-                          } />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {institutionContacts.map((contact) => (
-                          <SelectItem key={contact.id} value={contact.id}>
-                            <div className="flex items-center gap-2">
-                              <span>{contact.full_name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                • {contact.designation}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                        <SelectItem value="manual">
-                          <div className="flex items-center gap-2 text-primary">
-                            <Plus className="h-3 w-3" />
-                            <span>Enter contact manually</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Input placeholder="Name" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            )}
 
-            {/* Manual Contact Entry */}
-            {(showManualContact || !watchInstitutionId) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="contact_person"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Contact Name *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Full name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="contact_role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Contact Role *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., Principal, IT Head" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
+              {/* Contact Role */}
+              <FormField
+                control={form.control}
+                name="contact_role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contact Role *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Principal, IT Head" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {/* Conducted By */}
             <FormField
