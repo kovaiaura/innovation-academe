@@ -11,6 +11,10 @@ import { BillingDashboard } from "@/components/crm/BillingDashboard";
 import { CRMTaskManager } from "@/components/crm/CRMTaskManager";
 import { CommunicationTimeline } from "@/components/crm/CommunicationTimeline";
 import { AddCommunicationDialog } from "@/components/crm/AddCommunicationDialog";
+import { AddContractDialog } from "@/components/crm/AddContractDialog";
+import { AddInvoiceDialog } from "@/components/crm/AddInvoiceDialog";
+import { AddTaskDialog } from "@/components/crm/AddTaskDialog";
+import { TimelineFilterDialog } from "@/components/crm/TimelineFilterDialog";
 import { 
   mockCommunicationLogs, 
   mockContracts, 
@@ -21,9 +25,21 @@ import {
 import { toast } from "sonner";
 
 export default function CRM() {
+  const [activeTab, setActiveTab] = useState("communications");
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Dialog states
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isAddContractDialogOpen, setIsAddContractDialogOpen] = useState(false);
+  const [isAddInvoiceDialogOpen, setIsAddInvoiceDialogOpen] = useState(false);
+  const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
+  const [isTimelineFilterOpen, setIsTimelineFilterOpen] = useState(false);
+  
+  // Data states
   const [communicationLogs, setCommunicationLogs] = useState<CommunicationLog[]>(mockCommunicationLogs);
+  const [contracts, setContracts] = useState(mockContracts);
+  const [billingRecords, setBillingRecords] = useState(mockBillingRecords);
+  const [tasks, setTasks] = useState(mockCRMTasks);
 
   // Extract unique institutions from existing logs
   const getUniqueInstitutions = (logs: CommunicationLog[]) => {
@@ -74,6 +90,64 @@ export default function CRM() {
     toast.success("Task marked as completed");
   };
 
+  // Contract handlers
+  const handleAddContract = () => {
+    setIsAddContractDialogOpen(true);
+  };
+
+  const handleSaveContract = (newContract: Omit<typeof mockContracts[0], 'id'>) => {
+    const contractWithId = {
+      ...newContract,
+      id: `cnt-${Date.now()}`,
+    };
+    setContracts(prev => [contractWithId, ...prev]);
+    setIsAddContractDialogOpen(false);
+    toast.success("Contract created successfully");
+  };
+
+  // Invoice handlers
+  const handleAddInvoice = () => {
+    setIsAddInvoiceDialogOpen(true);
+  };
+
+  const handleSaveInvoice = (newInvoice: Omit<typeof mockBillingRecords[0], 'id'>) => {
+    const invoiceWithId = {
+      ...newInvoice,
+      id: `inv-${Date.now()}`,
+    };
+    setBillingRecords(prev => [invoiceWithId, ...prev]);
+    setIsAddInvoiceDialogOpen(false);
+    toast.success("Invoice created successfully");
+  };
+
+  // Task handlers
+  const handleAddTask = () => {
+    setIsAddTaskDialogOpen(true);
+  };
+
+  const handleSaveTask = (newTask: Omit<typeof mockCRMTasks[0], 'id'>) => {
+    const taskWithId = {
+      ...newTask,
+      id: `task-${Date.now()}`,
+    };
+    setTasks(prev => [taskWithId, ...prev]);
+    setIsAddTaskDialogOpen(false);
+    toast.success("Task created successfully");
+  };
+
+  // Timeline handlers
+  const handleFilterTimeline = () => {
+    setIsTimelineFilterOpen(true);
+  };
+
+  const handleApplyTimelineFilters = (filters: any) => {
+    toast.success("Filters applied to timeline");
+  };
+
+  const handleExportTimeline = () => {
+    toast.success("Exporting timeline to PDF...");
+  };
+
   return (
     <Layout>
       <div className="container mx-auto p-6 space-y-6">
@@ -87,13 +161,53 @@ export default function CRM() {
             Manage communications, contracts, billing, and client relationships
           </p>
         </div>
-        <Button onClick={handleAddCommunication}>
-          <Plus className="h-4 w-4 mr-2" />
-          Log Communication
-        </Button>
+        
+        {/* Dynamic Action Buttons Based on Active Tab */}
+        <div className="flex gap-2">
+          {activeTab === "communications" && (
+            <Button onClick={handleAddCommunication}>
+              <Plus className="h-4 w-4 mr-2" />
+              Log Communication
+            </Button>
+          )}
+          
+          {activeTab === "contracts" && (
+            <Button onClick={handleAddContract}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Contract
+            </Button>
+          )}
+          
+          {activeTab === "billing" && (
+            <Button onClick={handleAddInvoice}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Invoice
+            </Button>
+          )}
+          
+          {activeTab === "tasks" && (
+            <Button onClick={handleAddTask}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Task
+            </Button>
+          )}
+          
+          {activeTab === "timeline" && (
+            <>
+              <Button variant="outline" onClick={handleFilterTimeline}>
+                <Filter className="h-4 w-4 mr-2" />
+                Filter
+              </Button>
+              <Button onClick={handleExportTimeline}>
+                <Plus className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
-      <Tabs defaultValue="communications" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="communications">Communication Tracking</TabsTrigger>
           <TabsTrigger value="contracts">Renewals & Contracts</TabsTrigger>
@@ -161,7 +275,7 @@ export default function CRM() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {mockContracts.filter(c => c.status === 'active').length}
+                  {contracts.filter(c => c.status === 'active').length}
                 </div>
               </CardContent>
             </Card>
@@ -172,7 +286,7 @@ export default function CRM() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-yellow-600">
-                  {mockContracts.filter(c => c.status === 'expiring_soon').length}
+                  {contracts.filter(c => c.status === 'expiring_soon').length}
                 </div>
               </CardContent>
             </Card>
@@ -183,14 +297,14 @@ export default function CRM() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  ₹{(mockContracts.reduce((sum, c) => sum + c.contract_value, 0) / 10000000).toFixed(1)}Cr
+                  ₹{(contracts.reduce((sum, c) => sum + c.contract_value, 0) / 10000000).toFixed(1)}Cr
                 </div>
               </CardContent>
             </Card>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {mockContracts.map((contract) => (
+            {contracts.map((contract) => (
               <ContractTracker
                 key={contract.id}
                 contract={contract}
@@ -204,7 +318,7 @@ export default function CRM() {
         {/* Billing Tab */}
         <TabsContent value="billing">
           <BillingDashboard
-            billingRecords={mockBillingRecords}
+            billingRecords={billingRecords}
             onViewInvoice={handleViewInvoice}
             onSendReminder={handleSendReminder}
           />
@@ -213,7 +327,7 @@ export default function CRM() {
         {/* Tasks Tab */}
         <TabsContent value="tasks">
           <CRMTaskManager
-            tasks={mockCRMTasks}
+            tasks={tasks}
             onCompleteTask={handleCompleteTask}
             onEditTask={() => toast.info("Edit task dialog would open")}
           />
@@ -229,6 +343,34 @@ export default function CRM() {
           open={isAddDialogOpen}
           onOpenChange={setIsAddDialogOpen}
           onSave={handleSaveCommunication}
+          institutions={getUniqueInstitutions(communicationLogs)}
+        />
+
+        <AddContractDialog
+          open={isAddContractDialogOpen}
+          onOpenChange={setIsAddContractDialogOpen}
+          onSave={handleSaveContract}
+          institutions={getUniqueInstitutions(communicationLogs)}
+        />
+
+        <AddInvoiceDialog
+          open={isAddInvoiceDialogOpen}
+          onOpenChange={setIsAddInvoiceDialogOpen}
+          onSave={handleSaveInvoice}
+          institutions={getUniqueInstitutions(communicationLogs)}
+        />
+
+        <AddTaskDialog
+          open={isAddTaskDialogOpen}
+          onOpenChange={setIsAddTaskDialogOpen}
+          onSave={handleSaveTask}
+          institutions={getUniqueInstitutions(communicationLogs)}
+        />
+
+        <TimelineFilterDialog
+          open={isTimelineFilterOpen}
+          onOpenChange={setIsTimelineFilterOpen}
+          onApplyFilters={handleApplyTimelineFilters}
           institutions={getUniqueInstitutions(communicationLogs)}
         />
       </div>
