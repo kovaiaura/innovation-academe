@@ -8,6 +8,7 @@ export interface CommunicationLog {
   notes: string;
   contact_person: string;
   contact_role: string;
+  contact_id?: string; // Reference to InstitutionContact
   conducted_by: string;
   next_action: string;
   next_action_date: string;
@@ -75,6 +76,7 @@ export const mockCommunicationLogs: CommunicationLog[] = [
     notes: 'Discussed current engagement metrics (85%). Principal very satisfied with platform. Mentioned interest in expanding to 2 more branches. Need to send expansion proposal by Nov 30.',
     contact_person: 'Dr. Meera Kapoor',
     contact_role: 'Principal',
+    contact_id: 'contact-1',
     conducted_by: 'Rajesh Kumar',
     next_action: 'Send expansion proposal for 2 additional branches',
     next_action_date: '2024-11-30T00:00:00Z',
@@ -92,6 +94,7 @@ export const mockCommunicationLogs: CommunicationLog[] = [
     notes: 'IT head reported 3D printer connectivity issues. Remote troubleshooting attempted. Need to schedule on-site visit. Also inquired about advanced robotics module.',
     contact_person: 'Amit Desai',
     contact_role: 'IT Head',
+    contact_id: 'contact-4',
     conducted_by: 'Anita Desai',
     next_action: 'Schedule on-site technical visit',
     next_action_date: '2024-11-25T00:00:00Z',
@@ -109,6 +112,7 @@ export const mockCommunicationLogs: CommunicationLog[] = [
     notes: 'Sent detailed email addressing low engagement (38%). Offered free training session and dedicated support. Awaiting response. Contract expires in 60 days - critical situation.',
     contact_person: 'Mr. Suresh Patel',
     contact_role: 'Director',
+    contact_id: 'contact-7',
     conducted_by: 'Priya Sharma',
     next_action: 'Follow up call if no response by Nov 22',
     next_action_date: '2024-11-22T00:00:00Z',

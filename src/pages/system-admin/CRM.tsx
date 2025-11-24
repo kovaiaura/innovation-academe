@@ -11,6 +11,7 @@ import { BillingDashboard } from "@/components/crm/BillingDashboard";
 import { CRMTaskManager } from "@/components/crm/CRMTaskManager";
 import { CommunicationTimeline } from "@/components/crm/CommunicationTimeline";
 import { AddCommunicationDialog } from "@/components/crm/AddCommunicationDialog";
+import { ContactsManager } from "@/components/crm/contacts/ContactsManager";
 import { 
   mockCommunicationLogs, 
   mockContracts, 
@@ -18,12 +19,14 @@ import {
   mockCRMTasks,
   type CommunicationLog 
 } from "@/data/mockCRMData";
+import { mockContacts, type InstitutionContact } from "@/data/mockCRMContacts";
 import { toast } from "sonner";
 
 export default function CRM() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [communicationLogs, setCommunicationLogs] = useState<CommunicationLog[]>(mockCommunicationLogs);
+  const [contacts, setContacts] = useState<InstitutionContact[]>(mockContacts);
 
   // Extract unique institutions from existing logs
   const getUniqueInstitutions = (logs: CommunicationLog[]) => {
@@ -74,6 +77,28 @@ export default function CRM() {
     toast.success("Task marked as completed");
   };
 
+  const handleAddContact = (newContact: Omit<InstitutionContact, 'id' | 'date_added' | 'last_contacted' | 'total_interactions'>) => {
+    const contactWithId: InstitutionContact = {
+      ...newContact,
+      id: `contact-${Date.now()}`,
+      date_added: new Date().toISOString().split('T')[0],
+      last_contacted: new Date().toISOString().split('T')[0],
+      total_interactions: 0,
+    };
+    
+    setContacts(prev => [...prev, contactWithId]);
+    toast.success("Contact added successfully");
+  };
+
+  const handleEditContact = (id: string, updatedContact: Partial<InstitutionContact>) => {
+    setContacts(prev => 
+      prev.map(contact => 
+        contact.id === id ? { ...contact, ...updatedContact } : contact
+      )
+    );
+    toast.success("Contact updated successfully");
+  };
+
   return (
     <Layout>
       <div className="container mx-auto p-6 space-y-6">
@@ -94,12 +119,13 @@ export default function CRM() {
       </div>
 
       <Tabs defaultValue="communications" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="communications">Communication Tracking</TabsTrigger>
-          <TabsTrigger value="contracts">Renewals & Contracts</TabsTrigger>
-          <TabsTrigger value="billing">Billing & Invoices</TabsTrigger>
-          <TabsTrigger value="tasks">Tasks & Reminders</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline View</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="communications">Communications</TabsTrigger>
+          <TabsTrigger value="contacts">Contacts</TabsTrigger>
+          <TabsTrigger value="contracts">Contracts</TabsTrigger>
+          <TabsTrigger value="billing">Billing</TabsTrigger>
+          <TabsTrigger value="tasks">Tasks</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
         </TabsList>
 
         {/* Communication Tracking Tab */}
@@ -150,6 +176,17 @@ export default function CRM() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Contacts Directory Tab */}
+        <TabsContent value="contacts">
+          <ContactsManager
+            contacts={contacts}
+            institutions={getUniqueInstitutions(communicationLogs)}
+            onAddContact={handleAddContact}
+            onEditContact={handleEditContact}
+            communicationLogs={communicationLogs}
+          />
         </TabsContent>
 
         {/* Contracts Tab */}
@@ -230,6 +267,7 @@ export default function CRM() {
           onOpenChange={setIsAddDialogOpen}
           onSave={handleSaveCommunication}
           institutions={getUniqueInstitutions(communicationLogs)}
+          contacts={contacts}
         />
       </div>
     </Layout>
