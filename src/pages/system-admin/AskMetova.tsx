@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Layout } from '@/components/layout/Layout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -134,7 +135,8 @@ export default function SystemAdminAskMetova() {
   );
 
   return (
-    <div className="h-screen flex flex-col">
+    <Layout>
+      <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
       <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-16 items-center px-4 gap-4">
           <Sparkles className="h-6 w-6 text-primary" />
@@ -187,6 +189,7 @@ export default function SystemAdminAskMetova() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </Layout>
   );
 }
