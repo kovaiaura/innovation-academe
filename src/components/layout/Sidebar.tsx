@@ -73,6 +73,9 @@ const menuItems: MenuItem[] = [
   { label: 'Reports & Invoice', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['system_admin'], feature: 'reports_analytics' },
   // SDG Management
   { label: 'SDG Management', icon: <Target className="h-5 w-5" />, path: '/sdg-management', roles: ['system_admin'], feature: 'sdg_management' },
+  // CRM & Ask Metova
+  { label: 'CRM & Clients', icon: <Phone className="h-5 w-5" />, path: '/crm', roles: ['system_admin'] },
+  { label: 'Ask Metova', icon: <MessageSquare className="h-5 w-5" />, path: '/ask-metova', roles: ['system_admin'] },
   // Teacher menu items
   { label: 'My Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['teacher'] },
   { label: 'Grades', icon: <Award className="h-5 w-5" />, path: '/grades', roles: ['teacher'] },

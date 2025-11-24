@@ -96,6 +96,7 @@ import SystemAdminGamification from "./pages/system-admin/GamificationManagement
 import OfficerTasks from "./pages/officer/Tasks";
 import IdConfiguration from "./pages/system-admin/IdConfiguration";
 import SDGManagement from "./pages/system-admin/SDGManagement";
+import SystemAdminAskMetova from "./pages/system-admin/AskMetova";
 
 const queryClient = new QueryClient({
   defaultOptions: {
