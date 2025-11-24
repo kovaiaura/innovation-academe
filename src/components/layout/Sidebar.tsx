@@ -8,6 +8,7 @@ import {
   Home, Users, User, Settings, LogOut, ChevronLeft, 
   BookOpen, Target, Calendar, Award, BarChart,
   Building2, FileText, Trophy, Package, UserCheck, GraduationCap,
+  MessageSquare, MessageCircle,
   Shield, Phone, Clock, ShoppingCart, PieChart, Briefcase, CalendarCheck,
   LayoutDashboard, CheckSquare, ListTodo, Key
 } from 'lucide-react';
@@ -99,6 +100,8 @@ const menuItems: MenuItem[] = [
   { label: 'Gamification', icon: <BarChart className="h-5 w-5" />, path: '/gamification', roles: ['student'] },
   { label: 'Resume', icon: <FileText className="h-5 w-5" />, path: '/resume', roles: ['student'] },
   { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['student'] },
+  { label: 'Ask Metova', icon: <MessageSquare className="h-5 w-5" />, path: '/ask-metova', roles: ['student'] },
+  { label: 'Feedback/Survey', icon: <MessageCircle className="h-5 w-5" />, path: '/feedback', roles: ['student'] },
   // System Admin - Configuration
   { label: 'ID Configuration', icon: <Settings className="h-5 w-5" />, path: '/id-configuration', roles: ['system_admin'], feature: 'id_configuration' },
   // Management menu items (merged with institution admin functionality)
