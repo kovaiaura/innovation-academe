@@ -98,6 +98,7 @@ const menuItems: MenuItem[] = [
   { label: 'Certificates', icon: <Award className="h-5 w-5" />, path: '/certificates', roles: ['student'] },
   { label: 'Gamification', icon: <BarChart className="h-5 w-5" />, path: '/gamification', roles: ['student'] },
   { label: 'Resume', icon: <FileText className="h-5 w-5" />, path: '/resume', roles: ['student'] },
+  { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['student'] },
   // System Admin - Configuration
   { label: 'ID Configuration', icon: <Settings className="h-5 w-5" />, path: '/id-configuration', roles: ['system_admin'], feature: 'id_configuration' },
   // Management menu items (merged with institution admin functionality)
