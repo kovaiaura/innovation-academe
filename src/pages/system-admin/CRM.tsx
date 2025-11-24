@@ -10,19 +10,48 @@ import { ContractTracker } from "@/components/crm/ContractTracker";
 import { BillingDashboard } from "@/components/crm/BillingDashboard";
 import { CRMTaskManager } from "@/components/crm/CRMTaskManager";
 import { CommunicationTimeline } from "@/components/crm/CommunicationTimeline";
+import { AddCommunicationDialog } from "@/components/crm/AddCommunicationDialog";
 import { 
   mockCommunicationLogs, 
   mockContracts, 
   mockBillingRecords, 
-  mockCRMTasks 
+  mockCRMTasks,
+  type CommunicationLog 
 } from "@/data/mockCRMData";
 import { toast } from "sonner";
 
 export default function CRM() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [communicationLogs, setCommunicationLogs] = useState<CommunicationLog[]>(mockCommunicationLogs);
+
+  // Extract unique institutions from existing logs
+  const getUniqueInstitutions = (logs: CommunicationLog[]) => {
+    const institutionsMap = new Map();
+    logs.forEach(log => {
+      if (!institutionsMap.has(log.institution_id)) {
+        institutionsMap.set(log.institution_id, {
+          id: log.institution_id,
+          name: log.institution_name,
+        });
+      }
+    });
+    return Array.from(institutionsMap.values());
+  };
 
   const handleAddCommunication = () => {
-    toast.info("Add communication dialog would open here");
+    setIsAddDialogOpen(true);
+  };
+
+  const handleSaveCommunication = (newLog: Omit<CommunicationLog, 'id'>) => {
+    const logWithId: CommunicationLog = {
+      ...newLog,
+      id: `comm-${Date.now()}`,
+    };
+    
+    setCommunicationLogs(prev => [logWithId, ...prev]);
+    setIsAddDialogOpen(false);
+    toast.success("Communication logged successfully");
   };
 
   const handleViewContract = () => {
@@ -100,14 +129,24 @@ export default function CRM() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                {mockCommunicationLogs.map((log) => (
-                  <CommunicationLogCard
-                    key={log.id}
-                    log={log}
-                    onEdit={() => toast.info("Edit dialog would open")}
-                    onViewDetails={() => toast.info("Details dialog would open")}
-                  />
-                ))}
+                {communicationLogs
+                  .filter(log => {
+                    const searchLower = searchQuery.toLowerCase();
+                    return (
+                      log.institution_name.toLowerCase().includes(searchLower) ||
+                      log.subject.toLowerCase().includes(searchLower) ||
+                      log.contact_person.toLowerCase().includes(searchLower) ||
+                      log.notes.toLowerCase().includes(searchLower)
+                    );
+                  })
+                  .map((log) => (
+                    <CommunicationLogCard
+                      key={log.id}
+                      log={log}
+                      onEdit={() => toast.info("Edit dialog would open")}
+                      onViewDetails={() => toast.info("Details dialog would open")}
+                    />
+                  ))}
               </div>
             </CardContent>
           </Card>
@@ -182,9 +221,16 @@ export default function CRM() {
 
         {/* Timeline Tab */}
         <TabsContent value="timeline">
-          <CommunicationTimeline logs={mockCommunicationLogs} />
+          <CommunicationTimeline logs={communicationLogs} />
         </TabsContent>
         </Tabs>
+
+        <AddCommunicationDialog
+          open={isAddDialogOpen}
+          onOpenChange={setIsAddDialogOpen}
+          onSave={handleSaveCommunication}
+          institutions={getUniqueInstitutions(communicationLogs)}
+        />
       </div>
     </Layout>
   );
