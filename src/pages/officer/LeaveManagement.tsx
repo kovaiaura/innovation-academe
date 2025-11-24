@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format, differenceInCalendarDays, isWeekend, addDays } from 'date-fns';
-import { CalendarCheck, Clock, TrendingUp, FileText, AlertCircle, Eye, X, ArrowRight, ArrowLeft, Users, CheckCircle } from 'lucide-react';
+import { CalendarCheck, Clock, TrendingUp, FileText, AlertCircle, Eye, X, ArrowRight, ArrowLeft, Users, CheckCircle, Calendar as CalendarIcon } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,7 @@ import {
   cancelLeaveApplication,
 } from '@/data/mockLeaveData';
 import { LeaveApprovalTimeline } from '@/components/officer/LeaveApprovalTimeline';
+import { MyAttendanceTab } from '@/components/officer/MyAttendanceTab';
 import {
   Dialog,
   DialogContent,
@@ -345,6 +346,10 @@ export default function LeaveManagement() {
             <TabsTrigger value="history" className="gap-2">
               <FileText className="h-4 w-4" />
               Leave History
+            </TabsTrigger>
+            <TabsTrigger value="attendance" className="gap-2">
+              <CalendarIcon className="h-4 w-4" />
+              My Attendance
             </TabsTrigger>
           </TabsList>
 
@@ -877,6 +882,21 @@ export default function LeaveManagement() {
                     </Table>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* My Attendance Tab */}
+          <TabsContent value="attendance" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>My Attendance Records</CardTitle>
+                <CardDescription>
+                  View your monthly attendance, check-in/out times, and download reports
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <MyAttendanceTab />
               </CardContent>
             </Card>
           </TabsContent>
