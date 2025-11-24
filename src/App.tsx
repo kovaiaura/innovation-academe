@@ -31,6 +31,8 @@ import StudentCertificates from "./pages/student/Certificates";
 import StudentGamification from "./pages/student/Gamification";
 import StudentResume from "./pages/student/Resume";
 import StudentEvents from "./pages/student/Events";
+import StudentSettings from "./pages/student/Settings";
+import TakeAssignment from "./pages/student/TakeAssignment";
 import OfficerDashboard from "./pages/officer/Dashboard";
 import OfficerSessions from "./pages/officer/Sessions";
 import OfficerProjects from "./pages/officer/Projects";
@@ -710,6 +712,22 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['student']}>
                   <StudentAssignments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/assignments/:assignmentId/take"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <TakeAssignment />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/settings"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentSettings />
                 </ProtectedRoute>
               }
             />
