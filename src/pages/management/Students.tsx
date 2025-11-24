@@ -2,24 +2,18 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Student, BulkUploadResult } from "@/types/student";
+import { Student } from "@/types/student";
 import { mockStudents } from "@/data/mockStudentData";
 import { StudentDetailsDialog } from "@/components/student/StudentDetailsDialog";
-import { AddEditStudentDialog } from "@/components/student/AddEditStudentDialog";
-import { DeleteStudentDialog } from "@/components/student/DeleteStudentDialog";
-import { BulkUploadDialog } from "@/components/student/BulkUploadDialog";
 import { 
   getStatusColor, 
   calculateAge, 
-  exportStudentsToCSV,
-  generateStudentId 
+  exportStudentsToCSV
 } from "@/utils/studentHelpers";
-import { generateTemplate } from "@/utils/csvParser";
-import { Download, Upload, Search, Users, UserCheck, UserX, GraduationCap, Phone } from "lucide-react";
+import { Download, Search, Users, UserCheck, UserX, GraduationCap, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { useParams } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
@@ -29,23 +23,20 @@ import { useLocation } from "react-router-dom";
 
 export default function Students() {
   const { tenantId } = useParams();
-  const institutionId = tenantId || '1';
   
   // Extract institution from URL
   const location = useLocation();
   const institutionSlug = location.pathname.split('/')[2];
   const institution = getInstitutionBySlug(institutionSlug);
   
+  // Use the actual institution ID from the fetched institution object
+  const institutionId = institution?.id || '1';
+  
   const [students, setStudents] = useState<Student[]>(
     mockStudents.filter(s => s.institution_id === institutionId)
   );
-  const [activeTab, setActiveTab] = useState("list");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [bulkUploadDialogOpen, setBulkUploadDialogOpen] = useState(false);
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -78,58 +69,10 @@ export default function Students() {
     return searchMatch && classMatch && sectionMatch && genderMatch && statusMatch;
   });
 
-  // CRUD Handlers
+  // Handlers
   const handleStudentClick = (student: Student) => {
     setSelectedStudent(student);
     setDetailsDialogOpen(true);
-  };
-
-  const handleAddStudent = (newStudent: Omit<Student, 'id' | 'created_at'>) => {
-    const student: Student = {
-      ...newStudent,
-      id: generateStudentId(),
-      created_at: new Date().toISOString(),
-    };
-    setStudents([...students, student]);
-    toast.success('Student added successfully');
-    setAddDialogOpen(false);
-    setActiveTab('list');
-  };
-
-  const handleEditStudent = (updatedStudent: Student) => {
-    setStudents(students.map(s => s.id === updatedStudent.id ? updatedStudent : s));
-    toast.success('Student details updated successfully');
-    setEditDialogOpen(false);
-    setDetailsDialogOpen(false);
-  };
-
-  const handleDeleteStudent = (studentId: string) => {
-    setStudents(students.filter(s => s.id !== studentId));
-    toast.success('Student deleted successfully');
-    setDeleteDialogOpen(false);
-    setDetailsDialogOpen(false);
-  };
-
-  const handleBulkUploadComplete = (result: BulkUploadResult) => {
-    toast.success(`Successfully imported ${result.imported} students!`);
-    if (result.failed > 0) {
-      toast.warning(`${result.failed} students failed to import.`);
-    }
-    setBulkUploadDialogOpen(false);
-    setActiveTab('list');
-  };
-
-  const handleDownloadTemplate = () => {
-    const blob = generateTemplate();
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'student-template.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Template downloaded successfully');
   };
 
   const handleExportStudents = () => {
@@ -160,19 +103,29 @@ export default function Students() {
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Student Management</h1>
-          <p className="text-muted-foreground">Manage student enrollment and records</p>
+          <p className="text-muted-foreground">View and monitor student information</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleDownloadTemplate}>
-            <Download className="h-4 w-4 mr-2" />
-            Download Template
-          </Button>
-          <Button variant="outline" onClick={handleExportStudents}>
-            <Download className="h-4 w-4 mr-2" />
-            Export Students
-          </Button>
-        </div>
+        <Button variant="outline" onClick={handleExportStudents}>
+          <Download className="h-4 w-4 mr-2" />
+          Export Students
+        </Button>
       </div>
+
+      {/* Info Card */}
+      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
+        <CardContent className="flex items-start gap-3 py-4">
+          <Users className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              Student Management Access
+            </p>
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              Adding and removing students is managed by the System Admin team. 
+              You can view student details, export data, and monitor student information.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -223,16 +176,8 @@ export default function Students() {
         </Card>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="list">List Students</TabsTrigger>
-          <TabsTrigger value="add">Add Student</TabsTrigger>
-          <TabsTrigger value="bulk">Bulk Upload</TabsTrigger>
-        </TabsList>
-
-        {/* List Students Tab */}
-        <TabsContent value="list" className="space-y-4">
+      {/* Student List */}
+      <div className="space-y-4">
           {/* Filters */}
           <Card>
             <CardHeader>
@@ -360,80 +305,15 @@ export default function Students() {
               </CardContent>
             </Card>
           )}
-        </TabsContent>
+        </div>
 
-        {/* Add Student Tab */}
-        <TabsContent value="add">
-          <Card>
-            <CardHeader>
-              <CardTitle>Add New Student</CardTitle>
-              <CardDescription>Fill in the student information below</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={() => setAddDialogOpen(true)} size="lg">
-                Open Student Form
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Bulk Upload Tab */}
-        <TabsContent value="bulk">
-          <Card>
-            <CardHeader>
-              <CardTitle>Bulk Upload Students</CardTitle>
-              <CardDescription>Upload multiple students at once using CSV</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={() => setBulkUploadDialogOpen(true)} size="lg">
-                <Upload className="h-4 w-4 mr-2" />
-                Start Bulk Upload
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Dialogs */}
+      {/* Dialog */}
       <StudentDetailsDialog
         isOpen={detailsDialogOpen}
         onOpenChange={setDetailsDialogOpen}
         student={selectedStudent}
-        onEdit={() => {
-          setDetailsDialogOpen(false);
-          setEditDialogOpen(true);
-        }}
-        onDelete={() => {
-          setDetailsDialogOpen(false);
-          setDeleteDialogOpen(true);
-        }}
-      />
-
-      <AddEditStudentDialog
-        isOpen={editDialogOpen || addDialogOpen}
-        onOpenChange={(open) => {
-          setEditDialogOpen(open);
-          setAddDialogOpen(open);
-        }}
-        mode={editDialogOpen ? 'edit' : 'add'}
-        student={selectedStudent || undefined}
-        onSave={editDialogOpen ? handleEditStudent : handleAddStudent}
-        existingStudents={students}
-        institutionId={institutionId}
-      />
-
-      <DeleteStudentDialog
-        isOpen={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        student={selectedStudent}
-        onConfirm={handleDeleteStudent}
-      />
-
-      <BulkUploadDialog
-        isOpen={bulkUploadDialogOpen}
-        onOpenChange={setBulkUploadDialogOpen}
-        institutionId={institutionId}
-        onUploadComplete={handleBulkUploadComplete}
+        onEdit={() => {}}
+        onDelete={() => {}}
       />
       </div>
     </Layout>
