@@ -16,6 +16,7 @@ import { SalesPipelineBoard } from "@/components/crm/pipeline/SalesPipelineBoard
 import { AddLeadDialog } from "@/components/crm/pipeline/AddLeadDialog";
 import { LeadDetailView } from "@/components/crm/pipeline/LeadDetailView";
 import { SalesForecast } from "@/components/crm/pipeline/SalesForecast";
+import { AnalyticsDashboard } from "@/components/crm/analytics/AnalyticsDashboard";
 import { 
   mockCommunicationLogs, 
   mockContracts, 
@@ -168,10 +169,11 @@ export default function CRM() {
       </div>
 
       <Tabs defaultValue="communications" className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="communications">Communications</TabsTrigger>
           <TabsTrigger value="contacts">Contacts</TabsTrigger>
           <TabsTrigger value="pipeline">Sales Pipeline</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="contracts">Contracts</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
@@ -271,6 +273,18 @@ export default function CRM() {
               <SalesForecast leads={leads} />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Analytics Dashboard Tab */}
+        <TabsContent value="analytics" className="space-y-6">
+          <div>
+            <h3 className="text-lg font-semibold">Analytics Dashboard</h3>
+            <p className="text-sm text-muted-foreground">
+              Track sales performance, revenue metrics, and customer health scores
+            </p>
+          </div>
+
+          <AnalyticsDashboard />
         </TabsContent>
 
         {/* Contracts Tab */}
