@@ -16,6 +16,10 @@ import { Search, Plus, Building2, Upload, Calendar, FileText, AlertCircle, Check
 import { toast } from 'sonner';
 import ViewMouDialog from '@/components/institution/ViewMouDialog';
 import { PinLockDialog } from '@/components/system-admin/PinLockDialog';
+import { EngagementDashboard } from '@/components/institution/EngagementDashboard';
+import { AtRiskInstitutions } from '@/components/institution/AtRiskInstitutions';
+import { InstitutionComparisonTable } from '@/components/institution/InstitutionComparisonTable';
+import { mockInstitutionEngagement } from '@/data/mockInstitutionEngagement';
 
 export default function InstitutionManagement() {
   const navigate = useNavigate();
@@ -210,23 +214,17 @@ export default function InstitutionManagement() {
         </div>
 
         <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="list">
               Institutions ({stats.total})
             </TabsTrigger>
             <TabsTrigger value="add">
               Add Institution
             </TabsTrigger>
-            <TabsTrigger value="licenses">
+            <TabsTrigger value="analytics">
               <div className="flex items-center gap-2">
-                <Lock className="h-4 w-4" />
-                Agreement Management
-              </div>
-            </TabsTrigger>
-            <TabsTrigger value="renewals">
-              <div className="flex items-center gap-2">
-                <Lock className="h-4 w-4" />
-                Renewals & Contracts
+                <TrendingUp className="h-4 w-4" />
+                Performance Analytics
               </div>
             </TabsTrigger>
           </TabsList>
@@ -810,6 +808,13 @@ export default function InstitutionManagement() {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Tab 3: Performance Analytics */}
+          <TabsContent value="analytics" className="space-y-6">
+            <EngagementDashboard data={mockInstitutionEngagement} />
+            <AtRiskInstitutions data={mockInstitutionEngagement} />
+            <InstitutionComparisonTable data={mockInstitutionEngagement} />
           </TabsContent>
         </Tabs>
 
