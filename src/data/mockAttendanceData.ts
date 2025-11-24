@@ -264,6 +264,48 @@ export const mockAttendanceData: OfficerAttendanceRecord[] = [
     total_hours_worked: 136,
     last_marked_date: '2025-11-24',
   },
+  // Saran T (Kikani Global Academy) - September 2025
+  {
+    officer_id: 'off-kga-001',
+    officer_name: 'Mr. Saran T',
+    employee_id: 'EMP-KGA-IOF-001',
+    department: 'Innovation & STEM Education',
+    month: '2025-09',
+    daily_records: generateDailyRecords('2025-09', 'regular'),
+    present_days: 22,
+    absent_days: 0,
+    leave_days: 0,
+    total_hours_worked: 184,
+    last_marked_date: '2025-09-30',
+  },
+  // Saran T - October 2025
+  {
+    officer_id: 'off-kga-001',
+    officer_name: 'Mr. Saran T',
+    employee_id: 'EMP-KGA-IOF-001',
+    department: 'Innovation & STEM Education',
+    month: '2025-10',
+    daily_records: generateDailyRecords('2025-10', 'regular'),
+    present_days: 21,
+    absent_days: 0,
+    leave_days: 2,
+    total_hours_worked: 176,
+    last_marked_date: '2025-10-31',
+  },
+  // Saran T - November 2025 (Current)
+  {
+    officer_id: 'off-kga-001',
+    officer_name: 'Mr. Saran T',
+    employee_id: 'EMP-KGA-IOF-001',
+    department: 'Innovation & STEM Education',
+    month: '2025-11',
+    daily_records: generateDailyRecords('2025-11', 'regular'),
+    present_days: 17,
+    absent_days: 0,
+    leave_days: 0,
+    total_hours_worked: 142,
+    last_marked_date: '2025-11-24',
+  },
 ];
 
 // Helper function to filter attendance by institution
