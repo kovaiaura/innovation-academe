@@ -97,6 +97,7 @@ import OfficerTasks from "./pages/officer/Tasks";
 import IdConfiguration from "./pages/system-admin/IdConfiguration";
 import SDGManagement from "./pages/system-admin/SDGManagement";
 import SystemAdminAskMetova from "./pages/system-admin/AskMetova";
+import SystemAdminCRM from "./pages/system-admin/CRM";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -386,6 +387,22 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <IdConfiguration />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/ask-metova"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminAskMetova />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/crm"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminCRM />
                 </ProtectedRoute>
               }
             />
