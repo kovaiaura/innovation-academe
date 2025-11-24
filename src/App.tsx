@@ -72,6 +72,7 @@ import OfficerCourseContentViewer from "./pages/officer/CourseContentViewer";
 import OfficerProfile from "./pages/officer/Profile";
 import OfficerLeaveManagement from "./pages/officer/LeaveManagement";
 import OfficerAssessmentManagement from "./pages/officer/AssessmentManagement";
+import OfficerAskMetova from "./pages/officer/AskMetova";
 import StudentCourseDetail from "./pages/student/CourseDetail";
 import StudentAssessments from "./pages/student/Assessments";
 import StudentAssignments from "./pages/student/Assignments";
@@ -524,6 +525,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['officer']}>
                   <OfficerAssessmentManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/officer/ask-metova"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <OfficerAskMetova />
                 </ProtectedRoute>
               }
             />
