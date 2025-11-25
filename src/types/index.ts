@@ -24,7 +24,12 @@ export interface User {
   hourly_rate?: number;
   overtime_rate_multiplier?: number;
   normal_working_hours?: number;
+  // Password management
+  password_changed?: boolean; // Has user changed their initial password?
+  must_change_password?: boolean; // Force password change on next login
+  password_changed_at?: string; // Timestamp of last password change
 }
+
 
 // Auth Response
 export interface AuthResponse {
