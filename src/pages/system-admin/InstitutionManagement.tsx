@@ -139,7 +139,14 @@ export default function InstitutionManagement() {
     };
 
     addInstitution(newInstitution);
-    toast.success('Institution added successfully with inventory tracking enabled');
+    toast.success(`${formData.name} has been successfully onboarded!`, {
+      description: "Next: Set up login credentials in Credential Management",
+      duration: 5000,
+      action: {
+        label: "Set Up Credentials Now →",
+        onClick: () => navigate('/system-admin/credential-management')
+      }
+    });
     setFormData({
       name: '',
       slug: '',

@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Key, Mail } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Search, Key, Mail, Check, AlertCircle } from 'lucide-react';
 import { mockUsers } from '@/data/mockUsers';
 import { mockInstitutions } from '@/data/mockInstitutionData';
 import { mockStudents, getStudentsByInstitution } from '@/data/mockStudentData';
@@ -22,6 +23,8 @@ export default function CredentialManagement() {
 
   // Institutions Tab State
   const [institutionSearch, setInstitutionSearch] = useState('');
+  const [showOnlyPending, setShowOnlyPending] = useState(false);
+  const [credentialStatus, setCredentialStatus] = useState<Record<string, boolean>>({});
 
   // Students Tab State
   const [selectedInstitution, setSelectedInstitution] = useState<string>('');
@@ -55,10 +58,14 @@ export default function CredentialManagement() {
   const institutions = Object.values(mockInstitutions);
 
   // Filter institutions
-  const filteredInstitutions = institutions.filter(inst =>
-    inst.name.toLowerCase().includes(institutionSearch.toLowerCase()) ||
-    inst.contact_email.toLowerCase().includes(institutionSearch.toLowerCase())
-  );
+  const filteredInstitutions = institutions.filter(inst => {
+    const matchesSearch = inst.name.toLowerCase().includes(institutionSearch.toLowerCase()) ||
+      inst.contact_email.toLowerCase().includes(institutionSearch.toLowerCase());
+    const matchesPending = !showOnlyPending || !credentialStatus[inst.id];
+    return matchesSearch && matchesPending;
+  });
+
+  const pendingCount = institutions.filter(inst => !credentialStatus[inst.id]).length;
 
   // Get students for selected institution
   const studentsForInstitution = selectedInstitution 
@@ -82,6 +89,13 @@ export default function CredentialManagement() {
     } catch (error) {
       toast.error('Failed to send reset link');
     }
+  };
+
+  const handleSetPasswordSuccess = (institutionId: string) => {
+    setCredentialStatus(prev => ({ ...prev, [institutionId]: true }));
+    toast.success('Credentials configured successfully!', {
+      description: 'The institution admin can now log in'
+    });
   };
 
   return (
@@ -204,14 +218,27 @@ export default function CredentialManagement() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by institution name..."
-                    value={institutionSearch}
-                    onChange={(e) => setInstitutionSearch(e.target.value)}
-                    className="pl-10"
-                  />
+                <div className="flex flex-col gap-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by institution name..."
+                      value={institutionSearch}
+                      onChange={(e) => setInstitutionSearch(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="pending-credentials"
+                      checked={showOnlyPending}
+                      onCheckedChange={(checked) => setShowOnlyPending(checked as boolean)}
+                    />
+                    <label htmlFor="pending-credentials" className="text-sm cursor-pointer">
+                      Show only institutions pending credential setup ({pendingCount})
+                    </label>
+                  </div>
                 </div>
 
                 <div className="border rounded-lg">
@@ -221,6 +248,7 @@ export default function CredentialManagement() {
                         <TableHead>Institution Name</TableHead>
                         <TableHead>Admin Email</TableHead>
                         <TableHead>Location</TableHead>
+                        <TableHead>Credential Status</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -229,36 +257,67 @@ export default function CredentialManagement() {
                       {filteredInstitutions.map((inst) => {
                         // Find admin for this institution
                         const admin = mockUsers.find(u => u.institution_id === inst.id && u.role === 'management');
+                        const isConfigured = credentialStatus[inst.id];
                         return (
                           <TableRow key={inst.id}>
                             <TableCell className="font-medium">{inst.name}</TableCell>
                             <TableCell>{admin?.email || inst.contact_email}</TableCell>
                             <TableCell>{inst.location}</TableCell>
                             <TableCell>
+                              {isConfigured ? (
+                                <Badge className="bg-green-500/10 text-green-700 border-green-200">
+                                  <Check className="h-3 w-3 mr-1" />
+                                  Configured
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-orange-500/10 text-orange-700 border-orange-200">
+                                  <AlertCircle className="h-3 w-3 mr-1" />
+                                  Pending Setup
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
                               <Badge variant={inst.status === 'active' ? 'default' : 'secondary'}>
                                 {inst.status}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right">
-                              {admin && (
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleSetPassword(admin.id, admin.name, admin.email, 'institution_admin')}
-                                  >
-                                    <Key className="h-4 w-4 mr-1" />
-                                    Set Password
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleSendResetLink(admin.email, admin.name, 'institution_admin')}
-                                  >
-                                    <Mail className="h-4 w-4 mr-1" />
-                                    Send Reset Link
-                                  </Button>
+                              {admin ? (
+                                <div className="flex justify-end gap-2 flex-wrap">
+                                  {!isConfigured ? (
+                                    <Button
+                                      size="sm"
+                                      variant="default"
+                                      onClick={() => {
+                                        handleSetPassword(admin.id, admin.name, admin.email, 'institution_admin');
+                                      }}
+                                    >
+                                      <Key className="h-4 w-4 mr-1" />
+                                      Set Up Credentials
+                                    </Button>
+                                  ) : (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleSetPassword(admin.id, admin.name, admin.email, 'institution_admin')}
+                                      >
+                                        <Key className="h-4 w-4 mr-1" />
+                                        Reset Password
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleSendResetLink(admin.email, admin.name, 'institution_admin')}
+                                      >
+                                        <Mail className="h-4 w-4 mr-1" />
+                                        Send Reset Link
+                                      </Button>
+                                    </>
+                                  )}
                                 </div>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">No admin assigned</span>
                               )}
                             </TableCell>
                           </TableRow>
@@ -383,6 +442,21 @@ export default function CredentialManagement() {
         <SetPasswordDialog
           open={setPasswordDialogOpen}
           onClose={() => {
+            setSetPasswordDialogOpen(false);
+            setSelectedUser(null);
+          }}
+          onSetPassword={async (password) => {
+            await passwordService.setPassword(selectedUser.id, password, selectedUser.type);
+            if (selectedUser.type === 'institution_admin') {
+              // Find institution for this admin
+              const institution = institutions.find(inst => {
+                const admin = mockUsers.find(u => u.institution_id === inst.id && u.role === 'management');
+                return admin?.id === selectedUser.id;
+              });
+              if (institution) {
+                handleSetPasswordSuccess(institution.id);
+              }
+            }
             setSetPasswordDialogOpen(false);
             setSelectedUser(null);
           }}

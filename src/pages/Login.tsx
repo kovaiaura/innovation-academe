@@ -12,12 +12,15 @@ import { Loader2 } from 'lucide-react';
 import loginBg from '@/assets/login-background.svg';
 import logoImage from '@/assets/logo.png';
 import { ForgotPasswordDialog } from '@/components/auth/ForgotPasswordDialog';
+import { ForcePasswordChangeDialog } from '@/components/auth/ForcePasswordChangeDialog';
 import { passwordService } from '@/services/password.service';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const [showForcePasswordChange, setShowForcePasswordChange] = useState(false);
+  const [pendingLoginData, setPendingLoginData] = useState<any>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const {
@@ -32,23 +35,58 @@ export default function Login() {
         password
       });
       if (response.success) {
-        login(response.user, response.token);
-        toast.success(`Welcome back, ${response.user.name}!`);
+        // Check if user must change password (temporary password)
+        // For demo: institutions without credentials configured require password change
+        const mustChangePassword = response.user.role === 'management' && !response.user.password_changed;
+        
+        if (mustChangePassword) {
+          setPendingLoginData({ user: response.user, token: response.token, tenant: response.tenant });
+          setShowForcePasswordChange(true);
+          toast.info('Password change required for security');
+        } else {
+          // Normal login flow
+          login(response.user, response.token);
+          toast.success(`Welcome back, ${response.user.name}!`);
 
-        // Get tenant slug for path-based routing
-        const tenantSlug = response.tenant?.slug;
+          // Get tenant slug for path-based routing
+          const tenantSlug = response.tenant?.slug;
 
-        // Redirect based on role
-        const dashboardPath = getRoleDashboardPath(response.user.role, tenantSlug);
-        const from = location.state?.from?.pathname || dashboardPath;
-        navigate(from, {
-          replace: true
-        });
+          // Redirect based on role
+          const dashboardPath = getRoleDashboardPath(response.user.role, tenantSlug);
+          const from = location.state?.from?.pathname || dashboardPath;
+          navigate(from, {
+            replace: true
+          });
+        }
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Invalid credentials');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePasswordChanged = async (newPassword: string) => {
+    if (pendingLoginData) {
+      // Update user's password_changed flag
+      await passwordService.changePassword(newPassword);
+      
+      // Complete login
+      login(pendingLoginData.user, pendingLoginData.token);
+      toast.success(`Welcome, ${pendingLoginData.user.name}!`);
+      
+      // Get tenant slug for path-based routing
+      const tenantSlug = pendingLoginData.tenant?.slug;
+      
+      // Redirect based on role
+      const dashboardPath = getRoleDashboardPath(pendingLoginData.user.role, tenantSlug);
+      const from = location.state?.from?.pathname || dashboardPath;
+      navigate(from, {
+        replace: true
+      });
+      
+      setShowForcePasswordChange(false);
+      setPendingLoginData(null);
     }
   };
   return <div 
@@ -109,5 +147,12 @@ export default function Login() {
           await passwordService.requestPasswordReset(email);
         }}
       />
+
+      {showForcePasswordChange && (
+        <ForcePasswordChangeDialog
+          open={showForcePasswordChange}
+          onPasswordChanged={handlePasswordChanged}
+        />
+      )}
     </div>;
 }

@@ -47,6 +47,21 @@ export const passwordService = {
     console.log('Password reset with token:', token);
   },
 
+  // Verify current password during forced change
+  verifyCurrentPassword: async (currentPassword: string): Promise<boolean> => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    // In real implementation: POST /api/auth/verify-password
+    console.log('Verifying current password');
+    return true; // Mock - always succeeds
+  },
+
+  // Change password (different from reset - requires current password)
+  changePassword: async (newPassword: string): Promise<void> => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    // In real implementation: POST /api/auth/change-password
+    console.log('Password changed successfully');
+  },
+
   // Generate strong random password
   generateStrongPassword: (): string => {
     const length = 12;
