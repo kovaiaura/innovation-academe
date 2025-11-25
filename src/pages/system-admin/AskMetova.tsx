@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { ChatMessage } from '@/components/student/ChatMessage';
 import { ChatSidebar } from '@/components/student/ChatSidebar';
 import { TypingIndicator } from '@/components/student/TypingIndicator';
 import { mockSystemAdminChatConversations } from '@/data/mockSystemAdminChatData';
+import { ChatConversation, ChatMessage as ChatMessageType } from '@/data/mockOfficerChatData';
+import { toast } from 'sonner';
 import { 
   BarChart3, 
   Users, 
@@ -20,28 +22,153 @@ import {
 } from 'lucide-react';
 
 export default function SystemAdminAskMetova() {
-  const [selectedConversation, setSelectedConversation] = useState(mockSystemAdminChatConversations[0]);
+  const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | undefined>();
+  const [currentMessages, setCurrentMessages] = useState<ChatMessageType[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const handleSend = (message: string) => {
-    console.log('Sending message:', message);
+  useEffect(() => {
+    // Load conversations from localStorage or use mock data
+    const stored = localStorage.getItem('system_admin_metova_conversations');
+    if (stored) {
+      const parsedConversations = JSON.parse(stored);
+      setConversations(parsedConversations);
+      if (parsedConversations.length > 0) {
+        setActiveConversationId(parsedConversations[0].id);
+        setCurrentMessages(parsedConversations[0].messages);
+      }
+    } else {
+      setConversations(mockSystemAdminChatConversations);
+      localStorage.setItem('system_admin_metova_conversations', JSON.stringify(mockSystemAdminChatConversations));
+    }
+  }, []);
+
+  useEffect(() => {
+    // Scroll to bottom when messages change
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    }
+  }, [currentMessages, isTyping]);
+
+  const generateSystemAdminAIResponse = (userMessage: string): { content: string; context: string[] } => {
+    const lowerMessage = userMessage.toLowerCase();
+    
+    if (lowerMessage.includes('attendance') || lowerMessage.includes('staff')) {
+      return {
+        content: "**Staff Attendance Summary (November 2024)**\n\n• **Innovation Officers**: 94% avg attendance\n• **Managers**: 98% avg attendance\n• **Admin Staff**: 96% avg attendance\n\n**Top Performers:**\n1. Mr. Atif Ansari - 100%\n2. Mr. Saran T - 98%\n3. Mr. Sreeram R - 96%\n\n**Attention Needed:**\n• 2 officers below 85% threshold\n\nWould you like detailed reports?",
+        context: ['staff_attendance', 'performance_tracking']
+      };
+    }
+    
+    if (lowerMessage.includes('institution') || lowerMessage.includes('performance') || lowerMessage.includes('performing')) {
+      return {
+        content: "**Institution Performance Overview**\n\n🏆 **Top Performing:**\n• Kikani Global Academy - 92% engagement\n• Modern School Vasant Vihar - 89% engagement\n\n📊 **Key Metrics:**\n• Student Enrollment: 870 total\n• Active Projects: 45\n• Course Completion: 78% avg\n\n💡 **Recommendations:**\n• Focus on project-based learning initiatives\n• Increase parent engagement programs",
+        context: ['institutions', 'analytics', 'performance_metrics']
+      };
+    }
+    
+    if (lowerMessage.includes('contract') || lowerMessage.includes('renewal') || lowerMessage.includes('crm')) {
+      return {
+        content: "**CRM & Contract Status**\n\n📋 **Upcoming Renewals (30 days):**\n• Modern School - Dec 15, 2024\n• Kikani Global - Jan 5, 2025\n\n💰 **Revenue Pipeline:**\n• Pending: ₹12,50,000\n• Confirmed: ₹45,00,000\n\n📞 **Pending Communications:**\n• 8 follow-ups required\n• 3 high-priority tasks\n\nShall I generate detailed renewal reports?",
+        context: ['crm', 'contracts', 'renewals']
+      };
+    }
+    
+    if (lowerMessage.includes('revenue') || lowerMessage.includes('financial') || lowerMessage.includes('report')) {
+      return {
+        content: "**Monthly Revenue Report (November 2024)**\n\n💵 **Total Revenue:** ₹58,75,000\n\n**Breakdown by Institution:**\n• Modern School: ₹25,50,000\n• Kikani Global: ₹33,25,000\n\n**Revenue Streams:**\n• LMS Subscriptions: 45%\n• Trainer Fees: 35%\n• Lab Setup: 20%\n\n📈 **Growth:** +15% vs October\n\nWould you like a detailed breakdown?",
+        context: ['revenue', 'financial_reports', 'billing']
+      };
+    }
+    
+    if (lowerMessage.includes('inventory') || lowerMessage.includes('project') || lowerMessage.includes('operational') || lowerMessage.includes('task')) {
+      return {
+        content: "**Operational Insights**\n\n📦 **Inventory Status:**\n• Total Items: 1,245\n• Low Stock Alerts: 12 items\n• Pending Purchases: 5 requests\n\n🚀 **Project Tracking:**\n• Active Projects: 45\n• On Schedule: 32 (71%)\n• Behind Schedule: 8 (18%)\n• Completed This Month: 5\n\n⚠️ **Attention Required:**\n• 3 purchase requests awaiting approval\n• 2 projects need resource allocation",
+        context: ['inventory', 'projects', 'operations']
+      };
+    }
+    
+    return {
+      content: `I understand you're asking about: "${userMessage}"\n\nAs your AI Business Intelligence Assistant, I can help you with:\n\n• **Staff Management**: Attendance, payroll, performance tracking\n• **Institution Analytics**: Performance metrics, enrollment, engagement\n• **CRM**: Contract renewals, communications, tasks\n• **Financial Reports**: Revenue, invoices, billing\n• **Operations**: Inventory, projects, resource allocation\n\nWhat specific information would you like to know?`,
+      context: ['general_assistance']
+    };
+  };
+
+  const handleSend = (content: string) => {
+    const userMessage: ChatMessageType = {
+      id: `msg-${Date.now()}`,
+      role: 'user',
+      content,
+      timestamp: new Date().toISOString()
+    };
+
+    setCurrentMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
-    setTimeout(() => setIsTyping(false), 2000);
+
+    setTimeout(() => {
+      const response = generateSystemAdminAIResponse(content);
+      const aiResponse: ChatMessageType = {
+        id: `msg-${Date.now()}-ai`,
+        role: 'assistant',
+        content: response.content,
+        timestamp: new Date().toISOString(),
+        context_used: response.context
+      };
+
+      setCurrentMessages(prev => [...prev, aiResponse]);
+      setIsTyping(false);
+
+      const newMessages = [...currentMessages, userMessage, aiResponse];
+      
+      if (activeConversationId) {
+        const updatedConversations = conversations.map(conv =>
+          conv.id === activeConversationId
+            ? { ...conv, messages: newMessages, updated_at: new Date().toISOString() }
+            : conv
+        );
+        setConversations(updatedConversations);
+        localStorage.setItem('system_admin_metova_conversations', JSON.stringify(updatedConversations));
+      } else {
+        const newConversation: ChatConversation = {
+          id: `admin-chat-${Date.now()}`,
+          title: content.slice(0, 50) + (content.length > 50 ? '...' : ''),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          messages: newMessages
+        };
+        const updatedConversations = [newConversation, ...conversations];
+        setConversations(updatedConversations);
+        setActiveConversationId(newConversation.id);
+        localStorage.setItem('system_admin_metova_conversations', JSON.stringify(updatedConversations));
+      }
+    }, 1500);
   };
 
   const handleSelectConversation = (id: string) => {
-    const conversation = mockSystemAdminChatConversations.find(c => c.id === id);
+    const conversation = conversations.find(c => c.id === id);
     if (conversation) {
-      setSelectedConversation(conversation);
+      setActiveConversationId(id);
+      setCurrentMessages(conversation.messages);
     }
   };
 
   const handleNewChat = () => {
-    console.log('Starting new chat');
+    setActiveConversationId(undefined);
+    setCurrentMessages([]);
   };
 
   const handleClearHistory = () => {
-    console.log('Clearing chat history');
+    if (confirm('Are you sure you want to clear all chat history? This action cannot be undone.')) {
+      setConversations([]);
+      setActiveConversationId(undefined);
+      setCurrentMessages([]);
+      localStorage.removeItem('system_admin_metova_conversations');
+      toast.success('Chat history cleared successfully');
+    }
   };
 
   const suggestedPrompts = [
@@ -149,21 +276,21 @@ export default function SystemAdminAskMetova() {
 
       <div className="flex-1 flex overflow-hidden">
         <ChatSidebar
-          conversations={mockSystemAdminChatConversations}
-          activeConversationId={selectedConversation.id}
+          conversations={conversations}
+          activeConversationId={activeConversationId}
           onSelectConversation={handleSelectConversation}
           onNewChat={handleNewChat}
           onClearHistory={handleClearHistory}
         />
 
         <div className="flex-1 flex flex-col">
-          <ScrollArea className="flex-1">
+          <ScrollArea ref={scrollAreaRef} className="flex-1">
             <div className="p-6 space-y-6 max-w-4xl mx-auto">
-              {selectedConversation.messages.length === 0 ? (
+              {currentMessages.length === 0 ? (
                 <WelcomeMessage />
               ) : (
                 <>
-                  {selectedConversation.messages.map((message) => (
+                  {currentMessages.map((message) => (
                     <ChatMessage key={message.id} message={message} />
                   ))}
                   {isTyping && (
@@ -181,7 +308,7 @@ export default function SystemAdminAskMetova() {
 
           <div className="border-t p-4 bg-background">
             <div className="max-w-4xl mx-auto">
-              <ChatInput onSend={handleSend} />
+              <ChatInput onSend={handleSend} disabled={isTyping} />
               <p className="text-xs text-muted-foreground text-center mt-2">
                 Ask Metova can generate reports and insights based on your data. Always verify important information.
               </p>
