@@ -18,7 +18,9 @@ import {
   FileText, 
   DollarSign,
   ClipboardCheck,
-  Sparkles
+  Sparkles,
+  PanelLeftClose,
+  PanelLeft
 } from 'lucide-react';
 
 export default function SystemAdminAskMetova() {
@@ -26,6 +28,7 @@ export default function SystemAdminAskMetova() {
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>();
   const [currentMessages, setCurrentMessages] = useState<ChatMessageType[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -263,27 +266,37 @@ export default function SystemAdminAskMetova() {
 
   return (
     <Layout>
-      <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex h-16 items-center px-4 gap-4">
-          <Sparkles className="h-6 w-6 text-primary" />
-          <div>
-            <h1 className="text-xl font-semibold">Ask Metova</h1>
-            <p className="text-sm text-muted-foreground">AI Business Intelligence Assistant</p>
+      <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+        {!sidebarCollapsed && (
+          <ChatSidebar
+            conversations={conversations}
+            activeConversationId={activeConversationId}
+            onSelectConversation={handleSelectConversation}
+            onNewChat={handleNewChat}
+            onClearHistory={handleClearHistory}
+          />
+        )}
+
+        <div className="flex-1 flex flex-col min-w-0">
+          <div className="border-b border-border p-4 flex items-center gap-4 bg-background">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            >
+              {sidebarCollapsed ? (
+                <PanelLeft className="h-5 w-5" />
+              ) : (
+                <PanelLeftClose className="h-5 w-5" />
+              )}
+            </Button>
+            <Sparkles className="h-6 w-6 text-primary" />
+            <div>
+              <h1 className="text-xl font-semibold">Ask Metova</h1>
+              <p className="text-sm text-muted-foreground">AI Business Intelligence Assistant</p>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="flex-1 flex overflow-hidden">
-        <ChatSidebar
-          conversations={conversations}
-          activeConversationId={activeConversationId}
-          onSelectConversation={handleSelectConversation}
-          onNewChat={handleNewChat}
-          onClearHistory={handleClearHistory}
-        />
-
-        <div className="flex-1 flex flex-col">
           <ScrollArea ref={scrollAreaRef} className="flex-1">
             <div className="p-6 space-y-6 max-w-4xl mx-auto">
               {currentMessages.length === 0 ? (
@@ -315,7 +328,6 @@ export default function SystemAdminAskMetova() {
             </div>
           </div>
         </div>
-      </div>
       </div>
     </Layout>
   );
