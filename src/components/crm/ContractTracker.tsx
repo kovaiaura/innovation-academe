@@ -9,6 +9,7 @@ import { format, differenceInDays } from "date-fns";
 interface ContractTrackerProps {
   contract: ContractDetail;
   onViewDetails?: (contract: ContractDetail) => void;
+  onEdit?: (contract: ContractDetail) => void;
   onRenew?: (contract: ContractDetail) => void;
 }
 
@@ -25,7 +26,7 @@ const renewalColors = {
   needs_discussion: "bg-orange-500/10 text-orange-600",
 };
 
-export function ContractTracker({ contract, onViewDetails, onRenew }: ContractTrackerProps) {
+export function ContractTracker({ contract, onViewDetails, onEdit, onRenew }: ContractTrackerProps) {
   const daysUntilRenewal = differenceInDays(new Date(contract.renewal_date), new Date());
   const contractDuration = differenceInDays(new Date(contract.end_date), new Date(contract.start_date));
   const daysElapsed = differenceInDays(new Date(), new Date(contract.start_date));
@@ -114,24 +115,34 @@ export function ContractTracker({ contract, onViewDetails, onRenew }: ContractTr
           <span>{contract.documents.length} document(s) attached</span>
         </div>
 
-        <div className="flex gap-2 pt-2">
+        <div className="flex flex-col sm:flex-row gap-2 pt-2">
           <Button 
             variant="outline" 
             size="sm" 
-            className="flex-1"
+            className="flex-1 min-w-[100px]"
             onClick={() => onViewDetails?.(contract)}
           >
             <FileText className="h-4 w-4 mr-2" />
-            View Contract
+            View
           </Button>
-          {!contract.auto_renew && (
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1 min-w-[100px]"
+            onClick={() => onEdit?.(contract)}
+          >
+            Edit
+          </Button>
+          
+          {!contract.auto_renew && contract.status === 'expiring_soon' && (
             <Button 
               size="sm" 
-              className="flex-1"
+              className="flex-1 min-w-[100px]"
               onClick={() => onRenew?.(contract)}
             >
               <RefreshCw className="h-4 w-4 mr-2" />
-              Initiate Renewal
+              Renew
             </Button>
           )}
         </div>
