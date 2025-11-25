@@ -11,16 +11,26 @@ import { BillingDashboard } from "@/components/crm/BillingDashboard";
 import { CRMTaskManager } from "@/components/crm/CRMTaskManager";
 import { CommunicationTimeline } from "@/components/crm/CommunicationTimeline";
 import { AddCommunicationDialog } from "@/components/crm/AddCommunicationDialog";
+import { ViewCommunicationDialog } from "@/components/crm/ViewCommunicationDialog";
+import { EditCommunicationDialog } from "@/components/crm/EditCommunicationDialog";
 import { AddContractDialog } from "@/components/crm/AddContractDialog";
+import { ViewContractDialog } from "@/components/crm/ViewContractDialog";
+import { EditContractDialog } from "@/components/crm/EditContractDialog";
+import { RenewalWorkflowDialog } from "@/components/crm/RenewalWorkflowDialog";
 import { AddInvoiceDialog } from "@/components/crm/AddInvoiceDialog";
+import { ViewInvoiceDialog } from "@/components/crm/ViewInvoiceDialog";
 import { AddTaskDialog } from "@/components/crm/AddTaskDialog";
+import { EditTaskDialog } from "@/components/crm/EditTaskDialog";
 import { TimelineFilterDialog } from "@/components/crm/TimelineFilterDialog";
 import { 
   mockCommunicationLogs, 
   mockContracts, 
   mockBillingRecords, 
   mockCRMTasks,
-  type CommunicationLog 
+  type CommunicationLog,
+  type ContractDetail,
+  type BillingRecord,
+  type CRMTask
 } from "@/data/mockCRMData";
 import { toast } from "sonner";
 
@@ -30,10 +40,23 @@ export default function CRM() {
   
   // Dialog states
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isViewCommunicationOpen, setIsViewCommunicationOpen] = useState(false);
+  const [isEditCommunicationOpen, setIsEditCommunicationOpen] = useState(false);
   const [isAddContractDialogOpen, setIsAddContractDialogOpen] = useState(false);
+  const [isViewContractOpen, setIsViewContractOpen] = useState(false);
+  const [isEditContractOpen, setIsEditContractOpen] = useState(false);
+  const [isRenewalOpen, setIsRenewalOpen] = useState(false);
   const [isAddInvoiceDialogOpen, setIsAddInvoiceDialogOpen] = useState(false);
+  const [isViewInvoiceOpen, setIsViewInvoiceOpen] = useState(false);
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
+  const [isEditTaskOpen, setIsEditTaskOpen] = useState(false);
   const [isTimelineFilterOpen, setIsTimelineFilterOpen] = useState(false);
+  
+  // Selected items for view/edit
+  const [selectedCommunication, setSelectedCommunication] = useState<CommunicationLog | null>(null);
+  const [selectedContract, setSelectedContract] = useState<ContractDetail | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<BillingRecord | null>(null);
+  const [selectedTask, setSelectedTask] = useState<CRMTask | null>(null);
   
   // Data states
   const [communicationLogs, setCommunicationLogs] = useState<CommunicationLog[]>(mockCommunicationLogs);
@@ -70,24 +93,113 @@ export default function CRM() {
     toast.success("Communication logged successfully");
   };
 
-  const handleViewContract = () => {
-    toast.info("Contract details dialog would open here");
+  // Communication handlers
+  const handleViewCommunicationDetails = (log: CommunicationLog) => {
+    setSelectedCommunication(log);
+    setIsViewCommunicationOpen(true);
   };
 
-  const handleInitiateRenewal = () => {
-    toast.info("Contract renewal workflow would start here");
+  const handleEditCommunication = (log: CommunicationLog) => {
+    setSelectedCommunication(log);
+    setIsEditCommunicationOpen(true);
   };
 
-  const handleViewInvoice = () => {
-    toast.info("Invoice details dialog would open here");
+  const handleEditFromView = () => {
+    setIsViewCommunicationOpen(false);
+    setIsEditCommunicationOpen(true);
   };
 
-  const handleSendReminder = () => {
-    toast.success("Payment reminder sent successfully");
+  const handleUpdateCommunication = (updatedLog: CommunicationLog) => {
+    setCommunicationLogs(prev => 
+      prev.map(log => log.id === updatedLog.id ? updatedLog : log)
+    );
+    setIsEditCommunicationOpen(false);
+    setSelectedCommunication(null);
+    toast.success("Communication log updated successfully");
   };
 
-  const handleCompleteTask = () => {
+  // Contract handlers
+  const handleViewContract = (contract: ContractDetail) => {
+    setSelectedContract(contract);
+    setIsViewContractOpen(true);
+  };
+
+  const handleEditContract = (contract: ContractDetail) => {
+    setSelectedContract(contract);
+    setIsEditContractOpen(true);
+  };
+
+  const handleEditContractFromView = () => {
+    setIsViewContractOpen(false);
+    setIsEditContractOpen(true);
+  };
+
+  const handleUpdateContract = (updatedContract: ContractDetail) => {
+    setContracts(prev =>
+      prev.map(c => c.id === updatedContract.id ? updatedContract : c)
+    );
+    setIsEditContractOpen(false);
+    setSelectedContract(null);
+    toast.success("Contract updated successfully");
+  };
+
+  const handleInitiateRenewal = (contract: ContractDetail) => {
+    setSelectedContract(contract);
+    setIsRenewalOpen(true);
+  };
+
+  const handleRenewalComplete = () => {
+    if (selectedContract) {
+      setContracts(prev =>
+        prev.map(c => 
+          c.id === selectedContract.id 
+            ? { ...c, status: 'under_negotiation' as const }
+            : c
+        )
+      );
+      setSelectedContract(null);
+    }
+  };
+
+  // Invoice handlers
+  const handleViewInvoice = (record: BillingRecord) => {
+    setSelectedInvoice(record);
+    setIsViewInvoiceOpen(true);
+  };
+
+  const handleDownloadInvoicePDF = () => {
+    window.print();
+    toast.success("Generating PDF...");
+  };
+
+  const handleSendReminder = (record: BillingRecord) => {
+    toast.success(`Payment reminder sent to ${record.institution_name}`);
+  };
+
+  // Task handlers
+  const handleCompleteTask = (task: CRMTask) => {
+    setTasks(prev => 
+      prev.map(t => 
+        t.id === task.id 
+          ? { ...t, status: 'completed' as const }
+          : t
+      )
+    );
     toast.success("Task marked as completed");
+  };
+
+  const handleEditTask = (task: CRMTask) => {
+    setSelectedTask(task);
+    setIsEditTaskOpen(true);
+  };
+
+  const handleUpdateTask = (updatedTask: CRMTask) => {
+    setTasks(prev =>
+      prev.map(t => t.id === updatedTask.id ? updatedTask : t)
+    );
+    setIsEditTaskOpen(false);
+    setSelectedTask(null);
+    toast.success("Task updated successfully");
   };
 
   // Contract handlers
@@ -257,8 +369,8 @@ export default function CRM() {
                     <CommunicationLogCard
                       key={log.id}
                       log={log}
-                      onEdit={() => toast.info("Edit dialog would open")}
-                      onViewDetails={() => toast.info("Details dialog would open")}
+                      onEdit={() => handleEditCommunication(log)}
+                      onViewDetails={() => handleViewCommunicationDetails(log)}
                     />
                   ))}
               </div>
@@ -309,6 +421,7 @@ export default function CRM() {
                 key={contract.id}
                 contract={contract}
                 onViewDetails={handleViewContract}
+                onEdit={handleEditContract}
                 onRenew={handleInitiateRenewal}
               />
             ))}
@@ -329,7 +442,7 @@ export default function CRM() {
           <CRMTaskManager
             tasks={tasks}
             onCompleteTask={handleCompleteTask}
-            onEditTask={() => toast.info("Edit task dialog would open")}
+            onEditTask={handleEditTask}
           />
         </TabsContent>
 
@@ -371,6 +484,63 @@ export default function CRM() {
           open={isTimelineFilterOpen}
           onOpenChange={setIsTimelineFilterOpen}
           onApplyFilters={handleApplyTimelineFilters}
+          institutions={getUniqueInstitutions(communicationLogs)}
+        />
+
+        <ViewCommunicationDialog
+          open={isViewCommunicationOpen}
+          onOpenChange={setIsViewCommunicationOpen}
+          communication={selectedCommunication}
+          onEdit={handleEditFromView}
+        />
+
+        <EditCommunicationDialog
+          open={isEditCommunicationOpen}
+          onOpenChange={setIsEditCommunicationOpen}
+          communication={selectedCommunication}
+          onSave={handleUpdateCommunication}
+          institutions={getUniqueInstitutions(communicationLogs)}
+        />
+
+        <ViewContractDialog
+          open={isViewContractOpen}
+          onOpenChange={setIsViewContractOpen}
+          contract={selectedContract}
+          onEdit={handleEditContractFromView}
+          onInitiateRenewal={() => {
+            setIsViewContractOpen(false);
+            if (selectedContract) handleInitiateRenewal(selectedContract);
+          }}
+        />
+
+        <EditContractDialog
+          open={isEditContractOpen}
+          onOpenChange={setIsEditContractOpen}
+          contract={selectedContract}
+          onSave={handleUpdateContract}
+          institutions={getUniqueInstitutions(communicationLogs)}
+        />
+
+        <RenewalWorkflowDialog
+          open={isRenewalOpen}
+          onOpenChange={setIsRenewalOpen}
+          contract={selectedContract}
+          onComplete={handleRenewalComplete}
+        />
+
+        <ViewInvoiceDialog
+          open={isViewInvoiceOpen}
+          onOpenChange={setIsViewInvoiceOpen}
+          invoice={selectedInvoice}
+          onDownloadPDF={handleDownloadInvoicePDF}
+          onSendReminder={() => selectedInvoice && handleSendReminder(selectedInvoice)}
+        />
+
+        <EditTaskDialog
+          open={isEditTaskOpen}
+          onOpenChange={setIsEditTaskOpen}
+          task={selectedTask}
+          onSave={handleUpdateTask}
           institutions={getUniqueInstitutions(communicationLogs)}
         />
       </div>
