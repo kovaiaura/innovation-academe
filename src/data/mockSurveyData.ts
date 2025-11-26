@@ -31,7 +31,19 @@ export interface SurveyResponse {
   status: 'draft' | 'submitted';
 }
 
-export const mockSurveys: Survey[] = [
+// localStorage key for bidirectional sync
+const SURVEYS_STORAGE_KEY = 'admin_surveys';
+
+// Load from localStorage or use defaults
+const loadSurveys = (): Survey[] => {
+  const stored = localStorage.getItem(SURVEYS_STORAGE_KEY);
+  if (stored) {
+    return JSON.parse(stored);
+  }
+  return defaultSurveys;
+};
+
+const defaultSurveys: Survey[] = [
   {
     id: 'survey-1',
     title: 'Course Feedback Survey - Spring 2024',
@@ -227,8 +239,79 @@ export const mockSurveys: Survey[] = [
         required: true
       }
     ]
+  },
+  {
+    id: 'survey-3',
+    title: 'Innovation Lab Equipment Feedback',
+    description: 'Help us understand what equipment and resources you need in the innovation lab',
+    created_by: 'System Admin',
+    created_at: '2024-01-25',
+    deadline: '2024-02-25',
+    target_audience: 'specific_institution',
+    target_institution_id: 'inst-msd-001',
+    target_institution_name: 'Modern School Vasant Vihar',
+    status: 'active',
+    questions: [
+      {
+        id: 'q1',
+        question_text: 'What type of equipment would be most useful for your projects?',
+        question_type: 'multiple_choice',
+        options: ['3D Printers', 'Robotics Kits', 'Arduino/Raspberry Pi', 'VR/AR Devices', 'Drones'],
+        is_required: true
+      },
+      {
+        id: 'q2',
+        question_text: 'How often do you use the innovation lab?',
+        question_type: 'rating',
+        is_required: true
+      },
+      {
+        id: 'q3',
+        question_text: 'What additional resources would help your learning?',
+        question_type: 'text',
+        is_required: false
+      }
+    ]
+  },
+  {
+    id: 'survey-4',
+    title: 'Student Wellbeing Check-in',
+    description: 'We care about your overall wellbeing and want to support you better',
+    created_by: 'System Admin',
+    created_at: '2024-01-28',
+    deadline: '2024-02-28',
+    target_audience: 'all',
+    status: 'active',
+    questions: [
+      {
+        id: 'q1',
+        question_text: 'How would you rate your current stress level?',
+        question_type: 'linear_scale',
+        is_required: true
+      },
+      {
+        id: 'q2',
+        question_text: 'Do you feel supported by your teachers and officers?',
+        question_type: 'multiple_choice',
+        options: ['Very supported', 'Somewhat supported', 'Neutral', 'Not very supported', 'Not supported at all'],
+        is_required: true
+      },
+      {
+        id: 'q3',
+        question_text: 'What can we do to improve your learning experience?',
+        question_type: 'text',
+        is_required: false
+      }
+    ]
   }
 ];
+
+export const mockSurveys: Survey[] = loadSurveys();
+
+// Save surveys helper
+export const saveSurveys = (surveys: Survey[]) => {
+  localStorage.setItem(SURVEYS_STORAGE_KEY, JSON.stringify(surveys));
+};
 
 export const mockSurveyResponses: SurveyResponse[] = [
   {

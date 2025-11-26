@@ -31,7 +31,8 @@ export type SystemAdminFeature =
   | 'task_allotment'
   | 'credential_management'
   | 'gamification'
-  | 'id_configuration';
+  | 'id_configuration'
+  | 'survey_feedback';
 
 export interface PositionPermissions {
   position_id: string;
