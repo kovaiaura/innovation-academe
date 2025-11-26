@@ -26,7 +26,7 @@ export function SurveyAnalytics({ survey, open, onOpenChange }: SurveyAnalyticsP
       response.student_id,
       new Date(response.submitted_at).toLocaleString(),
       ...survey.questions.map(q => {
-        const answer = response.answers.find(a => a.question_id === q.id);
+        const answer = response.responses.find(a => a.question_id === q.id);
         return answer?.answer || '';
       })
     ]);
@@ -109,11 +109,11 @@ export function SurveyAnalytics({ survey, open, onOpenChange }: SurveyAnalyticsP
                     <Badge variant="outline" className="w-fit">{question.question_type}</Badge>
                   </CardHeader>
                   <CardContent>
-                    {question.question_type === 'multiple_choice' && question.options && (
+                    {(question.question_type === 'mcq' || question.question_type === 'multiple_select') && question.options && (
                       <div className="space-y-2">
                         {question.options.map((option, optIndex) => {
                           const count = completedResponses.filter(r => 
-                            r.answers.find(a => a.question_id === question.id)?.answer === option
+                            r.responses.find(a => a.question_id === question.id)?.answer === option
                           ).length;
                           const percentage = completedResponses.length > 0 
                             ? Math.round((count / completedResponses.length) * 100) 
@@ -143,7 +143,7 @@ export function SurveyAnalytics({ survey, open, onOpenChange }: SurveyAnalyticsP
                           <div className="text-center">
                             <p className="text-3xl font-bold text-primary">
                               {(completedResponses.reduce((sum, r) => {
-                                const answer = r.answers.find(a => a.question_id === question.id);
+                                const answer = r.responses.find(a => a.question_id === question.id);
                                 return sum + (Number(answer?.answer) || 0);
                               }, 0) / completedResponses.length).toFixed(1)}
                             </p>
@@ -161,7 +161,7 @@ export function SurveyAnalytics({ survey, open, onOpenChange }: SurveyAnalyticsP
                           <div className="text-center">
                             <p className="text-3xl font-bold text-primary">
                               {(completedResponses.reduce((sum, r) => {
-                                const answer = r.answers.find(a => a.question_id === question.id);
+                                const answer = r.responses.find(a => a.question_id === question.id);
                                 return sum + (Number(answer?.answer) || 0);
                               }, 0) / completedResponses.length).toFixed(1)}
                             </p>
@@ -177,7 +177,7 @@ export function SurveyAnalytics({ survey, open, onOpenChange }: SurveyAnalyticsP
                       <div className="space-y-2">
                         {completedResponses.length > 0 ? (
                           completedResponses.map((response) => {
-                            const answer = response.answers.find(a => a.question_id === question.id);
+                            const answer = response.responses.find(a => a.question_id === question.id);
                             if (!answer?.answer) return null;
                             return (
                               <div key={response.id} className="p-3 bg-muted rounded-md">

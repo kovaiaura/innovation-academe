@@ -85,8 +85,8 @@ export default function SurveyFeedbackManagement() {
   const filteredSurveys = surveys.filter(survey => {
     if (surveyStatusFilter !== 'all' && survey.status !== surveyStatusFilter) return false;
     if (surveyInstitutionFilter !== 'all') {
-      if (survey.target_audience === 'all') return surveyInstitutionFilter === 'all';
-      if (survey.target_institution_id !== surveyInstitutionFilter) return false;
+      if (survey.target_audience === 'all_students') return surveyInstitutionFilter === 'all';
+      if (!survey.target_ids || !survey.target_ids.includes(surveyInstitutionFilter)) return false;
     }
     return true;
   });
@@ -248,13 +248,10 @@ export default function SurveyFeedbackManagement() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-3">
-                          <div className="flex flex-wrap gap-2">
-                            {survey.target_audience === 'all' && <Badge variant="outline">All Students</Badge>}
-                            {survey.target_institution_name && <Badge variant="outline">{survey.target_institution_name}</Badge>}
-                            {survey.target_grades?.map(grade => (
-                              <Badge key={grade} variant="outline">{grade}</Badge>
-                            ))}
-                          </div>
+                        <div className="flex flex-wrap gap-2">
+                          {survey.target_audience === 'all_students' && <Badge variant="outline">All Students</Badge>}
+                          {survey.target_institution_name && <Badge variant="outline">{survey.target_institution_name}</Badge>}
+                        </div>
 
                           <div className="grid grid-cols-3 gap-4 text-sm">
                             <div>

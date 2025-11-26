@@ -29,18 +29,17 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
     title: '',
     description: '',
     deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-    target_audience: 'all' as 'all' | 'specific_institution' | 'specific_grade',
-    target_institution_id: '',
+    target_audience: 'all_students' as 'all_students' | 'specific_institution' | 'specific_class',
+    target_ids: [] as string[],
     target_institution_name: '',
-    target_grades: [] as string[],
     questions: [] as SurveyQuestion[]
   });
 
   const [currentQuestion, setCurrentQuestion] = useState({
     question_text: '',
-    question_type: 'multiple_choice' as SurveyQuestion['question_type'],
+    question_type: 'mcq' as SurveyQuestion['question_type'],
     options: [''],
-    is_required: true
+    required: true
   });
 
   const institutions = [
@@ -58,7 +57,7 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
       }
     }
     if (step === 2) {
-      if (formData.target_audience === 'specific_institution' && !formData.target_institution_id) {
+      if (formData.target_audience === 'specific_institution' && formData.target_ids.length === 0) {
         toast.error('Please select an institution');
         return;
       }
@@ -79,7 +78,8 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
       toast.error('Please enter a question');
       return;
     }
-    if (currentQuestion.question_type === 'multiple_choice' && currentQuestion.options.filter(o => o).length < 2) {
+    if ((currentQuestion.question_type === 'mcq' || currentQuestion.question_type === 'multiple_select') && 
+        currentQuestion.options.filter(o => o).length < 2) {
       toast.error('Please add at least 2 options');
       return;
     }
@@ -88,16 +88,17 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
       id: `q${formData.questions.length + 1}`,
       question_text: currentQuestion.question_text,
       question_type: currentQuestion.question_type,
-      options: currentQuestion.question_type === 'multiple_choice' ? currentQuestion.options.filter(o => o) : undefined,
-      is_required: currentQuestion.is_required
+      options: (currentQuestion.question_type === 'mcq' || currentQuestion.question_type === 'multiple_select') 
+        ? currentQuestion.options.filter(o => o) : undefined,
+      required: currentQuestion.required
     };
 
     setFormData({ ...formData, questions: [...formData.questions, newQuestion] });
     setCurrentQuestion({
       question_text: '',
-      question_type: 'multiple_choice',
+      question_type: 'mcq',
       options: [''],
-      is_required: true
+      required: true
     });
     toast.success('Question added');
   };
@@ -134,12 +135,12 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
       title: formData.title,
       description: formData.description,
       created_by: 'System Admin',
+      created_by_name: 'System Admin',
       created_at: new Date().toISOString().split('T')[0],
       deadline: format(formData.deadline, 'yyyy-MM-dd'),
       target_audience: formData.target_audience,
-      target_institution_id: formData.target_audience === 'specific_institution' ? formData.target_institution_id : undefined,
-      target_institution_name: formData.target_audience === 'specific_institution' ? formData.target_institution_name : undefined,
-      target_grades: formData.target_grades.length > 0 ? formData.target_grades : undefined,
+      target_ids: formData.target_ids.length > 0 ? formData.target_ids : undefined,
+      target_institution_name: formData.target_institution_name || undefined,
       status: 'active',
       questions: formData.questions
     };
@@ -151,10 +152,9 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
       title: '',
       description: '',
       deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      target_audience: 'all',
-      target_institution_id: '',
+      target_audience: 'all_students',
+      target_ids: [],
       target_institution_name: '',
-      target_grades: [],
       questions: []
     });
     setStep(1);
@@ -227,8 +227,8 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
                   className="space-y-3 mt-2"
                 >
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="all" id="all" />
-                    <Label htmlFor="all" className="cursor-pointer">All Students (Both Institutions)</Label>
+                    <RadioGroupItem value="all_students" id="all_students" />
+                    <Label htmlFor="all_students" className="cursor-pointer">All Students (Both Institutions)</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="specific_institution" id="specific_institution" />
@@ -241,12 +241,12 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
                 <div>
                   <Label htmlFor="institution">Select Institution *</Label>
                   <Select
-                    value={formData.target_institution_id}
+                    value={formData.target_ids[0] || ''}
                     onValueChange={(value) => {
                       const inst = institutions.find(i => i.id === value);
                       setFormData({
                         ...formData,
-                        target_institution_id: value,
+                        target_ids: [value],
                         target_institution_name: inst?.name || ''
                       });
                     }}
@@ -264,28 +264,6 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
                   </Select>
                 </div>
               )}
-
-              <div>
-                <Label>Target Grades (Optional)</Label>
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  {grades.map((grade) => (
-                    <div key={grade} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={grade}
-                        checked={formData.target_grades.includes(grade)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setFormData({ ...formData, target_grades: [...formData.target_grades, grade] });
-                          } else {
-                            setFormData({ ...formData, target_grades: formData.target_grades.filter(g => g !== grade) });
-                          }
-                        }}
-                      />
-                      <Label htmlFor={grade} className="cursor-pointer">{grade}</Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           )}
 
@@ -299,8 +277,8 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
                       <GripVertical className="h-5 w-5 text-muted-foreground mt-1" />
                       <div className="flex-1">
                         <p className="font-medium">{index + 1}. {q.question_text}</p>
-                        <Badge variant="outline" className="mt-1">{q.question_type}</Badge>
-                        {q.is_required && <Badge variant="secondary" className="ml-2">Required</Badge>}
+                    <Badge variant="outline" className="mt-1">{q.question_type}</Badge>
+                    {q.required && <Badge variant="secondary" className="ml-2">Required</Badge>}
                       </div>
                       <Button
                         variant="ghost"
@@ -337,15 +315,17 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
-                      <SelectItem value="text">Text Response</SelectItem>
+                      <SelectItem value="mcq">Multiple Choice (Single)</SelectItem>
+                      <SelectItem value="multiple_select">Multiple Choice (Multiple)</SelectItem>
+                      <SelectItem value="text">Short Text</SelectItem>
+                      <SelectItem value="long_text">Long Text</SelectItem>
                       <SelectItem value="rating">Rating (1-5 stars)</SelectItem>
                       <SelectItem value="linear_scale">Linear Scale (1-10)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                {currentQuestion.question_type === 'multiple_choice' && (
+                {(currentQuestion.question_type === 'mcq' || currentQuestion.question_type === 'multiple_select') && (
                   <div>
                     <Label>Options *</Label>
                     <div className="space-y-2 mt-2">
@@ -378,8 +358,8 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="required"
-                    checked={currentQuestion.is_required}
-                    onCheckedChange={(checked: boolean) => setCurrentQuestion({ ...currentQuestion, is_required: checked })}
+                    checked={currentQuestion.required}
+                    onCheckedChange={(checked: boolean) => setCurrentQuestion({ ...currentQuestion, required: checked })}
                   />
                   <Label htmlFor="required" className="cursor-pointer">Required question</Label>
                 </div>
@@ -410,13 +390,10 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
                 <div>
                   <Label className="text-sm text-muted-foreground">Target Audience</Label>
                   <div className="flex gap-2 mt-1">
-                    {formData.target_audience === 'all' && <Badge>All Students</Badge>}
-                    {formData.target_audience === 'specific_institution' && (
+                    {formData.target_audience === 'all_students' && <Badge>All Students</Badge>}
+                    {formData.target_audience === 'specific_institution' && formData.target_institution_name && (
                       <Badge>{formData.target_institution_name}</Badge>
                     )}
-                    {formData.target_grades.map(grade => (
-                      <Badge key={grade} variant="outline">{grade}</Badge>
-                    ))}
                   </div>
                 </div>
                 <div>
