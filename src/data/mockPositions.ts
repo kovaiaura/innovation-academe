@@ -24,7 +24,8 @@ export const mockPositions: CustomPosition[] = [
       'task_allotment',
       'credential_management',
       'gamification',
-      'id_configuration'
+      'id_configuration',
+      'survey_feedback'
     ],
     description: 'Complete system access and permission management',
     created_at: new Date().toISOString(),
