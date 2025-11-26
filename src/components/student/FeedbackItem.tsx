@@ -52,14 +52,14 @@ export function FeedbackItem({ feedback }: FeedbackItemProps) {
               )}
             </div>
             <h3 className="font-semibold text-lg">{feedback.subject}</h3>
-            {feedback.related_course_name && (
+            {feedback.related_course_id && (
               <p className="text-sm text-muted-foreground mt-1">
-                Course: {feedback.related_course_name}
+                Related to Course ID: {feedback.related_course_id}
               </p>
             )}
-            {feedback.related_officer_name && (
+            {feedback.related_officer_id && (
               <p className="text-sm text-muted-foreground mt-1">
-                Officer: {feedback.related_officer_name}
+                Related to Officer ID: {feedback.related_officer_id}
               </p>
             )}
           </div>
@@ -89,10 +89,10 @@ export function FeedbackItem({ feedback }: FeedbackItemProps) {
             <Calendar className="h-3 w-3" />
             <span>Submitted {format(new Date(feedback.submitted_at), 'MMM d, yyyy')}</span>
           </div>
-          {feedback.resolved_at && (
+          {feedback.admin_response_at && (
             <div className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />
-              <span>Resolved {format(new Date(feedback.resolved_at), 'MMM d, yyyy')}</span>
+              <span>Responded {format(new Date(feedback.admin_response_at), 'MMM d, yyyy')}</span>
             </div>
           )}
         </div>

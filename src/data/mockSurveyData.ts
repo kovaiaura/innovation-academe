@@ -8,6 +8,7 @@ export interface Survey {
   deadline: string;
   target_audience: 'all_students' | 'specific_institution' | 'specific_class';
   target_ids?: string[];
+  target_institution_name?: string;
   status: 'active' | 'closed';
   questions: SurveyQuestion[];
 }
@@ -245,31 +246,32 @@ const defaultSurveys: Survey[] = [
     title: 'Innovation Lab Equipment Feedback',
     description: 'Help us understand what equipment and resources you need in the innovation lab',
     created_by: 'System Admin',
+    created_by_name: 'System Admin',
     created_at: '2024-01-25',
     deadline: '2024-02-25',
     target_audience: 'specific_institution',
-    target_institution_id: 'inst-msd-001',
+    target_ids: ['inst-msd-001'],
     target_institution_name: 'Modern School Vasant Vihar',
     status: 'active',
     questions: [
       {
         id: 'q1',
         question_text: 'What type of equipment would be most useful for your projects?',
-        question_type: 'multiple_choice',
+        question_type: 'mcq',
         options: ['3D Printers', 'Robotics Kits', 'Arduino/Raspberry Pi', 'VR/AR Devices', 'Drones'],
-        is_required: true
+        required: true
       },
       {
         id: 'q2',
         question_text: 'How often do you use the innovation lab?',
         question_type: 'rating',
-        is_required: true
+        required: true
       },
       {
         id: 'q3',
         question_text: 'What additional resources would help your learning?',
         question_type: 'text',
-        is_required: false
+        required: false
       }
     ]
   },
@@ -278,29 +280,30 @@ const defaultSurveys: Survey[] = [
     title: 'Student Wellbeing Check-in',
     description: 'We care about your overall wellbeing and want to support you better',
     created_by: 'System Admin',
+    created_by_name: 'System Admin',
     created_at: '2024-01-28',
     deadline: '2024-02-28',
-    target_audience: 'all',
+    target_audience: 'all_students',
     status: 'active',
     questions: [
       {
         id: 'q1',
         question_text: 'How would you rate your current stress level?',
         question_type: 'linear_scale',
-        is_required: true
+        required: true
       },
       {
         id: 'q2',
         question_text: 'Do you feel supported by your teachers and officers?',
-        question_type: 'multiple_choice',
+        question_type: 'mcq',
         options: ['Very supported', 'Somewhat supported', 'Neutral', 'Not very supported', 'Not supported at all'],
-        is_required: true
+        required: true
       },
       {
         id: 'q3',
         question_text: 'What can we do to improve your learning experience?',
         question_type: 'text',
-        is_required: false
+        required: false
       }
     ]
   }
