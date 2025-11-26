@@ -35,8 +35,8 @@ export interface SurveyResponse {
 // localStorage key for bidirectional sync
 const SURVEYS_STORAGE_KEY = 'admin_surveys';
 
-// Load from localStorage or use defaults
-const loadSurveys = (): Survey[] => {
+// Load from localStorage or use defaults - EXPORTED for use by pages
+export const loadSurveys = (): Survey[] => {
   const stored = localStorage.getItem(SURVEYS_STORAGE_KEY);
   if (stored) {
     return JSON.parse(stored);
@@ -242,7 +242,7 @@ const defaultSurveys: Survey[] = [
     ]
   },
   {
-    id: 'survey-3',
+    id: 'survey-5',
     title: 'Innovation Lab Equipment Feedback',
     description: 'Help us understand what equipment and resources you need in the innovation lab',
     created_by: 'System Admin',
@@ -276,7 +276,7 @@ const defaultSurveys: Survey[] = [
     ]
   },
   {
-    id: 'survey-4',
+    id: 'survey-6',
     title: 'Student Wellbeing Check-in',
     description: 'We care about your overall wellbeing and want to support you better',
     created_by: 'System Admin',

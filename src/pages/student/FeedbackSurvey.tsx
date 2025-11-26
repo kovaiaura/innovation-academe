@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, MessageSquare, CheckCircle2, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Survey, mockSurveys, SurveyResponse, mockSurveyResponses } from "@/data/mockSurveyData";
+import { Survey, loadSurveys, SurveyResponse, mockSurveyResponses } from "@/data/mockSurveyData";
 import { Feedback, mockFeedback } from "@/data/mockFeedbackData";
 
 export default function FeedbackSurvey() {
@@ -19,24 +19,25 @@ export default function FeedbackSurvey() {
   const [takeSurveyOpen, setTakeSurveyOpen] = useState(false);
 
   useEffect(() => {
-    // Load data from shared localStorage keys for bidirectional sync
-    const storedSurveys = localStorage.getItem('admin_surveys');
-    const storedResponses = localStorage.getItem('survey_responses');
-    const storedFeedback = localStorage.getItem('all_student_feedback');
-
+    // Load fresh surveys using loadSurveys() for real-time sync
+    const allSurveys = loadSurveys();
+    
     // Get current student institution (mock - should come from auth context)
     const currentStudentInstitution = 'inst-msd-001'; // TODO: Get from user context
 
     // Filter surveys for current student's institution
-    const allSurveys = storedSurveys ? JSON.parse(storedSurveys) : mockSurveys;
     const studentSurveys = allSurveys.filter((s: any) => 
-      s.target_audience === 'all' || s.target_institution_id === currentStudentInstitution
+      s.target_audience === 'all_students' || s.target_ids?.includes(currentStudentInstitution)
     );
 
     setSurveys(studentSurveys);
+    
+    // Load survey responses
+    const storedResponses = localStorage.getItem('survey_responses');
     setSurveyResponses(storedResponses ? JSON.parse(storedResponses) : mockSurveyResponses);
     
     // Filter feedback to show only current student's feedback
+    const storedFeedback = localStorage.getItem('all_student_feedback');
     const allFeedback = storedFeedback ? JSON.parse(storedFeedback) : mockFeedback;
     const studentFeedback = allFeedback.filter((f: any) => f.student_id === 'student-1'); // TODO: Use actual student ID
     setFeedbackList(studentFeedback);
