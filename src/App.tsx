@@ -98,6 +98,7 @@ import IdConfiguration from "./pages/system-admin/IdConfiguration";
 import SDGManagement from "./pages/system-admin/SDGManagement";
 import SystemAdminAskMetova from "./pages/system-admin/AskMetova";
 import SystemAdminCRM from "./pages/system-admin/CRM";
+import SurveyFeedbackManagement from "./pages/system-admin/SurveyFeedbackManagement";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -395,6 +396,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <SystemAdminAskMetova />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/survey-feedback"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="survey_feedback">
+                  <SurveyFeedbackManagement />
                 </ProtectedRoute>
               }
             />

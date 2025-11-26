@@ -74,6 +74,7 @@ const menuItems: MenuItem[] = [
   // SDG Management
   { label: 'SDG Management', icon: <Target className="h-5 w-5" />, path: '/sdg-management', roles: ['system_admin'], feature: 'sdg_management' },
   // CRM & Ask Metova
+  { label: 'Surveys & Feedback', icon: <MessageCircle className="h-5 w-5" />, path: '/survey-feedback', roles: ['system_admin'], feature: 'survey_feedback' },
   { label: 'CRM & Clients', icon: <Phone className="h-5 w-5" />, path: '/crm', roles: ['system_admin'] },
   { label: 'Ask Metova', icon: <MessageSquare className="h-5 w-5" />, path: '/ask-metova', roles: ['system_admin'] },
   // Teacher menu items

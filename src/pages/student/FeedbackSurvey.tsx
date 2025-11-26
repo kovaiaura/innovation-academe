@@ -19,13 +19,27 @@ export default function FeedbackSurvey() {
   const [takeSurveyOpen, setTakeSurveyOpen] = useState(false);
 
   useEffect(() => {
-    // Load data from localStorage or use mock data
+    // Load data from shared localStorage keys for bidirectional sync
+    const storedSurveys = localStorage.getItem('admin_surveys');
     const storedResponses = localStorage.getItem('survey_responses');
-    const storedFeedback = localStorage.getItem('student_feedback');
+    const storedFeedback = localStorage.getItem('all_student_feedback');
 
-    setSurveys(mockSurveys);
+    // Get current student institution (mock - should come from auth context)
+    const currentStudentInstitution = 'inst-msd-001'; // TODO: Get from user context
+
+    // Filter surveys for current student's institution
+    const allSurveys = storedSurveys ? JSON.parse(storedSurveys) : mockSurveys;
+    const studentSurveys = allSurveys.filter((s: any) => 
+      s.target_audience === 'all' || s.target_institution_id === currentStudentInstitution
+    );
+
+    setSurveys(studentSurveys);
     setSurveyResponses(storedResponses ? JSON.parse(storedResponses) : mockSurveyResponses);
-    setFeedbackList(storedFeedback ? JSON.parse(storedFeedback) : mockFeedback.filter(f => f.student_id === 'student-1'));
+    
+    // Filter feedback to show only current student's feedback
+    const allFeedback = storedFeedback ? JSON.parse(storedFeedback) : mockFeedback;
+    const studentFeedback = allFeedback.filter((f: any) => f.student_id === 'student-1'); // TODO: Use actual student ID
+    setFeedbackList(studentFeedback);
   }, []);
 
   const isSurveyCompleted = (surveyId: string) => {
@@ -58,11 +72,15 @@ export default function FeedbackSurvey() {
       status: 'submitted'
     };
 
+    // Add to local list
     const updatedFeedback = [newFeedback, ...feedbackList];
     setFeedbackList(updatedFeedback);
     
-    // In a real app, this would be saved to the server
-    localStorage.setItem('student_feedback', JSON.stringify(updatedFeedback));
+    // Save to shared localStorage key for admin visibility
+    const allFeedback = localStorage.getItem('all_student_feedback');
+    const allFeedbackList = allFeedback ? JSON.parse(allFeedback) : [];
+    const updatedAllFeedback = [newFeedback, ...allFeedbackList];
+    localStorage.setItem('all_student_feedback', JSON.stringify(updatedAllFeedback));
   };
 
   const activeSurveys = surveys.filter(s => s.status === 'active' && !isSurveyCompleted(s.id));

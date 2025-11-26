@@ -46,6 +46,7 @@ const allFeatures: { value: SystemAdminFeature; label: string }[] = [
   { value: 'credential_management', label: 'Credential Management' },
   { value: 'gamification', label: 'Gamification' },
   { value: 'id_configuration', label: 'ID Configuration' },
+  { value: 'survey_feedback', label: 'Surveys & Feedback' },
 ];
 
 export function CreatePositionDialog({

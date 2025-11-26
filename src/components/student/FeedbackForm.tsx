@@ -37,8 +37,17 @@ export function FeedbackForm({ onSubmit }: FeedbackFormProps) {
       return;
     }
 
+    // TODO: Get actual student data from auth context
+    const studentId = 'MSD-2024-001';
+    const studentName = 'Aarav Sharma';
+    const institutionId = 'inst-msd-001';
+    const institutionName = 'Modern School Vasant Vihar';
+
     const feedback: Omit<Feedback, 'id' | 'submitted_at' | 'status'> = {
-      student_id: 'student-1',
+      student_id: studentId,
+      student_name: isAnonymous ? 'Anonymous' : studentName,
+      institution_id: institutionId,
+      institution_name: institutionName,
       category: category as Feedback['category'],
       subject,
       feedback_text: feedbackText,
