@@ -9,7 +9,7 @@ import { CreateSurveyDialog } from '@/components/surveys/CreateSurveyDialog';
 import { SurveyAnalytics } from '@/components/surveys/SurveyAnalytics';
 import { FeedbackManagementCard } from '@/components/surveys/FeedbackManagementCard';
 import { useState, useEffect } from 'react';
-import { Survey, mockSurveys, saveSurveys, mockSurveyResponses } from '@/data/mockSurveyData';
+import { Survey, loadSurveys, saveSurveys, mockSurveyResponses } from '@/data/mockSurveyData';
 import { Feedback, mockFeedback, saveFeedback } from '@/data/mockFeedbackData';
 import { Plus, FileText, MessageCircle, TrendingUp, CheckCircle, Search, Filter } from 'lucide-react';
 import { toast } from 'sonner';
@@ -36,7 +36,9 @@ export default function SurveyFeedbackManagement() {
   }, []);
 
   const loadData = () => {
-    setSurveys(mockSurveys);
+    // Load fresh surveys from localStorage for real-time sync
+    const freshSurveys = loadSurveys();
+    setSurveys(freshSurveys);
     setFeedbackList(mockFeedback);
   };
 
