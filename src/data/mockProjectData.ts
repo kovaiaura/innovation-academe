@@ -1,3 +1,6 @@
+// localStorage key for bidirectional sync
+const PROJECTS_STORAGE_KEY = 'all_institution_projects';
+
 export interface ProjectMember {
   id: string;
   name: string;
@@ -208,30 +211,49 @@ export const mockProjects: Record<string, Project[]> = {
   ]
 };
 
+// Load from localStorage or use defaults - EXPORTED for use by pages
+export const loadProjects = (): Record<string, Project[]> => {
+  const stored = localStorage.getItem(PROJECTS_STORAGE_KEY);
+  if (stored) {
+    return JSON.parse(stored);
+  }
+  return mockProjects;
+};
+
+// Save to localStorage for bidirectional sync
+export const saveProjects = (projects: Record<string, Project[]>): void => {
+  localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(projects));
+};
+
 // Helper Functions
 export const getProjectsByInstitution = (institutionId: string): Project[] => {
-  return mockProjects[institutionId] || [];
+  const allProjects = loadProjects();
+  return allProjects[institutionId] || [];
 };
 
 export const getProjectsByOfficer = (officerId: string): Project[] => {
-  return Object.values(mockProjects)
+  const allProjects = loadProjects();
+  return Object.values(allProjects)
     .flat()
     .filter(p => p.created_by_officer_id === officerId);
 };
 
 export const getProjectsByStudent = (studentId: string): Project[] => {
-  return Object.values(mockProjects)
+  const allProjects = loadProjects();
+  return Object.values(allProjects)
     .flat()
     .filter(p => p.team_members.some(member => member.id === studentId));
 };
 
 export const getShowcaseProjects = (institutionId: string): Project[] => {
-  return (mockProjects[institutionId] || [])
+  const allProjects = loadProjects();
+  return (allProjects[institutionId] || [])
     .filter(p => p.is_showcase && p.status === 'completed');
 };
 
 export const updateProject = (institutionId: string, projectId: string, updates: Partial<Project>) => {
-  const projects = mockProjects[institutionId];
+  const allProjects = loadProjects();
+  const projects = allProjects[institutionId];
   if (!projects) return;
   
   const index = projects.findIndex(p => p.id === projectId);
@@ -241,23 +263,28 @@ export const updateProject = (institutionId: string, projectId: string, updates:
       ...updates,
       last_updated: new Date().toISOString().split('T')[0]
     };
+    saveProjects(allProjects);
   }
 };
 
 export const addProject = (institutionId: string, project: Project) => {
-  if (!mockProjects[institutionId]) {
-    mockProjects[institutionId] = [];
+  const allProjects = loadProjects();
+  if (!allProjects[institutionId]) {
+    allProjects[institutionId] = [];
   }
-  mockProjects[institutionId].push(project);
+  allProjects[institutionId].push(project);
+  saveProjects(allProjects);
 };
 
 export const deleteProject = (institutionId: string, projectId: string) => {
-  const projects = mockProjects[institutionId];
+  const allProjects = loadProjects();
+  const projects = allProjects[institutionId];
   if (!projects) return;
   
   const index = projects.findIndex(p => p.id === projectId);
   if (index !== -1) {
     projects.splice(index, 1);
+    saveProjects(allProjects);
   }
 };
 
@@ -266,26 +293,30 @@ export const addProgressUpdate = (
   projectId: string, 
   update: ProgressUpdate
 ) => {
-  const projects = mockProjects[institutionId];
+  const allProjects = loadProjects();
+  const projects = allProjects[institutionId];
   if (!projects) return;
   
   const project = projects.find(p => p.id === projectId);
   if (project) {
     project.progress_updates.push(update);
     project.last_updated = update.date;
+    saveProjects(allProjects);
   }
 };
 
 // Get all projects across all institutions with institution ID
 export const getAllProjects = (): Array<Project & { institutionId: string }> => {
-  return Object.entries(mockProjects).flatMap(([institutionId, projects]) =>
+  const allProjects = loadProjects();
+  return Object.entries(allProjects).flatMap(([institutionId, projects]) =>
     projects.map(p => ({ ...p, institutionId }))
   );
 };
 
 // Get projects by multiple institutions
 export const getProjectsByInstitutions = (institutionIds: string[]): Project[] => {
-  return institutionIds.flatMap(id => mockProjects[id] || []);
+  const allProjects = loadProjects();
+  return institutionIds.flatMap(id => allProjects[id] || []);
 };
 
 // Get project statistics across all institutions

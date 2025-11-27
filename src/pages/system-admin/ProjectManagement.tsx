@@ -28,7 +28,8 @@ export default function ProjectManagement() {
   // Helper functions (must be defined before useMemo hooks that use them)
   const getInstitutionName = (institutionId: string) => {
     const institutionNames: Record<string, string> = {
-      springfield: "Springfield Institute of Innovation",
+      'inst-msd-001': "Modern School Vasant Vihar",
+      'inst-kga-001': "Kikani Global Academy",
     };
     return institutionNames[institutionId] || institutionId;
   };
