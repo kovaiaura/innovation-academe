@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,8 +7,8 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Eye, Upload, Award, Edit } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
-  mockProjects, 
   getProjectsByInstitution, 
   updateProject,
   addProject,
@@ -21,12 +21,21 @@ import { ProjectDetailsDialog } from "@/components/project/ProjectDetailsDialog"
 import { MarkAsShowcaseDialog } from "@/components/project/MarkAsShowcaseDialog";
 
 export default function OfficerProjects() {
-  const institutionId = 'springfield';
-  const officerId = 'off1';
-  const officerName = 'Dr. Rajesh Kumar';
+  const { user } = useAuth();
+  
+  // Get institution and officer details from auth context
+  const institutionId = user?.institution_id || 'inst-msd-001';
+  const officerId = user?.id || '';
+  const officerName = user?.name || '';
 
-  const [projects, setProjects] = useState(getProjectsByInstitution(institutionId));
+  const [projects, setProjects] = useState<Project[]>([]);
+
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  
+  // Load projects on mount and when institutionId changes
+  useEffect(() => {
+    setProjects(getProjectsByInstitution(institutionId));
+  }, [institutionId]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isProgressDialogOpen, setIsProgressDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
