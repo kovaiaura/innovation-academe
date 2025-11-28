@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Student } from "@/types/student";
-import { mockStudents } from "@/data/mockStudentData";
+import { getStudentsByInstitution } from "@/data/mockStudentData";
 import { StudentDetailsDialog } from "@/components/student/StudentDetailsDialog";
 import { 
   getStatusColor, 
@@ -30,11 +30,9 @@ export default function Students() {
   const institution = getInstitutionBySlug(institutionSlug);
   
   // Use the actual institution ID from the fetched institution object
-  const institutionId = institution?.id || '1';
+  const institutionId = institution?.id || 'inst-msd-001';
   
-  const [students, setStudents] = useState<Student[]>(
-    mockStudents.filter(s => s.institution_id === institutionId)
-  );
+  const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
 
@@ -44,6 +42,14 @@ export default function Students() {
   const [sectionFilter, setSectionFilter] = useState("all");
   const [genderFilter, setGenderFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  // Load students from localStorage when institution changes
+  useEffect(() => {
+    if (institutionId) {
+      const institutionStudents = getStudentsByInstitution(institutionId);
+      setStudents(institutionStudents);
+    }
+  }, [institutionId]);
 
   // Calculate statistics
   const totalStudents = students.length;
@@ -146,7 +152,7 @@ export default function Students() {
           <CardContent>
             <div className="text-2xl font-bold">{activeStudents}</div>
             <p className="text-xs text-muted-foreground">
-              {((activeStudents / totalStudents) * 100).toFixed(1)}% of total
+              {totalStudents > 0 ? ((activeStudents / totalStudents) * 100).toFixed(1) : 0}% of total
             </p>
           </CardContent>
         </Card>
@@ -170,7 +176,7 @@ export default function Students() {
           <CardContent>
             <div className="text-2xl font-bold">{uniqueClasses}</div>
             <p className="text-xs text-muted-foreground">
-              Class 1 to Class 12
+              Grade 6 to Grade 12
             </p>
           </CardContent>
         </Card>

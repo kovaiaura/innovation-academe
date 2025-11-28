@@ -13,6 +13,7 @@ import { PeriodConfig, InstitutionTimetableAssignment } from '@/types/institutio
 import { InstitutionClass } from '@/types/student';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { syncInstitutionToOfficerTimetable } from '@/utils/timetableSync';
 
 interface InstitutionTimetableTabProps {
   institutionId: string;

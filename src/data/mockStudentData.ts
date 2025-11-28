@@ -1,5 +1,7 @@
 import { Student } from '@/types/student';
 
+const STUDENTS_STORAGE_KEY = 'students';
+
 const firstNames = [
   'Aarav', 'Vivaan', 'Aditya', 'Arjun', 'Sai', 'Krishna', 'Aryan', 'Ishaan', 'Reyansh', 'Ayaan',
   'Aadhya', 'Ananya', 'Diya', 'Saanvi', 'Pari', 'Sara', 'Aaradhya', 'Navya', 'Angel', 'Kiara',
@@ -63,8 +65,8 @@ const generateStudentsForClass = (
   return students;
 };
 
-// Generate mock students for both schools
-export const mockStudents: Student[] = [
+// Generate initial mock students for both schools
+const initialMockStudents: Student[] = [
   // Modern School Vasant Vihar (350 students total - 25 per section × 2 sections × 7 grades)
   ...generateStudentsForClass('inst-msd-001', 'MSD', 'class-msd-6a', 'Grade 6', 'A', 0, 25),
   ...generateStudentsForClass('inst-msd-001', 'MSD', 'class-msd-6b', 'Grade 6', 'B', 25, 25),
@@ -117,22 +119,82 @@ export const mockStudents: Student[] = [
   ...generateStudentsForClass('inst-kga-001', 'KGA', 'class-kga-12c', 'Grade 12', 'C', 845, 25),
 ];
 
-// Helper functions
+// localStorage functions
+export function loadStudents(): Student[] {
+  try {
+    const stored = localStorage.getItem(STUDENTS_STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Error loading students:', error);
+  }
+  // Initialize with mock data if not in localStorage
+  saveStudents(initialMockStudents);
+  return initialMockStudents;
+}
+
+export function saveStudents(students: Student[]): void {
+  try {
+    localStorage.setItem(STUDENTS_STORAGE_KEY, JSON.stringify(students));
+  } catch (error) {
+    console.error('Error saving students:', error);
+  }
+}
+
+export function addStudent(student: Student): void {
+  const students = loadStudents();
+  students.push(student);
+  saveStudents(students);
+}
+
+export function updateStudent(studentId: string, updates: Partial<Student>): void {
+  const students = loadStudents();
+  const index = students.findIndex(s => s.id === studentId);
+  if (index !== -1) {
+    students[index] = { ...students[index], ...updates };
+    saveStudents(students);
+  }
+}
+
+export function deleteStudent(studentId: string): void {
+  const students = loadStudents();
+  const filtered = students.filter(s => s.id !== studentId);
+  saveStudents(filtered);
+}
+
+export function getStudentById(studentId: string): Student | undefined {
+  const students = loadStudents();
+  return students.find(s => s.id === studentId);
+}
+
+export function getStudentsByClassId(classId: string): Student[] {
+  const students = loadStudents();
+  return students.filter(s => s.class_id === classId);
+}
+
+// Helper functions that use localStorage
 export const getStudentsByInstitution = (institutionId: string): Student[] => {
-  return mockStudents.filter(student => student.institution_id === institutionId);
+  const students = loadStudents();
+  return students.filter(student => student.institution_id === institutionId);
 };
 
 export const getStudentsByClass = (institutionId: string, className: string): Student[] => {
-  return mockStudents.filter(
+  const students = loadStudents();
+  return students.filter(
     student => student.institution_id === institutionId && student.class === className
   );
 };
 
 export const getStudentsByClassAndSection = (institutionId: string, className: string, section: string): Student[] => {
-  return mockStudents.filter(
+  const students = loadStudents();
+  return students.filter(
     student => 
       student.institution_id === institutionId && 
       student.class === className && 
       student.section === section
   );
 };
+
+// Legacy export for backward compatibility
+export const mockStudents = initialMockStudents;
