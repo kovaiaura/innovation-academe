@@ -1,45 +1,126 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Package, Plus, Edit, Trash2, MapPin, Calendar, AlertCircle, ShoppingCart, Cpu, Lightbulb, CheckCircle } from 'lucide-react';
+import { Package, Plus, Edit, Trash2, MapPin, Calendar, ShoppingCart, Cpu, Lightbulb, CheckCircle, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
 import { Layout } from '@/components/layout/Layout';
 import { CreatePurchaseRequestDialog } from '@/components/inventory/CreatePurchaseRequestDialog';
 import { PurchaseRequestDetailDialog } from '@/components/inventory/PurchaseRequestDetailDialog';
 import { PurchaseRequestStatusBadge } from '@/components/inventory/PurchaseRequestStatusBadge';
-import { mockPurchaseRequests, updateMockPurchaseRequest, getPurchaseRequestsByOfficer, mockInventoryItems, mockProjectComponents, getComponentsByOfficer, addMockComponent, updateMockComponent, deleteMockComponent } from '@/data/mockInventoryData';
-import { PurchaseRequest, InventoryItem, ProjectComponent } from '@/types/inventory';
-import { format } from 'date-fns';
-import { mockProjects, getProjectsByOfficer } from '@/data/mockProjectData';
+import { AddItemDialog } from '@/components/inventory/AddItemDialog';
 import { AddComponentDialog } from '@/components/inventory/AddComponentDialog';
 import { ComponentStatusBadge } from '@/components/inventory/ComponentStatusBadge';
+import { CreateAuditReportDialog } from '@/components/inventory/CreateAuditReportDialog';
+import { 
+  loadInventoryItems, 
+  saveInventoryItems,
+  loadPurchaseRequests,
+  savePurchaseRequests,
+  loadProjectComponents,
+  saveProjectComponents,
+  addAuditRecord,
+  getInventoryByInstitution,
+  addInventoryItem,
+  deleteInventoryItem,
+} from '@/data/mockInventoryData';
+import { loadProjects, getProjectsByOfficer } from '@/data/mockProjectData';
+import { PurchaseRequest, InventoryItem, ProjectComponent, AuditRecord } from '@/types/inventory';
+import { format } from 'date-fns';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Inventory() {
-  // Use shared inventory data from mockInventoryData
-  const [equipment, setEquipment] = useState<InventoryItem[]>(mockInventoryItems['springfield'] || []);
+  const { user } = useAuth();
+  
+  // Get officer context from useAuth
+  const institutionId = user?.institution_id || user?.tenant_id || 'inst-msd-001';
+  const officerId = user?.id || 'off-msd-001';
+  const officerName = user?.name || 'Innovation Officer';
+  const institutionName = (user as any)?.institution_name || 'Institution';
+
+  // State for inventory
+  const [equipment, setEquipment] = useState<InventoryItem[]>([]);
   const [filterCategory, setFilterCategory] = useState('all');
+  const [isAddEquipmentOpen, setIsAddEquipmentOpen] = useState(false);
+  
+  // State for purchase requests
   const [isCreateRequestOpen, setIsCreateRequestOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<PurchaseRequest | null>(null);
-  const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>(getPurchaseRequestsByOfficer('off-001'));
+  const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>([]);
   const [requestFilter, setRequestFilter] = useState('all');
   
-  // Components state
-  const [components, setComponents] = useState<ProjectComponent[]>(getComponentsByOfficer('off-001'));
+  // State for components
+  const [components, setComponents] = useState<ProjectComponent[]>([]);
   const [componentFilter, setComponentFilter] = useState<'all' | ProjectComponent['status']>('all');
   const [projectFilter, setProjectFilter] = useState('all');
   const [isAddComponentOpen, setIsAddComponentOpen] = useState(false);
-  const projects = getProjectsByOfficer('off-001');
+  const [projects, setProjects] = useState<any[]>([]);
+  
+  // State for audit
+  const [isCreateAuditOpen, setIsCreateAuditOpen] = useState(false);
+
+  // Load data on mount and when institutionId/officerId changes
+  useEffect(() => {
+    // Load inventory for this institution
+    const allInventory = loadInventoryItems();
+    setEquipment(allInventory[institutionId] || []);
+    
+    // Load purchase requests for this officer
+    const allRequests = loadPurchaseRequests();
+    setPurchaseRequests(allRequests.filter(r => r.officer_id === officerId));
+    
+    // Load components for this officer
+    const allComponents = loadProjectComponents();
+    setComponents(allComponents.filter(c => c.added_by_officer_id === officerId));
+    
+    // Load projects for this officer
+    const allProjects = loadProjects();
+    setProjects(allProjects.filter((p: any) => p.officer_id === officerId));
+  }, [institutionId, officerId]);
+
+  const handleAddEquipment = (data: any) => {
+    const newItem: InventoryItem = {
+      id: `item-${Date.now()}`,
+      item_code: data.item_code || `ITEM-${Date.now()}`,
+      name: data.name,
+      category: data.category,
+      description: data.description || '',
+      manufacturer: data.manufacturer,
+      model_number: data.model_number,
+      serial_number: data.serial_number,
+      quantity: parseInt(data.quantity),
+      unit: data.unit,
+      location: data.location,
+      condition: data.condition,
+      unit_price: parseFloat(data.unit_price),
+      total_value: parseInt(data.quantity) * parseFloat(data.unit_price),
+      purchase_date: data.purchase_date || new Date().toISOString().split('T')[0],
+      warranty_expiry: data.warranty_expiry,
+      last_audited: new Date().toISOString().split('T')[0],
+      assigned_to: officerName,
+      status: 'active',
+    };
+
+    addInventoryItem(institutionId, newItem);
+    
+    // Refresh equipment list
+    const allInventory = loadInventoryItems();
+    setEquipment(allInventory[institutionId] || []);
+    
+    toast.success(`Equipment "${newItem.name}" added successfully!`);
+  };
 
   const handleDeleteEquipment = (id: string) => {
-    const updatedEquipment = equipment.filter((e) => e.id !== id);
-    setEquipment(updatedEquipment);
-    // Update shared data source
-    mockInventoryItems['springfield'] = updatedEquipment;
-    toast.success('Equipment deleted successfully!');
+    const item = equipment.find(e => e.id === id);
+    deleteInventoryItem(institutionId, id);
+    
+    // Refresh equipment list
+    const allInventory = loadInventoryItems();
+    setEquipment(allInventory[institutionId] || []);
+    
+    toast.success(`Equipment "${item?.name}" deleted successfully!`);
   };
 
   const getStatusBadge = (status: string) => {
@@ -53,13 +134,16 @@ export default function Inventory() {
   };
 
   const handleCreatePurchaseRequest = (data: any) => {
+    const allRequests = loadPurchaseRequests();
+    const newRequestCode = `PR-${new Date().getFullYear()}-${String(allRequests.length + 1).padStart(3, '0')}`;
+    
     const newRequest: PurchaseRequest = {
       id: `pr-${Date.now()}`,
-      request_code: `PR-${String(mockPurchaseRequests.length + 1).padStart(3, '0')}`,
-      officer_id: 'off-001',
-      officer_name: 'Dr. Rajesh Kumar',
-      institution_id: 'springfield',
-      institution_name: 'Springfield University',
+      request_code: newRequestCode,
+      officer_id: officerId,
+      officer_name: officerName,
+      institution_id: institutionId,
+      institution_name: institutionName,
       items: data.items,
       total_estimated_cost: data.items.reduce((sum: number, item: any) => sum + item.estimated_total, 0),
       justification: data.justification,
@@ -69,27 +153,37 @@ export default function Inventory() {
       updated_at: new Date().toISOString(),
     };
 
-    mockPurchaseRequests.push(newRequest);
-    setPurchaseRequests(getPurchaseRequestsByOfficer('off-001'));
+    allRequests.push(newRequest);
+    savePurchaseRequests(allRequests);
+    
+    // Refresh purchase requests
+    setPurchaseRequests(allRequests.filter(r => r.officer_id === officerId));
+    
     setIsCreateRequestOpen(false);
     toast.success('Purchase request submitted to System Admin for review!');
   };
 
   // Component handlers
   const handleAddComponent = (data: Partial<ProjectComponent>) => {
+    const allComponents = loadProjectComponents();
+    
     const newComponent: ProjectComponent = {
       id: `comp-${Date.now()}`,
-      component_code: `COMP-SF-${String(components.length + 1).padStart(3, '0')}`,
+      component_code: `COMP-${institutionId.split('-')[1]?.toUpperCase() || 'XX'}-${String(allComponents.length + 1).padStart(3, '0')}`,
       ...data as ProjectComponent,
-      added_by_officer_id: 'off-001',
-      added_by_officer_name: 'Dr. Rajesh Kumar',
+      added_by_officer_id: officerId,
+      added_by_officer_name: officerName,
       status: 'needed',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
 
-    addMockComponent(newComponent);
-    setComponents(getComponentsByOfficer('off-001'));
+    allComponents.push(newComponent);
+    saveProjectComponents(allComponents);
+    
+    // Refresh components
+    setComponents(allComponents.filter(c => c.added_by_officer_id === officerId));
+    
     toast.success(`Component "${newComponent.name}" added successfully!`);
   };
 
@@ -98,9 +192,14 @@ export default function Inventory() {
   };
 
   const handleDeleteComponent = (id: string) => {
-    deleteMockComponent(id);
-    setComponents(getComponentsByOfficer('off-001'));
-    toast.success('Component deleted successfully!');
+    const allComponents = loadProjectComponents();
+    const index = allComponents.findIndex(c => c.id === id);
+    if (index !== -1) {
+      allComponents.splice(index, 1);
+      saveProjectComponents(allComponents);
+      setComponents(allComponents.filter(c => c.added_by_officer_id === officerId));
+      toast.success('Component deleted successfully!');
+    }
   };
 
   const handleCreatePurchaseRequestFromComponent = (component: ProjectComponent) => {
@@ -121,14 +220,28 @@ export default function Inventory() {
     handleCreatePurchaseRequest(requestData);
     
     // Update component status
-    const newRequestCode = `PR-${String(mockPurchaseRequests.length).padStart(3, '0')}`;
-    updateMockComponent(component.id, { 
-      status: 'requested',
-      purchase_request_code: newRequestCode
-    });
-    setComponents(getComponentsByOfficer('off-001'));
+    const allComponents = loadProjectComponents();
+    const allRequests = loadPurchaseRequests();
+    const newRequestCode = `PR-${new Date().getFullYear()}-${String(allRequests.length).padStart(3, '0')}`;
+    
+    const compIndex = allComponents.findIndex(c => c.id === component.id);
+    if (compIndex !== -1) {
+      allComponents[compIndex] = {
+        ...allComponents[compIndex],
+        status: 'requested',
+        purchase_request_code: newRequestCode,
+        updated_at: new Date().toISOString()
+      };
+      saveProjectComponents(allComponents);
+      setComponents(allComponents.filter(c => c.added_by_officer_id === officerId));
+    }
     
     toast.success(`Purchase request created from component "${component.name}"!`);
+  };
+
+  const handleAuditCreated = (record: AuditRecord) => {
+    addAuditRecord(institutionId, record);
+    toast.success('Audit report submitted successfully!');
   };
 
   const categories = ['all', ...new Set(equipment.map((e) => e.category))];
@@ -198,6 +311,17 @@ export default function Inventory() {
                   ))}
                 </SelectContent>
               </Select>
+              
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setIsCreateAuditOpen(true)}>
+                  <ClipboardList className="h-4 w-4 mr-2" />
+                  Create Audit Report
+                </Button>
+                <Button onClick={() => setIsAddEquipmentOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Equipment
+                </Button>
+              </div>
             </div>
 
             {/* Summary Cards */}
@@ -302,6 +426,19 @@ export default function Inventory() {
                 );
               })}
             </div>
+
+            {filteredEquipment.length === 0 && (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground mb-4">No equipment found in your lab inventory</p>
+                  <Button onClick={() => setIsAddEquipmentOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Your First Equipment
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Components Tab */}
@@ -424,9 +561,9 @@ export default function Inventory() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {component.project_name && (
-                      <div className="flex items-center gap-2 text-sm bg-blue-50 p-2 rounded">
+                      <div className="flex items-center gap-2 text-sm bg-blue-50 dark:bg-blue-950 p-2 rounded">
                         <Lightbulb className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                        <span className="font-medium text-blue-700">
+                        <span className="font-medium text-blue-700 dark:text-blue-300">
                           {component.project_name}
                         </span>
                       </div>
@@ -467,7 +604,7 @@ export default function Inventory() {
                     )}
                     
                     {component.purchase_request_code && (
-                      <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded">
+                      <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 dark:bg-green-950 p-2 rounded">
                         <CheckCircle className="h-4 w-4" />
                         <span>Included in {component.purchase_request_code}</span>
                       </div>
@@ -517,6 +654,7 @@ export default function Inventory() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Requests</SelectItem>
+                    <SelectItem value="pending_system_admin">Pending Review</SelectItem>
                     <SelectItem value="pending_institution_approval">Pending Approval</SelectItem>
                     <SelectItem value="approved_by_institution">Approved</SelectItem>
                     <SelectItem value="in_progress">In Progress</SelectItem>
@@ -615,6 +753,13 @@ export default function Inventory() {
         </Tabs>
       </div>
 
+      {/* Dialogs */}
+      <AddItemDialog
+        isOpen={isAddEquipmentOpen}
+        onOpenChange={setIsAddEquipmentOpen}
+        onItemAdded={handleAddEquipment}
+      />
+
       <CreatePurchaseRequestDialog
         isOpen={isCreateRequestOpen}
         onOpenChange={setIsCreateRequestOpen}
@@ -632,6 +777,16 @@ export default function Inventory() {
         onOpenChange={setIsAddComponentOpen}
         onSubmit={handleAddComponent}
         projects={projects}
+      />
+
+      <CreateAuditReportDialog
+        isOpen={isCreateAuditOpen}
+        onOpenChange={setIsCreateAuditOpen}
+        institutionId={institutionId}
+        officerId={officerId}
+        officerName={officerName}
+        inventoryItems={equipment}
+        onAuditCreated={handleAuditCreated}
       />
     </Layout>
   );
