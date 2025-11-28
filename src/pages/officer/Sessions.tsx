@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Calendar, Clock, BookOpen, FileText } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { getOfficerTimetable } from '@/data/mockOfficerTimetable';
-import { OfficerTimetableSlot } from '@/types/officer';
+import { OfficerTimetable, OfficerTimetableSlot } from '@/types/officer';
 import { OfficerTimetablePreview } from '@/components/officer/OfficerTimetablePreview';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
@@ -40,7 +40,7 @@ const getActivityColor = (type: string) => {
 const getUpcomingSlots = (slots: OfficerTimetableSlot[], count: number = 10) => {
   const today = getDayName(new Date());
   const currentTime = new Date().toTimeString().slice(0, 5);
-  const todayIndex = DAYS.indexOf(today as any);
+  const todayIndex = DAYS.indexOf(today as typeof DAYS[number]);
   
   const futureSlots = slots
     .filter(slot => {
@@ -62,8 +62,16 @@ const getUpcomingSlots = (slots: OfficerTimetableSlot[], count: number = 10) => 
 export default function Sessions() {
   const { user } = useAuth();
   const { tenantId } = useParams();
-  const officerTimetable = getOfficerTimetable(user?.id || '');
+  const [officerTimetable, setOfficerTimetable] = useState<OfficerTimetable | undefined>(undefined);
   const [activeTab, setActiveTab] = useState('week');
+  
+  // Load timetable from localStorage on mount and when user changes
+  useEffect(() => {
+    if (user?.id) {
+      const timetable = getOfficerTimetable(user.id);
+      setOfficerTimetable(timetable);
+    }
+  }, [user?.id]);
   
   const today = getDayName(new Date());
   const todaySlots = officerTimetable?.slots.filter(s => s.day === today).sort((a, b) => a.start_time.localeCompare(b.start_time)) || [];

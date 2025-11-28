@@ -1,6 +1,9 @@
 import { InstitutionClass } from '@/types/student';
 
-export const mockInstitutionClasses: InstitutionClass[] = [
+const CLASSES_STORAGE_KEY = 'institution_classes';
+
+// Initial mock data with correct IDs
+const initialMockInstitutionClasses: InstitutionClass[] = [
   // Modern School Vasant Vihar - Grades 6-12 (Sections A & B)
   { id: 'class-msd-6a', institution_id: 'inst-msd-001', class_name: 'Grade 6 - Section A', display_order: 1, academic_year: '2024-25', capacity: 25, room_number: '101', created_at: '2025-04-01T00:00:00Z', updated_at: '2025-04-01T00:00:00Z', status: 'active' as const },
   { id: 'class-msd-6b', institution_id: 'inst-msd-001', class_name: 'Grade 6 - Section B', display_order: 2, academic_year: '2024-25', capacity: 25, room_number: '102', created_at: '2025-04-01T00:00:00Z', updated_at: '2025-04-01T00:00:00Z', status: 'active' as const },
@@ -53,12 +56,61 @@ export const mockInstitutionClasses: InstitutionClass[] = [
   { id: 'class-kga-12c', institution_id: 'inst-kga-001', class_name: 'Grade 12 - Section C', display_order: 21, academic_year: '2024-25', capacity: 25, room_number: 'D-103', created_at: '2025-04-01T00:00:00Z', updated_at: '2025-04-01T00:00:00Z', status: 'active' as const },
 ];
 
-export const getClassesByInstitution = (institutionId: string): InstitutionClass[] => {
-  return mockInstitutionClasses
+// localStorage functions
+export function loadClasses(): InstitutionClass[] {
+  try {
+    const stored = localStorage.getItem(CLASSES_STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Error loading classes:', error);
+  }
+  // Initialize with mock data if not in localStorage
+  saveClasses(initialMockInstitutionClasses);
+  return initialMockInstitutionClasses;
+}
+
+export function saveClasses(classes: InstitutionClass[]): void {
+  try {
+    localStorage.setItem(CLASSES_STORAGE_KEY, JSON.stringify(classes));
+  } catch (error) {
+    console.error('Error saving classes:', error);
+  }
+}
+
+export function addClass(institutionClass: InstitutionClass): void {
+  const classes = loadClasses();
+  classes.push(institutionClass);
+  saveClasses(classes);
+}
+
+export function updateClass(classId: string, updates: Partial<InstitutionClass>): void {
+  const classes = loadClasses();
+  const index = classes.findIndex(c => c.id === classId);
+  if (index !== -1) {
+    classes[index] = { ...classes[index], ...updates, updated_at: new Date().toISOString() };
+    saveClasses(classes);
+  }
+}
+
+export function deleteClass(classId: string): void {
+  const classes = loadClasses();
+  const filtered = classes.filter(c => c.id !== classId);
+  saveClasses(filtered);
+}
+
+export function getClassesByInstitution(institutionId: string): InstitutionClass[] {
+  const classes = loadClasses();
+  return classes
     .filter(c => c.institution_id === institutionId && c.status === 'active')
     .sort((a, b) => a.display_order - b.display_order);
-};
+}
 
-export const getClassById = (classId: string): InstitutionClass | undefined => {
-  return mockInstitutionClasses.find(c => c.id === classId);
-};
+export function getClassById(classId: string): InstitutionClass | undefined {
+  const classes = loadClasses();
+  return classes.find(c => c.id === classId);
+}
+
+// Legacy export for backward compatibility
+export const mockInstitutionClasses = initialMockInstitutionClasses;
