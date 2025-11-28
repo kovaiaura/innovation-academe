@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useInstitutionData, InventorySummary } from '@/contexts/InstitutionDataContext';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,10 +8,17 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Package, AlertTriangle, CheckCircle, TrendingUp, Search, Clock, DollarSign, AlertCircle as AlertCircleIcon, XCircle, Loader2 } from 'lucide-react';
+import { Package, AlertTriangle, CheckCircle, TrendingUp, Search, Clock, DollarSign, AlertCircle as AlertCircleIcon, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { mockPurchaseRequests, updateMockPurchaseRequest } from '@/data/mockInventoryData';
-import { PurchaseRequest } from '@/types/inventory';
+import { 
+  loadPurchaseRequests, 
+  savePurchaseRequests,
+  loadInventoryItems,
+  loadAuditRecords,
+  getInventoryByInstitution,
+  getAuditRecordsByInstitution,
+} from '@/data/mockInventoryData';
+import { PurchaseRequest, InventoryItem, AuditRecord } from '@/types/inventory';
 import { PurchaseRequestStatusBadge } from '@/components/inventory/PurchaseRequestStatusBadge';
 import { PurchaseRequestDetailDialog } from '@/components/inventory/PurchaseRequestDetailDialog';
 import { ApproveRejectDialog } from '@/components/inventory/ApproveRejectDialog';
@@ -20,11 +26,21 @@ import { FulfillRequestDialog } from '@/components/inventory/FulfillRequestDialo
 import { SystemAdminApprovalDialog } from '@/components/inventory/SystemAdminApprovalDialog';
 import { format } from 'date-fns';
 
+interface InstitutionInventorySummary {
+  institution_id: string;
+  institution_name: string;
+  total_items: number;
+  total_value: number;
+  missing_items: number;
+  damaged_items: number;
+  last_audit_date: string;
+  status: 'good' | 'needs_review' | 'critical';
+}
+
 export default function InventoryManagement() {
   const navigate = useNavigate();
-  const { inventorySummaries } = useInstitutionData();
-  const inventory = Object.values(inventorySummaries);
-  const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>(mockPurchaseRequests);
+  const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>([]);
+  const [inventorySummaries, setInventorySummaries] = useState<InstitutionInventorySummary[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<PurchaseRequest | null>(null);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [fulfillDialogOpen, setFulfillDialogOpen] = useState(false);
@@ -37,24 +53,70 @@ export default function InventoryManagement() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [requestStatusFilter, setRequestStatusFilter] = useState<string>('all');
 
-  // Inventory Stats
-  const totalValue = inventory.reduce((sum, inv) => sum + inv.value, 0);
-  const totalItems = inventory.reduce((sum, inv) => sum + inv.total_items, 0);
-  const totalMissing = inventory.reduce((sum, inv) => sum + inv.missing_items, 0);
-  const totalDamaged = inventory.reduce((sum, inv) => sum + inv.damaged_items, 0);
-  const criticalCount = inventory.filter((inv) => inv.status === 'critical').length;
-  const needsReviewCount = inventory.filter((inv) => inv.status === 'needs_review').length;
+  // Institution ID to name mapping
+  const institutionNames: Record<string, string> = {
+    'inst-msd-001': 'Modern School Vasant Vihar',
+    'inst-kga-001': 'Kikani Global Academy',
+  };
 
-  // Purchase Request Stats (Updated for new workflow)
+  // Load data on mount
+  useEffect(() => {
+    // Load purchase requests
+    setPurchaseRequests(loadPurchaseRequests());
+    
+    // Build inventory summaries from all institutions
+    const allInventory = loadInventoryItems();
+    const allAudits = loadAuditRecords();
+    
+    const summaries: InstitutionInventorySummary[] = Object.keys(institutionNames).map(instId => {
+      const inventory = allInventory[instId] || [];
+      const audits = allAudits[instId] || [];
+      const latestAudit = audits[0];
+      
+      const totalItems = inventory.reduce((sum, item) => sum + item.quantity, 0);
+      const totalValue = inventory.reduce((sum, item) => sum + item.total_value, 0);
+      const missingItems = latestAudit?.missing_items.length || 0;
+      const damagedItems = latestAudit?.damaged_items.length || 0;
+      
+      // Determine status based on audit results
+      let status: 'good' | 'needs_review' | 'critical' = 'good';
+      if (missingItems > 5 || damagedItems > 5) {
+        status = 'critical';
+      } else if (missingItems > 0 || damagedItems > 0) {
+        status = 'needs_review';
+      }
+      
+      return {
+        institution_id: instId,
+        institution_name: institutionNames[instId],
+        total_items: totalItems,
+        total_value: totalValue,
+        missing_items: missingItems,
+        damaged_items: damagedItems,
+        last_audit_date: latestAudit?.audit_date || 'No audit',
+        status,
+      };
+    });
+    
+    setInventorySummaries(summaries);
+  }, []);
+
+  // Inventory Stats
+  const totalValue = inventorySummaries.reduce((sum, inv) => sum + inv.total_value, 0);
+  const totalItems = inventorySummaries.reduce((sum, inv) => sum + inv.total_items, 0);
+  const totalMissing = inventorySummaries.reduce((sum, inv) => sum + inv.missing_items, 0);
+  const totalDamaged = inventorySummaries.reduce((sum, inv) => sum + inv.damaged_items, 0);
+  const criticalCount = inventorySummaries.filter((inv) => inv.status === 'critical').length;
+  const needsReviewCount = inventorySummaries.filter((inv) => inv.status === 'needs_review').length;
+
+  // Purchase Request Stats
   const pendingReviewRequests = purchaseRequests.filter(r => r.status === 'pending_system_admin').length;
   const forwardedToInstitutions = purchaseRequests.filter(r => r.status === 'approved_by_system_admin' || r.status === 'pending_institution_approval').length;
   const readyForProcessing = purchaseRequests.filter(r => r.status === 'approved_by_institution').length;
   const inProgress = purchaseRequests.filter(r => r.status === 'in_progress').length;
-  const pendingValue = purchaseRequests.filter(r => r.status === 'pending_system_admin' || r.status === 'approved_by_system_admin' || r.status === 'pending_institution_approval').reduce((sum, r) => sum + r.total_estimated_cost, 0);
-  const approvedThisMonth = purchaseRequests.filter(r => (r.status === 'fulfilled' || r.status === 'in_progress') && new Date(r.created_at).getMonth() === new Date().getMonth()).length;
 
   // Filters
-  const filteredInventory = inventory.filter(inv => {
+  const filteredInventory = inventorySummaries.filter(inv => {
     const matchesSearch = inv.institution_name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || inv.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -66,7 +128,7 @@ export default function InventoryManagement() {
   });
 
   // Badge helpers
-  const getStatusBadge = (status: InventorySummary['status']) => {
+  const getStatusBadge = (status: InstitutionInventorySummary['status']) => {
     const config = {
       good: { variant: 'default' as const, icon: <CheckCircle className="h-3 w-3" />, label: 'Good' },
       needs_review: { variant: 'secondary' as const, icon: <AlertTriangle className="h-3 w-3" />, label: 'Needs Review' },
@@ -81,8 +143,8 @@ export default function InventoryManagement() {
     );
   };
 
-
   const getDaysSinceAudit = (date: string) => {
+    if (date === 'No audit') return 999;
     const auditDate = new Date(date);
     const today = new Date();
     const diffTime = Math.abs(today.getTime() - auditDate.getTime());
@@ -90,6 +152,7 @@ export default function InventoryManagement() {
     return diffDays;
   };
 
+  // Purchase request handlers
   const handleApproveRequest = (request: PurchaseRequest) => {
     setActionRequest(request);
     setApprovalMode('approve');
@@ -104,30 +167,44 @@ export default function InventoryManagement() {
 
   const confirmApproval = (comments: string) => {
     if (actionRequest) {
-      updateMockPurchaseRequest(actionRequest.id, {
-        status: 'approved_by_system_admin',
-        system_admin_reviewed_by: 'sysadmin-001',
-        system_admin_reviewed_by_name: 'John Doe',
-        system_admin_reviewed_at: new Date().toISOString(),
-        system_admin_review_comments: comments,
-      });
-      setPurchaseRequests([...mockPurchaseRequests]);
-      toast.success(`Request ${actionRequest.request_code} approved and forwarded to institution`);
+      const allRequests = loadPurchaseRequests();
+      const index = allRequests.findIndex(r => r.id === actionRequest.id);
+      if (index !== -1) {
+        allRequests[index] = {
+          ...allRequests[index],
+          status: 'approved_by_system_admin',
+          system_admin_reviewed_by: 'sysadmin-001',
+          system_admin_reviewed_by_name: 'System Admin',
+          system_admin_reviewed_at: new Date().toISOString(),
+          system_admin_review_comments: comments,
+          updated_at: new Date().toISOString(),
+        };
+        savePurchaseRequests(allRequests);
+        setPurchaseRequests(allRequests);
+        toast.success(`Request ${actionRequest.request_code} approved and forwarded to institution`);
+      }
       setActionRequest(null);
     }
   };
 
   const confirmInitialRejection = (reason: string) => {
     if (actionRequest) {
-      updateMockPurchaseRequest(actionRequest.id, {
-        status: 'rejected_by_system_admin',
-        system_admin_reviewed_by: 'sysadmin-001',
-        system_admin_reviewed_by_name: 'John Doe',
-        system_admin_reviewed_at: new Date().toISOString(),
-        system_admin_rejection_reason: reason,
-      });
-      setPurchaseRequests([...mockPurchaseRequests]);
-      toast.error(`Request ${actionRequest.request_code} rejected`);
+      const allRequests = loadPurchaseRequests();
+      const index = allRequests.findIndex(r => r.id === actionRequest.id);
+      if (index !== -1) {
+        allRequests[index] = {
+          ...allRequests[index],
+          status: 'rejected_by_system_admin',
+          system_admin_reviewed_by: 'sysadmin-001',
+          system_admin_reviewed_by_name: 'System Admin',
+          system_admin_reviewed_at: new Date().toISOString(),
+          system_admin_rejection_reason: reason,
+          updated_at: new Date().toISOString(),
+        };
+        savePurchaseRequests(allRequests);
+        setPurchaseRequests(allRequests);
+        toast.error(`Request ${actionRequest.request_code} rejected`);
+      }
       setActionRequest(null);
     }
   };
@@ -151,45 +228,57 @@ export default function InventoryManagement() {
 
   const confirmFulfill = (data: { comments: string; deliveryDate?: string }) => {
     if (actionRequest) {
-      if (fulfillMode === 'in_progress') {
-        updateMockPurchaseRequest(actionRequest.id, {
-          status: 'in_progress',
-          system_admin_processed_by: 'sysadmin-001',
-          system_admin_processed_by_name: 'John Doe',
-          system_admin_processed_at: new Date().toISOString(),
-          system_admin_processing_comments: data.comments,
-        });
-        toast.success(`Request ${actionRequest.request_code} marked as in progress`);
-      } else {
-        updateMockPurchaseRequest(actionRequest.id, {
-          status: 'fulfilled',
-          fulfillment_details: data.comments,
-          fulfillment_date: data.deliveryDate,
-        });
-        toast.success(`Request ${actionRequest.request_code} fulfilled`);
+      const allRequests = loadPurchaseRequests();
+      const index = allRequests.findIndex(r => r.id === actionRequest.id);
+      if (index !== -1) {
+        if (fulfillMode === 'in_progress') {
+          allRequests[index] = {
+            ...allRequests[index],
+            status: 'in_progress',
+            system_admin_processed_by: 'sysadmin-001',
+            system_admin_processed_by_name: 'System Admin',
+            system_admin_processed_at: new Date().toISOString(),
+            system_admin_processing_comments: data.comments,
+            updated_at: new Date().toISOString(),
+          };
+          toast.success(`Request ${actionRequest.request_code} marked as in progress`);
+        } else {
+          allRequests[index] = {
+            ...allRequests[index],
+            status: 'fulfilled',
+            fulfillment_details: data.comments,
+            fulfillment_date: data.deliveryDate,
+            updated_at: new Date().toISOString(),
+          };
+          toast.success(`Request ${actionRequest.request_code} fulfilled`);
+        }
+        savePurchaseRequests(allRequests);
+        setPurchaseRequests(allRequests);
       }
-      setPurchaseRequests([...mockPurchaseRequests]);
       setActionRequest(null);
     }
   };
 
   const confirmReject = (reason: string) => {
     if (actionRequest) {
-      updateMockPurchaseRequest(actionRequest.id, {
-        status: 'rejected_by_system_admin',
-        system_admin_processed_by: 'sysadmin-001',
-        system_admin_processed_by_name: 'John Doe',
-        system_admin_processed_at: new Date().toISOString(),
-        system_admin_rejection_reason: reason,
-      });
-      setPurchaseRequests([...mockPurchaseRequests]);
-      toast.error(`Request ${actionRequest.request_code} rejected`);
+      const allRequests = loadPurchaseRequests();
+      const index = allRequests.findIndex(r => r.id === actionRequest.id);
+      if (index !== -1) {
+        allRequests[index] = {
+          ...allRequests[index],
+          status: 'rejected_by_system_admin',
+          system_admin_processed_by: 'sysadmin-001',
+          system_admin_processed_by_name: 'System Admin',
+          system_admin_processed_at: new Date().toISOString(),
+          system_admin_rejection_reason: reason,
+          updated_at: new Date().toISOString(),
+        };
+        savePurchaseRequests(allRequests);
+        setPurchaseRequests(allRequests);
+        toast.error(`Request ${actionRequest.request_code} rejected`);
+      }
       setActionRequest(null);
     }
-  };
-
-  const handleRowClick = (institutionId: string) => {
-    navigate(`/system-admin/inventory-management/${institutionId}`);
   };
 
   return (
@@ -217,7 +306,7 @@ export default function InventoryManagement() {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">₹{(totalValue / 1000).toFixed(0)}K</div>
+                  <div className="text-2xl font-bold">₹{(totalValue / 100000).toFixed(1)}L</div>
                   <p className="text-xs text-muted-foreground">Across all institutions</p>
                 </CardContent>
               </Card>
@@ -314,7 +403,6 @@ export default function InventoryManagement() {
                       <TableHead className="text-right">Total Items</TableHead>
                       <TableHead className="text-right">Missing</TableHead>
                       <TableHead className="text-right">Damaged</TableHead>
-                      <TableHead>Category Breakdown</TableHead>
                       <TableHead className="text-right">Total Value</TableHead>
                       <TableHead>Last Audit</TableHead>
                       <TableHead>Status</TableHead>
@@ -326,39 +414,34 @@ export default function InventoryManagement() {
                       return (
                         <TableRow 
                           key={inv.institution_id}
-                          onClick={() => handleRowClick(inv.institution_id)}
                           className="cursor-pointer hover:bg-accent/50 transition-colors"
                         >
                           <TableCell className="font-medium">{inv.institution_name}</TableCell>
                           <TableCell className="text-right">{inv.total_items}</TableCell>
                           <TableCell className="text-right">
-                            <span className={inv.missing_items > 10 ? "text-orange-500 font-semibold" : ""}>
+                            <span className={inv.missing_items > 0 ? "text-orange-500 font-semibold" : ""}>
                               {inv.missing_items}
                             </span>
                           </TableCell>
                           <TableCell className="text-right">
-                            <span className={inv.damaged_items > 10 ? "text-red-500 font-semibold" : ""}>
+                            <span className={inv.damaged_items > 0 ? "text-red-500 font-semibold" : ""}>
                               {inv.damaged_items}
                             </span>
                           </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1 flex-wrap">
-                              {Object.entries(inv.categories).map(([category, data]) => (
-                                <Badge key={category} variant="outline" className="text-xs">
-                                  {category.charAt(0).toUpperCase()}: {data.count}
-                                </Badge>
-                              ))}
-                            </div>
-                          </TableCell>
                           <TableCell className="text-right font-medium">
-                            ₹{inv.value.toLocaleString()}
+                            ₹{inv.total_value.toLocaleString()}
                           </TableCell>
                           <TableCell>
                             <div>
-                              {new Date(inv.last_audit_date).toLocaleDateString()}
-                              <div className="text-xs text-muted-foreground">
-                                {daysSinceAudit} days ago
-                              </div>
+                              {inv.last_audit_date !== 'No audit' 
+                                ? new Date(inv.last_audit_date).toLocaleDateString()
+                                : 'No audit'
+                              }
+                              {inv.last_audit_date !== 'No audit' && (
+                                <div className="text-xs text-muted-foreground">
+                                  {daysSinceAudit} days ago
+                                </div>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>{getStatusBadge(inv.status)}</TableCell>
@@ -373,182 +456,338 @@ export default function InventoryManagement() {
 
           {/* Purchase Requests Tab */}
           <TabsContent value="purchases" className="space-y-6">
-            {/* 1. Pending System Admin Review Section (NEW - First Stage) */}
-            {filteredRequests.filter(r => r.status === 'pending_system_admin').length > 0 && (
+            {/* Stats Cards */}
+            <div className="grid gap-4 md:grid-cols-4">
               <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-yellow-500" />
-                    <CardTitle>Pending Your Review - Action Required</CardTitle>
-                  </div>
-                  <CardDescription>New purchase requests awaiting initial approval</CardDescription>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {filteredRequests.filter(r => r.status === 'pending_system_admin').map((req) => (
-                    <Card key={req.id}>
-                      <CardContent className="pt-6 space-y-3">
-                        <div className="flex justify-between items-start">
-                          <div>
+                <CardContent>
+                  <div className="text-2xl font-bold text-yellow-500">{pendingReviewRequests}</div>
+                  <p className="text-xs text-muted-foreground">Awaiting your approval</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Forwarded to Institutions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-500">{forwardedToInstitutions}</div>
+                  <p className="text-xs text-muted-foreground">Pending institution approval</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Ready for Processing</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-500">{readyForProcessing}</div>
+                  <p className="text-xs text-muted-foreground">Institution approved</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-purple-500">{inProgress}</div>
+                  <p className="text-xs text-muted-foreground">Being processed</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Pending System Admin Review Section */}
+            {purchaseRequests.filter(r => r.status === 'pending_system_admin').length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-yellow-500" />
+                  <h3 className="text-lg font-semibold">
+                    Pending Your Review ({purchaseRequests.filter(r => r.status === 'pending_system_admin').length})
+                  </h3>
+                </div>
+
+                {purchaseRequests.filter(r => r.status === 'pending_system_admin').map((request) => (
+                  <Card key={request.id}>
+                    <CardContent className="pt-6">
+                      <div className="space-y-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold">{req.request_code}</h3>
-                              <PurchaseRequestStatusBadge status={req.status} size="sm" />
-                              {req.priority === 'urgent' && <Badge variant="destructive">URGENT</Badge>}
+                              <h3 className="font-semibold">{request.request_code}</h3>
+                              <PurchaseRequestStatusBadge status={request.status} size="sm" />
+                              {request.priority === 'urgent' && (
+                                <Badge variant="destructive" className="text-xs">🚨 URGENT</Badge>
+                              )}
                             </div>
-                            <p className="text-sm text-muted-foreground">{req.institution_name} • {req.officer_name}</p>
+                            <p className="text-sm text-muted-foreground mb-1">
+                              {request.officer_name} • {request.institution_name}
+                            </p>
+                            
+                            <div className="space-y-2 mt-3">
+                              <p className="text-sm font-medium">Items Requested:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {request.items.map((item, idx) => (
+                                  <Badge key={idx} variant="outline">
+                                    {item.item_name} ({item.quantity} {item.unit})
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="mt-3 p-3 bg-muted rounded-lg">
+                              <p className="text-sm font-medium mb-1">Justification:</p>
+                              <p className="text-sm text-muted-foreground">{request.justification}</p>
+                            </div>
+
+                            <p className="text-xs text-muted-foreground mt-3">
+                              Requested {format(new Date(request.created_at), 'MMM dd, yyyy • hh:mm a')}
+                            </p>
                           </div>
-                          <p className="text-xl font-bold">₹{req.total_estimated_cost.toLocaleString()}</p>
+
+                          <div className="text-right ml-4">
+                            <p className="text-sm text-muted-foreground mb-1">Total Cost</p>
+                            <p className="text-2xl font-bold">₹{request.total_estimated_cost.toLocaleString()}</p>
+                          </div>
                         </div>
+
                         <div className="flex gap-2 pt-2 border-t">
-                          <Button size="sm" variant="outline" onClick={() => setSelectedRequest(req)}>View Details</Button>
-                          <Button size="sm" onClick={() => handleApproveRequest(req)}><CheckCircle className="h-4 w-4 mr-1" />Approve & Forward</Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleRejectInitialRequest(req)}><XCircle className="h-4 w-4 mr-1" />Reject</Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setSelectedRequest(request)}
+                          >
+                            View Details
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="default"
+                            onClick={() => handleApproveRequest(request)}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Approve & Forward
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="destructive"
+                            onClick={() => handleRejectInitialRequest(request)}
+                          >
+                            Reject
+                          </Button>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </CardContent>
-              </Card>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             )}
 
-            {/* 2. Forwarded to Institutions Section (NEW - Awaiting Institution Response) */}
-            {filteredRequests.filter(r => r.status === 'approved_by_system_admin' || r.status === 'pending_institution_approval').length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5 text-blue-500" />Forwarded to Institutions</CardTitle>
-                  <CardDescription>Awaiting institution management approval</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {filteredRequests.filter(r => r.status === 'approved_by_system_admin' || r.status === 'pending_institution_approval').map((req) => (
-                    <Card key={req.id} className="cursor-pointer" onClick={() => setSelectedRequest(req)}>
-                      <CardContent className="pt-6">
-                        <div className="flex justify-between">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-semibold">{req.request_code}</h3>
-                              <PurchaseRequestStatusBadge status={req.status} size="sm" />
-                            </div>
-                            <p className="text-sm text-muted-foreground">{req.institution_name}</p>
-                            <p className="text-xs text-muted-foreground mt-2">Forwarded: {req.system_admin_reviewed_at && format(new Date(req.system_admin_reviewed_at), 'MMM dd, yyyy')}</p>
-                          </div>
-                          <p className="font-bold">₹{req.total_estimated_cost.toLocaleString()}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
+            {/* Approved by Institution - Ready for Processing */}
+            {purchaseRequests.filter(r => r.status === 'approved_by_institution').length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <h3 className="text-lg font-semibold">
+                    Ready for Processing ({purchaseRequests.filter(r => r.status === 'approved_by_institution').length})
+                  </h3>
+                </div>
 
-            {/* 3. Approved by Institutions Section (Ready for Final Processing) */}
-            {filteredRequests.filter(r => r.status === 'approved_by_institution').length > 0 && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <CardTitle>Approved by Institutions - Ready to Process</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {filteredRequests.filter(r => r.status === 'approved_by_institution').map((req) => (
-                    <Card key={req.id}>
-                      <CardContent className="pt-6 space-y-3">
-                        <div className="flex justify-between items-start">
-                          <div>
+                {purchaseRequests.filter(r => r.status === 'approved_by_institution').map((request) => (
+                  <Card key={request.id}>
+                    <CardContent className="pt-6">
+                      <div className="space-y-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold">{req.request_code}</h3>
-                              <PurchaseRequestStatusBadge status={req.status} size="sm" />
+                              <h3 className="font-semibold">{request.request_code}</h3>
+                              <PurchaseRequestStatusBadge status={request.status} size="sm" />
+                              <Badge variant="default" className="text-xs bg-green-500">✓ Institution Approved</Badge>
                             </div>
-                            <p className="text-sm text-muted-foreground">{req.institution_name} • {req.officer_name}</p>
-                          </div>
-                          <p className="text-xl font-bold">₹{req.total_estimated_cost.toLocaleString()}</p>
-                        </div>
-                        <div className="text-sm">
-                          <p className="text-muted-foreground mb-1">Approved by: {req.institution_approved_by_name}</p>
-                          <p className="text-muted-foreground">Approval Date: {req.institution_approved_at && format(new Date(req.institution_approved_at), 'MMM dd, yyyy')}</p>
-                        </div>
-                        <div className="flex gap-2 pt-2 border-t">
-                          <Button size="sm" variant="outline" onClick={() => setSelectedRequest(req)}>View Details</Button>
-                          <Button size="sm" onClick={() => handleMarkInProgress(req)}><Loader2 className="h-4 w-4 mr-1" />Mark In Progress</Button>
-                          <Button size="sm" variant="default" onClick={() => handleMarkFulfilled(req)}><CheckCircle className="h-4 w-4 mr-1" />Mark Fulfilled</Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* In Progress Section */}
-            {filteredRequests.filter(r => r.status === 'in_progress').length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><Loader2 className="h-5 w-5 animate-spin text-purple-500" />Orders In Progress</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {filteredRequests.filter(r => r.status === 'in_progress').map((req) => (
-                    <Card key={req.id} className="cursor-pointer" onClick={() => setSelectedRequest(req)}>
-                      <CardContent className="pt-6">
-                        <div className="flex justify-between">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-semibold">{req.request_code}</h3>
-                              <PurchaseRequestStatusBadge status={req.status} size="sm" />
+                            <p className="text-sm text-muted-foreground">
+                              {request.officer_name} • {request.institution_name}
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {request.items.map((item, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs">
+                                  {item.item_name} ({item.quantity})
+                                </Badge>
+                              ))}
                             </div>
-                            <p className="text-sm text-muted-foreground">{req.institution_name}</p>
-                            <p className="text-xs text-muted-foreground mt-2">Updated: {format(new Date(req.updated_at), 'MMM dd, yyyy')}</p>
+                            {request.institution_comments && (
+                              <div className="mt-2 p-2 bg-green-50 dark:bg-green-950 rounded text-sm">
+                                <span className="font-medium">Institution Comment: </span>
+                                {request.institution_comments}
+                              </div>
+                            )}
                           </div>
                           <div className="text-right">
-                            <p className="font-bold">₹{req.total_estimated_cost.toLocaleString()}</p>
-                            <Button size="sm" className="mt-2" onClick={(e) => { e.stopPropagation(); handleMarkFulfilled(req); }}>Mark Fulfilled</Button>
+                            <p className="text-xl font-bold">₹{request.total_estimated_cost.toLocaleString()}</p>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </CardContent>
-              </Card>
+
+                        <div className="flex gap-2 pt-2 border-t">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setSelectedRequest(request)}
+                          >
+                            View Details
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="default"
+                            onClick={() => handleMarkInProgress(request)}
+                          >
+                            <Clock className="h-4 w-4 mr-1" />
+                            Mark In Progress
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="secondary"
+                            onClick={() => handleMarkFulfilled(request)}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Mark Fulfilled
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             )}
 
-            {/* Completed/Fulfilled Requests */}
-            {filteredRequests.filter(r => r.status === 'fulfilled' || r.status === 'rejected_by_system_admin').length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Request History</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {filteredRequests.filter(r => r.status === 'fulfilled' || r.status === 'rejected_by_system_admin').map((req) => (
-                    <Card key={req.id} className="cursor-pointer hover:bg-accent/50" onClick={() => setSelectedRequest(req)}>
-                      <CardContent className="pt-4 pb-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold">{req.request_code}</h3>
-                              <PurchaseRequestStatusBadge status={req.status} size="sm" />
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1">{req.institution_name} • ₹{req.total_estimated_cost.toLocaleString()}</p>
+            {/* In Progress */}
+            {purchaseRequests.filter(r => r.status === 'in_progress').length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-purple-500" />
+                  <h3 className="text-lg font-semibold">
+                    In Progress ({purchaseRequests.filter(r => r.status === 'in_progress').length})
+                  </h3>
+                </div>
+
+                {purchaseRequests.filter(r => r.status === 'in_progress').map((request) => (
+                  <Card key={request.id} className="cursor-pointer hover:bg-accent/50" onClick={() => setSelectedRequest(request)}>
+                    <CardContent className="pt-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="font-semibold">{request.request_code}</h3>
+                            <PurchaseRequestStatusBadge status={request.status} size="sm" />
                           </div>
-                          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setSelectedRequest(req); }}>View Details</Button>
+                          <p className="text-sm text-muted-foreground">
+                            {request.officer_name} • {request.institution_name}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {request.items.map((item, idx) => (
+                              <Badge key={idx} variant="outline" className="text-xs">
+                                {item.item_name} ({item.quantity})
+                              </Badge>
+                            ))}
+                          </div>
+                          {request.system_admin_processing_comments && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                              {request.system_admin_processing_comments}
+                            </p>
+                          )}
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </CardContent>
-              </Card>
+                        <div className="text-right">
+                          <p className="text-xl font-bold">₹{request.total_estimated_cost.toLocaleString()}</p>
+                          <Button 
+                            size="sm" 
+                            variant="default"
+                            className="mt-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMarkFulfilled(request);
+                            }}
+                          >
+                            Mark Fulfilled
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             )}
+
+            {/* Request History */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Request History</h3>
+              <div className="flex gap-4 mb-4">
+                <Select value={requestStatusFilter} onValueChange={setRequestStatusFilter}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Requests</SelectItem>
+                    <SelectItem value="pending_system_admin">Pending Review</SelectItem>
+                    <SelectItem value="pending_institution_approval">Pending Institution</SelectItem>
+                    <SelectItem value="approved_by_institution">Approved</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="fulfilled">Fulfilled</SelectItem>
+                    <SelectItem value="rejected_by_system_admin">Rejected by Admin</SelectItem>
+                    <SelectItem value="rejected_by_institution">Rejected by Institution</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-4">
+                {filteredRequests.map((request) => (
+                  <Card key={request.id} className="cursor-pointer hover:bg-accent/50" onClick={() => setSelectedRequest(request)}>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold">{request.request_code}</h3>
+                            <PurchaseRequestStatusBadge status={request.status} size="sm" />
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {request.officer_name} • {request.institution_name} • ₹{request.total_estimated_cost.toLocaleString()}
+                          </p>
+                        </div>
+                        <Button variant="outline" size="sm">View Details</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
 
-      <PurchaseRequestDetailDialog isOpen={!!selectedRequest} onOpenChange={(open) => !open && setSelectedRequest(null)} request={selectedRequest} />
+      {/* Dialogs */}
+      <PurchaseRequestDetailDialog
+        isOpen={!!selectedRequest}
+        onOpenChange={(open) => !open && setSelectedRequest(null)}
+        request={selectedRequest}
+      />
+
       <SystemAdminApprovalDialog
         isOpen={approvalDialogOpen}
         onOpenChange={setApprovalDialogOpen}
+        mode={approvalMode}
         onApprove={confirmApproval}
         onReject={confirmInitialRejection}
-        mode={approvalMode}
       />
-      <ApproveRejectDialog isOpen={rejectDialogOpen} onOpenChange={setRejectDialogOpen} request={actionRequest} mode="reject" onConfirm={confirmReject} title="Reject Purchase Request" />
-      <FulfillRequestDialog isOpen={fulfillDialogOpen} onOpenChange={setFulfillDialogOpen} request={actionRequest} mode={fulfillMode} onConfirm={confirmFulfill} />
+
+      <ApproveRejectDialog
+        isOpen={rejectDialogOpen}
+        onOpenChange={setRejectDialogOpen}
+        request={actionRequest}
+        mode="reject"
+        onConfirm={confirmReject}
+      />
+
+      <FulfillRequestDialog
+        isOpen={fulfillDialogOpen}
+        onOpenChange={setFulfillDialogOpen}
+        request={actionRequest}
+        mode={fulfillMode}
+        onConfirm={confirmFulfill}
+      />
     </Layout>
   );
 }

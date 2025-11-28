@@ -1,26 +1,42 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from "@/components/layout/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, ShoppingCart, FileText, AlertTriangle, CheckCircle } from "lucide-react";
+import { Package, ShoppingCart, FileText, AlertTriangle, CheckCircle, Download } from "lucide-react";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { getInstitutionBySlug } from "@/data/mockInstitutionData";
 import { useLocation } from "react-router-dom";
 import { PurchaseRequestStatusBadge } from "@/components/inventory/PurchaseRequestStatusBadge";
 import { PurchaseRequestDetailDialog } from "@/components/inventory/PurchaseRequestDetailDialog";
 import { ApproveRejectDialog } from "@/components/inventory/ApproveRejectDialog";
-import { getPurchaseRequestsByInstitution, updateMockPurchaseRequest, mockInventoryItems } from "@/data/mockInventoryData";
-import { PurchaseRequest, InventoryItem } from "@/types/inventory";
+import { 
+  loadInventoryItems, 
+  loadPurchaseRequests, 
+  savePurchaseRequests,
+  loadAuditRecords,
+  getPurchaseRequestsByInstitution,
+  getInventoryByInstitution,
+  getAuditRecordsByInstitution,
+} from "@/data/mockInventoryData";
+import { PurchaseRequest, InventoryItem, AuditRecord } from "@/types/inventory";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
 // Stock Overview Tab Component - Read-only view of Officer's inventory
-const StockOverviewTab = () => {
-  // Pull inventory data from shared source (Officer's data)
-  const inventory: InventoryItem[] = mockInventoryItems['springfield'] || [];
+interface StockOverviewTabProps {
+  institutionId: string;
+}
+
+const StockOverviewTab = ({ institutionId }: StockOverviewTabProps) => {
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+
+  useEffect(() => {
+    // Load inventory for this institution
+    setInventory(getInventoryByInstitution(institutionId));
+  }, [institutionId]);
 
   const getStatusBadge = (status: string) => {
     const variants = {
@@ -42,6 +58,9 @@ const StockOverviewTab = () => {
     return labels[status as keyof typeof labels] || status;
   };
 
+  const totalValue = inventory.reduce((sum, item) => sum + item.total_value, 0);
+  const totalItems = inventory.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -55,11 +74,52 @@ const StockOverviewTab = () => {
         </Button>
       </div>
 
+      {/* Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Items</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{inventory.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Quantity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalItems}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Active Items</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-500">
+              {inventory.filter(i => i.status === 'active').length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">₹{totalValue.toLocaleString()}</div>
+          </CardContent>
+        </Card>
+      </div>
+
       {inventory.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <p className="text-muted-foreground">No inventory items found</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Innovation Officers will add equipment from their dashboard
+            </p>
           </CardContent>
         </Card>
       ) : (
@@ -105,12 +165,21 @@ const StockOverviewTab = () => {
   );
 };
 
-const PurchaseRequestsTab = () => {
-  const [requests, setRequests] = useState<PurchaseRequest[]>(getPurchaseRequestsByInstitution('springfield'));
+interface PurchaseRequestsTabProps {
+  institutionId: string;
+}
+
+const PurchaseRequestsTab = ({ institutionId }: PurchaseRequestsTabProps) => {
+  const [requests, setRequests] = useState<PurchaseRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<PurchaseRequest | null>(null);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [actionRequest, setActionRequest] = useState<PurchaseRequest | null>(null);
+
+  useEffect(() => {
+    // Load purchase requests for this institution
+    setRequests(getPurchaseRequestsByInstitution(institutionId));
+  }, [institutionId]);
 
   const pendingRequests = requests.filter(r => 
     r.status === 'pending_institution_approval' || 
@@ -134,27 +203,41 @@ const PurchaseRequestsTab = () => {
 
   const confirmApprove = (comments: string) => {
     if (actionRequest) {
-      updateMockPurchaseRequest(actionRequest.id, {
-        status: 'approved_by_institution',
-        institution_approved_by: 'mgmt-001',
-        institution_approved_by_name: 'Dr. Sarah Williams',
-        institution_approved_at: new Date().toISOString(),
-        institution_comments: comments,
-      });
-      setRequests(getPurchaseRequestsByInstitution('springfield'));
-      toast.success(`Request ${actionRequest.request_code} approved successfully`);
+      const allRequests = loadPurchaseRequests();
+      const index = allRequests.findIndex(r => r.id === actionRequest.id);
+      if (index !== -1) {
+        allRequests[index] = {
+          ...allRequests[index],
+          status: 'approved_by_institution',
+          institution_approved_by: 'mgmt-001',
+          institution_approved_by_name: 'Institution Admin',
+          institution_approved_at: new Date().toISOString(),
+          institution_comments: comments,
+          updated_at: new Date().toISOString(),
+        };
+        savePurchaseRequests(allRequests);
+        setRequests(getPurchaseRequestsByInstitution(institutionId));
+        toast.success(`Request ${actionRequest.request_code} approved successfully`);
+      }
       setActionRequest(null);
     }
   };
 
   const confirmReject = (reason: string) => {
     if (actionRequest) {
-      updateMockPurchaseRequest(actionRequest.id, {
-        status: 'rejected_by_institution',
-        institution_rejection_reason: reason,
-      });
-      setRequests(getPurchaseRequestsByInstitution('springfield'));
-      toast.error(`Request ${actionRequest.request_code} rejected`);
+      const allRequests = loadPurchaseRequests();
+      const index = allRequests.findIndex(r => r.id === actionRequest.id);
+      if (index !== -1) {
+        allRequests[index] = {
+          ...allRequests[index],
+          status: 'rejected_by_institution',
+          institution_rejection_reason: reason,
+          updated_at: new Date().toISOString(),
+        };
+        savePurchaseRequests(allRequests);
+        setRequests(getPurchaseRequestsByInstitution(institutionId));
+        toast.error(`Request ${actionRequest.request_code} rejected`);
+      }
       setActionRequest(null);
     }
   };
@@ -259,7 +342,7 @@ const PurchaseRequestsTab = () => {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-500" />
-              <h3 className="text-lg font-semibold">Approved - Awaiting System Admin ({approvedRequests.length})</h3>
+              <h3 className="text-lg font-semibold">Approved Requests ({approvedRequests.length})</h3>
             </div>
 
             {approvedRequests.map((request) => (
@@ -279,10 +362,12 @@ const PurchaseRequestsTab = () => {
                           </Badge>
                         ))}
                       </div>
-                      <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                        <p>Approved by: {request.institution_approved_by_name}</p>
-                        <p>Approved on: {request.institution_approved_at && format(new Date(request.institution_approved_at), 'MMM dd, yyyy')}</p>
-                      </div>
+                      {request.institution_approved_at && (
+                        <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                          <p>Approved by: {request.institution_approved_by_name}</p>
+                          <p>Approved on: {format(new Date(request.institution_approved_at), 'MMM dd, yyyy')}</p>
+                        </div>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="text-xl font-bold">₹{request.total_estimated_cost.toLocaleString()}</p>
@@ -294,28 +379,17 @@ const PurchaseRequestsTab = () => {
           </div>
         )}
 
-        {/* All Other Requests */}
-        {requests.filter(r => !['pending_institution_approval', 'approved_by_institution', 'in_progress'].includes(r.status)).length > 0 && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Request History</h3>
-            
-            {requests.filter(r => !['pending_institution_approval', 'approved_by_institution', 'in_progress'].includes(r.status)).map((request) => (
-              <Card key={request.id} className="cursor-pointer hover:bg-accent/50" onClick={() => setSelectedRequest(request)}>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{request.request_code}</h3>
-                        <PurchaseRequestStatusBadge status={request.status} size="sm" />
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">{request.officer_name} • ₹{request.total_estimated_cost.toLocaleString()}</p>
-                    </div>
-                    <Button variant="outline" size="sm">View Details</Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+        {/* No requests message */}
+        {requests.length === 0 && (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground">No purchase requests found</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Purchase requests from Innovation Officers will appear here
+              </p>
+            </CardContent>
+          </Card>
         )}
       </div>
 
@@ -344,80 +418,157 @@ const PurchaseRequestsTab = () => {
   );
 };
 
-const AuditReportsTab = () => {
-  const auditReports = [
-    {
-      id: "1",
-      month: "January 2024",
-      totalItems: 156,
-      itemsAdded: 23,
-      itemsUsed: 45,
-      discrepancies: 2,
-      generatedDate: "2024-02-01",
-      status: "completed",
-    },
-    {
-      id: "2",
-      month: "December 2023",
-      totalItems: 178,
-      itemsAdded: 15,
-      itemsUsed: 37,
-      discrepancies: 0,
-      generatedDate: "2024-01-01",
-      status: "completed",
-    },
-  ];
+interface AuditReportsTabProps {
+  institutionId: string;
+}
+
+const AuditReportsTab = ({ institutionId }: AuditReportsTabProps) => {
+  const [auditRecords, setAuditRecords] = useState<AuditRecord[]>([]);
+
+  useEffect(() => {
+    // Load audit records for this institution
+    setAuditRecords(getAuditRecordsByInstitution(institutionId));
+  }, [institutionId]);
+
+  const getStatusBadge = (status: AuditRecord['status']) => {
+    const variants = {
+      completed: 'bg-green-500/10 text-green-500',
+      in_progress: 'bg-blue-500/10 text-blue-500',
+      pending_review: 'bg-yellow-500/10 text-yellow-500',
+    };
+    return variants[status] || variants.completed;
+  };
+
+  const handleDownload = (record: AuditRecord) => {
+    // Generate audit report content
+    const content = `
+AUDIT REPORT
+============
+Audit ID: ${record.audit_id}
+Date: ${record.audit_date}
+Audited By: ${record.audited_by}
+Status: ${record.status}
+
+SUMMARY
+-------
+Items Checked: ${record.items_checked}
+Discrepancies: ${record.discrepancies}
+Missing Items: ${record.missing_items.length > 0 ? record.missing_items.join(', ') : 'None'}
+Damaged Items: ${record.damaged_items.length > 0 ? record.damaged_items.join(', ') : 'None'}
+Newly Added: ${record.newly_added.length > 0 ? record.newly_added.join(', ') : 'None'}
+
+NOTES
+-----
+${record.notes}
+    `.trim();
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `audit_report_${record.audit_date}.txt`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+    toast.success('Audit report downloaded');
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Audit Reports</h2>
-        <Button>
-          <FileText className="h-4 w-4 mr-2" />
-          Generate New Report
-        </Button>
+        <div>
+          <h2 className="text-2xl font-bold">Audit Reports</h2>
+          <p className="text-sm text-muted-foreground">View audit reports created by Innovation Officers</p>
+        </div>
       </div>
 
-      <div className="grid gap-4">
-        {auditReports.map((report) => (
-          <Card key={report.id}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>{report.month}</CardTitle>
-                <Badge variant="default">{report.status}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-4 gap-4">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Total Items</p>
-                  <p className="text-2xl font-bold">{report.totalItems}</p>
+      {auditRecords.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground">No audit reports found</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Audit reports from Innovation Officers will appear here
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {auditRecords.map((record) => (
+            <Card key={record.audit_id}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">
+                      Audit - {format(new Date(record.audit_date), 'MMMM dd, yyyy')}
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Audited by: {record.audited_by}
+                    </p>
+                  </div>
+                  <Badge className={getStatusBadge(record.status)}>
+                    {record.status.replace('_', ' ')}
+                  </Badge>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Items Added</p>
-                  <p className="text-2xl font-bold text-green-500">+{report.itemsAdded}</p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-4 gap-4 mb-4">
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Items Checked</p>
+                    <p className="text-2xl font-bold">{record.items_checked}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Missing Items</p>
+                    <p className={`text-2xl font-bold ${record.missing_items.length > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                      {record.missing_items.length}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Damaged Items</p>
+                    <p className={`text-2xl font-bold ${record.damaged_items.length > 0 ? 'text-orange-500' : 'text-green-500'}`}>
+                      {record.damaged_items.length}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Discrepancies</p>
+                    <p className={`text-2xl font-bold ${record.discrepancies > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                      {record.discrepancies}
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Items Used</p>
-                  <p className="text-2xl font-bold text-blue-500">-{report.itemsUsed}</p>
+
+                {record.notes && (
+                  <div className="bg-muted rounded-lg p-3 mb-4">
+                    <p className="text-sm font-medium mb-1">Notes:</p>
+                    <p className="text-sm text-muted-foreground">{record.notes}</p>
+                  </div>
+                )}
+
+                {(record.missing_items.length > 0 || record.damaged_items.length > 0) && (
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {record.missing_items.map((item, idx) => (
+                      <Badge key={`missing-${idx}`} variant="destructive" className="text-xs">
+                        Missing: {item}
+                      </Badge>
+                    ))}
+                    {record.damaged_items.map((item, idx) => (
+                      <Badge key={`damaged-${idx}`} variant="secondary" className="text-xs bg-orange-100 text-orange-700">
+                        Damaged: {item}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end">
+                  <Button variant="outline" size="sm" onClick={() => handleDownload(record)}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Report
+                  </Button>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Discrepancies</p>
-                  <p className={`text-2xl font-bold ${report.discrepancies > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                    {report.discrepancies}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center justify-between mt-4">
-                <p className="text-sm text-muted-foreground">Generated on {report.generatedDate}</p>
-                <Button variant="outline" size="sm">
-                  Download Report
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -427,46 +578,48 @@ const InventoryAndPurchase = () => {
   const location = useLocation();
   const institutionSlug = location.pathname.split('/')[2];
   const institution = getInstitutionBySlug(institutionSlug);
+  
+  // Get institution ID from the slug mapping
+  const institutionIdMap: Record<string, string> = {
+    'modern-school-vasant-vihar': 'inst-msd-001',
+    'kikani-global-academy': 'inst-kga-001',
+  };
+  const institutionId = institutionIdMap[institutionSlug] || institutionSlug;
 
   return (
     <Layout>
       <div className="space-y-6">
-        {institution && (
-          <InstitutionHeader 
-            institutionName={institution.name}
-            establishedYear={institution.established_year}
-            location={institution.location}
-            totalStudents={institution.total_students}
-            totalFaculty={institution.total_faculty}
-            totalDepartments={institution.total_departments}
-            academicYear={institution.academic_year}
-            userRole="Management Portal"
-            assignedOfficers={institution.assigned_officers.map(o => o.officer_name)}
-          />
-        )}
-        
-        <div>
-          <h1 className="text-3xl font-bold">Inventory & Purchase</h1>
-          <p className="text-muted-foreground">Manage lab inventory and approve purchase requisitions</p>
-        </div>
+        <InstitutionHeader 
+          institutionName={institution?.name}
+          location={institution?.location}
+        />
 
-        <Tabs defaultValue="purchase" className="w-full">
-          <TabsList className="grid w-full max-w-2xl grid-cols-3">
-            <TabsTrigger value="stock">Stock Overview</TabsTrigger>
-            <TabsTrigger value="purchase">
+        <Tabs defaultValue="stock" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="stock">
+              <Package className="h-4 w-4 mr-2" />
+              Stock Overview
+            </TabsTrigger>
+            <TabsTrigger value="purchases">
               <ShoppingCart className="h-4 w-4 mr-2" />
               Purchase Requests
             </TabsTrigger>
-            <TabsTrigger value="audit">Audit Reports</TabsTrigger>
+            <TabsTrigger value="audits">
+              <FileText className="h-4 w-4 mr-2" />
+              Audit Reports
+            </TabsTrigger>
           </TabsList>
-          <TabsContent value="stock" className="mt-6">
-            <StockOverviewTab />
+
+          <TabsContent value="stock">
+            <StockOverviewTab institutionId={institutionId} />
           </TabsContent>
-          <TabsContent value="purchase" className="mt-6">
-            <PurchaseRequestsTab />
+
+          <TabsContent value="purchases">
+            <PurchaseRequestsTab institutionId={institutionId} />
           </TabsContent>
-          <TabsContent value="audit" className="mt-6">
-            <AuditReportsTab />
+
+          <TabsContent value="audits">
+            <AuditReportsTab institutionId={institutionId} />
           </TabsContent>
         </Tabs>
       </div>

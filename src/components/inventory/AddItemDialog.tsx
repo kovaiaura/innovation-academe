@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 interface AddItemDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onItemAdded?: () => void;
+  onItemAdded?: (data: any) => void;
 }
 
 export function AddItemDialog({ isOpen, onOpenChange, onItemAdded }: AddItemDialogProps) {
@@ -35,14 +35,13 @@ export function AddItemDialog({ isOpen, onOpenChange, onItemAdded }: AddItemDial
     e.preventDefault();
     
     // Validation
-    if (!formData.name || !formData.quantity || !formData.unit_price) {
+    if (!formData.name || !formData.quantity || !formData.unit_price || !formData.location) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    // In a real app, this would make an API call
-    toast.success('Item added successfully');
-    onItemAdded?.();
+    // Pass data to parent handler
+    onItemAdded?.(formData);
     onOpenChange(false);
     
     // Reset form
