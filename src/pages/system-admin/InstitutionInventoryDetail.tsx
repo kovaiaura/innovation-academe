@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { useInstitutionData } from '@/contexts/InstitutionDataContext';
@@ -13,8 +13,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Progress } from '@/components/ui/progress';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ArrowLeft, Download, Plus, Package, TrendingUp, AlertTriangle, CheckCircle, MoreVertical, Search } from 'lucide-react';
-import { mockInventoryItems, mockStockLocations, mockAuditRecords } from '@/data/mockInventoryData';
-import { InventoryItem } from '@/types/inventory';
+import { 
+  getInventoryByInstitution, 
+  getStockLocationsByInstitution, 
+  getAuditRecordsByInstitution,
+  addInventoryItem,
+} from '@/data/mockInventoryData';
+import { InventoryItem, StockLocation, AuditRecord } from '@/types/inventory';
 import { AddItemDialog } from '@/components/inventory/AddItemDialog';
 import { toast } from 'sonner';
 
@@ -24,15 +29,26 @@ export default function InstitutionInventoryDetail() {
   const { institutions } = useInstitutionData();
   
   const institution = institutions.find(inst => inst.id === institutionId);
-  const inventoryItems = institutionId ? (mockInventoryItems[institutionId] || []) : [];
-  const stockLocations = institutionId ? (mockStockLocations[institutionId] || []) : [];
-  const auditRecords = institutionId ? (mockAuditRecords[institutionId] || []) : [];
+
+  // State for data loaded from localStorage
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [stockLocations, setStockLocations] = useState<StockLocation[]>([]);
+  const [auditRecords, setAuditRecords] = useState<AuditRecord[]>([]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [conditionFilter, setConditionFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
+
+  // Load data from localStorage on mount and when institutionId changes
+  useEffect(() => {
+    if (institutionId) {
+      setInventoryItems(getInventoryByInstitution(institutionId));
+      setStockLocations(getStockLocationsByInstitution(institutionId));
+      setAuditRecords(getAuditRecordsByInstitution(institutionId));
+    }
+  }, [institutionId]);
 
   if (!institution) {
     return (
@@ -150,7 +166,32 @@ export default function InstitutionInventoryDetail() {
     toast.success('Report exported successfully', { id: 'export' });
   };
 
-  const handleAddItemSuccess = () => {
+  const handleAddItemSuccess = (data: any) => {
+    if (!institutionId) return;
+    
+    const newItem: InventoryItem = {
+      id: `item_${Date.now()}`,
+      item_code: `ITEM-${Date.now().toString().slice(-6)}`,
+      name: data.name,
+      category: data.category,
+      description: data.description || '',
+      manufacturer: data.manufacturer || '',
+      model_number: data.model_number || '',
+      serial_number: data.serial_number || '',
+      quantity: data.quantity,
+      unit: data.unit,
+      location: data.location,
+      condition: data.condition || 'new',
+      unit_price: data.unit_price,
+      total_value: data.quantity * data.unit_price,
+      purchase_date: new Date().toISOString().split('T')[0],
+      last_audited: new Date().toISOString().split('T')[0],
+      status: 'active',
+    };
+    
+    addInventoryItem(institutionId, newItem);
+    // Refresh data from localStorage
+    setInventoryItems(getInventoryByInstitution(institutionId));
     setIsAddItemOpen(false);
     toast.success('Item added successfully');
   };
