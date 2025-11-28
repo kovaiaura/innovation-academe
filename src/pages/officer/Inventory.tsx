@@ -26,7 +26,7 @@ import {
   addInventoryItem,
   deleteInventoryItem,
 } from '@/data/mockInventoryData';
-import { loadProjects, getProjectsByOfficer } from '@/data/mockProjectData';
+import { getProjectsByOfficer } from '@/data/mockProjectData';
 import { PurchaseRequest, InventoryItem, ProjectComponent, AuditRecord } from '@/types/inventory';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
@@ -75,9 +75,8 @@ export default function Inventory() {
     const allComponents = loadProjectComponents();
     setComponents(allComponents.filter(c => c.added_by_officer_id === officerId));
     
-    // Load projects for this officer
-    const allProjects = loadProjects();
-    setProjects(allProjects.filter((p: any) => p.officer_id === officerId));
+    // Load projects for this officer using helper function
+    setProjects(getProjectsByOfficer(officerId));
   }, [institutionId, officerId]);
 
   const handleAddEquipment = (data: any) => {
