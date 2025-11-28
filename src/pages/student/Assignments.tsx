@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,34 +7,67 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AssignmentCard } from '@/components/assignment-management/AssignmentCard';
-import { mockAssignments, mockSubmissions, mockStudentAssignmentSummary } from '@/data/mockAssignmentManagement';
+import { loadAssignments, loadSubmissions, mockStudentAssignmentSummary } from '@/data/mockAssignmentManagement';
 import { StandaloneAssignment, StandaloneAssignmentSubmission } from '@/types/assignment-management';
-import { formatDueDate, getDueDateCountdown, getGradePercentage } from '@/utils/assignmentHelpers';
+import { getGradePercentage } from '@/utils/assignmentHelpers';
+import { useAuth } from '@/contexts/AuthContext';
 import { ClipboardList, CheckCircle2, Clock, AlertCircle, Calendar, Award } from 'lucide-react';
 
 export default function Assignments() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  const [assignments, setAssignments] = useState<StandaloneAssignment[]>([]);
+  const [submissions, setSubmissions] = useState<StandaloneAssignmentSubmission[]>([]);
   
+  // Get student's class and institution from user context
+  const studentClassId = user?.class_id || 'class-msd-12a'; // Fallback for demo
+  const studentInstitutionId = user?.institution_id || user?.tenant_id || 'inst-msd-001';
+  const studentId = user?.id || 'student-msd-001';
+
+  // Load data from localStorage on mount
+  useEffect(() => {
+    const loadedAssignments = loadAssignments();
+    const loadedSubmissions = loadSubmissions();
+    setAssignments(loadedAssignments);
+    setSubmissions(loadedSubmissions);
+  }, []);
+
   const summary = mockStudentAssignmentSummary;
 
-  // Mock: Filter assignments for current student
-  const pendingAssignments = mockAssignments.filter(a => a.status === 'ongoing');
-  const submittedSubmissions = mockSubmissions.filter(s => s.status === 'submitted');
-  const gradedSubmissions = mockSubmissions.filter(s => s.status === 'graded');
+  // Filter assignments for current student's institution and class
+  const studentAssignments = assignments.filter(a =>
+    a.publishing.some(p =>
+      p.institution_id === studentInstitutionId &&
+      p.class_ids.includes(studentClassId)
+    )
+  );
+
+  // Get student's submissions
+  const studentSubmissions = submissions.filter(s => s.student_id === studentId);
+
+  // Filter pending assignments (ongoing, not yet submitted by student)
+  const pendingAssignments = studentAssignments.filter(a => {
+    const hasSubmission = studentSubmissions.some(s => s.assignment_id === a.id);
+    return a.status === 'ongoing' && !hasSubmission;
+  }).filter(a => 
+    a.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Filter submitted submissions (awaiting grading)
+  const submittedSubmissions = studentSubmissions.filter(s => s.status === 'submitted');
+  const gradedSubmissions = studentSubmissions.filter(s => s.status === 'graded');
 
   const handleStartAssignment = (assignment: StandaloneAssignment) => {
-    // Navigate to take assignment page
     navigate(`/tenant/tenant-1/student/assignments/${assignment.id}/take`);
   };
 
   const handleViewFeedback = (submission: StandaloneAssignmentSubmission) => {
-    // Navigate to feedback page
     navigate(`/tenant/tenant-1/student/assignments/${submission.assignment_id}/feedback`);
   };
 
   const renderSubmissionCard = (submission: StandaloneAssignmentSubmission) => {
-    const assignment = mockAssignments.find(a => a.id === submission.assignment_id);
+    const assignment = assignments.find(a => a.id === submission.assignment_id);
     if (!assignment) return null;
 
     const isGraded = submission.status === 'graded';
@@ -130,7 +163,7 @@ export default function Assignments() {
           <CardContent>
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-primary" />
-              <span className="text-2xl font-bold">{summary.pending}</span>
+              <span className="text-2xl font-bold">{pendingAssignments.length}</span>
             </div>
           </CardContent>
         </Card>
@@ -144,7 +177,7 @@ export default function Assignments() {
           <CardContent>
             <div className="flex items-center gap-2">
               <ClipboardList className="h-4 w-4 text-muted-foreground" />
-              <span className="text-2xl font-bold">{summary.submitted}</span>
+              <span className="text-2xl font-bold">{submittedSubmissions.length}</span>
             </div>
           </CardContent>
         </Card>
@@ -158,7 +191,7 @@ export default function Assignments() {
           <CardContent>
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-primary" />
-              <span className="text-2xl font-bold">{summary.graded}</span>
+              <span className="text-2xl font-bold">{gradedSubmissions.length}</span>
             </div>
           </CardContent>
         </Card>
@@ -192,13 +225,13 @@ export default function Assignments() {
       <Tabs defaultValue="pending" className="space-y-6">
         <TabsList>
           <TabsTrigger value="pending">
-            Pending ({summary.pending})
+            Pending ({pendingAssignments.length})
           </TabsTrigger>
           <TabsTrigger value="submitted">
-            Submitted ({summary.submitted})
+            Submitted ({submittedSubmissions.length})
           </TabsTrigger>
           <TabsTrigger value="graded">
-            Graded ({summary.graded})
+            Graded ({gradedSubmissions.length})
           </TabsTrigger>
         </TabsList>
 

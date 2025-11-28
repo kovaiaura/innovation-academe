@@ -10,19 +10,17 @@ import { Button } from '@/components/ui/button';
 import { AssessmentPublishing } from '@/types/assessment';
 import { mockInstitutionClasses } from '@/data/mockClassData';
 
-// Simple mock institutions for selector - matching actual institution IDs from mockClassData
+// Standardized institutions matching mockClassData
 const mockInstitutions = [
-  { id: '1', name: 'Main Campus', location: 'Springfield, IL' },
-  { id: 'springfield', name: 'Springfield High School', location: 'Springfield, IL' },
-  { id: 'ryan', name: 'Ryan International', location: 'Mumbai, India' },
-  { id: 'dps', name: 'Delhi Public School', location: 'New Delhi, India' }
+  { id: 'inst-msd-001', name: 'Modern School Vasant Vihar', location: 'New Delhi, India' },
+  { id: 'inst-kga-001', name: 'Kikani Global Academy', location: 'Coimbatore, India' }
 ];
 import { Search, Building2, GraduationCap, AlertTriangle, CheckSquare } from 'lucide-react';
 
 interface PublishingSelectorProps {
   value: AssessmentPublishing[];
   onChange: (publishing: AssessmentPublishing[]) => void;
-  restrictToInstitution?: string; // NEW: Officer can only publish to their institution
+  restrictToInstitution?: string; // Officer can only publish to their institution
 }
 
 export const PublishingSelector = ({ value, onChange, restrictToInstitution }: PublishingSelectorProps) => {

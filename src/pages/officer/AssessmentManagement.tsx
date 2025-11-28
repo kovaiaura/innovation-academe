@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +12,7 @@ import { AssessmentStatusBadge } from '@/components/assessment/AssessmentStatusB
 import { QuestionBuilder } from '@/components/assessment/QuestionBuilder';
 import { QuestionList } from '@/components/assessment/QuestionList';
 import { PublishingSelector } from '@/components/assessment/PublishingSelector';
-import { mockAssessments, mockAssessmentQuestions } from '@/data/mockAssessmentData';
+import { loadAssessments, addAssessment, loadAssessmentQuestions, saveAssessmentQuestions } from '@/data/mockAssessmentData';
 import { Assessment, AssessmentQuestion, AssessmentPublishing } from '@/types/assessment';
 import { getAssessmentStatus, formatDuration } from '@/utils/assessmentHelpers';
 import { Search, Plus, Clock, Award, Users, FileText, Eye, Edit, Trash2 } from 'lucide-react';
@@ -24,12 +24,19 @@ export default function OfficerAssessmentManagement() {
   const [activeTab, setActiveTab] = useState('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
   
-  // Get officer's institution ID from user context
-  const officerInstitutionId = user?.tenant_id || '1';
+  // Get officer's institution ID from user context - use correct fallback
+  const officerInstitutionId = user?.institution_id || user?.tenant_id || 'inst-msd-001';
+  
+  // Load assessments from localStorage
+  useEffect(() => {
+    const loaded = loadAssessments();
+    setAssessments(loaded);
+  }, []);
   
   // Filter assessments for this institution only
-  const institutionAssessments = mockAssessments.filter(a => {
+  const institutionAssessments = assessments.filter(a => {
     // Show generic assessments published to this institution
     const publishedToThisInstitution = a.published_to.some(p => p.institution_id === officerInstitutionId);
     // Show assessments created by officers of this institution

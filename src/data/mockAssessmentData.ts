@@ -1,6 +1,12 @@
 import { Assessment, AssessmentQuestion, AssessmentAttempt, AssessmentAnalytics } from '@/types/assessment';
 
-export const mockAssessments: Assessment[] = [
+// localStorage keys
+const ASSESSMENTS_STORAGE_KEY = 'assessments';
+const ASSESSMENT_QUESTIONS_STORAGE_KEY = 'assessment_questions';
+const ASSESSMENT_ATTEMPTS_STORAGE_KEY = 'assessment_attempts';
+
+// Initial mock data with correct institution IDs
+const initialAssessments: Assessment[] = [
   {
     id: 'assessment-1',
     title: 'JavaScript Fundamentals Quiz',
@@ -18,10 +24,10 @@ export const mockAssessments: Assessment[] = [
     allow_review_after_submission: true,
     published_to: [
       {
-        institution_id: '1',
-        institution_name: 'Springfield High School',
-        class_ids: ['class-1-9a', 'class-1-9b'],
-        class_names: ['Grade 9 Section A', 'Grade 9 Section B']
+        institution_id: 'inst-msd-001',
+        institution_name: 'Modern School Vasant Vihar',
+        class_ids: ['class-msd-9a', 'class-msd-9b'],
+        class_names: ['Grade 9 - Section A', 'Grade 9 - Section B']
       }
     ],
     question_count: 10,
@@ -47,16 +53,16 @@ export const mockAssessments: Assessment[] = [
     allow_review_after_submission: true,
     published_to: [
       {
-        institution_id: '1',
-        institution_name: 'Springfield High School',
-        class_ids: ['class-1-10a'],
-        class_names: ['Grade 10 Section A']
+        institution_id: 'inst-msd-001',
+        institution_name: 'Modern School Vasant Vihar',
+        class_ids: ['class-msd-10a'],
+        class_names: ['Grade 10 - Section A']
       },
       {
-        institution_id: '2',
-        institution_name: 'Riverside Academy',
-        class_ids: ['class-2-10a', 'class-2-10b'],
-        class_names: ['Grade 10 Section A', 'Grade 10 Section B']
+        institution_id: 'inst-kga-001',
+        institution_name: 'Kikani Global Academy',
+        class_ids: ['class-kga-10a', 'class-kga-10b'],
+        class_names: ['Grade 10 - Section A', 'Grade 10 - Section B']
       }
     ],
     question_count: 15,
@@ -82,10 +88,10 @@ export const mockAssessments: Assessment[] = [
     allow_review_after_submission: true,
     published_to: [
       {
-        institution_id: '1',
-        institution_name: 'Springfield High School',
-        class_ids: ['class-1-9a', 'class-1-9b', 'class-1-9c'],
-        class_names: ['Grade 9 Section A', 'Grade 9 Section B', 'Grade 9 Section C']
+        institution_id: 'inst-msd-001',
+        institution_name: 'Modern School Vasant Vihar',
+        class_ids: ['class-msd-9a', 'class-msd-9b'],
+        class_names: ['Grade 9 - Section A', 'Grade 9 - Section B']
       }
     ],
     question_count: 12,
@@ -133,10 +139,10 @@ export const mockAssessments: Assessment[] = [
     allow_review_after_submission: true,
     published_to: [
       {
-        institution_id: '2',
-        institution_name: 'Riverside Academy',
-        class_ids: ['class-2-11a'],
-        class_names: ['Grade 11 Section A']
+        institution_id: 'inst-kga-001',
+        institution_name: 'Kikani Global Academy',
+        class_ids: ['class-kga-11a'],
+        class_names: ['Grade 11 - Section A']
       }
     ],
     question_count: 16,
@@ -148,7 +154,7 @@ export const mockAssessments: Assessment[] = [
   // Officer-created assessments
   {
     id: 'assessment-6',
-    title: 'IoT Fundamentals - Springfield Campus',
+    title: 'IoT Fundamentals - Modern School Campus',
     description: 'Institution-specific assessment for IoT course students',
     status: 'ongoing',
     start_time: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
@@ -163,22 +169,22 @@ export const mockAssessments: Assessment[] = [
     allow_review_after_submission: true,
     published_to: [
       {
-        institution_id: '1',
-        institution_name: 'Springfield High School',
-        class_ids: ['class-1-11a'],
-        class_names: ['Grade 11 Section A']
+        institution_id: 'inst-msd-001',
+        institution_name: 'Modern School Vasant Vihar',
+        class_ids: ['class-msd-11a'],
+        class_names: ['Grade 11 - Section A']
       }
     ],
     question_count: 12,
-    created_by: 'officer-1',
+    created_by: 'off-msd-001',
     created_by_role: 'officer',
-    institution_id: '1',
+    institution_id: 'inst-msd-001',
     created_at: '2024-01-14T08:00:00Z',
     updated_at: '2024-01-14T08:00:00Z'
   },
   {
     id: 'assessment-7',
-    title: 'Robotics Mid-term - Springfield Campus',
+    title: 'Robotics Mid-term - Kikani Global Academy',
     description: 'Mid-term assessment for robotics course',
     status: 'upcoming',
     start_time: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
@@ -193,22 +199,22 @@ export const mockAssessments: Assessment[] = [
     allow_review_after_submission: true,
     published_to: [
       {
-        institution_id: '1',
-        institution_name: 'Springfield High School',
-        class_ids: ['class-1-12a'],
-        class_names: ['Grade 12 Section A']
+        institution_id: 'inst-kga-001',
+        institution_name: 'Kikani Global Academy',
+        class_ids: ['class-kga-12a'],
+        class_names: ['Grade 12 - Section A']
       }
     ],
     question_count: 20,
-    created_by: 'officer-2',
+    created_by: 'off-kga-001',
     created_by_role: 'officer',
-    institution_id: '1',
+    institution_id: 'inst-kga-001',
     created_at: '2024-01-13T16:00:00Z',
     updated_at: '2024-01-13T16:00:00Z'
   }
 ];
 
-export const mockAssessmentQuestions: AssessmentQuestion[] = [
+const initialQuestions: AssessmentQuestion[] = [
   {
     id: 'q-1-1',
     assessment_id: 'assessment-1',
@@ -306,16 +312,16 @@ export const mockAssessmentQuestions: AssessmentQuestion[] = [
   }
 ];
 
-export const mockAssessmentAttempts: AssessmentAttempt[] = [
+const initialAttempts: AssessmentAttempt[] = [
   {
     id: 'attempt-1',
     assessment_id: 'assessment-3',
-    student_id: 'student-1',
-    student_name: 'John Smith',
-    institution_id: '1',
-    institution_name: 'Springfield High School',
-    class_id: 'class-1-9a',
-    class_name: 'Grade 9 Section A',
+    student_id: 'student-msd-001',
+    student_name: 'Aarav Sharma',
+    institution_id: 'inst-msd-001',
+    institution_name: 'Modern School Vasant Vihar',
+    class_id: 'class-msd-9a',
+    class_name: 'Grade 9 - Section A',
     started_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     submitted_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 + 25 * 60 * 1000).toISOString(),
     time_taken_seconds: 1500,
@@ -329,12 +335,12 @@ export const mockAssessmentAttempts: AssessmentAttempt[] = [
   {
     id: 'attempt-2',
     assessment_id: 'assessment-3',
-    student_id: 'student-2',
-    student_name: 'Emily Johnson',
-    institution_id: '1',
-    institution_name: 'Springfield High School',
-    class_id: 'class-1-9a',
-    class_name: 'Grade 9 Section A',
+    student_id: 'student-msd-002',
+    student_name: 'Priya Patel',
+    institution_id: 'inst-msd-001',
+    institution_name: 'Modern School Vasant Vihar',
+    class_id: 'class-msd-9a',
+    class_name: 'Grade 9 - Section A',
     started_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     submitted_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString(),
     time_taken_seconds: 1800,
@@ -348,12 +354,12 @@ export const mockAssessmentAttempts: AssessmentAttempt[] = [
   {
     id: 'attempt-3',
     assessment_id: 'assessment-1',
-    student_id: 'student-1',
-    student_name: 'John Smith',
-    institution_id: '1',
-    institution_name: 'Springfield High School',
-    class_id: 'class-1-9a',
-    class_name: 'Grade 9 Section A',
+    student_id: 'student-msd-001',
+    student_name: 'Aarav Sharma',
+    institution_id: 'inst-msd-001',
+    institution_name: 'Modern School Vasant Vihar',
+    class_id: 'class-msd-9a',
+    class_name: 'Grade 9 - Section A',
     started_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
     submitted_at: undefined,
     time_taken_seconds: undefined,
@@ -366,6 +372,134 @@ export const mockAssessmentAttempts: AssessmentAttempt[] = [
   }
 ];
 
+// localStorage functions
+export function loadAssessments(): Assessment[] {
+  try {
+    const stored = localStorage.getItem(ASSESSMENTS_STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Error loading assessments from localStorage:', error);
+  }
+  // Initialize with default data
+  saveAssessments(initialAssessments);
+  return initialAssessments;
+}
+
+export function saveAssessments(assessments: Assessment[]): void {
+  try {
+    localStorage.setItem(ASSESSMENTS_STORAGE_KEY, JSON.stringify(assessments));
+  } catch (error) {
+    console.error('Error saving assessments to localStorage:', error);
+  }
+}
+
+export function addAssessment(assessment: Assessment): void {
+  const assessments = loadAssessments();
+  assessments.push(assessment);
+  saveAssessments(assessments);
+}
+
+export function updateAssessment(id: string, updates: Partial<Assessment>): void {
+  const assessments = loadAssessments();
+  const index = assessments.findIndex(a => a.id === id);
+  if (index !== -1) {
+    assessments[index] = { ...assessments[index], ...updates, updated_at: new Date().toISOString() };
+    saveAssessments(assessments);
+  }
+}
+
+export function deleteAssessment(id: string): void {
+  const assessments = loadAssessments();
+  const filtered = assessments.filter(a => a.id !== id);
+  saveAssessments(filtered);
+}
+
+export function getAssessmentsByInstitution(institutionId: string): Assessment[] {
+  const assessments = loadAssessments();
+  return assessments.filter(a => 
+    a.published_to.some(p => p.institution_id === institutionId) ||
+    (a.created_by_role === 'officer' && a.institution_id === institutionId)
+  );
+}
+
+export function getAssessmentsByClass(classId: string): Assessment[] {
+  const assessments = loadAssessments();
+  return assessments.filter(a => 
+    a.published_to.some(p => p.class_ids.includes(classId))
+  );
+}
+
+export function getAssessmentById(id: string): Assessment | undefined {
+  const assessments = loadAssessments();
+  return assessments.find(a => a.id === id);
+}
+
+// Questions functions
+export function loadAssessmentQuestions(): AssessmentQuestion[] {
+  try {
+    const stored = localStorage.getItem(ASSESSMENT_QUESTIONS_STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Error loading assessment questions from localStorage:', error);
+  }
+  localStorage.setItem(ASSESSMENT_QUESTIONS_STORAGE_KEY, JSON.stringify(initialQuestions));
+  return initialQuestions;
+}
+
+export function saveAssessmentQuestions(questions: AssessmentQuestion[]): void {
+  try {
+    localStorage.setItem(ASSESSMENT_QUESTIONS_STORAGE_KEY, JSON.stringify(questions));
+  } catch (error) {
+    console.error('Error saving assessment questions to localStorage:', error);
+  }
+}
+
+export function getQuestionsByAssessment(assessmentId: string): AssessmentQuestion[] {
+  const questions = loadAssessmentQuestions();
+  return questions.filter(q => q.assessment_id === assessmentId);
+}
+
+// Attempts functions
+export function loadAssessmentAttempts(): AssessmentAttempt[] {
+  try {
+    const stored = localStorage.getItem(ASSESSMENT_ATTEMPTS_STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Error loading assessment attempts from localStorage:', error);
+  }
+  localStorage.setItem(ASSESSMENT_ATTEMPTS_STORAGE_KEY, JSON.stringify(initialAttempts));
+  return initialAttempts;
+}
+
+export function saveAssessmentAttempts(attempts: AssessmentAttempt[]): void {
+  try {
+    localStorage.setItem(ASSESSMENT_ATTEMPTS_STORAGE_KEY, JSON.stringify(attempts));
+  } catch (error) {
+    console.error('Error saving assessment attempts to localStorage:', error);
+  }
+}
+
+export function getAttemptsByStudent(studentId: string): AssessmentAttempt[] {
+  const attempts = loadAssessmentAttempts();
+  return attempts.filter(a => a.student_id === studentId);
+}
+
+export function getAttemptsByAssessment(assessmentId: string): AssessmentAttempt[] {
+  const attempts = loadAssessmentAttempts();
+  return attempts.filter(a => a.assessment_id === assessmentId);
+}
+
+// Legacy exports for backward compatibility
+export const mockAssessments = loadAssessments();
+export const mockAssessmentQuestions = loadAssessmentQuestions();
+export const mockAssessmentAttempts = loadAssessmentAttempts();
+
 export const mockAssessmentAnalytics: AssessmentAnalytics[] = [
   {
     assessment_id: 'assessment-3',
@@ -377,8 +511,8 @@ export const mockAssessmentAnalytics: AssessmentAnalytics[] = [
     average_time_taken_minutes: 32,
     institution_stats: [
       {
-        institution_id: '1',
-        institution_name: 'Springfield High School',
+        institution_id: 'inst-msd-001',
+        institution_name: 'Modern School Vasant Vihar',
         attempts: 45,
         average_score: 48.5,
         pass_rate: 82.2
@@ -413,8 +547,8 @@ export const mockAssessmentAnalytics: AssessmentAnalytics[] = [
     average_time_taken_minutes: 26,
     institution_stats: [
       {
-        institution_id: '1',
-        institution_name: 'Springfield High School',
+        institution_id: 'inst-msd-001',
+        institution_name: 'Modern School Vasant Vihar',
         attempts: 12,
         average_score: 38.5,
         pass_rate: 62.5

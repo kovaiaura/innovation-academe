@@ -19,6 +19,7 @@ export interface User {
   is_ceo?: boolean; // True for CEO position
   tenant_id?: string; // null for super_admin
   institution_id?: string;
+  class_id?: string; // Student's class ID
   created_at: string;
   // Salary configuration (for meta staff and officers)
   hourly_rate?: number;
