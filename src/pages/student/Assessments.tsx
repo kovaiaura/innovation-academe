@@ -1,28 +1,43 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AssessmentCard } from '@/components/assessment/AssessmentCard';
-import { mockAssessments, mockAssessmentAttempts } from '@/data/mockAssessmentData';
+import { loadAssessments, loadAssessmentAttempts } from '@/data/mockAssessmentData';
 import { getAssessmentStatus } from '@/utils/assessmentHelpers';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { Assessment, AssessmentAttempt } from '@/types/assessment';
 
 export default function StudentAssessments() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [attempts, setAttempts] = useState<AssessmentAttempt[]>([]);
   
-  // Mock student data - in real app, get from user context
-  const studentClassId = 'class-1-9a'; // Mock class ID
-  const studentId = user?.id || 'student-1';
+  // Get student's class and institution from user context
+  const studentClassId = user?.class_id || 'class-msd-9a'; // Fallback for demo
+  const studentInstitutionId = user?.institution_id || user?.tenant_id || 'inst-msd-001';
+  const studentId = user?.id || 'student-msd-001';
+
+  // Load data from localStorage on mount
+  useEffect(() => {
+    const loadedAssessments = loadAssessments();
+    const loadedAttempts = loadAssessmentAttempts();
+    setAssessments(loadedAssessments);
+    setAttempts(loadedAttempts);
+  }, []);
   
-  // Filter assessments published to student's class
-  const studentAssessments = mockAssessments.filter(a => 
-    a.published_to.some(p => p.class_ids.includes(studentClassId))
+  // Filter assessments published to student's institution AND class
+  const studentAssessments = assessments.filter(a => 
+    a.published_to.some(p => 
+      p.institution_id === studentInstitutionId && 
+      p.class_ids.includes(studentClassId)
+    )
   );
 
   // Get student's attempts
-  const studentAttempts = mockAssessmentAttempts.filter(a => a.student_id === studentId);
+  const studentAttempts = attempts.filter(a => a.student_id === studentId);
 
   // Available assessments (ongoing or upcoming, not yet attempted or can retake)
   const availableAssessments = studentAssessments.filter(a => {
@@ -39,7 +54,7 @@ export default function StudentAssessments() {
   const completedAssessments = studentAttempts.filter(attempt => 
     attempt.status === 'evaluated' || attempt.status === 'submitted'
   ).map(attempt => {
-    const assessment = mockAssessments.find(a => a.id === attempt.assessment_id);
+    const assessment = assessments.find(a => a.id === attempt.assessment_id);
     return { attempt, assessment };
   }).filter(({ assessment }) => 
     assessment && assessment.title.toLowerCase().includes(searchTerm.toLowerCase())

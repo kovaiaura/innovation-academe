@@ -5,6 +5,10 @@ import {
   StudentAssignmentSummary,
 } from '@/types/assignment-management';
 
+// localStorage keys
+const ASSIGNMENTS_STORAGE_KEY = 'standalone_assignments';
+const SUBMISSIONS_STORAGE_KEY = 'assignment_submissions';
+
 export const mockAssignmentStats: AssignmentStats = {
   total: 27,
   ongoing: 10,
@@ -20,7 +24,8 @@ export const mockStudentAssignmentSummary: StudentAssignmentSummary = {
   overdue: 1,
 };
 
-export const mockAssignments: StandaloneAssignment[] = [
+// Initial mock assignments with correct institution IDs
+const initialAssignments: StandaloneAssignment[] = [
   {
     id: 'assign-1',
     title: 'Research Paper on AI Ethics',
@@ -50,9 +55,9 @@ export const mockAssignments: StandaloneAssignment[] = [
       {
         id: 'pub-1',
         assignment_id: 'assign-1',
-        institution_id: 'inst-1',
-        institution_name: 'Central High School',
-        class_ids: ['class-1', 'class-2'],
+        institution_id: 'inst-msd-001',
+        institution_name: 'Modern School Vasant Vihar',
+        class_ids: ['class-msd-12a', 'class-msd-12b'],
         class_names: ['Grade 12 - Section A', 'Grade 12 - Section B'],
         published_at: '2025-11-01T14:00:00Z',
       },
@@ -91,10 +96,10 @@ export const mockAssignments: StandaloneAssignment[] = [
       {
         id: 'pub-2',
         assignment_id: 'assign-2',
-        institution_id: 'inst-1',
-        institution_name: 'Central High School',
-        class_ids: ['class-3'],
-        class_names: ['Grade 11 - Computer Science'],
+        institution_id: 'inst-msd-001',
+        institution_name: 'Modern School Vasant Vihar',
+        class_ids: ['class-msd-11a'],
+        class_names: ['Grade 11 - Section A'],
         published_at: '2025-11-05T12:00:00Z',
       },
     ],
@@ -153,10 +158,10 @@ export const mockAssignments: StandaloneAssignment[] = [
       {
         id: 'pub-3',
         assignment_id: 'assign-3',
-        institution_id: 'inst-1',
-        institution_name: 'Central High School',
-        class_ids: ['class-1', 'class-3'],
-        class_names: ['Grade 12 - Section A', 'Grade 11 - Computer Science'],
+        institution_id: 'inst-msd-001',
+        institution_name: 'Modern School Vasant Vihar',
+        class_ids: ['class-msd-12a', 'class-msd-11a'],
+        class_names: ['Grade 12 - Section A', 'Grade 11 - Section A'],
         published_at: '2025-11-10T10:00:00Z',
       },
     ],
@@ -183,10 +188,10 @@ export const mockAssignments: StandaloneAssignment[] = [
       {
         id: 'pub-4',
         assignment_id: 'assign-4',
-        institution_id: 'inst-2',
-        institution_name: 'Tech Institute',
-        class_ids: ['class-4'],
-        class_names: ['Grade 10 - Innovation Track'],
+        institution_id: 'inst-kga-001',
+        institution_name: 'Kikani Global Academy',
+        class_ids: ['class-kga-10a', 'class-kga-10b'],
+        class_names: ['Grade 10 - Section A', 'Grade 10 - Section B'],
         published_at: '2025-11-12T13:00:00Z',
       },
     ],
@@ -214,10 +219,10 @@ export const mockAssignments: StandaloneAssignment[] = [
       {
         id: 'pub-5',
         assignment_id: 'assign-5',
-        institution_id: 'inst-1',
-        institution_name: 'Central High School',
-        class_ids: ['class-3'],
-        class_names: ['Grade 11 - Computer Science'],
+        institution_id: 'inst-kga-001',
+        institution_name: 'Kikani Global Academy',
+        class_ids: ['class-kga-11a', 'class-kga-11b'],
+        class_names: ['Grade 11 - Section A', 'Grade 11 - Section B'],
         published_at: '2025-11-08T13:00:00Z',
       },
     ],
@@ -302,9 +307,9 @@ export const mockAssignments: StandaloneAssignment[] = [
       {
         id: 'pub-6',
         assignment_id: 'assign-6',
-        institution_id: 'inst-1',
-        institution_name: 'Central High School',
-        class_ids: ['class-2'],
+        institution_id: 'inst-msd-001',
+        institution_name: 'Modern School Vasant Vihar',
+        class_ids: ['class-msd-12b'],
         class_names: ['Grade 12 - Section B'],
         published_at: '2025-11-14T11:00:00Z',
       },
@@ -349,10 +354,10 @@ export const mockAssignments: StandaloneAssignment[] = [
       {
         id: 'pub-7',
         assignment_id: 'assign-7',
-        institution_id: 'inst-1',
-        institution_name: 'Central High School',
-        class_ids: ['class-1'],
-        class_names: ['Grade 12 - Section A'],
+        institution_id: 'inst-kga-001',
+        institution_name: 'Kikani Global Academy',
+        class_ids: ['class-kga-12a', 'class-kga-12b'],
+        class_names: ['Grade 12 - Section A', 'Grade 12 - Section B'],
         published_at: '2025-11-16T12:00:00Z',
       },
     ],
@@ -361,22 +366,22 @@ export const mockAssignments: StandaloneAssignment[] = [
   },
 ];
 
-export const mockSubmissions: StandaloneAssignmentSubmission[] = [
+const initialSubmissions: StandaloneAssignmentSubmission[] = [
   {
     id: 'sub-1',
     assignment_id: 'assign-1',
-    student_id: 'student-1',
-    student_name: 'Alice Johnson',
-    class_id: 'class-1',
-    institution_id: 'inst-1',
+    student_id: 'student-msd-001',
+    student_name: 'Aarav Sharma',
+    class_id: 'class-msd-12a',
+    institution_id: 'inst-msd-001',
     status: 'graded',
     submitted_at: '2025-11-15T14:30:00Z',
     is_late: false,
     files: [
       {
         id: 'file-1',
-        name: 'AI_Ethics_Research_Alice.pdf',
-        url: '/submissions/alice-research.pdf',
+        name: 'AI_Ethics_Research_Aarav.pdf',
+        url: '/submissions/aarav-research.pdf',
         type: 'pdf',
         size_mb: 3.2,
         uploaded_at: '2025-11-15T14:30:00Z',
@@ -398,18 +403,18 @@ export const mockSubmissions: StandaloneAssignmentSubmission[] = [
   {
     id: 'sub-2',
     assignment_id: 'assign-1',
-    student_id: 'student-2',
-    student_name: 'Bob Smith',
-    class_id: 'class-1',
-    institution_id: 'inst-1',
+    student_id: 'student-msd-002',
+    student_name: 'Priya Patel',
+    class_id: 'class-msd-12a',
+    institution_id: 'inst-msd-001',
     status: 'submitted',
     submitted_at: '2025-11-16T09:20:00Z',
     is_late: false,
     files: [
       {
         id: 'file-2',
-        name: 'Research_Paper_Bob.docx',
-        url: '/submissions/bob-research.docx',
+        name: 'Research_Paper_Priya.docx',
+        url: '/submissions/priya-research.docx',
         type: 'docx',
         size_mb: 2.8,
         uploaded_at: '2025-11-16T09:20:00Z',
@@ -419,17 +424,111 @@ export const mockSubmissions: StandaloneAssignmentSubmission[] = [
   },
 ];
 
-export function getAssignmentsByStatus(status: string): StandaloneAssignment[] {
-  if (status === 'all') return mockAssignments;
-  return mockAssignments.filter(a => a.status === status);
+// localStorage functions
+export function loadAssignments(): StandaloneAssignment[] {
+  try {
+    const stored = localStorage.getItem(ASSIGNMENTS_STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Error loading assignments from localStorage:', error);
+  }
+  // Initialize with default data
+  saveAssignments(initialAssignments);
+  return initialAssignments;
 }
 
-export function getAssignmentsByInstitution(institutionId: string): StandaloneAssignment[] {
-  return mockAssignments.filter(a =>
+export function saveAssignments(assignments: StandaloneAssignment[]): void {
+  try {
+    localStorage.setItem(ASSIGNMENTS_STORAGE_KEY, JSON.stringify(assignments));
+  } catch (error) {
+    console.error('Error saving assignments to localStorage:', error);
+  }
+}
+
+export function addAssignment(assignment: StandaloneAssignment): void {
+  const assignments = loadAssignments();
+  assignments.push(assignment);
+  saveAssignments(assignments);
+}
+
+export function updateAssignment(id: string, updates: Partial<StandaloneAssignment>): void {
+  const assignments = loadAssignments();
+  const index = assignments.findIndex(a => a.id === id);
+  if (index !== -1) {
+    assignments[index] = { ...assignments[index], ...updates };
+    saveAssignments(assignments);
+  }
+}
+
+export function deleteAssignment(id: string): void {
+  const assignments = loadAssignments();
+  const filtered = assignments.filter(a => a.id !== id);
+  saveAssignments(filtered);
+}
+
+export function getAssignmentsByInstitutionId(institutionId: string): StandaloneAssignment[] {
+  const assignments = loadAssignments();
+  return assignments.filter(a =>
     a.publishing.some(p => p.institution_id === institutionId)
   );
 }
 
+export function getAssignmentsByClassId(classId: string): StandaloneAssignment[] {
+  const assignments = loadAssignments();
+  return assignments.filter(a =>
+    a.publishing.some(p => p.class_ids.includes(classId))
+  );
+}
+
+export function getAssignmentById(id: string): StandaloneAssignment | undefined {
+  const assignments = loadAssignments();
+  return assignments.find(a => a.id === id);
+}
+
+// Submissions functions
+export function loadSubmissions(): StandaloneAssignmentSubmission[] {
+  try {
+    const stored = localStorage.getItem(SUBMISSIONS_STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Error loading submissions from localStorage:', error);
+  }
+  localStorage.setItem(SUBMISSIONS_STORAGE_KEY, JSON.stringify(initialSubmissions));
+  return initialSubmissions;
+}
+
+export function saveSubmissions(submissions: StandaloneAssignmentSubmission[]): void {
+  try {
+    localStorage.setItem(SUBMISSIONS_STORAGE_KEY, JSON.stringify(submissions));
+  } catch (error) {
+    console.error('Error saving submissions to localStorage:', error);
+  }
+}
+
+export function getSubmissionsByStudent(studentId: string): StandaloneAssignmentSubmission[] {
+  const submissions = loadSubmissions();
+  return submissions.filter(s => s.student_id === studentId);
+}
+
 export function getSubmissionsByAssignment(assignmentId: string): StandaloneAssignmentSubmission[] {
-  return mockSubmissions.filter(s => s.assignment_id === assignmentId);
+  const submissions = loadSubmissions();
+  return submissions.filter(s => s.assignment_id === assignmentId);
+}
+
+// Legacy exports for backward compatibility
+export const mockAssignments = loadAssignments();
+export const mockSubmissions = loadSubmissions();
+
+export function getAssignmentsByStatus(status: string): StandaloneAssignment[] {
+  const assignments = loadAssignments();
+  if (status === 'all') return assignments;
+  return assignments.filter(a => a.status === status);
+}
+
+export function getAssignmentsByInstitution(institutionId: string): StandaloneAssignment[] {
+  return getAssignmentsByInstitutionId(institutionId);
 }
