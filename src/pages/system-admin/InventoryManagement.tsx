@@ -153,6 +153,13 @@ export default function InventoryManagement() {
   };
 
   // Purchase request handlers
+  const handleViewDetails = (request: PurchaseRequest) => {
+    // Get fresh data from localStorage
+    const allRequests = loadPurchaseRequests();
+    const freshRequest = allRequests.find(r => r.id === request.id);
+    setSelectedRequest(freshRequest || request);
+  };
+
   const handleApproveRequest = (request: PurchaseRequest) => {
     setActionRequest(request);
     setApprovalMode('approve');
@@ -406,6 +413,7 @@ export default function InventoryManagement() {
                       <TableHead className="text-right">Total Value</TableHead>
                       <TableHead>Last Audit</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -415,6 +423,7 @@ export default function InventoryManagement() {
                         <TableRow 
                           key={inv.institution_id}
                           className="cursor-pointer hover:bg-accent/50 transition-colors"
+                          onClick={() => navigate(`/system-admin/inventory-management/${inv.institution_id}`)}
                         >
                           <TableCell className="font-medium">{inv.institution_name}</TableCell>
                           <TableCell className="text-right">{inv.total_items}</TableCell>
@@ -445,6 +454,18 @@ export default function InventoryManagement() {
                             </div>
                           </TableCell>
                           <TableCell>{getStatusBadge(inv.status)}</TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/system-admin/inventory-management/${inv.institution_id}`);
+                              }}
+                            >
+                              View Details
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
@@ -554,7 +575,7 @@ export default function InventoryManagement() {
                           <Button 
                             size="sm" 
                             variant="outline"
-                            onClick={() => setSelectedRequest(request)}
+                            onClick={() => handleViewDetails(request)}
                           >
                             View Details
                           </Button>
@@ -628,7 +649,7 @@ export default function InventoryManagement() {
                           <Button 
                             size="sm" 
                             variant="outline"
-                            onClick={() => setSelectedRequest(request)}
+                            onClick={() => handleViewDetails(request)}
                           >
                             View Details
                           </Button>
@@ -667,7 +688,7 @@ export default function InventoryManagement() {
                 </div>
 
                 {purchaseRequests.filter(r => r.status === 'in_progress').map((request) => (
-                  <Card key={request.id} className="cursor-pointer hover:bg-accent/50" onClick={() => setSelectedRequest(request)}>
+                  <Card key={request.id} className="cursor-pointer hover:bg-accent/50" onClick={() => handleViewDetails(request)}>
                     <CardContent className="pt-6">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -735,7 +756,7 @@ export default function InventoryManagement() {
 
               <div className="grid gap-4">
                 {filteredRequests.map((request) => (
-                  <Card key={request.id} className="cursor-pointer hover:bg-accent/50" onClick={() => setSelectedRequest(request)}>
+                  <Card key={request.id} className="cursor-pointer hover:bg-accent/50" onClick={() => handleViewDetails(request)}>
                     <CardContent className="pt-6">
                       <div className="flex items-center justify-between">
                         <div>

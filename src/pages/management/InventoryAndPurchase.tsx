@@ -176,10 +176,23 @@ const PurchaseRequestsTab = ({ institutionId }: PurchaseRequestsTabProps) => {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [actionRequest, setActionRequest] = useState<PurchaseRequest | null>(null);
 
+  // Function to load fresh data
+  const refreshRequests = () => {
+    setRequests(getPurchaseRequestsByInstitution(institutionId));
+  };
+
   useEffect(() => {
     // Load purchase requests for this institution
-    setRequests(getPurchaseRequestsByInstitution(institutionId));
+    refreshRequests();
   }, [institutionId]);
+
+  // Helper to view details with fresh data
+  const handleViewDetails = (request: PurchaseRequest) => {
+    // Get fresh data from localStorage
+    const allRequests = loadPurchaseRequests();
+    const freshRequest = allRequests.find(r => r.id === request.id);
+    setSelectedRequest(freshRequest || request);
+  };
 
   const pendingRequests = requests.filter(r => 
     r.status === 'pending_institution_approval' || 
@@ -310,7 +323,7 @@ const PurchaseRequestsTab = ({ institutionId }: PurchaseRequestsTabProps) => {
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => setSelectedRequest(request)}
+                        onClick={() => handleViewDetails(request)}
                       >
                         View Details
                       </Button>
@@ -346,7 +359,7 @@ const PurchaseRequestsTab = ({ institutionId }: PurchaseRequestsTabProps) => {
             </div>
 
             {approvedRequests.map((request) => (
-              <Card key={request.id} className="cursor-pointer hover:bg-accent/50" onClick={() => setSelectedRequest(request)}>
+              <Card key={request.id} className="cursor-pointer hover:bg-accent/50" onClick={() => handleViewDetails(request)}>
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
