@@ -51,6 +51,10 @@ export default function PositionManagement() {
     position_id: '',
     password_mode: 'auto' as 'auto' | 'custom',
     custom_password: '',
+    // Leave allowances
+    casual_leave: '12',
+    sick_leave: '10',
+    earned_leave: '15',
   });
   const [credentialsDialog, setCredentialsDialog] = useState<{
     open: boolean;
@@ -181,10 +185,13 @@ export default function PositionManagement() {
         email: newUserData.email,
         position_id: newUserData.position_id,
         custom_password: newUserData.password_mode === 'custom' ? newUserData.custom_password : undefined,
+        casual_leave: parseInt(newUserData.casual_leave) || 12,
+        sick_leave: parseInt(newUserData.sick_leave) || 10,
+        earned_leave: parseInt(newUserData.earned_leave) || 15,
       });
       toast.success('User added successfully');
       setIsAddUserDialogOpen(false);
-      setNewUserData({ name: '', email: '', position_id: '', password_mode: 'auto', custom_password: '' });
+      setNewUserData({ name: '', email: '', position_id: '', password_mode: 'auto', custom_password: '', casual_leave: '12', sick_leave: '10', earned_leave: '15' });
 
       setCredentialsDialog({
         open: true,
@@ -494,6 +501,46 @@ export default function PositionManagement() {
                 </p>
               </div>
             )}
+
+            {/* Leave Allowances Section */}
+            <div className="border-t pt-4 mt-4">
+              <Label className="text-sm font-medium mb-3 block">Leave Allowances (Days per Year)</Label>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label htmlFor="casual-leave" className="text-xs text-muted-foreground">Casual</Label>
+                  <Input
+                    id="casual-leave"
+                    type="number"
+                    min="0"
+                    value={newUserData.casual_leave}
+                    onChange={(e) => setNewUserData({ ...newUserData, casual_leave: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="sick-leave" className="text-xs text-muted-foreground">Sick</Label>
+                  <Input
+                    id="sick-leave"
+                    type="number"
+                    min="0"
+                    value={newUserData.sick_leave}
+                    onChange={(e) => setNewUserData({ ...newUserData, sick_leave: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="earned-leave" className="text-xs text-muted-foreground">Earned</Label>
+                  <Input
+                    id="earned-leave"
+                    type="number"
+                    min="0"
+                    value={newUserData.earned_leave}
+                    onChange={(e) => setNewUserData({ ...newUserData, earned_leave: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddUserDialogOpen(false)}>

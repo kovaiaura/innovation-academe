@@ -60,7 +60,7 @@ export default function LeaveManagement() {
   const [selectedApplication, setSelectedApplication] = useState<LeaveApplication | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
-  useEffect(() => {
+  const refreshData = () => {
     if (user?.id) {
       const currentYear = new Date().getFullYear().toString();
       const balance = getLeaveBalance(user.id, currentYear);
@@ -70,8 +70,14 @@ export default function LeaveManagement() {
       setLeaveBalance(balance);
       setLeaveApplications(applications);
       setApprovedLeaveDates(approvedDates);
-      
-      // Mark leave-related notifications as read when visiting this page
+    }
+  };
+
+  useEffect(() => {
+    refreshData();
+    
+    // Mark leave-related notifications as read when visiting this page
+    if (user?.id) {
       notifications
         .filter(n => !n.read && (n.type === 'leave_application_approved' || n.type === 'leave_application_rejected'))
         .forEach(n => markAsRead(n.id));
@@ -212,9 +218,8 @@ export default function LeaveManagement() {
     try {
       addLeaveApplication(newApplication);
       
-      // Refresh data
-      const applications = getLeaveApplicationsByOfficer(user.id);
-      setLeaveApplications(applications);
+      // Refresh data from localStorage
+      refreshData();
 
       // Clear form
       setDateRange(undefined);
@@ -244,8 +249,7 @@ export default function LeaveManagement() {
     if (user?.id) {
       try {
         cancelLeaveApplication(id, user.id);
-        const applications = getLeaveApplicationsByOfficer(user.id);
-        setLeaveApplications(applications);
+        refreshData();
         toast.success('Leave application cancelled successfully');
         setDetailsOpen(false);
       } catch (error) {
