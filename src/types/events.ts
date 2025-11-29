@@ -94,3 +94,16 @@ export interface EventApplication {
   // Additional
   is_team_application: boolean;
 }
+
+// Simplified Event Interest type for bidirectional sync
+export interface EventInterest {
+  id: string;
+  event_id: string;
+  student_id: string;
+  student_name: string;
+  class_name: string;
+  section: string;
+  institution_id: string;
+  institution_name: string;
+  registered_at: string;
+}

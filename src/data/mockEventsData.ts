@@ -1,4 +1,123 @@
-import { ActivityEvent, EventApplication } from '@/types/events';
+import { ActivityEvent, EventApplication, EventInterest } from '@/types/events';
+
+// localStorage keys
+const EVENTS_STORAGE_KEY = 'activity_events';
+const EVENT_INTERESTS_STORAGE_KEY = 'event_interests';
+
+// ============= localStorage Functions =============
+
+export function loadEvents(): ActivityEvent[] {
+  const stored = localStorage.getItem(EVENTS_STORAGE_KEY);
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch (e) {
+      console.error('Error parsing events from localStorage:', e);
+    }
+  }
+  // Initialize from mock data if empty
+  localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(mockActivityEvents));
+  return mockActivityEvents;
+}
+
+export function saveEvents(events: ActivityEvent[]): void {
+  localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(events));
+}
+
+export function addEvent(event: ActivityEvent): void {
+  const events = loadEvents();
+  events.push(event);
+  saveEvents(events);
+}
+
+export function updateEvent(eventId: string, updates: Partial<ActivityEvent>): void {
+  const events = loadEvents();
+  const index = events.findIndex(e => e.id === eventId);
+  if (index !== -1) {
+    events[index] = { ...events[index], ...updates, updated_at: new Date().toISOString() };
+    saveEvents(events);
+  }
+}
+
+export function deleteEvent(eventId: string): void {
+  const events = loadEvents();
+  const filtered = events.filter(e => e.id !== eventId);
+  saveEvents(filtered);
+}
+
+export function getEventById(eventId: string): ActivityEvent | undefined {
+  return loadEvents().find(e => e.id === eventId);
+}
+
+// ============= Event Interests localStorage Functions =============
+
+export function loadEventInterests(): EventInterest[] {
+  const stored = localStorage.getItem(EVENT_INTERESTS_STORAGE_KEY);
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch (e) {
+      console.error('Error parsing event interests from localStorage:', e);
+    }
+  }
+  // Initialize from mock data if empty
+  localStorage.setItem(EVENT_INTERESTS_STORAGE_KEY, JSON.stringify(mockEventInterests));
+  return mockEventInterests;
+}
+
+export function saveEventInterests(interests: EventInterest[]): void {
+  localStorage.setItem(EVENT_INTERESTS_STORAGE_KEY, JSON.stringify(interests));
+}
+
+export function addEventInterest(interest: EventInterest): void {
+  const interests = loadEventInterests();
+  interests.push(interest);
+  saveEventInterests(interests);
+  
+  // Update participant count in event
+  const events = loadEvents();
+  const eventIndex = events.findIndex(e => e.id === interest.event_id);
+  if (eventIndex !== -1) {
+    events[eventIndex].current_participants = (events[eventIndex].current_participants || 0) + 1;
+    saveEvents(events);
+  }
+}
+
+export function removeEventInterest(studentId: string, eventId: string): void {
+  const interests = loadEventInterests();
+  const filtered = interests.filter(i => !(i.student_id === studentId && i.event_id === eventId));
+  saveEventInterests(filtered);
+  
+  // Update participant count in event
+  const events = loadEvents();
+  const eventIndex = events.findIndex(e => e.id === eventId);
+  if (eventIndex !== -1 && events[eventIndex].current_participants > 0) {
+    events[eventIndex].current_participants -= 1;
+    saveEvents(events);
+  }
+}
+
+export function getEventInterestsByEvent(eventId: string): EventInterest[] {
+  return loadEventInterests().filter(i => i.event_id === eventId);
+}
+
+export function getEventInterestsByInstitution(institutionId: string): EventInterest[] {
+  return loadEventInterests().filter(i => i.institution_id === institutionId);
+}
+
+export function getEventInterestsByStudent(studentId: string): EventInterest[] {
+  return loadEventInterests().filter(i => i.student_id === studentId);
+}
+
+export function hasStudentExpressedInterest(studentId: string, eventId: string): boolean {
+  return loadEventInterests().some(i => i.student_id === studentId && i.event_id === eventId);
+}
+
+export function getEventInterestsByEventAndInstitution(eventId: string, institutionId: string): EventInterest[] {
+  return loadEventInterests().filter(i => i.event_id === eventId && i.institution_id === institutionId);
+}
+
+// ============= Mock Data =============
 
 export const mockActivityEvents: ActivityEvent[] = [
   {
@@ -17,8 +136,8 @@ export const mockActivityEvents: ActivityEvent[] = [
     eligibility_criteria: 'Students from grade 8-12 can participate in teams of 2-4 members.',
     rules: '1. Each team must have 2-4 members\n2. All code must be original\n3. Use of open-source libraries is allowed\n4. Projects must be submitted by the deadline\n5. Mentors will be available throughout the event',
     prizes: ['₹50,000 (First Prize)', '₹30,000 (Second Prize)', '₹20,000 (Third Prize)', 'Certificates for all participants'],
-    institution_ids: [], // All institutions
-    linked_project_ids: [], // Projects assigned to participate in this event
+    institution_ids: [],
+    linked_project_ids: [],
     banner_image: '/placeholder.svg',
     created_by: 'sysadmin-001',
     created_at: '2025-01-15T10:00:00Z',
@@ -133,7 +252,7 @@ export const mockActivityEvents: ActivityEvent[] = [
     rules: '1. Booth space will be provided\n2. Project demo required\n3. Poster presentation mandatory',
     prizes: ['Best Innovation Award', 'Best Presentation', 'People\'s Choice Award'],
     institution_ids: [],
-    linked_project_ids: ['1', '4'], // Smart Home and Water Purification projects linked
+    linked_project_ids: [],
     banner_image: '/placeholder.svg',
     created_by: 'sysadmin-001',
     created_at: '2025-02-20T11:00:00Z',
@@ -186,20 +305,136 @@ export const mockActivityEvents: ActivityEvent[] = [
   }
 ];
 
+// Mock Event Interests data
+export const mockEventInterests: EventInterest[] = [
+  // Modern School Vasant Vihar students
+  {
+    id: 'int-001',
+    event_id: 'evt-001',
+    student_id: 'MSD-2024-0001',
+    student_name: 'Arjun Sharma',
+    class_name: 'Grade 10',
+    section: 'A',
+    institution_id: 'inst-msd-001',
+    institution_name: 'Modern School Vasant Vihar',
+    registered_at: '2025-02-10T15:30:00Z'
+  },
+  {
+    id: 'int-002',
+    event_id: 'evt-001',
+    student_id: 'MSD-2024-0015',
+    student_name: 'Priya Kapoor',
+    class_name: 'Grade 11',
+    section: 'B',
+    institution_id: 'inst-msd-001',
+    institution_name: 'Modern School Vasant Vihar',
+    registered_at: '2025-02-11T09:15:00Z'
+  },
+  {
+    id: 'int-003',
+    event_id: 'evt-003',
+    student_id: 'MSD-2024-0022',
+    student_name: 'Rahul Verma',
+    class_name: 'Grade 9',
+    section: 'A',
+    institution_id: 'inst-msd-001',
+    institution_name: 'Modern School Vasant Vihar',
+    registered_at: '2025-02-20T11:00:00Z'
+  },
+  {
+    id: 'int-004',
+    event_id: 'evt-004',
+    student_id: 'MSD-2024-0008',
+    student_name: 'Sneha Reddy',
+    class_name: 'Grade 12',
+    section: 'A',
+    institution_id: 'inst-msd-001',
+    institution_name: 'Modern School Vasant Vihar',
+    registered_at: '2025-03-05T14:20:00Z'
+  },
+  {
+    id: 'int-005',
+    event_id: 'evt-005',
+    student_id: 'MSD-2024-0030',
+    student_name: 'Aditya Mehta',
+    class_name: 'Grade 10',
+    section: 'B',
+    institution_id: 'inst-msd-001',
+    institution_name: 'Modern School Vasant Vihar',
+    registered_at: '2025-02-08T10:45:00Z'
+  },
+  // Kikani Global Academy students
+  {
+    id: 'int-006',
+    event_id: 'evt-001',
+    student_id: 'KGA-2024-0012',
+    student_name: 'Karthik Subramaniam',
+    class_name: 'Grade 11',
+    section: 'A',
+    institution_id: 'inst-kga-001',
+    institution_name: 'Kikani Global Academy',
+    registered_at: '2025-02-12T08:30:00Z'
+  },
+  {
+    id: 'int-007',
+    event_id: 'evt-001',
+    student_id: 'KGA-2024-0025',
+    student_name: 'Lakshmi Narayanan',
+    class_name: 'Grade 10',
+    section: 'B',
+    institution_id: 'inst-kga-001',
+    institution_name: 'Kikani Global Academy',
+    registered_at: '2025-02-13T16:00:00Z'
+  },
+  {
+    id: 'int-008',
+    event_id: 'evt-eureka-2025',
+    student_id: 'KGA-2024-0033',
+    student_name: 'Ananya Krishnan',
+    class_name: 'Grade 9',
+    section: 'C',
+    institution_id: 'inst-kga-001',
+    institution_name: 'Kikani Global Academy',
+    registered_at: '2025-06-15T11:20:00Z'
+  },
+  {
+    id: 'int-009',
+    event_id: 'evt-003',
+    student_id: 'KGA-2024-0018',
+    student_name: 'Vijay Kumar',
+    class_name: 'Grade 8',
+    section: 'A',
+    institution_id: 'inst-kga-001',
+    institution_name: 'Kikani Global Academy',
+    registered_at: '2025-02-22T09:45:00Z'
+  },
+  {
+    id: 'int-010',
+    event_id: 'evt-005',
+    student_id: 'KGA-2024-0041',
+    student_name: 'Divya Raman',
+    class_name: 'Grade 11',
+    section: 'B',
+    institution_id: 'inst-kga-001',
+    institution_name: 'Kikani Global Academy',
+    registered_at: '2025-02-09T13:30:00Z'
+  }
+];
+
+// Legacy mock applications (kept for backward compatibility)
 export const mockEventApplications: EventApplication[] = [
   {
     id: 'app-001',
     event_id: 'evt-001',
-    student_id: 'springfield-8-A-001',
-    student_name: 'Rajesh Kumar',
-    institution_id: 'springfield-high',
-    class_id: 'class-8-A',
+    student_id: 'MSD-2024-0001',
+    student_name: 'Arjun Sharma',
+    institution_id: 'inst-msd-001',
+    class_id: 'class-10-A',
     idea_title: 'Smart Waste Management System using IoT',
-    idea_description: 'An IoT-based system that monitors waste levels in bins and optimizes collection routes using AI algorithms. The system uses ultrasonic sensors to detect fill levels and sends real-time data to a central server. Our ML model predicts optimal collection times based on historical data and weather patterns.',
+    idea_description: 'An IoT-based system that monitors waste levels in bins and optimizes collection routes using AI algorithms.',
     team_members: [
-      { name: 'Rajesh Kumar', student_id: 'springfield-8-A-001', role: 'Team Lead' },
-      { name: 'Priya Sharma', student_id: 'springfield-8-A-002', role: 'Developer' },
-      { name: 'Amit Patel', student_id: 'springfield-8-B-001', role: 'Designer' }
+      { name: 'Arjun Sharma', student_id: 'MSD-2024-0001', role: 'Team Lead' },
+      { name: 'Priya Kapoor', student_id: 'MSD-2024-0015', role: 'Developer' },
     ],
     is_team_application: true,
     status: 'pending',
@@ -208,127 +443,21 @@ export const mockEventApplications: EventApplication[] = [
   {
     id: 'app-002',
     event_id: 'evt-001',
-    student_id: 'springfield-10-B-003',
-    student_name: 'Ananya Singh',
-    institution_id: 'springfield-high',
-    class_id: 'class-10-B',
+    student_id: 'KGA-2024-0012',
+    student_name: 'Karthik Subramaniam',
+    institution_id: 'inst-kga-001',
+    class_id: 'class-11-A',
     idea_title: 'AI-Powered Personal Health Assistant',
-    idea_description: 'A mobile app that uses AI to provide personalized health recommendations based on user data, activity levels, and medical history. Features include symptom checker, medication reminders, and virtual consultation booking.',
+    idea_description: 'A mobile app that uses AI to provide personalized health recommendations.',
     team_members: [
-      { name: 'Ananya Singh', student_id: 'springfield-10-B-003', role: 'Team Lead' },
-      { name: 'Rohit Verma', student_id: 'springfield-10-B-004', role: 'Backend Developer' }
+      { name: 'Karthik Subramaniam', student_id: 'KGA-2024-0012', role: 'Team Lead' },
+      { name: 'Lakshmi Narayanan', student_id: 'KGA-2024-0025', role: 'Backend Developer' }
     ],
     is_team_application: true,
     status: 'shortlisted',
     applied_at: '2025-02-12T10:15:00Z',
-    reviewed_by: 'officer-001',
+    reviewed_by: 'off-kga-001',
     reviewed_at: '2025-02-15T14:20:00Z',
-    review_notes: 'Excellent idea with clear implementation plan. The health-tech approach is innovative and addresses a real need.'
-  },
-  {
-    id: 'app-003',
-    event_id: 'evt-002',
-    student_id: 'springfield-9-A-002',
-    student_name: 'Sneha Reddy',
-    institution_id: 'springfield-high',
-    class_id: 'class-9-A',
-    idea_title: 'Solar-Powered Water Purification System',
-    idea_description: 'A sustainable water purification system powered entirely by solar energy. Uses UV sterilization and multi-stage filtration to provide clean drinking water for rural communities.',
-    team_members: [
-      { name: 'Sneha Reddy', student_id: 'springfield-9-A-002', role: 'Project Lead' },
-      { name: 'Karan Mehta', student_id: 'springfield-9-A-005', role: 'Research Assistant' },
-      { name: 'Divya Nair', student_id: 'springfield-9-B-001', role: 'Documentation' }
-    ],
-    is_team_application: true,
-    status: 'approved',
-    applied_at: '2025-01-20T11:00:00Z',
-    reviewed_by: 'officer-001',
-    reviewed_at: '2025-01-25T09:30:00Z',
-    review_notes: 'Outstanding project with strong social impact. Well-researched and feasible design. Approved for exhibition.'
-  },
-  {
-    id: 'app-004',
-    event_id: 'evt-003',
-    student_id: 'springfield-11-A-001',
-    student_name: 'Arjun Malhotra',
-    institution_id: 'springfield-high',
-    class_id: 'class-11-A',
-    idea_title: 'Autonomous Line-Following Robot',
-    idea_description: 'A robot that can navigate through complex paths using computer vision and sensor fusion. Features obstacle avoidance and adaptive speed control.',
-    team_members: [
-      { name: 'Arjun Malhotra', student_id: 'springfield-11-A-001', role: 'Team Lead' },
-      { name: 'Neha Kapoor', student_id: 'springfield-11-A-003', role: 'Hardware Engineer' },
-      { name: 'Vikas Gupta', student_id: 'springfield-11-B-002', role: 'Software Engineer' },
-      { name: 'Pooja Iyer', student_id: 'springfield-11-B-004', role: 'Testing Lead' }
-    ],
-    is_team_application: true,
-    status: 'pending',
-    applied_at: '2025-02-20T16:45:00Z'
-  },
-  {
-    id: 'app-005',
-    event_id: 'evt-004',
-    student_id: 'springfield-12-A-002',
-    student_name: 'Riya Desai',
-    institution_id: 'springfield-high',
-    class_id: 'class-12-A',
-    idea_title: 'Smart Agriculture Monitoring System',
-    idea_description: 'IoT-based system that monitors soil moisture, temperature, humidity, and crop health using sensors and drones. Provides farmers with actionable insights through a mobile app.',
-    is_team_application: false,
-    status: 'pending',
-    applied_at: '2025-03-05T12:30:00Z'
-  },
-  {
-    id: 'app-006',
-    event_id: 'evt-005',
-    student_id: 'springfield-10-A-004',
-    student_name: 'Aditya Sharma',
-    institution_id: 'springfield-high',
-    class_id: 'class-10-A',
-    idea_title: 'Image Classification Project',
-    idea_description: 'Planning to build an image classification model using TensorFlow to identify different species of plants. Will collect dataset from local botanical garden.',
-    is_team_application: false,
-    status: 'approved',
-    applied_at: '2025-02-08T09:00:00Z',
-    reviewed_by: 'officer-001',
-    reviewed_at: '2025-02-10T11:00:00Z',
-    review_notes: 'Good foundation project for learning ML concepts. Approved for workshop participation.'
-  },
-  {
-    id: 'app-007',
-    event_id: 'evt-001',
-    student_id: 'springfield-9-B-003',
-    student_name: 'Kavya Reddy',
-    institution_id: 'springfield-high',
-    class_id: 'class-9-B',
-    idea_title: 'Student Study Planner with Gamification',
-    idea_description: 'A web app that helps students organize their study schedule with gamification elements like points, badges, and leaderboards to make learning more engaging.',
-    team_members: [
-      { name: 'Kavya Reddy', student_id: 'springfield-9-B-003', role: 'Team Lead' },
-      { name: 'Sanjay Kumar', student_id: 'springfield-9-B-005', role: 'UI/UX Designer' }
-    ],
-    is_team_application: true,
-    status: 'rejected',
-    applied_at: '2025-02-18T14:00:00Z',
-    reviewed_by: 'officer-001',
-    reviewed_at: '2025-02-22T10:15:00Z',
-    review_notes: 'Interesting concept but lacks technical depth for hackathon level. Consider adding more innovative features like AI-powered recommendations or adaptive learning paths.'
-  },
-  {
-    id: 'app-008',
-    event_id: 'evt-002',
-    student_id: 'springfield-8-B-002',
-    student_name: 'Rahul Joshi',
-    institution_id: 'springfield-high',
-    class_id: 'class-8-B',
-    idea_title: 'Renewable Energy Model House',
-    idea_description: 'Working model of a house powered entirely by renewable energy sources - solar panels, wind turbine, and rainwater harvesting system. Demonstrates energy efficiency and sustainability.',
-    team_members: [
-      { name: 'Rahul Joshi', student_id: 'springfield-8-B-002', role: 'Project Lead' },
-      { name: 'Meera Patel', student_id: 'springfield-8-B-006', role: 'Design' }
-    ],
-    is_team_application: true,
-    status: 'pending',
-    applied_at: '2025-02-01T10:30:00Z'
+    review_notes: 'Excellent idea with clear implementation plan.'
   }
 ];

@@ -1,16 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockActivityEvents } from '@/data/mockEventsData';
+import { loadEvents, deleteEvent, updateEvent } from '@/data/mockEventsData';
 import { EventStatusBadge } from './EventStatusBadge';
 import { EditEventDialog } from './EditEventDialog';
 import { EventDetailDialog } from './EventDetailDialog';
 import { Search, Pencil, Eye, Trash2, Upload } from 'lucide-react';
 import { format } from 'date-fns';
-import { ActivityEventType, EventStatus } from '@/types/events';
+import { ActivityEventType, EventStatus, ActivityEvent } from '@/types/events';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export function EventsListTab() {
-  const [events] = useState(mockActivityEvents);
+  const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<ActivityEventType | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState<EventStatus | 'all'>('all');
@@ -32,6 +32,14 @@ export function EventsListTab() {
   const [viewEventId, setViewEventId] = useState<string | null>(null);
   const [deleteEventId, setDeleteEventId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    refreshData();
+  }, []);
+
+  const refreshData = () => {
+    setEvents(loadEvents());
+  };
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -43,16 +51,21 @@ export function EventsListTab() {
   });
 
   const handleDelete = () => {
-    // In a real app, this would delete from backend/localStorage
-    toast({
-      title: 'Event Deleted',
-      description: 'The event has been successfully deleted.',
-    });
+    if (deleteEventId) {
+      deleteEvent(deleteEventId);
+      refreshData();
+      toast({
+        title: 'Event Deleted',
+        description: 'The event has been successfully deleted.',
+      });
+    }
     setDeleteEventId(null);
   };
 
   const handlePublishToggle = (eventId: string, currentStatus: EventStatus) => {
     const newStatus = currentStatus === 'published' ? 'draft' : 'published';
+    updateEvent(eventId, { status: newStatus });
+    refreshData();
     toast({
       title: `Event ${newStatus === 'published' ? 'Published' : 'Unpublished'}`,
       description: `The event status has been updated to ${newStatus}.`,
@@ -196,7 +209,12 @@ export function EventsListTab() {
         <EditEventDialog
           eventId={selectedEvent}
           open={!!selectedEvent}
-          onOpenChange={(open) => !open && setSelectedEvent(null)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedEvent(null);
+              refreshData();
+            }
+          }}
         />
       )}
 
@@ -216,7 +234,7 @@ export function EventsListTab() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the event and all associated applications.
+              This action cannot be undone. This will permanently delete the event and all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
