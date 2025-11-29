@@ -1,33 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { mockActivityEvents, mockEventApplications } from '@/data/mockEventsData';
+import { loadEvents, getEventInterestsByEventAndInstitution } from '@/data/mockEventsData';
 import { EventStatusBadge } from '../EventStatusBadge';
 import { RegistrationCountdown } from '../RegistrationCountdown';
 import { EventDetailDialog } from '../EventDetailDialog';
 import { Search, MapPin, Users, Calendar, Trophy } from 'lucide-react';
 import { format } from 'date-fns';
-import { ActivityEventType } from '@/types/events';
+import { ActivityEventType, ActivityEvent } from '@/types/events';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function EventsViewTab() {
   const { user } = useAuth();
-  const [events] = useState(mockActivityEvents.filter(e => e.status !== 'draft'));
+  const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<ActivityEventType | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'ongoing' | 'completed'>('all');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
-  // Get count of applications from user's institution for a specific event
+  useEffect(() => {
+    const allEvents = loadEvents().filter(e => e.status !== 'draft');
+    setEvents(allEvents);
+  }, []);
+
+  // Get count of interested students from user's institution for a specific event
   const getInstitutionParticipantCount = (eventId: string): number => {
     if (!user?.institution_id) return 0;
-    
-    return mockEventApplications.filter(
-      app => app.event_id === eventId && app.institution_id === user.institution_id
-    ).length;
+    return getEventInterestsByEventAndInstitution(eventId, user.institution_id).length;
   };
 
   const filteredEvents = events.filter(event => {
@@ -140,8 +142,7 @@ export function EventsViewTab() {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Users className="h-4 w-4" />
                   <span>
-                    {getInstitutionParticipantCount(event.id)}
-                    {event.max_participants && ` / ${event.max_participants}`} from your institution
+                    {getInstitutionParticipantCount(event.id)} interested from your institution
                   </span>
                 </div>
                 {event.status === 'published' && (

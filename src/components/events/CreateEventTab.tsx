@@ -8,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CertificateSelector } from '@/components/gamification/CertificateSelector';
+import { addEvent } from '@/data/mockEventsData';
 import { format } from 'date-fns';
 import { CalendarIcon, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ActivityEventType } from '@/types/events';
+import { ActivityEventType, ActivityEvent } from '@/types/events';
 import { useToast } from '@/hooks/use-toast';
 
 export function CreateEventTab() {
@@ -64,8 +65,7 @@ export function CreateEventTab() {
       return;
     }
 
-    // In a real app, save to backend/localStorage
-    const newEvent = {
+    const newEvent: ActivityEvent = {
       id: `evt-${Date.now()}`,
       title,
       description,
@@ -82,12 +82,15 @@ export function CreateEventTab() {
       rules,
       prizes: prizes.filter(p => p.trim() !== ''),
       institution_ids: [],
+      linked_project_ids: [],
+      certificate_template_id: certificateTemplateId,
       created_by: 'sysadmin-001',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    console.log('New Event:', newEvent);
+    // Save to localStorage
+    addEvent(newEvent);
 
     toast({
       title: `Event ${status === 'published' ? 'Published' : 'Saved as Draft'}`,
@@ -107,6 +110,7 @@ export function CreateEventTab() {
     setRegistrationEnd(undefined);
     setEventStart(undefined);
     setEventEnd(undefined);
+    setCertificateTemplateId(undefined);
   };
 
   const eventTypeLabels: Record<ActivityEventType, string> = {

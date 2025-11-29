@@ -1,140 +1,110 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { mockEventApplications, mockActivityEvents } from '@/data/mockEventsData';
-import { ApplicationStatus } from '@/types/events';
-import { Download } from 'lucide-react';
-
-// Institution name mapping
-const getInstitutionName = (institutionId: string) => {
-  const institutionMap: Record<string, string> = {
-    'springfield-high': 'Springfield High School',
-    'riverside-academy': 'Riverside Academy',
-    'oakwood-school': 'Oakwood School',
-    'tech-valley-high': 'Tech Valley High School',
-  };
-  return institutionMap[institutionId] || institutionId;
-};
+import { loadEvents, loadEventInterests } from '@/data/mockEventsData';
+import { mockInstitutions } from '@/data/mockInstitutionData';
+import { EventInterest, ActivityEvent } from '@/types/events';
+import { Download, Users } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface InstitutionSummary {
   institutionId: string;
   institutionName: string;
   total: number;
-  pending: number;
-  shortlisted: number;
-  approved: number;
-  rejected: number;
 }
 
 export function ApplicationsOverviewTab() {
-  const [applications] = useState(mockEventApplications);
-  const [filterStatus, setFilterStatus] = useState<ApplicationStatus | 'all'>('all');
+  const [interests, setInterests] = useState<EventInterest[]>([]);
+  const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [filterEvent, setFilterEvent] = useState<string>('all');
+  const { toast } = useToast();
 
-  // Group applications by institution and calculate statistics
+  useEffect(() => {
+    refreshData();
+  }, []);
+
+  const refreshData = () => {
+    setInterests(loadEventInterests());
+    setEvents(loadEvents());
+  };
+
+  // Group interests by institution and calculate statistics
   const institutionSummaries = useMemo(() => {
-    // First filter applications by event if needed
-    const eventFilteredApps = filterEvent === 'all' 
-      ? applications 
-      : applications.filter(app => app.event_id === filterEvent);
+    // First filter by event if needed
+    const eventFilteredInterests = filterEvent === 'all' 
+      ? interests 
+      : interests.filter(i => i.event_id === filterEvent);
 
     // Group by institution
-    const groupedByInstitution = eventFilteredApps.reduce((acc, app) => {
-      if (!acc[app.institution_id]) {
-        acc[app.institution_id] = {
-          institutionId: app.institution_id,
-          institutionName: getInstitutionName(app.institution_id),
+    const groupedByInstitution = eventFilteredInterests.reduce((acc, interest) => {
+      if (!acc[interest.institution_id]) {
+        acc[interest.institution_id] = {
+          institutionId: interest.institution_id,
+          institutionName: mockInstitutions[interest.institution_id]?.name || interest.institution_name,
           total: 0,
-          pending: 0,
-          shortlisted: 0,
-          approved: 0,
-          rejected: 0,
         };
       }
-      
-      acc[app.institution_id].total++;
-      acc[app.institution_id][app.status]++;
-      
+      acc[interest.institution_id].total++;
       return acc;
     }, {} as Record<string, InstitutionSummary>);
 
-    // Convert to array and filter by status if needed
-    let summaries = Object.values(groupedByInstitution);
-    
-    if (filterStatus !== 'all') {
-      summaries = summaries.filter(summary => summary[filterStatus] > 0);
-    }
-
-    return summaries.sort((a, b) => b.total - a.total);
-  }, [applications, filterEvent, filterStatus]);
+    return Object.values(groupedByInstitution).sort((a, b) => b.total - a.total);
+  }, [interests, filterEvent]);
 
   // Calculate statistics
   const stats = {
-    total: applications.length,
-    pending: applications.filter(a => a.status === 'pending').length,
-    approved: applications.filter(a => a.status === 'approved').length,
-    rejected: applications.filter(a => a.status === 'rejected').length,
-    shortlisted: applications.filter(a => a.status === 'shortlisted').length,
+    total: interests.length,
+    byInstitution: institutionSummaries.length,
   };
 
   const handleExport = () => {
-    // In real app, this would export institution summaries to CSV/Excel
-    console.log('Exporting institution summaries...', institutionSummaries);
+    toast({
+      title: 'Export Started',
+      description: `Exporting ${interests.length} interest records.`,
+    });
+    console.log('Exporting interest data...', interests);
   };
 
   return (
     <div className="space-y-6">
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Applications</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Interested</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
+            <div className="text-2xl font-bold flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              {stats.total}
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Institutions Participating</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+            <div className="text-2xl font-bold text-blue-600">{stats.byInstitution}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Shortlisted</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Events</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.shortlisted}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Approved</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Rejected</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
+            <div className="text-2xl font-bold text-green-600">{events.length}</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Applications Table */}
+      {/* Interests by Institution */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>All Applications</CardTitle>
+            <CardTitle>Interested Students by Institution</CardTitle>
             <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="h-4 w-4 mr-2" />
               Export
@@ -142,31 +112,19 @@ export function ApplicationsOverviewTab() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Filters */}
+          {/* Filter */}
           <div className="flex flex-col sm:flex-row gap-4">
             <Select value={filterEvent} onValueChange={setFilterEvent}>
-              <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectTrigger className="w-full sm:w-[250px]">
                 <SelectValue placeholder="Filter by event" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Events</SelectItem>
-                {mockActivityEvents.map(event => (
+                {events.map(event => (
                   <SelectItem key={event.id} value={event.id}>
                     {event.title}
                   </SelectItem>
                 ))}
-              </SelectContent>
-            </Select>
-            <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as ApplicationStatus | 'all')}>
-              <SelectTrigger className="w-full sm:w-[150px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Has Pending</SelectItem>
-                <SelectItem value="shortlisted">Has Shortlisted</SelectItem>
-                <SelectItem value="approved">Has Approved</SelectItem>
-                <SelectItem value="rejected">Has Rejected</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -177,18 +135,14 @@ export function ApplicationsOverviewTab() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Institution Name</TableHead>
-                  <TableHead className="text-center">Total Applications</TableHead>
-                  <TableHead className="text-center">Pending</TableHead>
-                  <TableHead className="text-center">Shortlisted</TableHead>
-                  <TableHead className="text-center">Approved</TableHead>
-                  <TableHead className="text-center">Rejected</TableHead>
+                  <TableHead className="text-center">Total Interested Students</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {institutionSummaries.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                      No institutions found with matching applications
+                    <TableCell colSpan={2} className="text-center text-muted-foreground py-8">
+                      No students have expressed interest yet
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -196,28 +150,8 @@ export function ApplicationsOverviewTab() {
                     <TableRow key={summary.institutionId}>
                       <TableCell className="font-medium">{summary.institutionName}</TableCell>
                       <TableCell className="text-center">
-                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold">
+                        <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary font-semibold">
                           {summary.total}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 font-semibold">
-                          {summary.pending}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold">
-                          {summary.shortlisted}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 font-semibold">
-                          {summary.approved}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 font-semibold">
-                          {summary.rejected}
                         </span>
                       </TableCell>
                     </TableRow>

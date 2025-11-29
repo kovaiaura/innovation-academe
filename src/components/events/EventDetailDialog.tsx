@@ -1,28 +1,42 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { mockActivityEvents } from '@/data/mockEventsData';
-import { mockProjects } from '@/data/mockProjectData';
+import { getEventById, hasStudentExpressedInterest, addEventInterest } from '@/data/mockEventsData';
+import { getAllProjects } from '@/data/mockProjectData';
+import { mockInstitutions } from '@/data/mockInstitutionData';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EventStatusBadge } from './EventStatusBadge';
 import { RegistrationCountdown } from './RegistrationCountdown';
 import { AssignProjectToEventDialog } from '@/components/events/officer/AssignProjectToEventDialog';
-import { Calendar, MapPin, Users, Trophy, FileText, Clock, FolderKanban, Plus } from 'lucide-react';
+import { Calendar, MapPin, Users, Trophy, FileText, Clock, FolderKanban, Plus, Heart, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface EventDetailDialogProps {
   eventId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userRole: 'system_admin' | 'student' | 'officer' | 'management';
+  onInterestChange?: () => void;
 }
 
-export function EventDetailDialog({ eventId, open, onOpenChange, userRole }: EventDetailDialogProps) {
+export function EventDetailDialog({ eventId, open, onOpenChange, userRole, onInterestChange }: EventDetailDialogProps) {
   const { user } = useAuth();
-  const event = mockActivityEvents.find(e => e.id === eventId);
+  const { toast } = useToast();
+  const [event, setEvent] = useState(getEventById(eventId));
   const [showAssignProjectDialog, setShowAssignProjectDialog] = useState(false);
+  const [hasInterest, setHasInterest] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setEvent(getEventById(eventId));
+      if (user?.id && userRole === 'student') {
+        setHasInterest(hasStudentExpressedInterest(user.id, eventId));
+      }
+    }
+  }, [open, eventId, user?.id, userRole]);
 
   if (!event) return null;
 
@@ -30,8 +44,46 @@ export function EventDetailDialog({ eventId, open, onOpenChange, userRole }: Eve
   
   // Get assigned projects for this event
   const assignedProjectIds = event.linked_project_ids || [];
-  const allProjects = Object.values(mockProjects).flat();
+  const allProjects = getAllProjects();
   const assignedProjects = allProjects.filter(p => assignedProjectIds.includes(p.id));
+
+  // Get institution name from mock data
+  const getInstitutionName = (instId: string) => {
+    return mockInstitutions[instId]?.name || 'Unknown Institution';
+  };
+
+  const handleExpressInterest = () => {
+    if (!user) return;
+
+    const studentName = user.name || 'Unknown Student';
+    const institutionId = user.institution_id || 'inst-msd-001';
+    const institutionName = getInstitutionName(institutionId);
+    // Default class/section for demo (in real app, would come from student data)
+    const className = 'Grade 10';
+    const section = 'A';
+
+    const interest = {
+      id: `int-${Date.now()}`,
+      event_id: eventId,
+      student_id: user.id,
+      student_name: studentName,
+      class_name: className,
+      section: section,
+      institution_id: institutionId,
+      institution_name: institutionName,
+      registered_at: new Date().toISOString()
+    };
+
+    addEventInterest(interest);
+    setHasInterest(true);
+    
+    toast({
+      title: 'Interest Registered',
+      description: 'Your interest has been recorded. Your Innovation Officer will contact you.',
+    });
+
+    onInterestChange?.();
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -206,12 +258,32 @@ export function EventDetailDialog({ eventId, open, onOpenChange, userRole }: Eve
             </>
           )}
 
-          {/* Contact Note for Students */}
+          {/* Interest Section for Students */}
           {userRole === 'student' && (
-            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <p className="text-sm text-blue-900 dark:text-blue-100">
-                <strong>Interested in this event?</strong> Please contact your Innovation Officer directly to express your interest and get more details.
-              </p>
+            <div className={`rounded-lg p-4 ${hasInterest ? 'bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800' : 'bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800'}`}>
+              {hasInterest ? (
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <div>
+                    <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                      Interest Registered!
+                    </p>
+                    <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                      Your Innovation Officer has been notified and will contact you with more details.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm text-blue-900 dark:text-blue-100 mb-3">
+                    <strong>Interested in participating?</strong> Click below to express your interest.
+                  </p>
+                  <Button onClick={handleExpressInterest}>
+                    <Heart className="h-4 w-4 mr-2" />
+                    Express Interest
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
