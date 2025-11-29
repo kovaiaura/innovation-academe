@@ -1,15 +1,23 @@
 import type { LeaveApplication, LeaveBalance } from "@/types/attendance";
 import { createNotification, createNotificationForSystemAdmin } from '@/hooks/useNotifications';
 
-// Mock leave applications storage
-let mockLeaveApplications: LeaveApplication[] = [
+// ========================================
+// LOCALSTORAGE KEYS
+// ========================================
+const LEAVE_APPLICATIONS_KEY = 'all_leave_applications';
+const LEAVE_BALANCES_KEY = 'leave_balances';
+
+// ========================================
+// MOCK DATA (Initial seed data)
+// ========================================
+const mockLeaveApplications: LeaveApplication[] = [
   // Mr. Atif Ansari - Modern School Vasant Vihar
   {
     id: "leave-msd-001",
     officer_id: "off-msd-001",
     officer_name: "Mr. Atif Ansari",
-    applicant_type: "innovation_officer", // NEW
-    approval_stage: "approved", // NEW
+    applicant_type: "innovation_officer",
+    approval_stage: "approved",
     start_date: "2025-01-20",
     end_date: "2025-01-22",
     leave_type: "casual",
@@ -17,10 +25,10 @@ let mockLeaveApplications: LeaveApplication[] = [
     total_days: 3,
     status: "approved",
     applied_at: "2025-01-10T10:00:00Z",
-    approved_by_manager: "Operations Manager", // NEW
-    approved_by_manager_at: "2025-01-10T16:00:00Z", // NEW
-    approved_by_agm: "AGM Operations", // NEW
-    approved_by_agm_at: "2025-01-11T10:00:00Z", // NEW
+    approved_by_manager: "Operations Manager",
+    approved_by_manager_at: "2025-01-10T16:00:00Z",
+    approved_by_agm: "AGM Operations",
+    approved_by_agm_at: "2025-01-11T10:00:00Z",
     reviewed_by: "AGM Operations",
     reviewed_at: "2025-01-11T14:30:00Z",
   },
@@ -28,8 +36,8 @@ let mockLeaveApplications: LeaveApplication[] = [
     id: "leave-msd-002",
     officer_id: "off-msd-001",
     officer_name: "Mr. Atif Ansari",
-    applicant_type: "innovation_officer", // NEW
-    approval_stage: "manager_pending", // NEW
+    applicant_type: "innovation_officer",
+    approval_stage: "manager_pending",
     start_date: "2025-02-15",
     end_date: "2025-02-16",
     leave_type: "sick",
@@ -43,8 +51,8 @@ let mockLeaveApplications: LeaveApplication[] = [
     id: "leave-kga-001",
     officer_id: "off-kga-001",
     officer_name: "Mr. Saran T",
-    applicant_type: "innovation_officer", // NEW
-    approval_stage: "approved", // NEW
+    applicant_type: "innovation_officer",
+    approval_stage: "approved",
     start_date: "2025-01-05",
     end_date: "2025-01-07",
     leave_type: "earned",
@@ -52,10 +60,10 @@ let mockLeaveApplications: LeaveApplication[] = [
     total_days: 3,
     status: "approved",
     applied_at: "2024-12-28T10:00:00Z",
-    approved_by_manager: "Operations Manager", // NEW
-    approved_by_manager_at: "2024-12-28T15:00:00Z", // NEW
-    approved_by_agm: "AGM Operations", // NEW
-    approved_by_agm_at: "2024-12-29T09:00:00Z", // NEW
+    approved_by_manager: "Operations Manager",
+    approved_by_manager_at: "2024-12-28T15:00:00Z",
+    approved_by_agm: "AGM Operations",
+    approved_by_agm_at: "2024-12-29T09:00:00Z",
     reviewed_by: "AGM Operations",
     reviewed_at: "2024-12-29T11:00:00Z",
   },
@@ -63,9 +71,9 @@ let mockLeaveApplications: LeaveApplication[] = [
     id: "leave-kga-002",
     officer_id: "off-kga-001",
     officer_name: "Mr. Saran T",
-    applicant_type: "innovation_officer", // NEW
-    approval_stage: "rejected", // NEW
-    rejection_stage: "manager", // NEW
+    applicant_type: "innovation_officer",
+    approval_stage: "rejected",
+    rejection_stage: "manager",
     start_date: "2025-02-20",
     end_date: "2025-02-21",
     leave_type: "casual",
@@ -73,8 +81,8 @@ let mockLeaveApplications: LeaveApplication[] = [
     total_days: 2,
     status: "rejected",
     applied_at: "2025-02-12T10:00:00Z",
-    rejected_by: "Operations Manager", // NEW
-    rejected_at: "2025-02-13T15:00:00Z", // NEW
+    rejected_by: "Operations Manager",
+    rejected_at: "2025-02-13T15:00:00Z",
     reviewed_by: "Operations Manager",
     reviewed_at: "2025-02-13T15:00:00Z",
     rejection_reason: "Critical classes scheduled during this period. Please reschedule.",
@@ -83,8 +91,8 @@ let mockLeaveApplications: LeaveApplication[] = [
     id: "leave-kga-003",
     officer_id: "off-kga-001",
     officer_name: "Mr. Saran T",
-    applicant_type: "innovation_officer", // NEW
-    approval_stage: "approved", // NEW
+    applicant_type: "innovation_officer",
+    approval_stage: "approved",
     start_date: "2025-03-10",
     end_date: "2025-03-12",
     leave_type: "sick",
@@ -92,10 +100,10 @@ let mockLeaveApplications: LeaveApplication[] = [
     total_days: 3,
     status: "approved",
     applied_at: "2025-03-05T08:00:00Z",
-    approved_by_manager: "Operations Manager", // NEW
-    approved_by_manager_at: "2025-03-05T11:00:00Z", // NEW
-    approved_by_agm: "AGM Operations", // NEW
-    approved_by_agm_at: "2025-03-05T14:00:00Z", // NEW
+    approved_by_manager: "Operations Manager",
+    approved_by_manager_at: "2025-03-05T11:00:00Z",
+    approved_by_agm: "AGM Operations",
+    approved_by_agm_at: "2025-03-05T14:00:00Z",
     reviewed_by: "AGM Operations",
     reviewed_at: "2025-03-05T16:00:00Z",
   },
@@ -104,8 +112,8 @@ let mockLeaveApplications: LeaveApplication[] = [
     id: "leave-kga-004",
     officer_id: "off-kga-002",
     officer_name: "Mr. Sreeram R",
-    applicant_type: "innovation_officer", // NEW
-    approval_stage: "approved", // NEW
+    applicant_type: "innovation_officer",
+    approval_stage: "approved",
     start_date: "2025-01-25",
     end_date: "2025-01-27",
     leave_type: "earned",
@@ -113,21 +121,21 @@ let mockLeaveApplications: LeaveApplication[] = [
     total_days: 3,
     status: "approved",
     applied_at: "2025-01-15T10:00:00Z",
-    approved_by_manager: "Operations Manager", // NEW
-    approved_by_manager_at: "2025-01-15T14:00:00Z", // NEW
-    approved_by_agm: "AGM Operations", // NEW
-    approved_by_agm_at: "2025-01-16T10:00:00Z", // NEW
+    approved_by_manager: "Operations Manager",
+    approved_by_manager_at: "2025-01-15T14:00:00Z",
+    approved_by_agm: "AGM Operations",
+    approved_by_agm_at: "2025-01-16T10:00:00Z",
     reviewed_by: "AGM Operations",
     reviewed_at: "2025-01-16T11:30:00Z",
   },
   // Meta Staff Leave Applications
   {
     id: "leave-meta-001",
-    officer_id: "7", // MD
+    officer_id: "7",
     officer_name: "Managing Director",
-    applicant_type: "meta_staff", // NEW
-    position: "md", // NEW
-    approval_stage: "ceo_pending", // NEW
+    applicant_type: "meta_staff",
+    position: "md",
+    approval_stage: "ceo_pending",
     start_date: "2025-02-10",
     end_date: "2025-02-12",
     leave_type: "earned",
@@ -138,11 +146,11 @@ let mockLeaveApplications: LeaveApplication[] = [
   },
   {
     id: "leave-meta-002",
-    officer_id: "8", // Manager
+    officer_id: "8",
     officer_name: "Operations Manager",
-    applicant_type: "meta_staff", // NEW
-    position: "manager", // NEW
-    approval_stage: "approved", // NEW
+    applicant_type: "meta_staff",
+    position: "manager",
+    approval_stage: "approved",
     start_date: "2025-01-15",
     end_date: "2025-01-17",
     leave_type: "casual",
@@ -155,79 +163,30 @@ let mockLeaveApplications: LeaveApplication[] = [
   },
 ];
 
-// Mock leave balances
+// Mock leave balances (initial seed)
 const mockLeaveBalances: LeaveBalance[] = [
   // Innovation Officers
-  {
-    officer_id: "off-msd-001",
-    sick_leave: 8,
-    casual_leave: 10,
-    earned_leave: 15,
-    year: "2025",
-  },
-  {
-    officer_id: "off-kga-001",
-    sick_leave: 10,
-    casual_leave: 12,
-    earned_leave: 18,
-    year: "2025",
-  },
-  {
-    officer_id: "off-kga-002",
-    sick_leave: 10,
-    casual_leave: 12,
-    earned_leave: 18,
-    year: "2025",
-  },
+  { officer_id: "off-msd-001", sick_leave: 8, casual_leave: 10, earned_leave: 15, year: "2025" },
+  { officer_id: "off-kga-001", sick_leave: 10, casual_leave: 12, earned_leave: 18, year: "2025" },
+  { officer_id: "off-kga-002", sick_leave: 10, casual_leave: 12, earned_leave: 18, year: "2025" },
   // Meta Staff
-  {
-    officer_id: "6", // CEO
-    sick_leave: 11,
-    casual_leave: 11,
-    earned_leave: 12,
-    year: "2025",
-  },
-  {
-    officer_id: "7", // MD
-    sick_leave: 11,
-    casual_leave: 11,
-    earned_leave: 12,
-    year: "2025",
-  },
-  {
-    officer_id: "9", // AGM
-    sick_leave: 12,
-    casual_leave: 12,
-    earned_leave: 12,
-    year: "2025",
-  },
-  {
-    officer_id: "10", // GM
-    sick_leave: 12,
-    casual_leave: 12,
-    earned_leave: 12,
-    year: "2025",
-  },
-  {
-    officer_id: "8", // Manager
-    sick_leave: 12,
-    casual_leave: 12,
-    earned_leave: 12,
-    year: "2025",
-  },
-  {
-    officer_id: "11", // Admin Staff
-    sick_leave: 12,
-    casual_leave: 12,
-    earned_leave: 12,
-    year: "2025",
-  },
+  { officer_id: "6", sick_leave: 11, casual_leave: 11, earned_leave: 12, year: "2025" },
+  { officer_id: "7", sick_leave: 11, casual_leave: 11, earned_leave: 12, year: "2025" },
+  { officer_id: "9", sick_leave: 12, casual_leave: 12, earned_leave: 12, year: "2025" },
+  { officer_id: "10", sick_leave: 12, casual_leave: 12, earned_leave: 12, year: "2025" },
+  { officer_id: "8", sick_leave: 12, casual_leave: 12, earned_leave: 12, year: "2025" },
+  { officer_id: "11", sick_leave: 12, casual_leave: 12, earned_leave: 12, year: "2025" },
 ];
 
-// Helper functions
-export const getLeaveApplicationsByOfficer = (officerId: string): LeaveApplication[] => {
-  // Check localStorage first
-  const stored = localStorage.getItem(`leave_applications_${officerId}`);
+// ========================================
+// CENTRALIZED LOCALSTORAGE FUNCTIONS
+// ========================================
+
+/**
+ * Load all leave applications from localStorage (centralized store)
+ */
+export const loadAllLeaveApplications = (): LeaveApplication[] => {
+  const stored = localStorage.getItem(LEAVE_APPLICATIONS_KEY);
   if (stored) {
     try {
       return JSON.parse(stored);
@@ -235,43 +194,81 @@ export const getLeaveApplicationsByOfficer = (officerId: string): LeaveApplicati
       console.error("Failed to parse leave applications from localStorage", e);
     }
   }
-  
-  return mockLeaveApplications.filter((app) => app.officer_id === officerId);
+  // Initialize from mock data if empty
+  localStorage.setItem(LEAVE_APPLICATIONS_KEY, JSON.stringify(mockLeaveApplications));
+  return [...mockLeaveApplications];
 };
 
-export const initializeLeaveBalance = (balance: LeaveBalance): void => {
-  // Add to in-memory array
-  const existingIndex = mockLeaveBalances.findIndex(
-    (b) => b.officer_id === balance.officer_id && b.year === balance.year
-  );
-  
-  if (existingIndex >= 0) {
-    mockLeaveBalances[existingIndex] = balance;
-  } else {
-    mockLeaveBalances.push(balance);
-  }
-  
-  // Store in localStorage for persistence
-  localStorage.setItem(`leave_balance_${balance.officer_id}_${balance.year}`, JSON.stringify(balance));
+/**
+ * Save all leave applications to localStorage (centralized store)
+ */
+export const saveAllLeaveApplications = (applications: LeaveApplication[]): void => {
+  localStorage.setItem(LEAVE_APPLICATIONS_KEY, JSON.stringify(applications));
 };
 
-export const getLeaveBalance = (officerId: string, year: string): LeaveBalance => {
-  // Check localStorage first
-  const stored = localStorage.getItem(`leave_balance_${officerId}_${year}`);
+/**
+ * Load all leave balances from localStorage
+ */
+export const loadLeaveBalances = (): LeaveBalance[] => {
+  const stored = localStorage.getItem(LEAVE_BALANCES_KEY);
   if (stored) {
     try {
       return JSON.parse(stored);
     } catch (e) {
-      console.error("Failed to parse leave balance from localStorage", e);
+      console.error("Failed to parse leave balances from localStorage", e);
     }
   }
+  // Initialize from mock data if empty
+  localStorage.setItem(LEAVE_BALANCES_KEY, JSON.stringify(mockLeaveBalances));
+  return [...mockLeaveBalances];
+};
+
+/**
+ * Save all leave balances to localStorage
+ */
+export const saveLeaveBalances = (balances: LeaveBalance[]): void => {
+  localStorage.setItem(LEAVE_BALANCES_KEY, JSON.stringify(balances));
+};
+
+// ========================================
+// HELPER FUNCTIONS
+// ========================================
+
+/**
+ * Get leave applications for a specific officer
+ */
+export const getLeaveApplicationsByOfficer = (officerId: string): LeaveApplication[] => {
+  const allApps = loadAllLeaveApplications();
+  return allApps.filter((app) => app.officer_id === officerId);
+};
+
+/**
+ * Initialize or update leave balance for a user
+ */
+export const initializeLeaveBalance = (balance: LeaveBalance): void => {
+  const balances = loadLeaveBalances();
+  const existingIndex = balances.findIndex(
+    (b) => b.officer_id === balance.officer_id && b.year === balance.year
+  );
   
-  // Then check in-memory
-  const balance = mockLeaveBalances.find(
+  if (existingIndex >= 0) {
+    balances[existingIndex] = balance;
+  } else {
+    balances.push(balance);
+  }
+  
+  saveLeaveBalances(balances);
+};
+
+/**
+ * Get leave balance for an officer
+ */
+export const getLeaveBalance = (officerId: string, year: string): LeaveBalance => {
+  const balances = loadLeaveBalances();
+  const balance = balances.find(
     (b) => b.officer_id === officerId && b.year === year
   );
   
-  // Return found balance or defaults
   return balance || {
     officer_id: officerId,
     sick_leave: 10,
@@ -281,33 +278,54 @@ export const getLeaveBalance = (officerId: string, year: string): LeaveBalance =
   };
 };
 
+/**
+ * Add a new leave application
+ */
 export const addLeaveApplication = (application: LeaveApplication): void => {
-  mockLeaveApplications.push(application);
+  const allApps = loadAllLeaveApplications();
+  allApps.push(application);
+  saveAllLeaveApplications(allApps);
   
-  // Save to localStorage
-  const officerId = application.officer_id;
-  const applications = getLeaveApplicationsByOfficer(officerId);
-  applications.push(application);
-  localStorage.setItem(`leave_applications_${officerId}`, JSON.stringify(applications));
-  
-  // Create notification for system admin
-  createNotificationForSystemAdmin(
-    'leave_application_submitted',
-    'New Leave Application',
-    `${application.officer_name} has applied for ${application.leave_type} leave (${application.total_days} days)`,
-    '/system-admin/leave-approvals',
-    {
-      leave_application_id: application.id,
-      officer_id: application.officer_id,
-      officer_name: application.officer_name,
-      leave_type: application.leave_type,
-      start_date: application.start_date,
-      end_date: application.end_date,
-      total_days: application.total_days,
-    }
-  );
+  // Create notification for appropriate approver
+  if (application.applicant_type === 'innovation_officer') {
+    createNotificationForSystemAdmin(
+      'leave_application_submitted',
+      'New Leave Application',
+      `${application.officer_name} has applied for ${application.leave_type} leave (${application.total_days} days)`,
+      '/system-admin/manager-approvals',
+      {
+        leave_application_id: application.id,
+        officer_id: application.officer_id,
+        officer_name: application.officer_name,
+        leave_type: application.leave_type,
+        start_date: application.start_date,
+        end_date: application.end_date,
+        total_days: application.total_days,
+      }
+    );
+  } else {
+    // Meta staff - notify CEO
+    createNotificationForSystemAdmin(
+      'leave_application_submitted',
+      'New Meta Staff Leave Application',
+      `${application.officer_name} has applied for ${application.leave_type} leave (${application.total_days} days)`,
+      '/system-admin/ceo-approvals',
+      {
+        leave_application_id: application.id,
+        officer_id: application.officer_id,
+        officer_name: application.officer_name,
+        leave_type: application.leave_type,
+        start_date: application.start_date,
+        end_date: application.end_date,
+        total_days: application.total_days,
+      }
+    );
+  }
 };
 
+/**
+ * Check if a date is on approved leave
+ */
 export const isDateOnLeave = (officerId: string, date: string): boolean => {
   const applications = getLeaveApplicationsByOfficer(officerId);
   const approvedApps = applications.filter((app) => app.status === "approved");
@@ -317,6 +335,9 @@ export const isDateOnLeave = (officerId: string, date: string): boolean => {
   });
 };
 
+/**
+ * Get all approved leave dates for an officer
+ */
 export const getApprovedLeaveDates = (officerId: string): string[] => {
   const applications = getLeaveApplicationsByOfficer(officerId);
   const approvedApps = applications.filter((app) => app.status === "approved");
@@ -334,6 +355,9 @@ export const getApprovedLeaveDates = (officerId: string): string[] => {
   return dates;
 };
 
+/**
+ * Get leave details for a specific date
+ */
 export const getTodayLeaveDetails = (
   officerId: string,
   date: string
@@ -346,41 +370,51 @@ export const getTodayLeaveDetails = (
   );
 };
 
-// Global leave management functions for system admin
+// ========================================
+// GLOBAL LEAVE MANAGEMENT FUNCTIONS
+// ========================================
+
+/**
+ * Get all leave applications (alias for loadAllLeaveApplications)
+ */
 export const getAllLeaveApplications = (): LeaveApplication[] => {
-  const stored = localStorage.getItem('all_leave_applications');
-  if (stored) {
-    try {
-      return JSON.parse(stored);
-    } catch (e) {
-      console.error("Failed to parse all leave applications", e);
-    }
-  }
-  return mockLeaveApplications;
+  return loadAllLeaveApplications();
 };
 
+/**
+ * Get all pending leave applications
+ */
 export const getAllPendingLeaveApplications = (): LeaveApplication[] => {
-  const allApps = getAllLeaveApplications();
+  const allApps = loadAllLeaveApplications();
   return allApps.filter((app) => app.status === "pending").sort((a, b) => 
     new Date(a.applied_at).getTime() - new Date(b.applied_at).getTime()
   );
 };
 
+/**
+ * Get pending leave count
+ */
 export const getPendingLeaveCount = (): number => {
   return getAllPendingLeaveApplications().length;
 };
 
+/**
+ * Get leave application by ID
+ */
 export const getLeaveApplicationById = (id: string): LeaveApplication | null => {
-  const allApps = getAllLeaveApplications();
+  const allApps = loadAllLeaveApplications();
   return allApps.find((app) => app.id === id) || null;
 };
 
+/**
+ * Approve leave application (generic)
+ */
 export const approveLeaveApplication = (
   id: string,
   reviewerName: string,
   comments?: string
 ): void => {
-  const allApps = getAllLeaveApplications();
+  const allApps = loadAllLeaveApplications();
   const appIndex = allApps.findIndex((app) => app.id === id);
   
   if (appIndex !== -1) {
@@ -389,42 +423,41 @@ export const approveLeaveApplication = (
     allApps[appIndex].reviewed_at = new Date().toISOString();
     allApps[appIndex].admin_comments = comments;
     
-    // Save to global storage
-    localStorage.setItem('all_leave_applications', JSON.stringify(allApps));
-    
-    // Update officer-specific storage
-    const officerId = allApps[appIndex].officer_id;
-    const officerApps = getLeaveApplicationsByOfficer(officerId);
-    const officerAppIndex = officerApps.findIndex((app) => app.id === id);
-    if (officerAppIndex !== -1) {
-      officerApps[officerAppIndex] = allApps[appIndex];
-      localStorage.setItem(`leave_applications_${officerId}`, JSON.stringify(officerApps));
-    }
+    saveAllLeaveApplications(allApps);
     
     // Notify the officer
+    const app = allApps[appIndex];
+    const userRole = app.applicant_type === 'innovation_officer' ? 'officer' : 'system_admin';
+    const redirectPath = app.applicant_type === 'innovation_officer' 
+      ? '/officer/leave-management' 
+      : '/system-admin/leave-management';
+    
     createNotification(
-      allApps[appIndex].officer_id,
-      'officer',
+      app.officer_id,
+      userRole,
       'leave_application_approved',
       'Leave Application Approved',
-      `Your ${allApps[appIndex].leave_type} leave application has been approved by ${reviewerName}`,
-      '/officer/leave-management',
+      `Your ${app.leave_type} leave application has been approved by ${reviewerName}`,
+      redirectPath,
       {
         leave_application_id: id,
-        leave_type: allApps[appIndex].leave_type,
-        start_date: allApps[appIndex].start_date,
-        end_date: allApps[appIndex].end_date,
+        leave_type: app.leave_type,
+        start_date: app.start_date,
+        end_date: app.end_date,
       }
     );
   }
 };
 
+/**
+ * Reject leave application (generic)
+ */
 export const rejectLeaveApplication = (
   id: string,
   reviewerName: string,
   rejectionReason: string
 ): void => {
-  const allApps = getAllLeaveApplications();
+  const allApps = loadAllLeaveApplications();
   const appIndex = allApps.findIndex((app) => app.id === id);
   
   if (appIndex !== -1) {
@@ -433,47 +466,42 @@ export const rejectLeaveApplication = (
     allApps[appIndex].reviewed_at = new Date().toISOString();
     allApps[appIndex].rejection_reason = rejectionReason;
     
-    // Save to global storage
-    localStorage.setItem('all_leave_applications', JSON.stringify(allApps));
-    
-    // Update officer-specific storage
-    const officerId = allApps[appIndex].officer_id;
-    const officerApps = getLeaveApplicationsByOfficer(officerId);
-    const officerAppIndex = officerApps.findIndex((app) => app.id === id);
-    if (officerAppIndex !== -1) {
-      officerApps[officerAppIndex] = allApps[appIndex];
-      localStorage.setItem(`leave_applications_${officerId}`, JSON.stringify(officerApps));
-    }
+    saveAllLeaveApplications(allApps);
     
     // Notify the officer
+    const app = allApps[appIndex];
+    const userRole = app.applicant_type === 'innovation_officer' ? 'officer' : 'system_admin';
+    const redirectPath = app.applicant_type === 'innovation_officer' 
+      ? '/officer/leave-management' 
+      : '/system-admin/leave-management';
+    
     createNotification(
-      allApps[appIndex].officer_id,
-      'officer',
+      app.officer_id,
+      userRole,
       'leave_application_rejected',
       'Leave Application Rejected',
-      `Your ${allApps[appIndex].leave_type} leave application has been rejected by ${reviewerName}`,
-      '/officer/leave-management',
+      `Your ${app.leave_type} leave application has been rejected by ${reviewerName}`,
+      redirectPath,
       {
         leave_application_id: id,
-        leave_type: allApps[appIndex].leave_type,
+        leave_type: app.leave_type,
         rejection_reason: rejectionReason,
       }
     );
   }
 };
 
+/**
+ * Cancel leave application
+ */
 export const cancelLeaveApplication = (id: string, officerId: string): void => {
-  // Remove from officer-specific storage
-  const officerApps = getLeaveApplicationsByOfficer(officerId).filter((app) => app.id !== id);
-  localStorage.setItem(`leave_applications_${officerId}`, JSON.stringify(officerApps));
-  
-  // Remove from global storage
-  const allApps = getAllLeaveApplications().filter((app) => app.id !== id);
-  localStorage.setItem('all_leave_applications', JSON.stringify(allApps));
+  const allApps = loadAllLeaveApplications();
+  const filteredApps = allApps.filter((app) => app.id !== id);
+  saveAllLeaveApplications(filteredApps);
 };
 
 // ========================================
-// HIERARCHICAL APPROVAL FUNCTIONS (NEW)
+// HIERARCHICAL APPROVAL FUNCTIONS
 // ========================================
 
 /**
@@ -485,7 +513,7 @@ export const approveLeaveApplicationManager = (
   managerName: string,
   comments?: string
 ): void => {
-  const allApps = getAllLeaveApplications();
+  const allApps = loadAllLeaveApplications();
   const appIndex = allApps.findIndex((app) => app.id === id);
   
   if (appIndex !== -1) {
@@ -494,17 +522,7 @@ export const approveLeaveApplicationManager = (
     allApps[appIndex].approved_by_manager_at = new Date().toISOString();
     allApps[appIndex].manager_comments = comments;
     
-    // Save to global storage
-    localStorage.setItem('all_leave_applications', JSON.stringify(allApps));
-    
-    // Update officer-specific storage
-    const officerId = allApps[appIndex].officer_id;
-    const officerApps = getLeaveApplicationsByOfficer(officerId);
-    const officerAppIndex = officerApps.findIndex((app) => app.id === id);
-    if (officerAppIndex !== -1) {
-      officerApps[officerAppIndex] = allApps[appIndex];
-      localStorage.setItem(`leave_applications_${officerId}`, JSON.stringify(officerApps));
-    }
+    saveAllLeaveApplications(allApps);
     
     // Notify the officer
     createNotification(
@@ -526,17 +544,19 @@ export const approveLeaveApplicationManager = (
 
 /**
  * AGM approves Innovation Officer leave (final stage)
- * Marks as fully approved
+ * Marks as fully approved and deducts leave balance
  */
 export const approveLeaveApplicationAGM = (
   id: string,
   agmName: string,
   comments?: string
 ): void => {
-  const allApps = getAllLeaveApplications();
+  const allApps = loadAllLeaveApplications();
   const appIndex = allApps.findIndex((app) => app.id === id);
   
   if (appIndex !== -1) {
+    const app = allApps[appIndex];
+    
     allApps[appIndex].status = "approved";
     allApps[appIndex].approval_stage = "approved";
     allApps[appIndex].approved_by_agm = agmName;
@@ -546,41 +566,31 @@ export const approveLeaveApplicationAGM = (
     allApps[appIndex].reviewed_at = new Date().toISOString();
     
     // Deduct leave balance
-    const balance = getLeaveBalance(allApps[appIndex].officer_id, "2025");
-    if (allApps[appIndex].leave_type === "casual") {
-      balance.casual_leave -= allApps[appIndex].total_days;
-    } else if (allApps[appIndex].leave_type === "sick") {
-      balance.sick_leave -= allApps[appIndex].total_days;
-    } else if (allApps[appIndex].leave_type === "earned") {
-      balance.earned_leave -= allApps[appIndex].total_days;
+    const balance = getLeaveBalance(app.officer_id, "2025");
+    if (app.leave_type === "casual") {
+      balance.casual_leave = Math.max(0, balance.casual_leave - app.total_days);
+    } else if (app.leave_type === "sick") {
+      balance.sick_leave = Math.max(0, balance.sick_leave - app.total_days);
+    } else if (app.leave_type === "earned") {
+      balance.earned_leave = Math.max(0, balance.earned_leave - app.total_days);
     }
     initializeLeaveBalance(balance);
     
-    // Save to global storage
-    localStorage.setItem('all_leave_applications', JSON.stringify(allApps));
-    
-    // Update officer-specific storage
-    const officerId = allApps[appIndex].officer_id;
-    const officerApps = getLeaveApplicationsByOfficer(officerId);
-    const officerAppIndex = officerApps.findIndex((app) => app.id === id);
-    if (officerAppIndex !== -1) {
-      officerApps[officerAppIndex] = allApps[appIndex];
-      localStorage.setItem(`leave_applications_${officerId}`, JSON.stringify(officerApps));
-    }
+    saveAllLeaveApplications(allApps);
     
     // Notify the officer
     createNotification(
-      allApps[appIndex].officer_id,
+      app.officer_id,
       'officer',
       'leave_application_approved',
       'Leave Application Fully Approved',
-      `Your ${allApps[appIndex].leave_type} leave has been fully approved by ${agmName}`,
+      `Your ${app.leave_type} leave has been fully approved by ${agmName}`,
       '/officer/leave-management',
       {
         leave_application_id: id,
-        leave_type: allApps[appIndex].leave_type,
-        start_date: allApps[appIndex].start_date,
-        end_date: allApps[appIndex].end_date,
+        leave_type: app.leave_type,
+        start_date: app.start_date,
+        end_date: app.end_date,
       }
     );
   }
@@ -588,17 +598,19 @@ export const approveLeaveApplicationAGM = (
 
 /**
  * CEO approves Meta Staff leave (final stage)
- * Marks as fully approved
+ * Marks as fully approved and deducts leave balance
  */
 export const approveLeaveApplicationCEO = (
   id: string,
   ceoName: string,
   comments?: string
 ): void => {
-  const allApps = getAllLeaveApplications();
+  const allApps = loadAllLeaveApplications();
   const appIndex = allApps.findIndex((app) => app.id === id);
   
   if (appIndex !== -1) {
+    const app = allApps[appIndex];
+    
     allApps[appIndex].status = "approved";
     allApps[appIndex].approval_stage = "approved";
     allApps[appIndex].reviewed_by = ceoName;
@@ -606,41 +618,31 @@ export const approveLeaveApplicationCEO = (
     allApps[appIndex].admin_comments = comments;
     
     // Deduct leave balance for meta staff
-    const balance = getLeaveBalance(allApps[appIndex].officer_id, "2025");
-    if (allApps[appIndex].leave_type === "casual") {
-      balance.casual_leave -= allApps[appIndex].total_days;
-    } else if (allApps[appIndex].leave_type === "sick") {
-      balance.sick_leave -= allApps[appIndex].total_days;
-    } else if (allApps[appIndex].leave_type === "earned") {
-      balance.earned_leave -= allApps[appIndex].total_days;
+    const balance = getLeaveBalance(app.officer_id, "2025");
+    if (app.leave_type === "casual") {
+      balance.casual_leave = Math.max(0, balance.casual_leave - app.total_days);
+    } else if (app.leave_type === "sick") {
+      balance.sick_leave = Math.max(0, balance.sick_leave - app.total_days);
+    } else if (app.leave_type === "earned") {
+      balance.earned_leave = Math.max(0, balance.earned_leave - app.total_days);
     }
     initializeLeaveBalance(balance);
     
-    // Save to global storage
-    localStorage.setItem('all_leave_applications', JSON.stringify(allApps));
-    
-    // Update user-specific storage
-    const userId = allApps[appIndex].officer_id;
-    const userApps = getLeaveApplicationsByOfficer(userId);
-    const userAppIndex = userApps.findIndex((app) => app.id === id);
-    if (userAppIndex !== -1) {
-      userApps[userAppIndex] = allApps[appIndex];
-      localStorage.setItem(`leave_applications_${userId}`, JSON.stringify(userApps));
-    }
+    saveAllLeaveApplications(allApps);
     
     // Notify the meta staff user
     createNotification(
-      allApps[appIndex].officer_id,
+      app.officer_id,
       'system_admin',
       'leave_application_approved',
       'Leave Application Approved',
-      `Your ${allApps[appIndex].leave_type} leave has been approved by ${ceoName}`,
+      `Your ${app.leave_type} leave has been approved by ${ceoName}`,
       '/system-admin/leave-management',
       {
         leave_application_id: id,
-        leave_type: allApps[appIndex].leave_type,
-        start_date: allApps[appIndex].start_date,
-        end_date: allApps[appIndex].end_date,
+        leave_type: app.leave_type,
+        start_date: app.start_date,
+        end_date: app.end_date,
       }
     );
   }
@@ -655,10 +657,12 @@ export const rejectLeaveApplicationHierarchical = (
   rejectionReason: string,
   stage: 'manager' | 'agm' | 'ceo'
 ): void => {
-  const allApps = getAllLeaveApplications();
+  const allApps = loadAllLeaveApplications();
   const appIndex = allApps.findIndex((app) => app.id === id);
   
   if (appIndex !== -1) {
+    const app = allApps[appIndex];
+    
     allApps[appIndex].status = "rejected";
     allApps[appIndex].approval_stage = "rejected";
     allApps[appIndex].rejected_by = reviewerName;
@@ -668,34 +672,24 @@ export const rejectLeaveApplicationHierarchical = (
     allApps[appIndex].reviewed_by = reviewerName;
     allApps[appIndex].reviewed_at = new Date().toISOString();
     
-    // Save to global storage
-    localStorage.setItem('all_leave_applications', JSON.stringify(allApps));
-    
-    // Update user-specific storage
-    const userId = allApps[appIndex].officer_id;
-    const userApps = getLeaveApplicationsByOfficer(userId);
-    const userAppIndex = userApps.findIndex((app) => app.id === id);
-    if (userAppIndex !== -1) {
-      userApps[userAppIndex] = allApps[appIndex];
-      localStorage.setItem(`leave_applications_${userId}`, JSON.stringify(userApps));
-    }
+    saveAllLeaveApplications(allApps);
     
     // Notify the user
-    const userRole = allApps[appIndex].applicant_type === 'innovation_officer' ? 'officer' : 'system_admin';
-    const redirectPath = allApps[appIndex].applicant_type === 'innovation_officer' 
+    const userRole = app.applicant_type === 'innovation_officer' ? 'officer' : 'system_admin';
+    const redirectPath = app.applicant_type === 'innovation_officer' 
       ? '/officer/leave-management' 
       : '/system-admin/leave-management';
     
     createNotification(
-      allApps[appIndex].officer_id,
+      app.officer_id,
       userRole,
       'leave_application_rejected',
       'Leave Application Rejected',
-      `Your ${allApps[appIndex].leave_type} leave has been rejected by ${reviewerName}`,
+      `Your ${app.leave_type} leave has been rejected by ${reviewerName}`,
       redirectPath,
       {
         leave_application_id: id,
-        leave_type: allApps[appIndex].leave_type,
+        leave_type: app.leave_type,
         rejection_reason: rejectionReason,
       }
     );
@@ -706,7 +700,7 @@ export const rejectLeaveApplicationHierarchical = (
  * Get pending leave count by stage (for badge counts)
  */
 export const getPendingLeaveCountByStage = (stage: 'manager_pending' | 'agm_pending' | 'ceo_pending'): number => {
-  const allApps = getAllLeaveApplications();
+  const allApps = loadAllLeaveApplications();
   return allApps.filter(app => app.approval_stage === stage && app.status === 'pending').length;
 };
 
@@ -714,10 +708,13 @@ export const getPendingLeaveCountByStage = (stage: 'manager_pending' | 'agm_pend
  * Get leave applications by approval stage
  */
 export const getLeaveApplicationsByStage = (stage: 'manager_pending' | 'agm_pending' | 'ceo_pending'): LeaveApplication[] => {
-  const allApps = getAllLeaveApplications();
+  const allApps = loadAllLeaveApplications();
   return allApps.filter(app => app.approval_stage === stage && app.status === 'pending');
 };
 
+// ========================================
+// TIMETABLE INTEGRATION FUNCTIONS
+// ========================================
 
 /**
  * Update timetable slot status when leave is approved
@@ -728,16 +725,8 @@ export const updateTimetableSlotStatus = (
   status: 'on_leave' | 'substitute',
   leaveApplicationId: string
 ): void => {
-  const { mockOfficerTimetables } = require('@/data/mockOfficerTimetable');
-  const timetable = mockOfficerTimetables.find((t: any) => t.officer_id === officerId);
-  
-  if (timetable) {
-    const slot = timetable.slots.find((s: any) => s.id === slotId);
-    if (slot) {
-      slot.status = status;
-      slot.leave_application_id = leaveApplicationId;
-    }
-  }
+  // This will be implemented when connecting to backend
+  console.log(`Updating slot ${slotId} for officer ${officerId} to status ${status}`);
 };
 
 /**
@@ -748,34 +737,6 @@ export const addSubstituteSlot = (
   assignment: any,
   leaveApplication: any
 ): void => {
-  const { mockOfficerTimetables } = require('@/data/mockOfficerTimetable');
-  const timetable = mockOfficerTimetables.find((t: any) => t.officer_id === substituteOfficerId);
-  
-  if (timetable) {
-    const affectedSlot = leaveApplication.affected_slots?.find(
-      (s: any) => s.slot_id === assignment.slot_id
-    );
-    
-    if (affectedSlot) {
-      // Create a new substitute slot
-      const newSlot = {
-        id: `substitute-${assignment.slot_id}-${Date.now()}`,
-        officer_id: substituteOfficerId,
-        day: affectedSlot.day,
-        start_time: affectedSlot.start_time,
-        end_time: affectedSlot.end_time,
-        class: affectedSlot.class,
-        subject: affectedSlot.subject,
-        room: affectedSlot.room,
-        type: 'substitute' as const,
-        status: 'substitute' as const,
-        original_officer_id: assignment.original_officer_id,
-        original_officer_name: leaveApplication.officer_name,
-        leave_application_id: leaveApplication.id,
-      };
-      
-      timetable.slots.push(newSlot);
-      timetable.total_hours += assignment.hours;
-    }
-  }
+  // This will be implemented when connecting to backend
+  console.log(`Adding substitute slot for officer ${substituteOfficerId}`);
 };

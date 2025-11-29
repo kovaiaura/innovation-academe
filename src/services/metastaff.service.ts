@@ -18,6 +18,10 @@ export const metaStaffService = {
     email: string;
     position_id: string;
     custom_password?: string;
+    // Leave allowances
+    casual_leave?: number;
+    sick_leave?: number;
+    earned_leave?: number;
   }): Promise<{ user: User; password: string }> => {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -44,6 +48,16 @@ export const metaStaffService = {
     
     // Add to mockUsers array so they can login
     mockUsers.push(newUser);
+    
+    // Initialize leave balance for new meta staff
+    const { initializeLeaveBalance } = await import('@/data/mockLeaveData');
+    initializeLeaveBalance({
+      officer_id: newUser.id,
+      casual_leave: data.casual_leave ?? 12,
+      sick_leave: data.sick_leave ?? 10,
+      earned_leave: data.earned_leave ?? 15,
+      year: new Date().getFullYear().toString(),
+    });
     
     // Return user without password field and the password separately
     const { password, ...userWithoutPassword } = newUser;

@@ -46,7 +46,7 @@ export default function MetaStaffLeaveManagement() {
   // Filtering
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
-  useEffect(() => {
+  const refreshData = () => {
     if (user) {
       const balance = getLeaveBalance(user.id, '2025');
       setLeaveBalance(balance);
@@ -57,6 +57,10 @@ export default function MetaStaffLeaveManagement() {
       const approved = getApprovedLeaveDates(user.id);
       setApprovedDates(approved);
     }
+  };
+
+  useEffect(() => {
+    refreshData();
   }, [user]);
 
   const calculateWorkingDays = (from: Date, to: Date): number => {
@@ -120,8 +124,10 @@ export default function MetaStaffLeaveManagement() {
 
     try {
       addLeaveApplication(newApplication);
-      setApplications([...applications, newApplication]);
       toast.success('Leave application submitted successfully');
+      
+      // Refresh data from localStorage
+      refreshData();
       
       // Reset form
       setDateRange(undefined);
@@ -147,7 +153,7 @@ export default function MetaStaffLeaveManagement() {
     }
 
     cancelLeaveApplication(application.id, user?.id || '');
-    setApplications(applications.filter(app => app.id !== application.id));
+    refreshData();
     toast.success('Leave application cancelled');
   };
 
