@@ -94,17 +94,17 @@ export function EventsOverviewTab() {
                   </div>
                 </div>
               </CardContent>
-              <CardFooter className="flex flex-col sm:flex-row gap-2">
+              <CardFooter className="flex flex-col lg:flex-row gap-2 overflow-hidden">
                 <Button
                   variant="outline"
-                  className="w-full sm:flex-1"
+                  className="w-full lg:flex-1 min-w-0"
                   onClick={() => setSelectedEventId(event.id)}
                 >
                   View Details
                 </Button>
                 <Button
                   variant="secondary"
-                  className="w-full sm:flex-1 whitespace-nowrap"
+                  className="w-full lg:flex-1 min-w-0 overflow-hidden"
                   onClick={() => setStudentsDialogEventId(event.id)}
                 >
                   <Users className="h-4 w-4 mr-2 flex-shrink-0" />
