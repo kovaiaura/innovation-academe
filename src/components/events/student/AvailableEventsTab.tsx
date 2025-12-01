@@ -204,17 +204,17 @@ export function AvailableEventsTab() {
                     <RegistrationCountdown endDate={event.registration_end} />
                   </div>
                 </CardContent>
-                <CardFooter className="flex flex-col sm:flex-row gap-2">
+                <CardFooter className="flex flex-col lg:flex-row gap-2 overflow-hidden">
                   <Button
                     variant="outline"
-                    className="w-full sm:flex-1"
+                    className="w-full lg:flex-1 min-w-0"
                     onClick={() => setSelectedEventId(event.id)}
                   >
                     View Details
                   </Button>
                   <Button
                     variant={isInterested ? "secondary" : "default"}
-                    className="w-full sm:flex-1 whitespace-nowrap"
+                    className="w-full lg:flex-1 min-w-0 overflow-hidden"
                     onClick={() => !isInterested && handleExpressInterest(event.id)}
                     disabled={isInterested}
                   >

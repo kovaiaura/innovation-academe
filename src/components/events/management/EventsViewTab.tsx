@@ -151,10 +151,10 @@ export function EventsViewTab() {
                   </div>
                 )}
               </CardContent>
-              <CardFooter>
+              <CardFooter className="overflow-hidden">
                 <Button
                   variant="outline"
-                  className="w-full"
+                  className="w-full min-w-0"
                   onClick={() => setSelectedEventId(event.id)}
                 >
                   View Details
