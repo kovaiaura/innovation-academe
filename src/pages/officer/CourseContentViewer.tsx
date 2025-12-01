@@ -171,11 +171,11 @@ export default function CourseContentViewer() {
 
   const handleNavigate = (direction: 'prev' | 'next') => {
     // Auto-complete current content before navigating in presentation mode
-    if (selectedContent && selectedModule && isPresentationMode) {
+    if (selectedContent && selectedLevel && isPresentationMode) {
       const completion = completions.find(c => c.content_id === selectedContent.id);
       if (!completion?.completed) {
         // Always mark as complete when navigating in presentation mode
-        handleMarkComplete(selectedContent.id, selectedModule.id);
+        handleMarkComplete(selectedContent.id, selectedLevel.id);
         toast.success(`${selectedContent.title} marked as complete`, {
           icon: <CheckCircle2 className="h-4 w-4" />,
           duration: 2000,
@@ -183,18 +183,18 @@ export default function CourseContentViewer() {
       }
     }
 
-    const allContent = courseModules.flatMap(m => 
-      mockContent.filter(c => c.module_id === m.id).map(c => ({ ...c, moduleId: m.id, sessionId: c.session_id }))
+    const allLevelContent = courseLevels.flatMap(m => 
+      allContent.filter(c => c.module_id === m.id).map(c => ({ ...c, moduleId: m.id, sessionId: c.session_id }))
     ).sort((a, b) => a.order - b.order);
 
-    const currentIndex = allContent.findIndex(c => c.id === selectedContentId);
+    const currentIndex = allLevelContent.findIndex(c => c.id === selectedContentId);
     if (currentIndex === -1) return;
 
-    if (direction === 'next' && currentIndex < allContent.length - 1) {
-      const next = allContent[currentIndex + 1];
+    if (direction === 'next' && currentIndex < allLevelContent.length - 1) {
+      const next = allLevelContent[currentIndex + 1];
       handleContentSelect(next.id, next.moduleId, next.sessionId);
     } else if (direction === 'prev' && currentIndex > 0) {
-      const prev = allContent[currentIndex - 1];
+      const prev = allLevelContent[currentIndex - 1];
       handleContentSelect(prev.id, prev.moduleId, prev.sessionId);
     }
   };
@@ -211,15 +211,15 @@ export default function CourseContentViewer() {
 
   // Calculate course progress
   const courseProgress: CourseProgress = useMemo(() => {
-    const allCourseContent = courseModules.flatMap(m =>
-      mockContent.filter(c => c.module_id === m.id)
+    const allCourseContent = courseLevels.flatMap(m =>
+      allContent.filter(c => c.module_id === m.id)
     );
     const completedCount = allCourseContent.filter(c =>
       completions.some(comp => comp.content_id === c.id && comp.completed)
     ).length;
 
-    const modules = courseModules.map(m => {
-      const moduleContent = mockContent.filter(c => c.module_id === m.id);
+    const modules = courseLevels.map(m => {
+      const moduleContent = allContent.filter(c => c.module_id === m.id);
       const completed = moduleContent.filter(c =>
         completions.some(comp => comp.content_id === c.id && comp.completed)
       ).length;
@@ -239,23 +239,23 @@ export default function CourseContentViewer() {
       percentage: allCourseContent.length > 0 ? (completedCount / allCourseContent.length) * 100 : 0,
       modules,
     };
-  }, [courseModules, completions, courseId]);
+  }, [courseLevels, completions, courseId, allContent]);
 
   // Get timeline items
   const timelineItems: CompletionTimelineItem[] = useMemo(() => {
     return completions
       .filter(c => c.completed)
       .map(c => {
-        const content = mockContent.find(mc => mc.id === c.content_id);
-        const module = courseModules.find(m => m.id === c.module_id);
+        const content = allContent.find(mc => mc.id === c.content_id);
+        const level = courseLevels.find(m => m.id === c.module_id);
         return {
           ...c,
           content_title: content?.title || 'Unknown',
-          module_title: module?.title || 'Unknown',
+          module_title: level?.title || 'Unknown',
           content_type: content?.type || 'unknown',
         };
       });
-  }, [completions, courseModules]);
+  }, [completions, courseLevels, allContent]);
 
   // Handle ESC key to exit presentation mode
   useEffect(() => {
