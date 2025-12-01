@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Maximize2, Minimize2, Calendar, CheckCircle2, Users as UsersIcon } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { ModuleNavigationSidebar } from '@/components/officer/ModuleNavigationSidebar';
+import { LevelNavigationSidebar } from '@/components/officer/LevelNavigationSidebar';
 import { ContentDisplayArea } from '@/components/officer/ContentDisplayArea';
 import { StudentEngagementPanel } from '@/components/officer/StudentEngagementPanel';
 import { CompletionTimelineDialog } from '@/components/officer/CompletionTimelineDialog';
 import { SessionAttendanceDialog } from '@/components/officer/SessionAttendanceDialog';
-import { mockCourses, mockModules, mockContent } from '@/data/mockCourseData';
+import { loadCourses, getLevelsByCourse, loadContent, getContentBySession } from '@/utils/courseDataHelpers';
 import { toast } from 'sonner';
 import type { ContentCompletion, CompletionTimelineItem, CourseProgress } from '@/types/contentCompletion';
 import { getSessionDelivery, updateSessionProgress, getSessionProgressByClass } from '@/utils/sessionHelpers';
@@ -34,25 +34,27 @@ export default function CourseContentViewer() {
   const className = searchParams.get('class');
   const slotId = searchParams.get('slot_id');
   const classId = searchParams.get('class_id');
-  const allowedModulesParam = searchParams.get('allowed_modules');
-  const allowedModuleIds = allowedModulesParam ? allowedModulesParam.split(',') : null;
+  const allowedLevelsParam = searchParams.get('allowed_levels') || searchParams.get('allowed_modules');
+  const allowedLevelIds = allowedLevelsParam ? allowedLevelsParam.split(',') : null;
 
   // Get course data
-  const course = mockCourses.find(c => c.id === courseId);
+  const courses = loadCourses();
+  const course = courses.find(c => c.id === courseId);
+  const allContent = loadContent();
   
-  // Get course modules - filter to only allowed modules if teaching a specific class
-  let courseModules = mockModules.filter(m => m.course_id === courseId);
-  if (allowedModuleIds) {
-    courseModules = courseModules.filter(m => allowedModuleIds.includes(m.id));
+  // Get course levels - filter to only allowed levels if teaching a specific class
+  let courseLevels = getLevelsByCourse(courseId || '');
+  if (allowedLevelIds) {
+    courseLevels = courseLevels.filter(l => allowedLevelIds.includes(l.id));
   }
   // Sort by order
-  courseModules = courseModules.sort((a, b) => a.order - b.order);
+  courseLevels = courseLevels.sort((a, b) => a.order - b.order);
   
-  const selectedModule = courseModules.find(m => m.id === selectedModuleId);
-  const moduleContent = selectedModuleId 
-    ? mockContent.filter(c => c.module_id === selectedModuleId)
+  const selectedLevel = courseLevels.find(l => l.id === selectedModuleId);
+  const levelContent = selectedModuleId 
+    ? allContent.filter(c => c.module_id === selectedModuleId)
     : [];
-  const selectedContent = moduleContent.find(c => c.id === selectedContentId);
+  const selectedContent = levelContent.find(c => c.id === selectedContentId);
 
   // Load completions - either from session or from localStorage
   useEffect(() => {
@@ -101,17 +103,17 @@ export default function CourseContentViewer() {
     }
   }, [completions, courseId, sessionId]);
 
-  // Auto-select first module and content on load
+  // Auto-select first level and content on load
   useEffect(() => {
-    if (courseModules.length > 0 && !selectedModuleId) {
-      const firstModule = courseModules[0];
-      setSelectedModuleId(firstModule.id);
-      const firstContent = mockContent.find(c => c.module_id === firstModule.id);
+    if (courseLevels.length > 0 && !selectedModuleId) {
+      const firstLevel = courseLevels[0];
+      setSelectedModuleId(firstLevel.id);
+      const firstContent = allContent.find(c => c.module_id === firstLevel.id);
       if (firstContent) {
         setSelectedContentId(firstContent.id);
       }
     }
-  }, [courseModules, selectedModuleId]);
+  }, [courseLevels, selectedModuleId, allContent]);
 
   if (!course) {
     return (
@@ -279,9 +281,9 @@ export default function CourseContentViewer() {
               <span className="text-muted-foreground">
                 {format(new Date(), 'EEEE, MMM dd, yyyy')}
               </span>
-              {allowedModuleIds && (
+              {allowedLevelIds && (
                 <span className="text-muted-foreground">
-                  {courseModules.length} modules available for this class
+                  {courseLevels.length} levels available for this class
                 </span>
               )}
             </div>
@@ -356,14 +358,14 @@ export default function CourseContentViewer() {
 
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar - Module Navigation */}
+        {/* Left Sidebar - Level Navigation */}
         {!isPresentationMode && (
-        <ModuleNavigationSidebar
-          modules={courseModules}
+        <LevelNavigationSidebar
+          levels={courseLevels}
           courseId={courseId || ''}
-          selectedModuleId={selectedModuleId}
+          selectedLevelId={selectedModuleId}
           selectedContentId={selectedContentId}
-          onModuleSelect={setSelectedModuleId}
+          onLevelSelect={setSelectedModuleId}
           onContentSelect={handleContentSelect}
           completions={completions}
           courseProgress={courseProgress}
@@ -373,7 +375,7 @@ export default function CourseContentViewer() {
         {/* Center - Content Display */}
         <ContentDisplayArea
           content={selectedContent}
-          module={selectedModule}
+          module={selectedLevel}
           isPresentationMode={isPresentationMode}
           onNavigate={handleNavigate}
           onExitPresentation={isPresentationMode ? togglePresentationMode : undefined}
@@ -410,13 +412,13 @@ export default function CourseContentViewer() {
           
           <div className="text-sm px-4 space-y-1">
             <div className="font-medium flex items-center gap-2">
-              {selectedModule?.title}
+              {selectedLevel?.title}
               {selectedContent && completions.some(c => c.content_id === selectedContent.id && c.completed) && (
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
               )}
             </div>
             <div className="text-xs text-muted-foreground">
-              Module: {courseProgress.modules.find(m => m.module_id === selectedModuleId)?.completed_content || 0}/
+              Level: {courseProgress.modules.find(m => m.module_id === selectedModuleId)?.completed_content || 0}/
               {courseProgress.modules.find(m => m.module_id === selectedModuleId)?.total_content || 0} | 
               Course: {Math.round(courseProgress.percentage)}%
             </div>

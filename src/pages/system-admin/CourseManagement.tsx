@@ -11,29 +11,46 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { BookOpen, Plus, Upload, FileText, Video, Link as LinkIcon, Search, Filter, Edit, Trash2, Copy, BarChart3, Users, TrendingUp, Award, Clock } from 'lucide-react';
+import { BookOpen, Plus, Upload, FileText, Video, Link as LinkIcon, Search, Filter, Edit, Trash2, Copy, BarChart3, Users, TrendingUp, Award, Clock, Eye, Layers } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { mockCourses, mockModules, mockContent, mockAssignments, mockQuizzes, mockCourseAssignments, mockCourseAnalytics } from '@/data/mockCourseData';
-import { ModuleBuilder } from '@/components/course/ModuleBuilder';
+import { mockCourseAnalytics } from '@/data/mockCourseData';
+import { LevelBuilder } from '@/components/course/LevelBuilder';
 import { CreateAssignmentDialog } from '@/components/course/CreateAssignmentDialog';
 import { CreateQuizDialog } from '@/components/course/CreateQuizDialog';
 import { AssignCourseDialog } from '@/components/course/AssignCourseDialog';
 import { CertificateSelector } from '@/components/gamification/CertificateSelector';
+import { CoursePreviewDialog } from '@/components/course/CoursePreviewDialog';
+import { EditCourseDialog } from '@/components/course/EditCourseDialog';
 import { courseService } from '@/services/course.service';
-import { Assignment, Quiz, CourseAssignmentRequest } from '@/types/course';
+import { Assignment, Quiz, CourseAssignmentRequest, Course } from '@/types/course';
+import { loadCourses, saveCourses, loadLevels, loadAssignments, loadQuizzes, loadCourseAssignments, getCourseAnalytics } from '@/utils/courseDataHelpers';
 
 export default function CourseManagement() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all-courses');
-  const [courses, setCourses] = useState(mockCourses);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [assignments, setAssignments] = useState(mockAssignments);
-  const [quizzes, setQuizzes] = useState(mockQuizzes);
-  const [courseAssignments, setCourseAssignments] = useState(mockCourseAssignments);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [courseAssignments, setCourseAssignments] = useState(loadCourseAssignments());
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [quizDialogOpen, setQuizDialogOpen] = useState(false);
   const [assignCourseDialogOpen, setAssignCourseDialogOpen] = useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  
+  // Load data from localStorage
+  useEffect(() => {
+    setCourses(loadCourses());
+    setAssignments(loadAssignments());
+    setQuizzes(loadQuizzes());
+  }, []);
+
+  const refreshCourses = () => {
+    setCourses(loadCourses());
+  };
   
   // Course creation form state
   const [newCourse, setNewCourse] = useState({
@@ -47,7 +64,7 @@ export default function CourseManagement() {
     prerequisites: '',
     learning_outcomes: [''],
     certificate_template_id: undefined as string | undefined,
-    modules: [] as any[]
+    levels: [] as any[] // Changed from modules to levels
   });
 
   const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
@@ -70,7 +87,29 @@ export default function CourseManagement() {
       return;
     }
 
-    console.log("Creating course:", { ...newCourse, status: isDraft ? 'draft' : 'active' });
+    // Create new course and save to localStorage
+    const newCourseData: Course = {
+      id: `course-${Date.now()}`,
+      course_code: newCourse.course_code,
+      title: newCourse.title,
+      description: newCourse.description,
+      category: newCourse.category as any,
+      thumbnail_url: newCourse.thumbnail_url,
+      difficulty: newCourse.difficulty as any,
+      duration_weeks: newCourse.duration_weeks,
+      prerequisites: newCourse.prerequisites,
+      learning_outcomes: newCourse.learning_outcomes.filter(o => o.trim()),
+      certificate_template_id: newCourse.certificate_template_id,
+      status: isDraft ? 'draft' : 'active',
+      created_by: 'admin-1',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const updatedCourses = [...courses, newCourseData];
+    saveCourses(updatedCourses);
+    setCourses(updatedCourses);
+
     toast.success(`Course ${isDraft ? 'saved as draft' : 'created and published'} successfully!`);
     
     // Reset form after creation
@@ -85,7 +124,7 @@ export default function CourseManagement() {
       prerequisites: '',
       learning_outcomes: [''],
       certificate_template_id: undefined,
-      modules: []
+      levels: []
     });
     setThumbnailPreview('');
     setActiveTab('all-courses');
@@ -338,27 +377,32 @@ export default function CourseManagement() {
                               className="flex-1"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigate(`/system-admin/courses/${course.id}`);
+                                setSelectedCourseId(course.id);
+                                setPreviewDialogOpen(true);
                               }}
                             >
-                              <Edit className="h-4 w-4 mr-1" />
-                              View
+                              <Eye className="h-4 w-4 mr-1" />
+                              Preview
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                toast.success('Course duplicated');
+                                setSelectedCourseId(course.id);
+                                setEditDialogOpen(true);
                               }}
                             >
-                              <Copy className="h-4 w-4" />
+                              <Edit className="h-4 w-4" />
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                const updatedCourses = courses.filter(c => c.id !== course.id);
+                                saveCourses(updatedCourses);
+                                setCourses(updatedCourses);
                                 toast.success('Course deleted');
                               }}
                             >
@@ -556,18 +600,21 @@ export default function CourseManagement() {
               </CardContent>
             </Card>
 
-            {/* Course Structure - Modules and Content */}
+            {/* Course Structure - Levels and Content */}
             <Card>
               <CardHeader>
-                <CardTitle>Course Structure</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Layers className="h-5 w-5" />
+                  Course Structure
+                </CardTitle>
                 <CardDescription>
-                  Build your course by adding modules and uploading content (PDFs, videos, presentations, YouTube links, etc.)
+                  Build your course by adding levels (unlocked per class), sessions, and content (PDFs, videos, presentations, YouTube links, etc.)
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ModuleBuilder
-                  modules={newCourse.modules}
-                  onChange={(modules) => setNewCourse({ ...newCourse, modules })}
+                <LevelBuilder
+                  levels={newCourse.levels}
+                  onChange={(levels) => setNewCourse({ ...newCourse, levels })}
                 />
               </CardContent>
             </Card>
@@ -597,7 +644,7 @@ export default function CourseManagement() {
                         prerequisites: '',
                         learning_outcomes: [''],
                         certificate_template_id: undefined,
-                        modules: []
+                        levels: []
                       });
                       setThumbnailPreview('');
                       setActiveTab('all-courses');
@@ -707,7 +754,7 @@ export default function CourseManagement() {
         open={assignmentDialogOpen}
         onOpenChange={setAssignmentDialogOpen}
         courses={courses}
-        modules={mockModules}
+        modules={loadLevels()}
         onSubmit={handleCreateAssignment}
       />
 
@@ -715,7 +762,7 @@ export default function CourseManagement() {
         open={quizDialogOpen}
         onOpenChange={setQuizDialogOpen}
         courses={courses}
-        modules={mockModules}
+        modules={loadLevels()}
         onSubmit={handleCreateQuiz}
       />
 
@@ -724,6 +771,19 @@ export default function CourseManagement() {
         onOpenChange={setAssignCourseDialogOpen}
         courses={courses}
         onSubmit={handleAssignCourse}
+      />
+
+      <CoursePreviewDialog
+        open={previewDialogOpen}
+        onOpenChange={setPreviewDialogOpen}
+        course={courses.find(c => c.id === selectedCourseId) || null}
+      />
+
+      <EditCourseDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        courseId={selectedCourseId}
+        onSave={refreshCourses}
       />
     </Layout>
   );
