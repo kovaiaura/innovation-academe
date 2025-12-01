@@ -171,21 +171,19 @@ export function AvailableEventsTab() {
             const isInterested = interestedEvents.has(event.id);
             return (
               <Card key={event.id} className="flex flex-col hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <Badge variant="outline" className={getEventTypeColor(event.event_type)}>
-                      {event.event_type.replace('_', ' ').toUpperCase()}
+              <CardHeader>
+                <div className="flex flex-wrap items-start gap-2 mb-2">
+                  <Badge variant="outline" className={`${getEventTypeColor(event.event_type)} truncate max-w-[140px]`}>
+                    {event.event_type.replace('_', ' ').toUpperCase()}
+                  </Badge>
+                  {isInterested && (
+                    <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-500/20">
+                      <Heart className="h-3 w-3 mr-1 fill-current" />
+                      Interested
                     </Badge>
-                    <div className="flex items-center gap-2">
-                      {isInterested && (
-                        <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-500/20">
-                          <Heart className="h-3 w-3 mr-1 fill-current" />
-                          Interested
-                        </Badge>
-                      )}
-                      <EventStatusBadge status={event.status} />
-                    </div>
-                  </div>
+                  )}
+                  <EventStatusBadge status={event.status} />
+                </div>
                   <CardTitle className="line-clamp-2">{event.title}</CardTitle>
                   <CardDescription className="line-clamp-3">
                     {event.description}
@@ -206,29 +204,29 @@ export function AvailableEventsTab() {
                     <RegistrationCountdown endDate={event.registration_end} />
                   </div>
                 </CardContent>
-                <CardFooter className="flex gap-2">
+                <CardFooter className="flex flex-col sm:flex-row gap-2">
                   <Button
                     variant="outline"
-                    className="flex-1"
+                    className="w-full sm:flex-1"
                     onClick={() => setSelectedEventId(event.id)}
                   >
                     View Details
                   </Button>
                   <Button
                     variant={isInterested ? "secondary" : "default"}
-                    className="flex-1"
+                    className="w-full sm:flex-1 whitespace-nowrap"
                     onClick={() => !isInterested && handleExpressInterest(event.id)}
                     disabled={isInterested}
                   >
                     {isInterested ? (
                       <>
-                        <Heart className="h-4 w-4 mr-2 fill-current" />
-                        Interested
+                        <Heart className="h-4 w-4 mr-2 flex-shrink-0 fill-current" />
+                        <span className="truncate">Interested</span>
                       </>
                     ) : (
                       <>
-                        <HeartOff className="h-4 w-4 mr-2" />
-                        I'm Interested
+                        <HeartOff className="h-4 w-4 mr-2 flex-shrink-0" />
+                        <span className="truncate">I'm Interested</span>
                       </>
                     )}
                   </Button>

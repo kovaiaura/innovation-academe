@@ -47,8 +47,8 @@ export function EventsOverviewTab() {
           return (
             <Card key={event.id} className="flex flex-col">
               <CardHeader>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <Badge variant="outline" className="capitalize">
+                <div className="flex flex-wrap items-start gap-2 mb-2">
+                  <Badge variant="outline" className="capitalize truncate max-w-[140px]">
                     {event.event_type.replace('_', ' ')}
                   </Badge>
                   <EventStatusBadge status={event.status} />
@@ -94,21 +94,21 @@ export function EventsOverviewTab() {
                   </div>
                 </div>
               </CardContent>
-              <CardFooter className="flex gap-2">
+              <CardFooter className="flex flex-col sm:flex-row gap-2">
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  className="w-full sm:flex-1"
                   onClick={() => setSelectedEventId(event.id)}
                 >
                   View Details
                 </Button>
                 <Button
                   variant="secondary"
-                  className="flex-1"
+                  className="w-full sm:flex-1 whitespace-nowrap"
                   onClick={() => setStudentsDialogEventId(event.id)}
                 >
-                  <Users className="h-4 w-4 mr-2" />
-                  Students ({interestedCount})
+                  <Users className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span className="truncate">Students ({interestedCount})</span>
                 </Button>
               </CardFooter>
             </Card>
