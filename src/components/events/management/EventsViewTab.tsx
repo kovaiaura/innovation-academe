@@ -117,8 +117,8 @@ export function EventsViewTab() {
           {filteredEvents.map((event) => (
             <Card key={event.id} className="flex flex-col hover:shadow-lg transition-shadow">
               <CardHeader>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <Badge variant="outline" className={getEventTypeColor(event.event_type)}>
+                <div className="flex flex-wrap items-start gap-2 mb-2">
+                  <Badge variant="outline" className={`${getEventTypeColor(event.event_type)} truncate max-w-[140px]`}>
                     {event.event_type.replace('_', ' ').toUpperCase()}
                   </Badge>
                   <EventStatusBadge status={event.status} />
