@@ -99,6 +99,7 @@ import SDGManagement from "./pages/system-admin/SDGManagement";
 import SystemAdminAskMetova from "./pages/system-admin/AskMetova";
 import SystemAdminCRM from "./pages/system-admin/CRM";
 import SurveyFeedbackManagement from "./pages/system-admin/SurveyFeedbackManagement";
+import PerformanceRatings from "./pages/system-admin/PerformanceRatings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -412,6 +413,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <SystemAdminCRM />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/performance-ratings"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="performance_ratings">
+                  <PerformanceRatings />
                 </ProtectedRoute>
               }
             />
