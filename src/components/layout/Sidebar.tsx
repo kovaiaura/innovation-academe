@@ -10,7 +10,7 @@ import {
   Building2, FileText, Trophy, Package, UserCheck, GraduationCap,
   MessageSquare, MessageCircle,
   Shield, Phone, Clock, ShoppingCart, PieChart, Briefcase, CalendarCheck,
-  LayoutDashboard, CheckSquare, ListTodo, Key
+  LayoutDashboard, CheckSquare, ListTodo, Key, Star
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
@@ -75,6 +75,7 @@ const menuItems: MenuItem[] = [
   { label: 'SDG Management', icon: <Target className="h-5 w-5" />, path: '/sdg-management', roles: ['system_admin'], feature: 'sdg_management' },
   // CRM & Ask Metova
   { label: 'Surveys & Feedback', icon: <MessageCircle className="h-5 w-5" />, path: '/survey-feedback', roles: ['system_admin'], feature: 'survey_feedback' },
+  { label: 'Performance & Ratings', icon: <Star className="h-5 w-5" />, path: '/performance-ratings', roles: ['system_admin'], feature: 'performance_ratings' },
   { label: 'CRM & Clients', icon: <Phone className="h-5 w-5" />, path: '/crm', roles: ['system_admin'] },
   { label: 'Ask Metova', icon: <MessageSquare className="h-5 w-5" />, path: '/ask-metova', roles: ['system_admin'] },
   // Teacher menu items

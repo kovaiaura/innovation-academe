@@ -50,6 +50,7 @@ const allFeatures: { value: SystemAdminFeature; label: string }[] = [
   { value: 'gamification', label: 'Gamification' },
   { value: 'id_configuration', label: 'ID Configuration' },
   { value: 'survey_feedback', label: 'Surveys & Feedback' },
+  { value: 'performance_ratings', label: 'Performance & Ratings' },
 ];
 
 export function EditPositionDialog({
