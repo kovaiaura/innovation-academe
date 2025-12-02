@@ -45,6 +45,9 @@ import { getCurrentLocation, isWithinInstitution } from '@/utils/locationHelpers
 import type { LocationData } from '@/utils/locationHelpers';
 import { Loader2, MapPin } from 'lucide-react';
 import { SalaryTrackerCard } from '@/components/officer/SalaryTrackerCard';
+import { useInstitutionData } from '@/contexts/InstitutionDataContext';
+import { recordOfficerCheckIn, recordOfficerCheckOut, getTodayAttendance } from '@/data/mockOfficerAttendance';
+import { calculateDistance } from '@/utils/locationHelpers';
 
 // Helper functions
 const getDayName = (date: Date) => {
@@ -110,6 +113,7 @@ export default function OfficerDashboard() {
   const { tenantId } = useParams();
   const navigate = useNavigate();
   const todayKey = format(new Date(), 'yyyy-MM-dd');
+  const { institutions } = useInstitutionData();
   
   // Attendance state
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
@@ -283,24 +287,45 @@ export default function OfficerDashboard() {
     setIsLoadingLocation(true);
     
     try {
-      // Step 1: Get GPS location
-      const location = await getCurrentLocation();
-      
-      // Step 2: Mock institution GPS data (replace with real data from backend later)
-      const institutionGPS = {
-        latitude: 28.5244, // Delhi Public School coordinates
-        longitude: 77.1855,
-        radius_meters: 200
-      };
-      
-      // Step 3: Validate location against institution
-      const isValid = isWithinInstitution(
-        { latitude: location.latitude, longitude: location.longitude },
-        institutionGPS
+      // Step 1: Get officer's assigned institution
+      const institution = institutions.find(i => 
+        officerProfile?.assigned_institutions.includes(i.name)
       );
       
-      // Step 4: Record check-in with GPS data
+      if (!institution || !institution.gps_location) {
+        toast.error('Institution GPS coordinates not configured');
+        setIsLoadingLocation(false);
+        return;
+      }
+      
+      // Step 2: Get GPS location
+      const location = await getCurrentLocation();
+      
+      // Step 3: Calculate distance and validate
+      const distance = calculateDistance(
+        location.latitude,
+        location.longitude,
+        institution.gps_location.latitude,
+        institution.gps_location.longitude
+      );
+      
+      const radius = institution.attendance_radius_meters || 1500; // Default 1.5km
+      const isValid = distance <= radius;
+      
+      // Step 4: Record check-in with localStorage
       const currentTime = format(new Date(), 'hh:mm a');
+      
+      recordOfficerCheckIn({
+        officer_id: user?.id || '',
+        officer_name: user?.name || '',
+        institution_id: institution.id,
+        institution_name: institution.name,
+        date: todayKey,
+        check_in_time: currentTime,
+        check_in_location: location,
+        check_in_validated: isValid,
+        check_in_distance_meters: Math.round(distance),
+      });
       
       setCheckInTime(currentTime);
       setIsCheckedIn(true);
@@ -310,11 +335,11 @@ export default function OfficerDashboard() {
       // Step 5: Show feedback based on validation
       if (isValid) {
         toast.success(`✓ Checked in at ${currentTime}`, {
-          description: 'Location verified - You are within institution premises'
+          description: `Location verified - ${Math.round(distance)}m from institution`
         });
       } else {
         toast.warning(`⚠ Checked in at ${currentTime}`, {
-          description: 'Location not verified - You appear to be outside institution premises. Admin will review.'
+          description: `Location not verified - ${Math.round(distance)}m from institution (Radius: ${radius}m). Admin will review.`
         });
       }
       
@@ -346,24 +371,59 @@ export default function OfficerDashboard() {
     setIsLoadingLocation(true);
     
     try {
-      // Step 1: Get GPS location
+      // Step 1: Get officer's assigned institution
+      const institution = institutions.find(i => 
+        officerProfile?.assigned_institutions.includes(i.name)
+      );
+      
+      if (!institution || !institution.gps_location) {
+        toast.error('Institution GPS coordinates not configured');
+        setIsLoadingLocation(false);
+        return;
+      }
+      
+      // Step 2: Get GPS location
       const location = await getCurrentLocation();
       
-      // Step 2: Record check-out
-      const currentTime = format(new Date(), 'hh:mm a');
-      setCheckOutTime(currentTime);
-      setIsCheckedOut(true);
-      setCheckOutLocation(location);
+      // Step 3: Calculate distance
+      const distance = calculateDistance(
+        location.latitude,
+        location.longitude,
+        institution.gps_location.latitude,
+        institution.gps_location.longitude
+      );
       
-      // Step 3: Calculate hours worked
+      const radius = institution.attendance_radius_meters || 1500;
+      const isValid = distance <= radius;
+      
+      // Step 4: Calculate hours worked
+      const currentTime = format(new Date(), 'hh:mm a');
       const checkIn = parse(checkInTime, 'hh:mm a', new Date());
       const checkOut = parse(currentTime, 'hh:mm a', new Date());
       const minutes = differenceInMinutes(checkOut, checkIn);
       const hours = Math.round((minutes / 60) * 100) / 100;
+      
+      // Calculate overtime
+      const normalHours = institution.normal_working_hours || 8;
+      const overtime = Math.max(0, hours - normalHours);
+      
+      // Step 5: Record check-out with localStorage
+      recordOfficerCheckOut(user?.id || '', todayKey, {
+        check_out_time: currentTime,
+        check_out_location: location,
+        check_out_validated: isValid,
+        check_out_distance_meters: Math.round(distance),
+        total_hours_worked: hours,
+        overtime_hours: overtime,
+      });
+      
+      setCheckOutTime(currentTime);
+      setIsCheckedOut(true);
+      setCheckOutLocation(location);
       setHoursWorked(hours);
       
       toast.success(`✓ Checked out at ${currentTime}`, {
-        description: `Total hours worked: ${hours.toFixed(2)}h`
+        description: `Total hours: ${hours.toFixed(2)}h | Overtime: ${overtime.toFixed(2)}h`
       });
       
     } catch (error) {
