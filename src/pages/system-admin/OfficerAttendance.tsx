@@ -5,8 +5,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { mockAttendanceData, getAttendanceByInstitution, mockPayrollData } from '@/data/mockAttendanceData';
-import { mockOfficerProfiles, getOfficerById } from '@/data/mockOfficerData';
+import { mockPayrollData } from '@/data/mockAttendanceData';
+import { loadOfficers, getOfficerById } from '@/data/mockOfficerData';
+import { getAllOfficersAttendanceForMonth, getOfficerAttendanceRecord } from '@/data/mockOfficerAttendance';
 import { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Download, DollarSign, Clock, TrendingUp, FileText, CheckCircle, Eye, MapPin, Users, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
@@ -19,17 +20,27 @@ export default function OfficerAttendance() {
   const [activeTab, setActiveTab] = useState<'officers' | 'employees'>('officers');
   const [selectedInstitution, setSelectedInstitution] = useState<string>('all');
   const [selectedOfficerId, setSelectedOfficerId] = useState('');
-  const [currentMonth, setCurrentMonth] = useState('2024-01');
+  const [currentMonth, setCurrentMonth] = useState('2025-11');
+
+  // Get officers from localStorage
+  const officers = loadOfficers();
 
   // Get unique institutions from officer profiles
   const institutions = Array.from(
-    new Set(mockOfficerProfiles.flatMap(officer => officer.assigned_institutions))
+    new Set(officers.flatMap(officer => officer.assigned_institutions))
   );
 
-  // Get attendance data based on institution filter
-  const attendanceData = selectedInstitution === 'all'
-    ? mockAttendanceData
-    : getAttendanceByInstitution(selectedInstitution);
+  // Filter officers by institution
+  const filteredOfficers = selectedInstitution === 'all'
+    ? officers
+    : officers.filter(o => o.assigned_institutions.includes(selectedInstitution));
+
+  // Get attendance data from localStorage
+  const attendanceData = useMemo(() => {
+    return getAllOfficersAttendanceForMonth(currentMonth).filter(record =>
+      selectedInstitution === 'all' || filteredOfficers.some(o => o.id === record.officer_id)
+    );
+  }, [currentMonth, selectedInstitution, filteredOfficers]);
 
   // Set default officer when institution changes
   if (selectedOfficerId === '' && attendanceData.length > 0) {
@@ -824,9 +835,7 @@ export default function OfficerAttendance() {
                           </TableCell>
                           <TableCell>{payroll.working_days}</TableCell>
                           <TableCell>
-                            {mockAttendanceData.find(
-                              a => a.officer_id === payroll.officer_id && a.month === payroll.month
-                            )?.total_hours_worked || '-'}
+                            {getOfficerAttendanceRecord(payroll.officer_id, payroll.month)?.total_hours_worked || '-'}
                           </TableCell>
                           <TableCell>{formatCurrency(payroll.gross_salary)}</TableCell>
                           <TableCell className="font-semibold">{formatCurrency(payroll.net_pay)}</TableCell>
