@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { MainLayout } from '@/components/layout/MainLayout';
+import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -105,7 +105,7 @@ export default function PerformanceRatings() {
   };
 
   return (
-    <MainLayout>
+    <Layout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Performance & Ratings</h1>
@@ -347,6 +347,6 @@ export default function PerformanceRatings() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </MainLayout>
+    </Layout>
   );
 }
