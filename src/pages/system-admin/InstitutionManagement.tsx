@@ -60,7 +60,14 @@ export default function InstitutionManagement() {
       lap_setup_cost: 0,
       monthly_recurring_cost: 0,
       trainer_monthly_fee: 0,
-    }
+    },
+    gps_location: {
+      latitude: 0,
+      longitude: 0,
+      address: '',
+    },
+    attendance_radius_meters: 1500,
+    normal_working_hours: 8,
   });
 
   const getStatusBadge = (status: string) => {
@@ -166,7 +173,14 @@ export default function InstitutionManagement() {
         lap_setup_cost: 0,
         monthly_recurring_cost: 0,
         trainer_monthly_fee: 0,
-      }
+      },
+      gps_location: {
+        latitude: 0,
+        longitude: 0,
+        address: '',
+      },
+      attendance_radius_meters: 1500,
+      normal_working_hours: 8,
     });
     setActiveTab('list');
   };
@@ -547,6 +561,107 @@ export default function InstitutionManagement() {
                       />
                     </div>
                   </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="font-semibold text-lg">GPS & Attendance Configuration</div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="gps_latitude">GPS Latitude *</Label>
+                      <Input
+                        id="gps_latitude"
+                        type="number"
+                        step="0.000001"
+                        value={formData.gps_location.latitude || ''}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          gps_location: { 
+                            ...formData.gps_location,
+                            latitude: parseFloat(e.target.value) || 0
+                          }
+                        })}
+                        placeholder="28.5244"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="gps_longitude">GPS Longitude *</Label>
+                      <Input
+                        id="gps_longitude"
+                        type="number"
+                        step="0.000001"
+                        value={formData.gps_location.longitude || ''}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          gps_location: { 
+                            ...formData.gps_location,
+                            longitude: parseFloat(e.target.value) || 0
+                          }
+                        })}
+                        placeholder="77.1855"
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="gps_address">Address</Label>
+                      <Input
+                        id="gps_address"
+                        value={formData.gps_location.address || ''}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          gps_location: { 
+                            ...formData.gps_location,
+                            address: e.target.value
+                          }
+                        })}
+                        placeholder="Complete institution address"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="attendance_radius">Attendance Radius (meters)</Label>
+                      <Input
+                        id="attendance_radius"
+                        type="number"
+                        value={formData.attendance_radius_meters}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          attendance_radius_meters: parseInt(e.target.value) || 1500
+                        })}
+                        min="50"
+                        max="5000"
+                        placeholder="1500"
+                      />
+                      <p className="text-xs text-muted-foreground">Default: 1500m (1.5km)</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="normal_working_hours">Normal Working Hours/Day</Label>
+                      <Input
+                        id="normal_working_hours"
+                        type="number"
+                        value={formData.normal_working_hours}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          normal_working_hours: parseInt(e.target.value) || 8
+                        })}
+                        min="1"
+                        max="24"
+                        placeholder="8"
+                      />
+                      <p className="text-xs text-muted-foreground">Default: 8 hours/day</p>
+                    </div>
+                  </div>
+                  {formData.gps_location.latitude !== 0 && formData.gps_location.longitude !== 0 && (
+                    <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg">
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        📍 <a 
+                          href={`https://www.google.com/maps?q=${formData.gps_location.latitude},${formData.gps_location.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline hover:text-blue-600"
+                        >
+                          View on Google Maps
+                        </a>
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4">

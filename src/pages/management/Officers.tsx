@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, UserCheck, Calendar, BookOpen } from "lucide-react";
+import { Search, UserCheck, Calendar, BookOpen, CheckCircle, XCircle, Clock as ClockIcon } from "lucide-react";
 import { useState } from "react";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { OfficerDetailsDialog } from "@/components/officer/OfficerDetailsDialog";
@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { getInstitutionBySlug } from "@/data/mockInstitutionData";
 import { getInstitutionOfficers } from "@/data/mockInstitutionOfficers";
 import { useLocation } from "react-router-dom";
+import { getInstitutionTodayAttendance } from "@/data/mockOfficerAttendance";
 
 const Officers = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -29,9 +30,13 @@ const Officers = () => {
   const institution = getInstitutionBySlug(institutionSlug);
 
   // Get officers assigned to this institution
+  const todayAttendance = institution ? getInstitutionTodayAttendance(institution.id) : [];
+  
   const officers = institution 
     ? getInstitutionOfficers(institution.id).map(officer => {
         const officerDetails = loadOfficers().find(o => o.id === officer.officer_id);
+        const attendanceRecord = todayAttendance.find(a => a.officer_id === officer.officer_id);
+        
         return {
           id: officer.officer_id,
           name: officer.officer_name,
@@ -42,6 +47,7 @@ const Officers = () => {
           status: officer.status,
           expertise: officerDetails?.skills.join(', ') || '',
           lastActive: new Date().toISOString().split('T')[0],
+          todayAttendance: attendanceRecord,
         };
       })
     : [];
@@ -92,7 +98,13 @@ const Officers = () => {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Assigned Officers</CardTitle>
+              <div>
+                <CardTitle>Assigned Officers</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Today's Attendance: {todayAttendance.filter(a => a.status === 'checked_out').length} checked out, 
+                  {' '}{todayAttendance.filter(a => a.status === 'checked_in').length} checked in
+                </p>
+              </div>
               <div className="relative w-64">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -117,6 +129,19 @@ const Officers = () => {
                             <Badge variant={getStatusBadge(officer.status)}>
                               {officer.status.replace('_', ' ')}
                             </Badge>
+                            {officer.todayAttendance && (
+                              officer.todayAttendance.status === 'checked_out' ? (
+                                <Badge className="bg-green-100 text-green-800 border-green-300">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Checked Out ({officer.todayAttendance.total_hours_worked?.toFixed(1)}h)
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-blue-100 text-blue-800 border-blue-300">
+                                  <ClockIcon className="h-3 w-3 mr-1" />
+                                  Checked In ({officer.todayAttendance.check_in_time})
+                                </Badge>
+                              )
+                            )}
                           </div>
                           <p className="text-sm text-muted-foreground">{officer.email}</p>
                         </div>

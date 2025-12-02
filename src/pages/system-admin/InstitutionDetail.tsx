@@ -271,6 +271,45 @@ export default function InstitutionDetail() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* GPS & Attendance Configuration */}
+            {institution.gps_location && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>GPS & Attendance Configuration</CardTitle>
+                  <CardDescription>Location-based attendance validation settings</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground">GPS Coordinates</div>
+                      <a 
+                        href={`https://www.google.com/maps?q=${institution.gps_location.latitude},${institution.gps_location.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-blue-600 hover:underline flex items-center gap-2"
+                      >
+                        <MapPin className="h-4 w-4" />
+                        {institution.gps_location.latitude.toFixed(6)}, {institution.gps_location.longitude.toFixed(6)}
+                      </a>
+                      {institution.gps_location.address && (
+                        <p className="text-sm text-muted-foreground mt-1">{institution.gps_location.address}</p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground">Attendance Radius</div>
+                      <div className="font-medium">{institution.attendance_radius_meters || 1500} meters (1.5km)</div>
+                      <p className="text-xs text-muted-foreground">Officers must be within this radius to check in</p>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground">Normal Working Hours</div>
+                      <div className="font-medium">{institution.normal_working_hours || 8} hours/day</div>
+                      <p className="text-xs text-muted-foreground">Standard working hours for payroll calculation</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Classes Tab */}
