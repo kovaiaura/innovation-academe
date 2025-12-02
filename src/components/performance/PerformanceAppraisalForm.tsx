@@ -123,7 +123,7 @@ export function PerformanceAppraisalForm({ open, onOpenChange, appraisal, onSucc
     const officer = officers.find(o => o.id === officerId);
     if (officer) {
       const institutionId = officer.assigned_institutions?.[0] || '';
-      const institution = institutions.find(i => i.id === institutionId);
+      const institution = Object.values(institutions).find(i => i.id === institutionId);
       setFormData(prev => ({
         ...prev,
         trainer_id: officer.id,
