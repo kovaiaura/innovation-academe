@@ -1,27 +1,38 @@
 import { CustomPosition, CreatePositionRequest, UpdatePositionRequest, SystemAdminFeature } from '@/types/permissions';
 import { User } from '@/types';
-import { mockPositions, addPosition, updatePositionInStore, deletePositionFromStore } from '@/data/mockPositions';
-import { mockUsers } from '@/data/mockUsers';
+import { 
+  loadPositions, 
+  savePositions, 
+  addPosition, 
+  updatePositionInStore, 
+  deletePositionFromStore,
+  getPositionById 
+} from '@/data/mockPositions';
+import { loadMetaStaff, getMetaStaffByPosition } from '@/data/mockMetaStaffData';
 
 export const positionService = {
   // Get all positions
   getAllPositions: async (): Promise<CustomPosition[]> => {
     await new Promise(resolve => setTimeout(resolve, 200));
-    return mockPositions.map(pos => ({
+    const positions = loadPositions();
+    const metaStaff = loadMetaStaff();
+    
+    return positions.map(pos => ({
       ...pos,
-      user_count: mockUsers.filter(u => u.position_id === pos.id).length
+      user_count: metaStaff.filter(u => u.position_id === pos.id).length
     }));
   },
 
   // Get position by ID
   getPositionById: async (id: string): Promise<CustomPosition | null> => {
     await new Promise(resolve => setTimeout(resolve, 200));
-    const position = mockPositions.find(p => p.id === id);
+    const position = getPositionById(id);
     if (!position) return null;
     
+    const metaStaff = loadMetaStaff();
     return {
       ...position,
-      user_count: mockUsers.filter(u => u.position_id === id).length
+      user_count: metaStaff.filter(u => u.position_id === id).length
     };
   },
 
@@ -49,7 +60,7 @@ export const positionService = {
   updatePosition: async (id: string, data: UpdatePositionRequest): Promise<void> => {
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    const position = mockPositions.find(p => p.id === id);
+    const position = getPositionById(id);
     if (!position) throw new Error('Position not found');
     
     if (position.is_ceo_position) {
@@ -71,7 +82,7 @@ export const positionService = {
   deletePosition: async (id: string): Promise<void> => {
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    const position = mockPositions.find(p => p.id === id);
+    const position = getPositionById(id);
     if (!position) throw new Error('Position not found');
     
     if (position.is_ceo_position) {
@@ -79,7 +90,7 @@ export const positionService = {
     }
     
     // Check if any users are assigned
-    const usersWithPosition = mockUsers.filter(u => u.position_id === id);
+    const usersWithPosition = getMetaStaffByPosition(id);
     if (usersWithPosition.length > 0) {
       throw new Error(`Cannot delete position with ${usersWithPosition.length} assigned users`);
     }
@@ -91,30 +102,33 @@ export const positionService = {
   getUsersByPosition: async (positionId: string): Promise<User[]> => {
     await new Promise(resolve => setTimeout(resolve, 200));
     
-    return mockUsers
-      .filter(u => u.position_id === positionId)
-      .map(({ password, ...user }: any) => user);
+    const users = getMetaStaffByPosition(positionId);
+    return users.map(({ password, ...user }) => user as User);
   },
 
   // Assign user to position
   assignUserToPosition: async (userId: string, positionId: string): Promise<void> => {
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    const user = mockUsers.find(u => u.id === userId);
+    const { updateMetaStaffUser, getMetaStaffById } = await import('@/data/mockMetaStaffData');
+    
+    const user = getMetaStaffById(userId);
     if (!user) throw new Error('User not found');
     
-    const position = mockPositions.find(p => p.id === positionId);
+    const position = getPositionById(positionId);
     if (!position) throw new Error('Position not found');
     
-    user.position_id = positionId;
-    user.position_name = position.position_name;
+    updateMetaStaffUser(userId, {
+      position_id: positionId,
+      position_name: position.position_name,
+    });
   },
 
   // Get position features (for permission checking)
   getPositionFeatures: async (positionId: string): Promise<SystemAdminFeature[]> => {
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    const position = mockPositions.find(p => p.id === positionId);
+    const position = getPositionById(positionId);
     return position?.visible_features || [];
   }
 };

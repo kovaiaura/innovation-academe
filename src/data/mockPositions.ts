@@ -1,7 +1,9 @@
 import { CustomPosition, SystemAdminFeature } from '@/types/permissions';
 
+const POSITIONS_STORAGE_KEY = 'meta_positions';
+
 // Default positions migrated from old enum-based system
-export const mockPositions: CustomPosition[] = [
+const defaultPositions: CustomPosition[] = [
   {
     id: 'pos-ceo',
     position_name: 'ceo',
@@ -119,39 +121,75 @@ export const mockPositions: CustomPosition[] = [
   }
 ];
 
-// Position cache for fast lookups
-const positionCache = new Map<string, CustomPosition>();
-mockPositions.forEach(pos => positionCache.set(pos.id, pos));
+// Load positions from localStorage or use defaults
+export const loadPositions = (): CustomPosition[] => {
+  try {
+    const stored = localStorage.getItem(POSITIONS_STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    // Initialize with defaults if no stored data
+    localStorage.setItem(POSITIONS_STORAGE_KEY, JSON.stringify(defaultPositions));
+    return defaultPositions;
+  } catch (error) {
+    console.error('Error loading positions from localStorage:', error);
+    return defaultPositions;
+  }
+};
 
+// Save positions to localStorage
+export const savePositions = (positions: CustomPosition[]): void => {
+  try {
+    localStorage.setItem(POSITIONS_STORAGE_KEY, JSON.stringify(positions));
+  } catch (error) {
+    console.error('Error saving positions to localStorage:', error);
+  }
+};
+
+// Get position by ID
 export const getPositionById = (id: string): CustomPosition | undefined => {
-  return positionCache.get(id);
+  const positions = loadPositions();
+  return positions.find(p => p.id === id);
 };
 
+// Get position by name
 export const getPositionByName = (name: string): CustomPosition | undefined => {
-  return mockPositions.find(p => p.position_name === name);
+  const positions = loadPositions();
+  return positions.find(p => p.position_name === name);
 };
 
+// Add a new position
 export const addPosition = (position: CustomPosition): void => {
-  mockPositions.push(position);
-  positionCache.set(position.id, position);
+  const positions = loadPositions();
+  positions.push(position);
+  savePositions(positions);
 };
 
+// Update an existing position
 export const updatePositionInStore = (id: string, position: CustomPosition): void => {
-  const index = mockPositions.findIndex(p => p.id === id);
+  const positions = loadPositions();
+  const index = positions.findIndex(p => p.id === id);
   if (index !== -1) {
-    mockPositions[index] = position;
-    positionCache.set(id, position);
+    positions[index] = position;
+    savePositions(positions);
   }
 };
 
+// Delete a position
 export const deletePositionFromStore = (id: string): void => {
-  const index = mockPositions.findIndex(p => p.id === id);
+  const positions = loadPositions();
+  const index = positions.findIndex(p => p.id === id);
   if (index !== -1) {
-    mockPositions.splice(index, 1);
-    positionCache.delete(id);
+    positions.splice(index, 1);
+    savePositions(positions);
   }
 };
 
+// Get all positions
 export const getAllPositions = (): CustomPosition[] => {
-  return mockPositions;
+  return loadPositions();
 };
+
+// For backward compatibility - expose as mutable array reference
+// This will be deprecated, prefer using functions above
+export const mockPositions = loadPositions();

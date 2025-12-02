@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,18 +8,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Key, Mail, Check, AlertCircle } from 'lucide-react';
-import { mockUsers } from '@/data/mockUsers';
+import { Search, Key, Mail, Check, AlertCircle, RefreshCw } from 'lucide-react';
+import { loadMetaStaff, loadCredentialStatus, saveCredentialStatus, MetaStaffUser } from '@/data/mockMetaStaffData';
+import { loadPositions } from '@/data/mockPositions';
 import { mockInstitutions } from '@/data/mockInstitutionData';
 import { mockStudents, getStudentsByInstitution } from '@/data/mockStudentData';
 import { SetPasswordDialog } from '@/components/auth/SetPasswordDialog';
 import { passwordService } from '@/services/password.service';
+import { metaStaffService } from '@/services/metastaff.service';
 import { toast } from 'sonner';
+
+// Officers from mockUsers for now (can be migrated to separate localStorage later)
+import { mockUsers } from '@/data/mockUsers';
 
 export default function CredentialManagement() {
   // Meta Employees Tab State
   const [metaSearch, setMetaSearch] = useState('');
   const [positionFilter, setPositionFilter] = useState<string>('all');
+  const [metaEmployees, setMetaEmployees] = useState<MetaStaffUser[]>([]);
+  const [positions, setPositions] = useState<{ id: string; display_name: string; position_name: string }[]>([]);
 
   // Institutions Tab State
   const [institutionSearch, setInstitutionSearch] = useState('');
@@ -39,10 +46,43 @@ export default function CredentialManagement() {
     type: 'meta_employee' | 'institution_admin' | 'student';
   } | null>(null);
 
-  // Get meta employees (system_admin role + officers)
-  const metaEmployees = mockUsers.filter(user => 
-    user.role === 'system_admin' || user.role === 'officer'
-  );
+  // Load data from localStorage
+  const loadData = useCallback(() => {
+    // Load meta staff from localStorage
+    const metaStaff = loadMetaStaff();
+    
+    // Also include officers from mockUsers
+    const officers = mockUsers.filter(u => u.role === 'officer');
+    
+    // Combine meta staff with officers
+    const allEmployees = [
+      ...metaStaff,
+      ...officers.map(o => ({ ...o, password: (o as any).password } as MetaStaffUser))
+    ];
+    
+    setMetaEmployees(allEmployees);
+    
+    // Load positions
+    const loadedPositions = loadPositions();
+    setPositions(loadedPositions.map(p => ({
+      id: p.id,
+      display_name: p.display_name,
+      position_name: p.position_name
+    })));
+    
+    // Load credential status
+    setCredentialStatus(loadCredentialStatus());
+  }, []);
+
+  useEffect(() => {
+    loadData();
+    
+    // Listen for focus to refresh data when returning to this page
+    const handleFocus = () => loadData();
+    window.addEventListener('focus', handleFocus);
+    
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [loadData]);
 
   // Filter meta employees
   const filteredMetaEmployees = metaEmployees.filter(emp => {
@@ -91,21 +131,48 @@ export default function CredentialManagement() {
     }
   };
 
-  const handleSetPasswordSuccess = (institutionId: string) => {
-    setCredentialStatus(prev => ({ ...prev, [institutionId]: true }));
-    toast.success('Credentials configured successfully!', {
-      description: 'The institution admin can now log in'
+  const handleSetPasswordSuccess = async (userId: string, password: string, userType: string) => {
+    if (userType === 'meta_employee') {
+      // Update password in localStorage via service
+      await metaStaffService.setPassword(userId, password);
+      // Refresh data
+      loadData();
+    } else if (userType === 'institution_admin') {
+      // Update credential status for institution
+      const admin = mockUsers.find(u => u.id === userId);
+      if (admin?.institution_id) {
+        const newStatus = { ...credentialStatus, [admin.institution_id]: true };
+        setCredentialStatus(newStatus);
+        saveCredentialStatus(newStatus);
+      }
+    }
+    
+    toast.success('Password set successfully!', {
+      description: 'The user can now log in with their new credentials'
     });
+    
+    setSetPasswordDialogOpen(false);
+  };
+
+  const handleRefresh = () => {
+    loadData();
+    toast.success('Data refreshed');
   };
 
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Credential Management</h1>
-          <p className="text-muted-foreground">
-            Manage passwords and authentication for all users
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Credential Management</h1>
+            <p className="text-muted-foreground">
+              Manage passwords and authentication for all users
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
         </div>
 
         <Tabs defaultValue="meta-employees" className="space-y-4">
@@ -141,12 +208,11 @@ export default function CredentialManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Positions</SelectItem>
-                      <SelectItem value="ceo">CEO</SelectItem>
-                      <SelectItem value="md">MD</SelectItem>
-                      <SelectItem value="agm">AGM</SelectItem>
-                      <SelectItem value="gm">GM</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
-                      <SelectItem value="admin_staff">Admin Staff</SelectItem>
+                      {positions.map(pos => (
+                        <SelectItem key={pos.id} value={pos.position_name}>
+                          {pos.display_name}
+                        </SelectItem>
+                      ))}
                       <SelectItem value="officer">Innovation Officer</SelectItem>
                     </SelectContent>
                   </Select>
@@ -201,6 +267,13 @@ export default function CredentialManagement() {
                           </TableCell>
                         </TableRow>
                       ))}
+                      {filteredMetaEmployees.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                            No employees found
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </div>
@@ -371,7 +444,7 @@ export default function CredentialManagement() {
                           <TableRow>
                             <TableHead>Student ID</TableHead>
                             <TableHead>Name</TableHead>
-                            <TableHead>Email</TableHead>
+                            <TableHead>Parent Email</TableHead>
                             <TableHead>Class</TableHead>
                             <TableHead>Section</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
@@ -379,7 +452,7 @@ export default function CredentialManagement() {
                         </TableHeader>
                         <TableBody>
                           {filteredStudents.length > 0 ? (
-                            filteredStudents.slice(0, 50).map((student) => (
+                            filteredStudents.slice(0, 20).map((student) => (
                               <TableRow key={student.id}>
                                 <TableCell className="font-medium">{student.student_id}</TableCell>
                                 <TableCell>{student.student_name}</TableCell>
@@ -410,16 +483,16 @@ export default function CredentialManagement() {
                             ))
                           ) : (
                             <TableRow>
-                              <TableCell colSpan={6} className="text-center text-muted-foreground">
+                              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                                 No students found
                               </TableCell>
                             </TableRow>
                           )}
                         </TableBody>
                       </Table>
-                      {filteredStudents.length > 50 && (
+                      {filteredStudents.length > 20 && (
                         <div className="p-4 text-center text-sm text-muted-foreground border-t">
-                          Showing 50 of {filteredStudents.length} students. Use search to narrow results.
+                          Showing 20 of {filteredStudents.length} students. Use search to filter.
                         </div>
                       )}
                     </div>
@@ -427,8 +500,8 @@ export default function CredentialManagement() {
                 )}
 
                 {!selectedInstitution && (
-                  <div className="text-center py-12 text-muted-foreground">
-                    Please select an institution to view students
+                  <div className="text-center py-8 text-muted-foreground">
+                    Select an institution to manage student credentials
                   </div>
                 )}
               </CardContent>
@@ -445,25 +518,13 @@ export default function CredentialManagement() {
             setSetPasswordDialogOpen(false);
             setSelectedUser(null);
           }}
-          onSetPassword={async (password) => {
-            await passwordService.setPassword(selectedUser.id, password, selectedUser.type);
-            if (selectedUser.type === 'institution_admin') {
-              // Find institution for this admin
-              const institution = institutions.find(inst => {
-                const admin = mockUsers.find(u => u.institution_id === inst.id && u.role === 'management');
-                return admin?.id === selectedUser.id;
-              });
-              if (institution) {
-                handleSetPasswordSuccess(institution.id);
-              }
-            }
-            setSetPasswordDialogOpen(false);
-            setSelectedUser(null);
-          }}
           userName={selectedUser.name}
           userEmail={selectedUser.email}
           userId={selectedUser.id}
           userType={selectedUser.type}
+          onSetPassword={async (password) => {
+            await handleSetPasswordSuccess(selectedUser.id, password, selectedUser.type);
+          }}
         />
       )}
     </Layout>

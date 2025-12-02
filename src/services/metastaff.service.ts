@@ -1,16 +1,25 @@
 import { User } from '@/types';
 import { SystemAdminFeature } from '@/types/permissions';
-import { mockUsers } from '@/data/mockUsers';
-import { getPositionById } from '@/data/mockPositions';
+import { 
+  loadMetaStaff, 
+  addMetaStaffUser, 
+  updateMetaStaffUser, 
+  deleteMetaStaffUser,
+  updateMetaStaffPassword,
+  generateTemporaryPassword,
+  MetaStaffUser
+} from '@/data/mockMetaStaffData';
+import { getPositionById, updatePositionInStore } from '@/data/mockPositions';
 
 export const metaStaffService = {
   getMetaStaff: async (): Promise<User[]> => {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    return mockUsers
+    const staff = loadMetaStaff();
+    return staff
       .filter(u => u.role === 'system_admin')
-      .map(({ password, ...user }: any) => user);
+      .map(({ password, ...user }) => user as User);
   },
 
   createMetaStaff: async (data: {
@@ -31,9 +40,9 @@ export const metaStaffService = {
     if (!position) throw new Error('Position not found');
     
     // Use custom password if provided, otherwise generate random
-    const tempPassword = data.custom_password || `Meta${Math.random().toString(36).slice(-8).toUpperCase()}!`;
+    const tempPassword = data.custom_password || generateTemporaryPassword();
     
-    const newUser: any = {
+    const newUser: MetaStaffUser = {
       id: `meta-${Date.now()}`,
       email: data.email,
       name: data.name,
@@ -42,12 +51,16 @@ export const metaStaffService = {
       position_name: position.position_name,
       is_ceo: position.is_ceo_position || false,
       password: tempPassword,
+      must_change_password: true,
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.name}`,
       created_at: new Date().toISOString(),
+      hourly_rate: 300, // Default hourly rate
+      overtime_rate_multiplier: 1.5,
+      normal_working_hours: 8,
     };
     
-    // Add to mockUsers array so they can login
-    mockUsers.push(newUser);
+    // Add to localStorage
+    addMetaStaffUser(newUser);
     
     // Initialize leave balance for new meta staff
     const { initializeLeaveBalance } = await import('@/data/mockLeaveData');
@@ -61,7 +74,7 @@ export const metaStaffService = {
     
     // Return user without password field and the password separately
     const { password, ...userWithoutPassword } = newUser;
-    return { user: userWithoutPassword, password: tempPassword };
+    return { user: userWithoutPassword as User, password: tempPassword };
   },
 
   updatePosition: async (userId: string, position_id: string): Promise<void> => {
@@ -71,21 +84,17 @@ export const metaStaffService = {
     const position = getPositionById(position_id);
     if (!position) throw new Error('Position not found');
     
-    const user = mockUsers.find(u => u.id === userId);
-    if (user) {
-      user.position_id = position_id;
-      user.position_name = position.position_name;
-    }
+    updateMetaStaffUser(userId, {
+      position_id: position_id,
+      position_name: position.position_name,
+    });
   },
 
   deleteMetaStaff: async (userId: string): Promise<void> => {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    const index = mockUsers.findIndex(u => u.id === userId);
-    if (index !== -1) {
-      mockUsers.splice(index, 1);
-    }
+    deleteMetaStaffUser(userId);
   },
 
   getPositionPermissions: async (position_id: string): Promise<SystemAdminFeature[]> => {
@@ -103,9 +112,6 @@ export const metaStaffService = {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    const { updatePositionInStore } = await import('@/data/mockPositions');
-    const { getPositionById } = await import('@/data/mockPositions');
-    
     const position = getPositionById(position_id);
     if (position) {
       updatePositionInStore(position_id, {
@@ -120,13 +126,39 @@ export const metaStaffService = {
     await new Promise(resolve => setTimeout(resolve, 300));
     
     // Generate new random password
-    const newPassword = `Meta${Math.random().toString(36).slice(-8).toUpperCase()}!`;
+    const newPassword = generateTemporaryPassword();
     
-    const user = mockUsers.find(u => u.id === userId);
-    if (user) {
-      (user as any).password = newPassword;
-    }
+    // Update password in localStorage
+    updateMetaStaffPassword(userId, newPassword, true);
     
     return newPassword;
+  },
+
+  setPassword: async (userId: string, password: string): Promise<void> => {
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Update password in localStorage
+    updateMetaStaffPassword(userId, password, true);
+  },
+
+  // Get a single meta staff user by ID
+  getMetaStaffById: async (userId: string): Promise<User | null> => {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    const { getMetaStaffById } = await import('@/data/mockMetaStaffData');
+    const user = getMetaStaffById(userId);
+    
+    if (!user) return null;
+    
+    const { password, ...userWithoutPassword } = user;
+    return userWithoutPassword as User;
+  },
+
+  // Update meta staff user details
+  updateMetaStaff: async (userId: string, updates: Partial<User>): Promise<void> => {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    updateMetaStaffUser(userId, updates);
   },
 };
