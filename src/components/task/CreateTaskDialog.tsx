@@ -21,15 +21,18 @@ interface CreateTaskDialogProps {
 
 // Mock assignees - in real app, fetch from API
 const mockAssignees = [
-  { id: '7', name: 'Managing Director', position_name: 'md', role: 'system_admin' },
-  { id: '8', name: 'Operations Manager', position_name: 'manager', role: 'system_admin' },
-  { id: '9', name: 'AGM Operations', position_name: 'agm', role: 'system_admin' },
-  { id: '10', name: 'General Manager', position_name: 'gm', role: 'system_admin' },
-  { id: '11', name: 'Admin Staff', position_name: 'admin_staff', role: 'system_admin' },
-  { id: 'off-msd-001', name: 'Mr. Atif Ansari', position_name: 'Innovation Officer', role: 'officer' },
-  { id: 'off-kga-001', name: 'Mr. Saran T', position_name: 'Sr. Innovation Officer', role: 'officer' },
-  { id: 'off-kga-002', name: 'Mr. Sreeram R', position_name: 'Innovation Officer', role: 'officer' },
+  { id: '7', name: 'Managing Director', position_name: 'Managing Director', role: 'system_admin', group: 'Meta Employees' },
+  { id: '8', name: 'Operations Manager', position_name: 'Manager', role: 'system_admin', group: 'Meta Employees' },
+  { id: '9', name: 'AGM Operations', position_name: 'AGM', role: 'system_admin', group: 'Meta Employees' },
+  { id: '10', name: 'General Manager', position_name: 'GM', role: 'system_admin', group: 'Meta Employees' },
+  { id: '11', name: 'Admin Staff', position_name: 'Admin Staff', role: 'system_admin', group: 'Meta Employees' },
+  { id: 'off-msd-001', name: 'Mr. Atif Ansari', position_name: 'Innovation Officer', role: 'officer', group: 'Innovation Officers' },
+  { id: 'off-kga-001', name: 'Mr. Saran T', position_name: 'Sr. Innovation Officer', role: 'officer', group: 'Innovation Officers' },
+  { id: 'off-kga-002', name: 'Mr. Sreeram R', position_name: 'Innovation Officer', role: 'officer', group: 'Innovation Officers' },
 ];
+
+const metaEmployees = mockAssignees.filter(a => a.group === 'Meta Employees');
+const innovationOfficers = mockAssignees.filter(a => a.group === 'Innovation Officers');
 
 export function CreateTaskDialog({ open, onOpenChange, onCreateTask, currentUser }: CreateTaskDialogProps) {
   const [formData, setFormData] = useState({
@@ -172,9 +175,20 @@ export function CreateTaskDialog({ open, onOpenChange, onCreateTask, currentUser
                 <SelectValue placeholder="Select assignee" />
               </SelectTrigger>
               <SelectContent>
-                {mockAssignees.map((assignee) => (
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                  Meta Employees
+                </div>
+                {metaEmployees.map((assignee) => (
                   <SelectItem key={assignee.id} value={assignee.id}>
-                    {assignee.name} ({assignee.position_name || assignee.role})
+                    {assignee.name} - {assignee.position_name}
+                  </SelectItem>
+                ))}
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">
+                  Innovation Officers
+                </div>
+                {innovationOfficers.map((assignee) => (
+                  <SelectItem key={assignee.id} value={assignee.id}>
+                    {assignee.name} - {assignee.position_name}
                   </SelectItem>
                 ))}
               </SelectContent>
