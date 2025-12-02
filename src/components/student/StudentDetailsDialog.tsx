@@ -10,8 +10,9 @@ interface StudentDetailsDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   student: Student | null;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  readOnly?: boolean;
 }
 
 export function StudentDetailsDialog({
@@ -20,6 +21,7 @@ export function StudentDetailsDialog({
   student,
   onEdit,
   onDelete,
+  readOnly = false,
 }: StudentDetailsDialogProps) {
   if (!student) return null;
 
@@ -135,16 +137,18 @@ export function StudentDetailsDialog({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-2 pt-4 border-t">
-            <Button onClick={onEdit} className="flex-1">
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Student
-            </Button>
-            <Button onClick={onDelete} variant="destructive" className="flex-1">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete Student
-            </Button>
-          </div>
+          {!readOnly && onEdit && onDelete && (
+            <div className="flex gap-2 pt-4 border-t">
+              <Button onClick={onEdit} className="flex-1">
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Student
+              </Button>
+              <Button onClick={onDelete} variant="destructive" className="flex-1">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Student
+              </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

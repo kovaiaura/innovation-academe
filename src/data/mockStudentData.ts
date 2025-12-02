@@ -163,6 +163,12 @@ export function deleteStudent(studentId: string): void {
   saveStudents(filtered);
 }
 
+export function bulkAddStudents(students: Student[]): void {
+  const existingStudents = loadStudents();
+  const allStudents = [...existingStudents, ...students];
+  saveStudents(allStudents);
+}
+
 export function getStudentById(studentId: string): Student | undefined {
   const students = loadStudents();
   return students.find(s => s.id === studentId);
