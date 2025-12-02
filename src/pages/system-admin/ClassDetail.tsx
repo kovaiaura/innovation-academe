@@ -10,7 +10,7 @@ import { ClassStudentsTab } from '@/components/institution/ClassStudentsTab';
 import { ClassCoursesTab } from '@/components/institution/ClassCoursesTab';
 import { ClassAnalyticsTab } from '@/components/institution/ClassAnalyticsTab';
 import { getClassById } from '@/data/mockClassData';
-import { getStudentsByClass } from '@/data/mockClassStudents';
+import { getStudentsByClassId, addStudent, updateStudent, deleteStudent, loadStudents } from '@/data/mockStudentData';
 import { getCourseAssignmentsByClass } from '@/data/mockClassCourseAssignments';
 import { getClassAnalytics } from '@/data/mockClassAnalytics';
 import { useInstitutionData } from '@/contexts/InstitutionDataContext';
@@ -35,7 +35,7 @@ export default function ClassDetail() {
       const fetchedClass = getClassById(classId);
       if (fetchedClass) {
         setClassData(fetchedClass);
-        setStudents(getStudentsByClass(classId));
+        setStudents(getStudentsByClassId(classId));
         setCourseAssignments(getCourseAssignmentsByClass(classId));
         
         const analyticsData = getClassAnalytics(classId);
@@ -136,23 +136,23 @@ export default function ClassDetail() {
               classData={classData}
               students={students}
               onAddStudent={async (studentData) => {
-                // In production, call institutionService.addStudentToClass
                 const newStudent = {
                   ...studentData,
                   id: `stu-${Date.now()}`,
                   created_at: new Date().toISOString()
                 };
-                setStudents([...students, newStudent as any]);
+                addStudent(newStudent as Student);
+                setStudents(getStudentsByClassId(classId!));
                 toast.success('Student added successfully');
               }}
               onEditStudent={async (studentData) => {
-                // In production, call institutionService.updateClassStudent
-                setStudents(students.map(s => s.id === studentData.id ? { ...s, ...studentData } : s));
+                updateStudent(studentData.id, studentData);
+                setStudents(getStudentsByClassId(classId!));
                 toast.success('Student updated successfully');
               }}
               onRemoveStudent={async (studentId) => {
-                // In production, call institutionService.removeStudentFromClass
-                setStudents(students.filter(s => s.id !== studentId));
+                deleteStudent(studentId);
+                setStudents(getStudentsByClassId(classId!));
                 toast.success('Student removed successfully');
               }}
               onBulkUpload={async (file) => {

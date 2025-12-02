@@ -318,8 +318,7 @@ export default function Students() {
         isOpen={detailsDialogOpen}
         onOpenChange={setDetailsDialogOpen}
         student={selectedStudent}
-        onEdit={() => {}}
-        onDelete={() => {}}
+        readOnly={true}
       />
       </div>
     </Layout>
