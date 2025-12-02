@@ -1,6 +1,10 @@
 import { OfficerDetails } from '@/services/systemadmin.service';
 
-export const mockOfficerProfiles: OfficerDetails[] = [
+// localStorage key for officers
+const OFFICERS_KEY = 'innovation_officers';
+
+// Initial mock data (will be loaded into localStorage on first run)
+const initialOfficerProfiles: OfficerDetails[] = [
   {
     id: 'off-msd-001',
     name: 'Mr. Atif Ansari',
@@ -114,17 +118,67 @@ export const mockOfficerProfiles: OfficerDetails[] = [
   }
 ];
 
+// Initialize localStorage with initial data if not present
+const initializeOfficers = () => {
+  if (!localStorage.getItem(OFFICERS_KEY)) {
+    localStorage.setItem(OFFICERS_KEY, JSON.stringify(initialOfficerProfiles));
+  }
+};
+
+// Load officers from localStorage
+export const loadOfficers = (): OfficerDetails[] => {
+  initializeOfficers();
+  const data = localStorage.getItem(OFFICERS_KEY);
+  return data ? JSON.parse(data) : [];
+};
+
+// Save officers to localStorage
+export const saveOfficers = (officers: OfficerDetails[]): void => {
+  localStorage.setItem(OFFICERS_KEY, JSON.stringify(officers));
+};
+
+// Add a new officer
+export const addOfficer = (officer: OfficerDetails): void => {
+  const officers = loadOfficers();
+  officers.push(officer);
+  saveOfficers(officers);
+};
+
+// Update an existing officer
+export const updateOfficer = (officerId: string, updates: Partial<OfficerDetails>): void => {
+  const officers = loadOfficers();
+  const index = officers.findIndex(o => o.id === officerId);
+  
+  if (index !== -1) {
+    officers[index] = { ...officers[index], ...updates };
+    saveOfficers(officers);
+  }
+};
+
+// Delete an officer
+export const deleteOfficer = (officerId: string): void => {
+  const officers = loadOfficers();
+  const filtered = officers.filter(o => o.id !== officerId);
+  saveOfficers(filtered);
+};
+
 // Helper functions to get officer data
 export const getOfficerByEmail = (email: string): OfficerDetails | undefined => {
-  return mockOfficerProfiles.find(officer => officer.email === email);
+  const officers = loadOfficers();
+  return officers.find(officer => officer.email === email);
 };
 
 export const getOfficerById = (id: string): OfficerDetails | undefined => {
-  return mockOfficerProfiles.find(officer => officer.id === id);
+  const officers = loadOfficers();
+  return officers.find(officer => officer.id === id);
 };
 
 export const getOfficerByTenant = (tenantSlug: string): OfficerDetails | undefined => {
-  return mockOfficerProfiles.find(officer => 
+  const officers = loadOfficers();
+  return officers.find(officer => 
     officer.assigned_institutions.includes(tenantSlug)
   );
 };
+
+// Export for backward compatibility (but prefer using functions above)
+export const mockOfficerProfiles = loadOfficers();

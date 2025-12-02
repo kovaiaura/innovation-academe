@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,10 +9,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { UserPlus, Search, Mail, Phone, Building2, UserCheck, Plus, X, DollarSign, Calendar } from 'lucide-react';
+import { UserPlus, Search, Mail, Phone, Building2, UserCheck, DollarSign, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import type { LeaveBalance } from '@/types/attendance';
+import { loadOfficers, addOfficer } from '@/data/mockOfficerData';
+import type { OfficerDetails } from '@/services/systemadmin.service';
+import { initializeLeaveBalance } from '@/data/mockLeaveData';
 
 interface Officer {
   id: string;
@@ -35,85 +37,11 @@ interface Assignment {
   status: 'active' | 'inactive';
 }
 
-const mockOfficersData: Officer[] = [
-  {
-    id: '1',
-    name: 'John Smith',
-    email: 'john.smith@metainnova.com',
-    phone: '+1234567890',
-    assigned_institutions: ['Springfield University', 'River College'],
-    employment_type: 'full_time',
-    salary: 65000,
-    join_date: '2023-01-15',
-    status: 'active',
-  },
-  {
-    id: '2',
-    name: 'Sarah Johnson',
-    email: 'sarah.j@metainnova.com',
-    phone: '+1234567891',
-    assigned_institutions: ['Oakwood Institute'],
-    employment_type: 'full_time',
-    salary: 62000,
-    join_date: '2023-03-20',
-    status: 'active',
-  },
-  {
-    id: '3',
-    name: 'Michael Chen',
-    email: 'michael.c@metainnova.com',
-    phone: '+1234567892',
-    assigned_institutions: ['Tech Valley School', 'Innovation Hub'],
-    employment_type: 'contract',
-    salary: 55000,
-    join_date: '2023-06-10',
-    status: 'active',
-  },
-];
-
-const mockAssignmentsData: Assignment[] = [
-  {
-    officer_id: '1',
-    officer_name: 'John Smith',
-    institution_id: 'inst1',
-    institution_name: 'Springfield University',
-    assigned_date: '2023-01-15',
-    status: 'active',
-  },
-  {
-    officer_id: '1',
-    officer_name: 'John Smith',
-    institution_id: 'inst2',
-    institution_name: 'River College',
-    assigned_date: '2023-02-20',
-    status: 'active',
-  },
-  {
-    officer_id: '2',
-    officer_name: 'Sarah Johnson',
-    institution_id: 'inst3',
-    institution_name: 'Oakwood Institute',
-    assigned_date: '2023-03-20',
-    status: 'active',
-  },
-];
-
-const mockInstitutions = [
-  { id: 'inst1', name: 'Springfield University' },
-  { id: 'inst2', name: 'River College' },
-  { id: 'inst3', name: 'Oakwood Institute' },
-  { id: 'inst4', name: 'Tech Valley School' },
-  { id: 'inst5', name: 'Innovation Hub' },
-];
-
 export default function OfficerManagement() {
   const navigate = useNavigate();
-  const [officers, setOfficers] = useState<Officer[]>(mockOfficersData);
-  const [assignments, setAssignments] = useState<Assignment[]>(mockAssignmentsData);
+  const [officers, setOfficers] = useState<OfficerDetails[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [selectedOfficer, setSelectedOfficer] = useState<string>('');
-  const [selectedInstitution, setSelectedInstitution] = useState<string>('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -129,6 +57,16 @@ export default function OfficerManagement() {
     sick_leave: '10',
     earned_leave: '15',
   });
+
+  // Load officers from localStorage on mount
+  useEffect(() => {
+    refreshOfficers();
+  }, []);
+
+  const refreshOfficers = () => {
+    const loaded = loadOfficers();
+    setOfficers(loaded);
+  };
 
   const handleAddOfficer = () => {
     // Validation
@@ -147,28 +85,29 @@ export default function OfficerManagement() {
       return;
     }
 
-    const newOfficer: Officer = {
-      id: `officer-${Date.now()}`,
+    const newOfficer: OfficerDetails = {
+      id: `off-${Date.now()}`,
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
       assigned_institutions: [],
-      employment_type: formData.employment_type as Officer['employment_type'],
+      employment_type: formData.employment_type as OfficerDetails['employment_type'],
       salary: Number(formData.salary),
       join_date: new Date().toISOString().split('T')[0],
       status: 'active',
-    };
-
-    setOfficers([...officers, newOfficer]);
-
-    // Store payroll configuration (for GPS-based payroll system)
-    const payrollConfig = {
-      officer_id: newOfficer.id,
+      employee_id: `EMP-${Date.now()}`,
+      department: 'Innovation & STEM Education',
       hourly_rate: parseFloat(formData.hourly_rate),
       overtime_rate_multiplier: parseFloat(formData.overtime_rate_multiplier),
       normal_working_hours: parseFloat(formData.normal_working_hours),
+      qualifications: [],
+      certifications: [],
+      skills: [],
+      profile_photo_url: '/placeholder.svg',
     };
-    localStorage.setItem(`payroll_config_${newOfficer.id}`, JSON.stringify(payrollConfig));
+
+    // Add to localStorage
+    addOfficer(newOfficer);
 
     // Create initial leave balance
     const leaveBalance: LeaveBalance = {
@@ -179,11 +118,18 @@ export default function OfficerManagement() {
       year: new Date().getFullYear().toString(),
     };
     
-    // Store in mockLeaveBalances
-    const { initializeLeaveBalance } = require('@/data/mockLeaveData');
     initializeLeaveBalance(leaveBalance);
 
-    toast.success(`Officer ${formData.name} added successfully`);
+    // Refresh officers list
+    refreshOfficers();
+
+    toast.success(`Officer ${formData.name} added successfully`, {
+      description: 'Configure credentials in Credential Management',
+      action: {
+        label: 'Go to Credentials',
+        onClick: () => navigate('/system-admin/credentials')
+      }
+    });
     setIsAddDialogOpen(false);
     
     // Reset form
@@ -202,55 +148,12 @@ export default function OfficerManagement() {
     });
   };
 
-  const handleAddAssignment = () => {
-    if (!selectedOfficer || !selectedInstitution) {
-      toast.error('Please select both officer and institution');
-      return;
-    }
-
-    const officer = officers.find((o) => o.id === selectedOfficer);
-    const institution = mockInstitutions.find((i) => i.id === selectedInstitution);
-
-    if (!officer || !institution) return;
-
-    const newAssignment: Assignment = {
-      officer_id: officer.id,
-      officer_name: officer.name,
-      institution_id: institution.id,
-      institution_name: institution.name,
-      assigned_date: new Date().toISOString().split('T')[0],
-      status: 'active',
-    };
-
-    setAssignments([...assignments, newAssignment]);
-    setSelectedOfficer('');
-    setSelectedInstitution('');
-    toast.success(`${officer.name} assigned to ${institution.name}`);
-  };
-
-  const handleRemoveAssignment = (officerId: string, institutionId: string) => {
-    setAssignments(
-      assignments.filter(
-        (a) => !(a.officer_id === officerId && a.institution_id === institutionId)
-      )
-    );
-    toast.success('Assignment removed');
-  };
-
   const filteredOfficers = officers.filter((officer) =>
     officer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     officer.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const groupedAssignments = assignments.reduce((acc, assignment) => {
-    if (!acc[assignment.officer_name]) {
-      acc[assignment.officer_name] = [];
-    }
-    acc[assignment.officer_name].push(assignment);
-    return acc;
-  }, {} as Record<string, Assignment[]>);
-
-  const getStatusBadge = (status: Officer['status']) => {
+  const getStatusBadge = (status: OfficerDetails['status']) => {
     const variants = {
       active: 'default',
       on_leave: 'secondary',
@@ -259,7 +162,7 @@ export default function OfficerManagement() {
     return <Badge variant={variants[status] as any}>{status.replace('_', ' ')}</Badge>;
   };
 
-  const getEmploymentBadge = (type: Officer['employment_type']) => {
+  const getEmploymentBadge = (type: OfficerDetails['employment_type']) => {
     return <Badge variant="outline">{type.replace('_', ' ')}</Badge>;
   };
 
@@ -273,25 +176,10 @@ export default function OfficerManagement() {
           </p>
         </div>
 
-        <Tabs defaultValue="directory" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="directory">
-              Directory
-              <Badge variant="secondary" className="ml-2">
-                {officers.length}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="assignments">
-              Assignments
-              <Badge variant="secondary" className="ml-2">
-                {assignments.length}
-              </Badge>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="directory" className="space-y-4">
-            <div className="flex justify-end">
-              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        {/* Directory Section - Assignments tab removed as per requirement */}
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger asChild>
                   <Button>
                     <UserPlus className="mr-2 h-4 w-4" />
@@ -517,108 +405,11 @@ export default function OfficerManagement() {
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="assignments" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Assign Officer to Institution</CardTitle>
-                <CardDescription>
-                  Create new officer-institution assignments
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-4 items-end">
-                  <div className="flex-1">
-                    <label className="text-sm font-medium mb-2 block">Select Officer</label>
-                    <Select value={selectedOfficer} onValueChange={setSelectedOfficer}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose officer..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {officers.map((officer) => (
-                          <SelectItem key={officer.id} value={officer.id}>
-                            {officer.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-sm font-medium mb-2 block">Select Institution</label>
-                    <Select value={selectedInstitution} onValueChange={setSelectedInstitution}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose institution..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {mockInstitutions.map((inst) => (
-                          <SelectItem key={inst.id} value={inst.id}>
-                            {inst.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button onClick={handleAddAssignment}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Assign
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid gap-4">
-              {Object.entries(groupedAssignments).map(([officerName, officerAssignments]) => (
-                <Card key={officerName}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <UserCheck className="h-5 w-5" />
-                        <CardTitle>{officerName}</CardTitle>
-                      </div>
-                      <Badge variant="secondary">
-                        {officerAssignments.length} assignment{officerAssignments.length !== 1 ? 's' : ''}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-3">
-                      {officerAssignments.map((assignment) => (
-                        <div
-                          key={`${assignment.officer_id}-${assignment.institution_id}`}
-                          className="flex items-center justify-between p-3 border rounded-lg"
-                        >
-                          <div className="flex items-center gap-3">
-                            <Building2 className="h-4 w-4 text-muted-foreground" />
-                            <div>
-                              <div className="font-medium">{assignment.institution_name}</div>
-                              <div className="text-sm text-muted-foreground">
-                                Assigned: {new Date(assignment.assigned_date).toLocaleDateString()}
-                              </div>
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              handleRemoveAssignment(assignment.officer_id, assignment.institution_id)
-                            }
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  </Table>
+                </CardContent>
+              </Card>
             </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </Layout>
-  );
-}
+          </div>
+        </Layout>
+      );
+    }

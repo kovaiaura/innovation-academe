@@ -28,7 +28,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { Layout } from '@/components/layout/Layout';
 import { toast } from 'sonner';
-import { getOfficerById } from '@/data/mockOfficerData';
+import { getOfficerById, loadOfficers } from '@/data/mockOfficerData';
 import { getOfficerTimetable as getOfficerTimetableData } from '@/data/mockOfficerTimetable';
 import type { OfficerTimetableSlot } from '@/types/officer';
 import {
@@ -141,7 +141,7 @@ export default function OfficerDashboard() {
   // Substitute assignments state
   const [substituteAssignments, setSubstituteAssignments] = useState<any[]>([]);
   
-  const officerProfile = getOfficerById(user?.id || '');
+  const officerProfile = user?.id ? getOfficerById(user.id) : null;
   const officerTimetable = getOfficerTimetableData(user?.id || '');
   const todaySlots = getTodaySchedule(officerTimetable?.slots || []);
   const upcomingSlots = getUpcomingSlots(officerTimetable?.slots || [], 3);

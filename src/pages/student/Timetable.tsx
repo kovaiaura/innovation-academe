@@ -4,80 +4,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, MapPin, User } from 'lucide-react';
 import { format, addDays, startOfWeek } from 'date-fns';
-
-// Mock timetable data
-const mockEvents = [
-  {
-    id: '1',
-    title: 'Mathematics',
-    teacher: 'Prof. Kumar',
-    room: 'Room 101',
-    day: 0, // Monday
-    time: '09:00 - 10:00',
-    type: 'lecture'
-  },
-  {
-    id: '2',
-    title: 'Physics Lab',
-    teacher: 'Dr. Sharma',
-    room: 'Lab 3',
-    day: 0,
-    time: '11:00 - 13:00',
-    type: 'lab'
-  },
-  {
-    id: '3',
-    title: 'Computer Science',
-    teacher: 'Prof. Patel',
-    room: 'Room 205',
-    day: 1, // Tuesday
-    time: '10:00 - 11:00',
-    type: 'lecture'
-  },
-  {
-    id: '4',
-    title: 'Innovation Session',
-    teacher: 'Dr. Verma',
-    room: 'Innovation Hub',
-    day: 2, // Wednesday
-    time: '14:00 - 16:00',
-    type: 'workshop'
-  },
-  {
-    id: '5',
-    title: 'Chemistry',
-    teacher: 'Dr. Singh',
-    room: 'Room 102',
-    day: 3, // Thursday
-    time: '09:00 - 10:00',
-    type: 'lecture'
-  },
-  {
-    id: '6',
-    title: 'Project Mentoring',
-    teacher: 'Dr. Sharma',
-    room: 'Lab 1',
-    day: 4, // Friday
-    time: '15:00 - 17:00',
-    type: 'mentoring'
-  }
-];
+import { useAuth } from '@/contexts/AuthContext';
+import { getStudentTimetable, getTypeColor } from '@/utils/studentTimetableHelpers';
 
 const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-const getTypeColor = (type: string) => {
-  switch (type) {
-    case 'lecture': return 'bg-blue-100 text-blue-800 border-blue-300';
-    case 'lab': return 'bg-purple-100 text-purple-800 border-purple-300';
-    case 'workshop': return 'bg-orange-100 text-orange-800 border-orange-300';
-    case 'mentoring': return 'bg-green-100 text-green-800 border-green-300';
-    default: return 'bg-gray-100 text-gray-800 border-gray-300';
-  }
-};
-
 export default function Timetable() {
-  const [events] = useState(mockEvents);
+  const { user } = useAuth();
   const startDate = startOfWeek(new Date(), { weekStartsOn: 1 });
+
+  // Get student timetable from officer schedules
+  const events = user?.institution_id && user?.class_id 
+    ? getStudentTimetable(user.institution_id, user.class_id)
+    : [];
 
   // Group events by day
   const eventsByDay = weekDays.map((day, index) => ({

@@ -36,6 +36,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getLeaveBalance, initializeLeaveBalance } from '@/data/mockLeaveData';
 import { LeaveBalance } from '@/types/attendance';
+import { getOfficerById, updateOfficer } from '@/data/mockOfficerData';
 
 // Mock institutions for assignment
 const mockInstitutions = [
@@ -211,8 +212,8 @@ export default function OfficerDetail() {
       
       setIsLoading(true);
       try {
-        // Using mock data for now
-        const officerData = mockOfficerDetails[officerId];
+        // Load from localStorage
+        const officerData = getOfficerById(officerId);
         const documentsData = mockDocuments.filter(d => d.officer_id === officerId);
         const activityData = mockActivityLog.filter(a => a.officer_id === officerId);
         
@@ -247,7 +248,8 @@ export default function OfficerDetail() {
       
       const { casual_leave, sick_leave, earned_leave, ...officerData } = updatedData;
       
-      // Update officer details
+      // Update officer details in localStorage
+      updateOfficer(officerId, officerData);
       setOfficer(prev => prev ? { ...prev, ...officerData } : null);
       
       // Update leave balance if leave fields are present
@@ -585,6 +587,68 @@ export default function OfficerDetail() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Payroll Configuration */}
+              <Card>
+                <CardContent className="pt-6 space-y-4">
+                  <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                    <DollarSign className="h-5 w-5" />
+                    Payroll Configuration
+                  </h3>
+                  <div className="space-y-3">
+                    {officer.hourly_rate && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Hourly Rate</p>
+                        <p className="font-medium">₹{officer.hourly_rate.toFixed(2)}/hour</p>
+                      </div>
+                    )}
+                    {officer.overtime_rate_multiplier && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Overtime Multiplier</p>
+                        <p className="font-medium">{officer.overtime_rate_multiplier}x</p>
+                      </div>
+                    )}
+                    {officer.normal_working_hours && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Normal Working Hours</p>
+                        <p className="font-medium">{officer.normal_working_hours} hours/day</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Leave Allowances */}
+              {leaveBalance && (
+                <Card>
+                  <CardContent className="pt-6 space-y-4">
+                    <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                      <Calendar className="h-5 w-5" />
+                      Leave Allowances ({leaveBalance.year})
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Casual Leave</span>
+                        <Badge variant="secondary" className="bg-blue-500/10 text-blue-600">
+                          {leaveBalance.casual_leave} days
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Sick Leave</span>
+                        <Badge variant="secondary" className="bg-orange-500/10 text-orange-600">
+                          {leaveBalance.sick_leave} days
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Earned Leave</span>
+                        <Badge variant="secondary" className="bg-green-500/10 text-green-600">
+                          {leaveBalance.earned_leave} days
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Bank Details */}
               {(officer.bank_account_number || officer.bank_name) && (
