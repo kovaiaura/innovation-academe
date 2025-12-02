@@ -5,8 +5,9 @@ import { TaskStatsCards } from '@/components/task/TaskStatsCards';
 import { TaskFilters } from '@/components/task/TaskFilters';
 import { TaskCard } from '@/components/task/TaskCard';
 import { TaskDetailDialog } from '@/components/task/TaskDetailDialog';
-import { getTasksByAssignee, getTaskStats } from '@/data/mockTaskData';
+import { loadTasks, updateTask, getTasksByAssignee, getTaskStats } from '@/data/mockTaskData';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import { canAccessFeature } from '@/utils/permissionHelpers';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -40,12 +41,16 @@ export default function Tasks() {
 
   // Load user's tasks
   useEffect(() => {
+    refreshTasks();
+  }, [user?.id]);
+
+  const refreshTasks = () => {
     if (user?.id) {
       const userTasks = getTasksByAssignee(user.id);
       setTasks(userTasks);
       setFilteredTasks(userTasks);
     }
-  }, [user?.id]);
+  };
 
   const stats = getTaskStats(user?.id);
 
@@ -73,26 +78,18 @@ export default function Tasks() {
   }, [tasks, statusFilter, priorityFilter, searchQuery]);
 
   const handleUpdateStatus = (taskId: string, status: TaskStatus, progress?: number) => {
-    setTasks(prev =>
-      prev.map(task =>
-        task.id === taskId
-          ? {
-              ...task,
-              status,
-              progress_percentage: progress !== undefined ? progress : task.progress_percentage,
-              completed_at: status === 'completed' ? new Date().toISOString() : task.completed_at,
-            }
-          : task
-      )
-    );
+    updateTask(taskId, {
+      status,
+      progress_percentage: progress !== undefined ? progress : undefined,
+      completed_at: status === 'completed' ? new Date().toISOString() : undefined,
+    });
+    
+    refreshTasks();
     
     if (selectedTask?.id === taskId) {
-      setSelectedTask(prev => prev ? {
-        ...prev,
-        status,
-        progress_percentage: progress !== undefined ? progress : prev.progress_percentage,
-        completed_at: status === 'completed' ? new Date().toISOString() : prev.completed_at,
-      } : null);
+      const updatedTasks = loadTasks();
+      const updated = updatedTasks.find(t => t.id === taskId);
+      if (updated) setSelectedTask(updated);
     }
   };
 
@@ -106,20 +103,34 @@ export default function Tasks() {
       created_at: new Date().toISOString(),
     };
 
-    setTasks(prev =>
-      prev.map(task =>
-        task.id === taskId
-          ? { ...task, comments: [...(task.comments || []), newComment] }
-          : task
-      )
-    );
-
-    if (selectedTask?.id === taskId) {
-      setSelectedTask(prev => prev ? {
-        ...prev,
-        comments: [...(prev.comments || []), newComment],
-      } : null);
+    const task = loadTasks().find(t => t.id === taskId);
+    if (task) {
+      updateTask(taskId, {
+        comments: [...(task.comments || []), newComment],
+      });
+      refreshTasks();
+      
+      if (selectedTask?.id === taskId) {
+        const updatedTasks = loadTasks();
+        const updated = updatedTasks.find(t => t.id === taskId);
+        if (updated) setSelectedTask(updated);
+      }
     }
+  };
+
+  const handleSubmitForApproval = (taskId: string) => {
+    updateTask(taskId, {
+      status: 'submitted_for_approval',
+      submitted_at: new Date().toISOString(),
+      progress_percentage: 100,
+    });
+    refreshTasks();
+    if (selectedTask?.id === taskId) {
+      const updatedTasks = loadTasks();
+      const updated = updatedTasks.find(t => t.id === taskId);
+      if (updated) setSelectedTask(updated);
+    }
+    toast.success('Task submitted for approval');
   };
 
   return (
@@ -173,6 +184,7 @@ export default function Tasks() {
           currentUserId={user?.id || ''}
           onUpdateStatus={handleUpdateStatus}
           onAddComment={handleAddComment}
+          onSubmitForApproval={handleSubmitForApproval}
         />
       )}
     </Layout>

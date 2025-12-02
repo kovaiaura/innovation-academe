@@ -1,6 +1,9 @@
 import { Task, TaskStats } from '@/types/task';
 
-export const mockTasks: Task[] = [
+const TASKS_KEY = 'meta_innova_tasks';
+
+// Initial mock tasks
+const initialMockTasks: Task[] = [
   {
     id: 'task-001',
     title: 'Prepare Q1 Budget Report',
@@ -155,12 +158,69 @@ export const mockTasks: Task[] = [
   }
 ];
 
-export const getTasksByAssignee = (userId: string): Task[] => {
-  return mockTasks.filter(task => task.assigned_to_id === userId);
-};
+// Initialize localStorage with mock data if empty
+function initializeTasksStorage(): void {
+  if (!localStorage.getItem(TASKS_KEY)) {
+    localStorage.setItem(TASKS_KEY, JSON.stringify(initialMockTasks));
+  }
+}
 
-export const getTaskStats = (userId?: string): TaskStats => {
-  const tasks = userId ? getTasksByAssignee(userId) : mockTasks;
+// Load tasks from localStorage
+export function loadTasks(): Task[] {
+  initializeTasksStorage();
+  const stored = localStorage.getItem(TASKS_KEY);
+  return stored ? JSON.parse(stored) : [];
+}
+
+// Save tasks to localStorage
+export function saveTasks(tasks: Task[]): void {
+  localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+}
+
+// Add new task
+export function addTask(task: Task): void {
+  const tasks = loadTasks();
+  tasks.unshift(task);
+  saveTasks(tasks);
+}
+
+// Update task
+export function updateTask(taskId: string, updates: Partial<Task>): void {
+  const tasks = loadTasks();
+  const index = tasks.findIndex(t => t.id === taskId);
+  if (index !== -1) {
+    tasks[index] = { ...tasks[index], ...updates };
+    saveTasks(tasks);
+  }
+}
+
+// Delete task
+export function deleteTask(taskId: string): void {
+  const tasks = loadTasks();
+  const filtered = tasks.filter(t => t.id !== taskId);
+  saveTasks(filtered);
+}
+
+// Get tasks assigned to a specific user
+export function getTasksByAssignee(userId: string): Task[] {
+  return loadTasks().filter(task => task.assigned_to_id === userId);
+}
+
+// Get tasks created by a specific user
+export function getTasksByCreator(userId: string): Task[] {
+  return loadTasks().filter(task => task.created_by_id === userId);
+}
+
+// Get tasks pending approval by creator
+export function getTasksPendingApproval(creatorId: string): Task[] {
+  return loadTasks().filter(
+    task => task.created_by_id === creatorId && task.status === 'submitted_for_approval'
+  );
+}
+
+// Get task statistics
+export function getTaskStats(userId?: string): TaskStats {
+  const tasks = userId ? getTasksByAssignee(userId) : loadTasks();
   const now = new Date();
   
   return {
@@ -172,4 +232,7 @@ export const getTaskStats = (userId?: string): TaskStats => {
       t.status !== 'completed' && t.status !== 'cancelled' && new Date(t.due_date) < now
     ).length,
   };
-};
+}
+
+// Legacy export for backward compatibility
+export const mockTasks = initialMockTasks;

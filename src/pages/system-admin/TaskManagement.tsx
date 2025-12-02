@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Task, TaskStatus, TaskPriority } from '@/types/task';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TaskStatsCards } from '@/components/task/TaskStatsCards';
 import { TaskFilters } from '@/components/task/TaskFilters';
 import { TaskCard } from '@/components/task/TaskCard';
@@ -8,7 +9,7 @@ import { CreateTaskDialog } from '@/components/task/CreateTaskDialog';
 import { TaskDetailDialog } from '@/components/task/TaskDetailDialog';
 import { Button } from '@/components/ui/button';
 import { Plus, AlertCircle } from 'lucide-react';
-import { mockTasks, getTaskStats } from '@/data/mockTaskData';
+import { loadTasks, saveTasks, addTask, updateTask, deleteTask, getTaskStats, getTasksByCreator, getTasksPendingApproval } from '@/data/mockTaskData';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { canAccessFeature } from '@/utils/permissionHelpers';
@@ -33,17 +34,28 @@ export default function TaskManagement() {
       </Layout>
     );
   }
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
-  const [filteredTasks, setFilteredTasks] = useState<Task[]>(mockTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [activeTab, setActiveTab] = useState<'all' | 'created' | 'pending'>('all');
   
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'all'>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Load tasks on mount
+  useEffect(() => {
+    refreshTasks();
+  }, []);
+
+  const refreshTasks = () => {
+    setTasks(loadTasks());
+  };
+
   const stats = getTaskStats();
+  const pendingApprovalCount = user?.id ? getTasksPendingApproval(user.id).length : 0;
 
   // Get unique assignees
   const assignees = Array.from(
@@ -53,6 +65,15 @@ export default function TaskManagement() {
   // Apply filters
   useEffect(() => {
     let filtered = tasks;
+
+    // Tab-based filtering
+    if (activeTab === 'created' && user?.id) {
+      filtered = filtered.filter(task => task.created_by_id === user.id);
+    } else if (activeTab === 'pending' && user?.id) {
+      filtered = filtered.filter(
+        task => task.created_by_id === user.id && task.status === 'submitted_for_approval'
+      );
+    }
 
     if (statusFilter !== 'all') {
       filtered = filtered.filter(task => task.status === statusFilter);
@@ -75,7 +96,7 @@ export default function TaskManagement() {
     }
 
     setFilteredTasks(filtered);
-  }, [tasks, statusFilter, priorityFilter, assigneeFilter, searchQuery]);
+  }, [tasks, statusFilter, priorityFilter, assigneeFilter, searchQuery, activeTab, user?.id]);
 
   const handleCreateTask = (taskData: Omit<Task, 'id' | 'created_at' | 'status' | 'comments'>) => {
     const newTask: Task = {
@@ -85,30 +106,24 @@ export default function TaskManagement() {
       status: 'pending',
       comments: [],
     };
-    setTasks(prev => [newTask, ...prev]);
+    addTask(newTask);
+    refreshTasks();
+    toast.success('Task created successfully');
   };
 
   const handleUpdateStatus = (taskId: string, status: TaskStatus, progress?: number) => {
-    setTasks(prev =>
-      prev.map(task =>
-        task.id === taskId
-          ? {
-              ...task,
-              status,
-              progress_percentage: progress !== undefined ? progress : task.progress_percentage,
-              completed_at: status === 'completed' ? new Date().toISOString() : task.completed_at,
-            }
-          : task
-      )
-    );
+    updateTask(taskId, {
+      status,
+      progress_percentage: progress !== undefined ? progress : undefined,
+      completed_at: status === 'completed' ? new Date().toISOString() : undefined,
+    });
+    
+    refreshTasks();
     
     if (selectedTask?.id === taskId) {
-      setSelectedTask(prev => prev ? {
-        ...prev,
-        status,
-        progress_percentage: progress !== undefined ? progress : prev.progress_percentage,
-        completed_at: status === 'completed' ? new Date().toISOString() : prev.completed_at,
-      } : null);
+      const updatedTasks = loadTasks();
+      const updated = updatedTasks.find(t => t.id === taskId);
+      if (updated) setSelectedTask(updated);
     }
   };
 
@@ -122,24 +137,55 @@ export default function TaskManagement() {
       created_at: new Date().toISOString(),
     };
 
-    setTasks(prev =>
-      prev.map(task =>
-        task.id === taskId
-          ? { ...task, comments: [...(task.comments || []), newComment] }
-          : task
-      )
-    );
-
-    if (selectedTask?.id === taskId) {
-      setSelectedTask(prev => prev ? {
-        ...prev,
-        comments: [...(prev.comments || []), newComment],
-      } : null);
+    const task = loadTasks().find(t => t.id === taskId);
+    if (task) {
+      updateTask(taskId, {
+        comments: [...(task.comments || []), newComment],
+      });
+      refreshTasks();
+      
+      if (selectedTask?.id === taskId) {
+        const updatedTasks = loadTasks();
+        const updated = updatedTasks.find(t => t.id === taskId);
+        if (updated) setSelectedTask(updated);
+      }
     }
   };
 
   const handleDeleteTask = (taskId: string) => {
-    setTasks(prev => prev.filter(task => task.id !== taskId));
+    deleteTask(taskId);
+    refreshTasks();
+    toast.success('Task deleted successfully');
+  };
+
+  const handleApproveTask = (taskId: string, approvedById: string) => {
+    const approver = user;
+    updateTask(taskId, {
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      approved_by_id: approvedById,
+      approved_by_name: approver?.name || '',
+      approved_at: new Date().toISOString(),
+    });
+    refreshTasks();
+    if (selectedTask?.id === taskId) {
+      const updatedTasks = loadTasks();
+      const updated = updatedTasks.find(t => t.id === taskId);
+      if (updated) setSelectedTask(updated);
+    }
+  };
+
+  const handleRejectTask = (taskId: string, reason: string) => {
+    updateTask(taskId, {
+      status: 'rejected',
+      rejection_reason: reason,
+    });
+    refreshTasks();
+    if (selectedTask?.id === taskId) {
+      const updatedTasks = loadTasks();
+      const updated = updatedTasks.find(t => t.id === taskId);
+      if (updated) setSelectedTask(updated);
+    }
   };
 
   return (
@@ -160,6 +206,22 @@ export default function TaskManagement() {
 
         <TaskStatsCards stats={stats} />
 
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="all">All Tasks</TabsTrigger>
+            <TabsTrigger value="created">Created by Me</TabsTrigger>
+            <TabsTrigger value="pending">
+              Pending Approval
+              {pendingApprovalCount > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs bg-orange-500 text-white rounded-full">
+                  {pendingApprovalCount}
+                </span>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value={activeTab} className="space-y-4">
+
         <TaskFilters
           statusFilter={statusFilter}
           priorityFilter={priorityFilter}
@@ -173,7 +235,7 @@ export default function TaskManagement() {
           assignees={assignees}
         />
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredTasks.length === 0 ? (
             <div className="col-span-full text-center py-12">
               <p className="text-muted-foreground">No tasks found</p>
@@ -187,7 +249,9 @@ export default function TaskManagement() {
               />
             ))
           )}
-        </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       <CreateTaskDialog
@@ -210,6 +274,8 @@ export default function TaskManagement() {
           onUpdateStatus={handleUpdateStatus}
           onAddComment={handleAddComment}
           onDeleteTask={handleDeleteTask}
+          onApproveTask={handleApproveTask}
+          onRejectTask={handleRejectTask}
         />
       )}
     </Layout>

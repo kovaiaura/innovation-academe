@@ -1,5 +1,5 @@
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
-export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+export type TaskStatus = 'pending' | 'in_progress' | 'submitted_for_approval' | 'completed' | 'rejected' | 'cancelled';
 export type TaskCategory = 'administrative' | 'operational' | 'strategic' | 'technical' | 'other';
 
 export interface Task {
@@ -29,6 +29,13 @@ export interface Task {
   attachments?: string[];
   comments?: TaskComment[];
   progress_percentage?: number;
+  
+  // Approval workflow fields
+  submitted_at?: string;
+  approved_by_id?: string;
+  approved_by_name?: string;
+  approved_at?: string;
+  rejection_reason?: string;
 }
 
 export interface TaskComment {

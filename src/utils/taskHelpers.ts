@@ -26,7 +26,9 @@ export const getStatusColor = (status: TaskStatus): string => {
   const colors = {
     pending: 'text-muted-foreground bg-muted',
     in_progress: 'text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-950',
+    submitted_for_approval: 'text-orange-600 bg-orange-100 dark:text-orange-400 dark:bg-orange-950',
     completed: 'text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-950',
+    rejected: 'text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-950',
     cancelled: 'text-destructive bg-destructive/10',
   };
   return colors[status];
@@ -55,4 +57,18 @@ export const canEditTask = (task: Task, userId: string): boolean => {
 
 export const canUpdateStatus = (task: Task, userId: string): boolean => {
   return task.assigned_to_id === userId || task.created_by_id === userId;
+};
+
+export const canSubmitForApproval = (task: Task, userId: string): boolean => {
+  return task.assigned_to_id === userId && 
+         task.status === 'in_progress' && 
+         (task.progress_percentage ?? 0) >= 100;
+};
+
+export const canApproveTask = (task: Task, userId: string): boolean => {
+  return task.created_by_id === userId && task.status === 'submitted_for_approval';
+};
+
+export const isTaskPendingMyApproval = (task: Task, userId: string): boolean => {
+  return task.created_by_id === userId && task.status === 'submitted_for_approval';
 };

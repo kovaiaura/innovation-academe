@@ -9,7 +9,9 @@ interface TaskStatusBadgeProps {
 const statusLabels: Record<TaskStatus, string> = {
   pending: 'Pending',
   in_progress: 'In Progress',
+  submitted_for_approval: 'Pending Approval',
   completed: 'Completed',
+  rejected: 'Rejected',
   cancelled: 'Cancelled',
 };
 
