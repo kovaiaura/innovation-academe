@@ -18,8 +18,9 @@ import { getStudentsByInstitution } from '@/data/mockStudentData';
 import { getClassesByInstitution } from '@/data/mockClassData';
 import { getInstitutionOfficers, getAvailableOfficers } from '@/data/mockInstitutionOfficers';
 import { getInstitutionAnalytics } from '@/data/mockInstitutionAnalytics';
-import { getInstitutionPeriods } from '@/data/mockInstitutionPeriods';
-import { getInstitutionTimetable } from '@/data/mockInstitutionTimetable';
+import { getInstitutionPeriods, saveInstitutionPeriodsForInstitution } from '@/data/mockInstitutionPeriods';
+import { getInstitutionTimetable, saveInstitutionTimetable } from '@/data/mockInstitutionTimetable';
+import { syncInstitutionToOfficerTimetable } from '@/utils/timetableSync';
 import { toast } from 'sonner';
 import { useInstitutionData } from '@/contexts/InstitutionDataContext';
 
@@ -363,8 +364,16 @@ export default function InstitutionDetail() {
               classes={institutionClasses.filter(c => c.status === 'active')}
               periods={getInstitutionPeriods(institutionId!)}
               timetableData={getInstitutionTimetable(institutionId!)}
-              onSavePeriods={async (periods) => { toast.success('Periods saved'); }}
-              onSaveTimetable={async (assignments) => { toast.success('Timetable saved'); }}
+              onSavePeriods={async (periods) => {
+                saveInstitutionPeriodsForInstitution(institutionId!, periods);
+                toast.success('Periods saved successfully');
+              }}
+              onSaveTimetable={async (assignments) => {
+                const periods = getInstitutionPeriods(institutionId!);
+                saveInstitutionTimetable(institutionId!, assignments);
+                syncInstitutionToOfficerTimetable(institutionId!, assignments, periods);
+                toast.success('Timetable saved and synced to officers');
+              }}
             />
           </TabsContent>
 
