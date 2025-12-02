@@ -10,7 +10,7 @@ import { OfficerDetailsDialog } from "@/components/officer/OfficerDetailsDialog"
 import { OfficerScheduleDialog } from "@/components/officer/OfficerScheduleDialog";
 import { OfficerTimetableSlot } from "@/types/officer";
 import { updateMockOfficerTimetable } from "@/data/mockOfficerTimetable";
-import { mockOfficerProfiles, getOfficerById } from "@/data/mockOfficerData";
+import { loadOfficers, getOfficerById } from "@/data/mockOfficerData";
 import { OfficerDetails } from "@/services/systemadmin.service";
 import { toast } from "sonner";
 import { getInstitutionBySlug } from "@/data/mockInstitutionData";
@@ -31,7 +31,7 @@ const Officers = () => {
   // Get officers assigned to this institution
   const officers = institution 
     ? getInstitutionOfficers(institution.id).map(officer => {
-        const officerDetails = getOfficerById(officer.officer_id);
+        const officerDetails = loadOfficers().find(o => o.id === officer.officer_id);
         return {
           id: officer.officer_id,
           name: officer.officer_name,
@@ -153,7 +153,7 @@ const Officers = () => {
                           variant="outline" 
                           size="sm"
                           onClick={() => {
-                            const fullOfficer = getOfficerById(officer.id);
+                            const fullOfficer = loadOfficers().find(o => o.id === officer.id);
                             if (fullOfficer) {
                               setSelectedOfficer(fullOfficer);
                               setDetailsDialogOpen(true);
@@ -166,7 +166,7 @@ const Officers = () => {
                           variant="outline" 
                           size="sm"
                           onClick={() => {
-                            const fullOfficer = getOfficerById(officer.id);
+                            const fullOfficer = loadOfficers().find(o => o.id === officer.id);
                             if (fullOfficer) {
                               setSelectedOfficer(fullOfficer);
                               setScheduleDialogOpen(true);
