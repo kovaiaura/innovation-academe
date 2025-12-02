@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Plus, Shield, Users, Key, Trash2, Crown, Search, Info } from 'lucide-react';
+import { Plus, Shield, Users, Key, Trash2, Crown, Search, Info, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -68,8 +68,32 @@ export default function PositionManagement() {
     name: '',
   });
 
+  const loadAllData = useCallback(async () => {
+    try {
+      const data = await positionService.getAllPositions();
+      setPositions(data);
+      if (!selectedPosition && data.length > 0) {
+        setSelectedPosition(data[0]);
+      } else if (selectedPosition) {
+        // Refresh selected position data
+        const updatedPosition = data.find(p => p.id === selectedPosition.id);
+        if (updatedPosition) {
+          setSelectedPosition(updatedPosition);
+        }
+      }
+    } catch (error) {
+      toast.error('Failed to load positions');
+    }
+  }, [selectedPosition]);
+
   useEffect(() => {
-    loadPositions();
+    loadAllData();
+    
+    // Listen for focus to refresh data when returning to this page
+    const handleFocus = () => loadAllData();
+    window.addEventListener('focus', handleFocus);
+    
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   useEffect(() => {
@@ -77,18 +101,6 @@ export default function PositionManagement() {
       loadPositionUsers(selectedPosition.id);
     }
   }, [selectedPosition]);
-
-  const loadPositions = async () => {
-    try {
-      const data = await positionService.getAllPositions();
-      setPositions(data);
-      if (!selectedPosition && data.length > 0) {
-        setSelectedPosition(data[0]);
-      }
-    } catch (error) {
-      toast.error('Failed to load positions');
-    }
-  };
 
   const loadPositionUsers = async (positionId: string) => {
     try {
@@ -115,7 +127,7 @@ export default function PositionManagement() {
       });
       toast.success('Position created successfully');
       setIsCreateDialogOpen(false);
-      loadPositions();
+      loadAllData();
     } catch (error) {
       toast.error('Failed to create position');
     } finally {
@@ -136,7 +148,7 @@ export default function PositionManagement() {
       await positionService.updatePosition(selectedPosition.id, data);
       toast.success('Position updated successfully');
       setIsEditDialogOpen(false);
-      loadPositions();
+      loadAllData();
     } catch (error: any) {
       toast.error(error.message || 'Failed to update position');
     } finally {
@@ -151,7 +163,7 @@ export default function PositionManagement() {
     try {
       await positionService.deletePosition(position.id);
       toast.success('Position deleted successfully');
-      loadPositions();
+      loadAllData();
       if (selectedPosition?.id === position.id) {
         setSelectedPosition(null);
       }
@@ -203,12 +215,20 @@ export default function PositionManagement() {
       if (selectedPosition) {
         loadPositionUsers(selectedPosition.id);
       }
-      loadPositions();
+      loadAllData();
     } catch (error) {
       toast.error('Failed to add user');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    await loadAllData();
+    if (selectedPosition) {
+      await loadPositionUsers(selectedPosition.id);
+    }
+    toast.success('Data refreshed');
   };
 
   const handleResetPassword = async (userId: string, userName: string, userEmail: string) => {
@@ -236,7 +256,7 @@ export default function PositionManagement() {
       if (selectedPosition) {
         loadPositionUsers(selectedPosition.id);
       }
-      loadPositions();
+      loadAllData();
     } catch (error) {
       toast.error('Failed to remove user');
     } finally {
@@ -268,10 +288,16 @@ export default function PositionManagement() {
             </h1>
             <p className="text-muted-foreground">Create custom positions and configure sidebar access</p>
           </div>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Position
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleRefresh}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Position
+            </Button>
+          </div>
         </div>
 
         <Alert className="bg-primary/5 border-primary/20">
