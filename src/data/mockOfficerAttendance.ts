@@ -178,6 +178,126 @@ export const getTodayAttendance = (officerId: string): OfficerDailyAttendance | 
 };
 
 /**
+ * Get officer attendance record for a specific month (converts to OfficerAttendanceRecord format)
+ */
+export const getOfficerAttendanceRecord = (officerId: string, month: string): any => {
+  const records = loadOfficerAttendance();
+  const monthRecords = records.filter(
+    r => r.officer_id === officerId && r.date.startsWith(month)
+  );
+  
+  if (monthRecords.length === 0) return null;
+  
+  // Calculate summary statistics
+  let presentDays = 0;
+  let absentDays = 0;
+  let leaveDays = 0;
+  let totalHours = 0;
+  
+  const dailyRecords = monthRecords.map(record => {
+    if (record.status === 'checked_out' || record.status === 'checked_in') {
+      presentDays++;
+    } else if (record.status === 'not_checked_in') {
+      absentDays++;
+    }
+    
+    const hoursWorked = record.total_hours_worked || 0;
+    totalHours += hoursWorked;
+    
+    return {
+      date: record.date,
+      status: record.status === 'checked_out' || record.status === 'checked_in' ? 'present' : 
+              record.status === 'not_checked_in' ? 'absent' : 'leave',
+      check_in_time: record.check_in_time,
+      check_out_time: record.check_out_time,
+      hours_worked: hoursWorked,
+      overtime_hours: record.overtime_hours || 0,
+      check_in_location: record.check_in_location,
+      check_out_location: record.check_out_location,
+      location_validated: record.check_in_validated,
+    };
+  });
+  
+  return {
+    officer_id: officerId,
+    officer_name: monthRecords[0].officer_name,
+    employee_id: monthRecords[0].officer_id,
+    department: 'Innovation & STEM Education',
+    month,
+    daily_records: dailyRecords,
+    present_days: presentDays,
+    absent_days: absentDays,
+    leave_days: leaveDays,
+    total_hours_worked: totalHours,
+    last_marked_date: monthRecords[monthRecords.length - 1]?.date || '',
+  };
+};
+
+/**
+ * Get all officers' attendance for a specific month
+ */
+export const getAllOfficersAttendanceForMonth = (month: string): any[] => {
+  const records = loadOfficerAttendance();
+  const monthRecords = records.filter(r => r.date.startsWith(month));
+  
+  // Group by officer_id
+  const officerGroups: { [key: string]: OfficerDailyAttendance[] } = {};
+  monthRecords.forEach(record => {
+    if (!officerGroups[record.officer_id]) {
+      officerGroups[record.officer_id] = [];
+    }
+    officerGroups[record.officer_id].push(record);
+  });
+  
+  // Convert each group to OfficerAttendanceRecord format
+  return Object.keys(officerGroups).map(officerId => {
+    const officerRecords = officerGroups[officerId];
+    let presentDays = 0;
+    let absentDays = 0;
+    let leaveDays = 0;
+    let totalHours = 0;
+    
+    const dailyRecords = officerRecords.map(record => {
+      if (record.status === 'checked_out' || record.status === 'checked_in') {
+        presentDays++;
+      } else if (record.status === 'not_checked_in') {
+        absentDays++;
+      }
+      
+      const hoursWorked = record.total_hours_worked || 0;
+      totalHours += hoursWorked;
+      
+      return {
+        date: record.date,
+        status: record.status === 'checked_out' || record.status === 'checked_in' ? 'present' : 
+                record.status === 'not_checked_in' ? 'absent' : 'leave',
+        check_in_time: record.check_in_time,
+        check_out_time: record.check_out_time,
+        hours_worked: hoursWorked,
+        overtime_hours: record.overtime_hours || 0,
+        check_in_location: record.check_in_location,
+        check_out_location: record.check_out_location,
+        location_validated: record.check_in_validated,
+      };
+    });
+    
+    return {
+      officer_id: officerId,
+      officer_name: officerRecords[0].officer_name,
+      employee_id: officerId,
+      department: 'Innovation & STEM Education',
+      month,
+      daily_records: dailyRecords,
+      present_days: presentDays,
+      absent_days: absentDays,
+      leave_days: leaveDays,
+      total_hours_worked: totalHours,
+      last_marked_date: officerRecords[officerRecords.length - 1]?.date || '',
+    };
+  });
+};
+
+/**
  * Get all attendance records for an institution
  */
 export const getInstitutionAttendance = (institutionId: string): OfficerDailyAttendance[] => {

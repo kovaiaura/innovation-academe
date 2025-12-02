@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -8,16 +8,38 @@ import { Download, Calendar, Search, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { AttendanceCalendar } from './AttendanceCalendar';
 import { OfficerAttendanceRecord } from '@/types/attendance';
-import { mockAttendanceData } from '@/data/mockAttendanceData';
+import { getAllOfficersAttendanceForMonth } from '@/data/mockOfficerAttendance';
+import { loadOfficers } from '@/data/mockOfficerData';
 import { calculateAttendancePercentage, exportToCSV } from '@/utils/attendanceHelpers';
 import { format } from 'date-fns';
 
-export function OfficerAttendanceTab() {
-  const [selectedMonth, setSelectedMonth] = useState('2024-01');
+interface OfficerAttendanceTabProps {
+  institutionId?: string;
+}
+
+export function OfficerAttendanceTab({ institutionId }: OfficerAttendanceTabProps) {
+  const [selectedMonth, setSelectedMonth] = useState('2025-11');
   const [searchQuery, setSearchQuery] = useState('');
-  const [attendanceData] = useState<OfficerAttendanceRecord[]>(mockAttendanceData);
   const [selectedOfficer, setSelectedOfficer] = useState<OfficerAttendanceRecord | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
+  // Load officers from localStorage
+  const officers = loadOfficers();
+
+  // Filter officers by institution if institutionId provided
+  const filteredOfficers = useMemo(() => {
+    if (!institutionId) return officers;
+    return officers.filter(o => o.assigned_institutions.includes(institutionId));
+  }, [officers, institutionId]);
+
+  // Get attendance data from localStorage, filtered by institution
+  const attendanceData = useMemo(() => {
+    const allData = getAllOfficersAttendanceForMonth(selectedMonth);
+    if (!institutionId) return allData;
+    
+    const institutionOfficerIds = filteredOfficers.map(o => o.id);
+    return allData.filter(record => institutionOfficerIds.includes(record.officer_id));
+  }, [selectedMonth, institutionId, filteredOfficers]);
 
   const filteredData = attendanceData.filter(
     record =>

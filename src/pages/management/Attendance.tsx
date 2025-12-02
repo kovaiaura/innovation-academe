@@ -56,7 +56,7 @@ const Attendance = () => {
           </TabsList>
           
           <TabsContent value="officers" className="mt-6">
-            <OfficerAttendanceTab />
+            <OfficerAttendanceTab institutionId={institution?.id} />
           </TabsContent>
           
           <TabsContent value="students" className="mt-6">
