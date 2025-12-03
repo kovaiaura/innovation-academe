@@ -63,10 +63,32 @@ export const positionService = {
     const position = getPositionById(id);
     if (!position) throw new Error('Position not found');
     
+    // For CEO position: Allow feature updates but protect essential settings
     if (position.is_ceo_position) {
-      throw new Error('Cannot modify CEO position');
+      // Prevent renaming CEO position
+      if (data.position_name && data.position_name !== position.position_name) {
+        throw new Error('Cannot rename CEO position');
+      }
+      
+      // Ensure credential_management (Position Management) is always included for CEO
+      let features = data.visible_features || position.visible_features;
+      if (!features.includes('credential_management')) {
+        features = [...features, 'credential_management'];
+      }
+      
+      // Update CEO with protected features
+      const updated = {
+        ...position,
+        display_name: data.display_name || position.display_name,
+        description: data.description || position.description,
+        visible_features: features
+      };
+      
+      updatePositionInStore(id, updated);
+      return;
     }
     
+    // For non-CEO positions: Allow full modification
     const updated = {
       ...position,
       position_name: data.position_name || position.position_name,
