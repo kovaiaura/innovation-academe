@@ -79,9 +79,9 @@ export function EditPositionDialog({
   }, [position]);
 
   const handleFeatureToggle = (feature: SystemAdminFeature) => {
-    // Always keep Position Management for CEO
+    // Protect credential_management (Position Management) for CEO to prevent lockout
     if (position?.is_ceo_position && feature === 'credential_management') {
-      return; // Can't remove Position Management access
+      return; // Can't remove Position Management access for CEO
     }
 
     setFormData(prev => ({
@@ -114,7 +114,7 @@ export function EditPositionDialog({
             <Alert className="bg-primary/5 border-primary/20">
               <Shield className="h-4 w-4 text-primary" />
               <AlertDescription className="text-primary">
-                Position Management is always accessible to CEO and cannot be removed.
+                CEO position: You can modify visible sidebar menus freely. Only "Credential Management" cannot be removed to prevent lockout.
               </AlertDescription>
             </Alert>
           )}
