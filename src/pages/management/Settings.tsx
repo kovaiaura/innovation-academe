@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Building2, Award, Mail, Save } from "lucide-react";
+import { Building2, Award, Mail, Save, Shield } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { getInstitutionBySlug } from "@/data/mockInstitutionData";
 import { useLocation } from "react-router-dom";
+import { AccountSettingsSection } from "@/components/settings/AccountSettingsSection";
 
 const InstitutionProfileTab = () => {
   return (
@@ -246,12 +247,20 @@ const Settings = () => {
           <p className="text-muted-foreground">Manage institution profile, branding, and integrations</p>
         </div>
 
-        <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full max-w-2xl grid-cols-3">
+        <Tabs defaultValue="security" className="w-full">
+          <TabsList className="grid w-full max-w-3xl grid-cols-4">
+            <TabsTrigger value="security" className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">Account Security</span>
+              <span className="sm:hidden">Security</span>
+            </TabsTrigger>
             <TabsTrigger value="profile">Institution Profile</TabsTrigger>
-            <TabsTrigger value="branding">Branding & Certificates</TabsTrigger>
+            <TabsTrigger value="branding">Branding</TabsTrigger>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
           </TabsList>
+          <TabsContent value="security" className="mt-6">
+            <AccountSettingsSection />
+          </TabsContent>
           <TabsContent value="profile" className="mt-6">
             <InstitutionProfileTab />
           </TabsContent>

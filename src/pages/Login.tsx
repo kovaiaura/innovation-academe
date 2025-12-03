@@ -68,8 +68,8 @@ export default function Login() {
 
   const handlePasswordChanged = async (newPassword: string) => {
     if (pendingLoginData) {
-      // Update user's password_changed flag
-      await passwordService.changePassword(newPassword);
+      // Set password without requiring current password (first login scenario)
+      await passwordService.setUserPassword(pendingLoginData.user.id, newPassword);
       
       // Complete login
       login(pendingLoginData.user, pendingLoginData.token);
