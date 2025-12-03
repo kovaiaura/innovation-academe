@@ -100,6 +100,9 @@ import SystemAdminAskMetova from "./pages/system-admin/AskMetova";
 import SystemAdminCRM from "./pages/system-admin/CRM";
 import SurveyFeedbackManagement from "./pages/system-admin/SurveyFeedbackManagement";
 import PerformanceRatings from "./pages/system-admin/PerformanceRatings";
+import SystemAdminSettings from "./pages/system-admin/Settings";
+import OfficerSettings from "./pages/officer/Settings";
+import TeacherSettings from "./pages/teacher/Settings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -424,6 +427,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/system-admin/settings"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminSettings />
+                </ProtectedRoute>
+              }
+            />
             {/* Teacher Routes (path-based multi-tenancy) */}
             <Route
               path="/tenant/:tenantId/teacher/dashboard"
@@ -470,6 +481,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['teacher']}>
                   <TeacherMaterials />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/teacher/settings"
+              element={
+                <ProtectedRoute allowedRoles={['teacher']}>
+                  <TeacherSettings />
                 </ProtectedRoute>
               }
             />
@@ -569,6 +588,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['officer']}>
                   <OfficerAskMetova />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/officer/settings"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <OfficerSettings />
                 </ProtectedRoute>
               }
             />
