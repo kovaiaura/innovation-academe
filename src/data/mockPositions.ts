@@ -1,6 +1,8 @@
 import { CustomPosition, SystemAdminFeature } from '@/types/permissions';
 
 const POSITIONS_STORAGE_KEY = 'meta_positions';
+const POSITIONS_VERSION_KEY = 'meta_positions_version';
+const CURRENT_VERSION = 2; // Increment when defaults change
 
 // Default positions migrated from old enum-based system
 const defaultPositions: CustomPosition[] = [
@@ -27,7 +29,8 @@ const defaultPositions: CustomPosition[] = [
       'credential_management',
       'gamification',
       'id_configuration',
-      'survey_feedback'
+      'survey_feedback',
+      'performance_ratings'
     ],
     description: 'Complete system access and permission management',
     created_at: new Date().toISOString(),
@@ -121,9 +124,23 @@ const defaultPositions: CustomPosition[] = [
   }
 ];
 
+// Clear outdated cache when version changes
+const checkAndClearCache = (): void => {
+  try {
+    const storedVersion = localStorage.getItem(POSITIONS_VERSION_KEY);
+    if (storedVersion !== String(CURRENT_VERSION)) {
+      localStorage.removeItem(POSITIONS_STORAGE_KEY);
+      localStorage.setItem(POSITIONS_VERSION_KEY, String(CURRENT_VERSION));
+    }
+  } catch (error) {
+    console.error('Error checking positions cache version:', error);
+  }
+};
+
 // Load positions from localStorage or use defaults
 export const loadPositions = (): CustomPosition[] => {
   try {
+    checkAndClearCache();
     const stored = localStorage.getItem(POSITIONS_STORAGE_KEY);
     if (stored) {
       return JSON.parse(stored);
