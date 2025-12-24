@@ -122,6 +122,7 @@ const menuItems: MenuItem[] = [
   { label: 'Projects & Certificates', icon: <Target className="h-5 w-5" />, path: '/projects-certificates', roles: ['management'] },
   { label: 'Events & Activities', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['management'] },
   { label: 'Reports', icon: <FileText className="h-5 w-5" />, path: '/reports', roles: ['management'] },
+  { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['management'] },
   { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['management'] },
   { label: 'Attendance', icon: <Clock className="h-5 w-5" />, path: '/attendance', roles: ['management'] },
 ];

@@ -8,17 +8,17 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Edit, Trash2, Clock, Save, Calendar as CalendarIcon, Settings } from 'lucide-react';
-import { PeriodConfig, InstitutionTimetableAssignment } from '@/types/institution';
+import { Plus, Edit, Trash2, Clock, Save, Calendar as CalendarIcon, Settings, User } from 'lucide-react';
+import { PeriodConfig, InstitutionTimetableAssignment, OfficerAssignment } from '@/types/institution';
 import { InstitutionClass } from '@/types/student';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { syncInstitutionToOfficerTimetable } from '@/utils/timetableSync';
 
 interface InstitutionTimetableTabProps {
   institutionId: string;
   institutionName: string;
   classes: InstitutionClass[];
+  assignedOfficers: OfficerAssignment[];
   periods: PeriodConfig[];
   timetableData: InstitutionTimetableAssignment[];
   onSavePeriods: (periods: PeriodConfig[]) => Promise<void>;
@@ -30,6 +30,7 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 export const InstitutionTimetableTab = ({
   institutionId,
   classes,
+  assignedOfficers,
   periods: initialPeriods,
   timetableData: initialTimetableData,
   onSavePeriods,
@@ -45,8 +46,7 @@ export const InstitutionTimetableTab = ({
 
   // Assignment form state
   const [selectedClass, setSelectedClass] = useState('');
-  const [subject, setSubject] = useState('');
-  const [room, setRoom] = useState('');
+  const [selectedOfficer, setSelectedOfficer] = useState('');
 
   // Period form state
   const [periodLabel, setPeriodLabel] = useState('');
@@ -140,25 +140,24 @@ export const InstitutionTimetableTab = ({
     const existing = timetableData.find(t => t.day === day && t.period_id === periodId);
     if (existing) {
       setSelectedClass(existing.class_id);
-      setSubject(existing.subject);
-      setRoom(existing.room || '');
+      setSelectedOfficer(existing.teacher_id || '');
     } else {
       setSelectedClass('');
-      setSubject('');
-      setRoom('');
+      setSelectedOfficer('');
     }
     
     setIsAssignmentDialogOpen(true);
   };
 
   const handleSaveAssignment = () => {
-    if (!selectedCell || !selectedClass || !subject) {
-      toast.error('Please fill class and subject');
+    if (!selectedCell || !selectedClass || !selectedOfficer) {
+      toast.error('Please select a class and an officer');
       return;
     }
 
     const selectedClassData = classes.find(c => c.id === selectedClass);
-    if (!selectedClassData) return;
+    const selectedOfficerData = assignedOfficers.find(o => o.officer_id === selectedOfficer);
+    if (!selectedClassData || !selectedOfficerData) return;
 
     const existingIndex = timetableData.findIndex(
       t => t.day === selectedCell.day && t.period_id === selectedCell.periodId
@@ -172,8 +171,9 @@ export const InstitutionTimetableTab = ({
       period_id: selectedCell.periodId,
       class_id: selectedClass,
       class_name: selectedClassData.class_name,
-      subject,
-      room: room || undefined,
+      subject: selectedOfficerData.officer_name, // Use officer name as subject for compatibility
+      teacher_id: selectedOfficer,
+      teacher_name: selectedOfficerData.officer_name,
       created_at: existingIndex >= 0 ? timetableData[existingIndex].created_at : new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -311,10 +311,10 @@ export const InstitutionTimetableTab = ({
                             {assignment && !period.is_break ? (
                               <div className="space-y-1">
                                 <div className="font-medium text-sm">{assignment.class_name}</div>
-                                <div className="text-xs">{assignment.subject}</div>
-                                {assignment.room && (
-                                  <div className="text-xs opacity-75">Room: {assignment.room}</div>
-                                )}
+                                <div className="flex items-center gap-1 text-xs">
+                                  <User className="h-3 w-3" />
+                                  {assignment.teacher_name || 'Unassigned'}
+                                </div>
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -464,9 +464,9 @@ export const InstitutionTimetableTab = ({
       <Dialog open={isAssignmentDialogOpen} onOpenChange={setIsAssignmentDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign Class</DialogTitle>
+            <DialogTitle>Assign Officer to Class</DialogTitle>
             <DialogDescription>
-              {selectedCell && `Assign a class for ${selectedCell.day} - ${periods.find(p => p.id === selectedCell.periodId)?.label}`}
+              {selectedCell && `Assign an officer for ${selectedCell.day} - ${periods.find(p => p.id === selectedCell.periodId)?.label}`}
             </DialogDescription>
           </DialogHeader>
 
@@ -488,21 +488,30 @@ export const InstitutionTimetableTab = ({
             </div>
 
             <div className="space-y-2">
-              <Label>Subject</Label>
-              <Input
-                placeholder="e.g., Mathematics, Science"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Room (Optional)</Label>
-              <Input
-                placeholder="e.g., Room 101, Lab 2"
-                value={room}
-                onChange={(e) => setRoom(e.target.value)}
-              />
+              <Label>Assign Officer</Label>
+              <Select value={selectedOfficer} onValueChange={setSelectedOfficer}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select officer" />
+                </SelectTrigger>
+                <SelectContent>
+                  {assignedOfficers.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                      No officers assigned to this institution
+                    </div>
+                  ) : (
+                    assignedOfficers.filter(o => o.status === 'active').map(officer => (
+                      <SelectItem key={officer.officer_id} value={officer.officer_id}>
+                        {officer.officer_name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              {assignedOfficers.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Please assign officers to this institution first in the "Innovation Officers" tab.
+                </p>
+              )}
             </div>
 
             <div className="flex gap-2 pt-4">
@@ -516,7 +525,11 @@ export const InstitutionTimetableTab = ({
               >
                 Cancel
               </Button>
-              <Button className="flex-1" onClick={handleSaveAssignment}>
+              <Button 
+                className="flex-1" 
+                onClick={handleSaveAssignment}
+                disabled={assignedOfficers.length === 0}
+              >
                 Save Assignment
               </Button>
             </div>

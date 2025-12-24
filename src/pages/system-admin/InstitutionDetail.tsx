@@ -14,13 +14,13 @@ import { InstitutionOfficersTab } from '@/components/institution/InstitutionOffi
 import { InstitutionAnalyticsTab } from '@/components/institution/InstitutionAnalyticsTab';
 import { InstitutionTimetableTab } from '@/components/institution/InstitutionTimetableTab';
 import { InstitutionClass } from '@/types/student';
-import { getInstitutionOfficers, getAvailableOfficers } from '@/data/mockInstitutionOfficers';
 import { getInstitutionAnalytics } from '@/data/mockInstitutionAnalytics';
 import { toast } from 'sonner';
 import { useInstitutions } from '@/hooks/useInstitutions';
 import { useClasses } from '@/hooks/useClasses';
 import { useStudents } from '@/hooks/useStudents';
 import { useInstitutionPeriods, useInstitutionTimetable } from '@/hooks/useTimetable';
+import { useOfficersByInstitution, useAvailableOfficers, useOfficerAssignment } from '@/hooks/useInstitutionOfficers';
 import { PeriodConfig, InstitutionTimetableAssignment } from '@/types/institution';
 
 export default function InstitutionDetail() {
@@ -59,7 +59,34 @@ export default function InstitutionDetail() {
     isLoading: isLoadingTimetable 
   } = useInstitutionTimetable(institutionId);
 
+  // Use database hooks for officers
+  const { 
+    officers: assignedOfficers, 
+    isLoading: isLoadingAssignedOfficers,
+    refetch: refetchAssignedOfficers 
+  } = useOfficersByInstitution(institutionId);
+  
+  const { 
+    officers: availableOfficers, 
+    isLoading: isLoadingAvailableOfficers,
+    refetch: refetchAvailableOfficers 
+  } = useAvailableOfficers(institutionId);
+  
+  const { assignOfficer, removeOfficer } = useOfficerAssignment(institutionId);
+
   const institution = institutions.find(inst => inst.id === institutionId);
+
+  const handleAssignOfficer = async (officerId: string) => {
+    await assignOfficer(officerId);
+    refetchAssignedOfficers();
+    refetchAvailableOfficers();
+  };
+
+  const handleRemoveOfficer = async (officerId: string) => {
+    await removeOfficer(officerId);
+    refetchAssignedOfficers();
+    refetchAvailableOfficers();
+  };
 
   if (!institution) {
     return (
@@ -442,10 +469,10 @@ export default function InstitutionDetail() {
             <InstitutionOfficersTab
               institutionId={institutionId!}
               institutionName={institution.name}
-              assignedOfficers={getInstitutionOfficers(institutionId!)}
-              availableOfficers={getAvailableOfficers(institutionId!)}
-              onAssignOfficer={async (officerId) => { toast.success('Officer assigned'); }}
-              onRemoveOfficer={async (officerId) => { toast.success('Officer removed'); }}
+              assignedOfficers={assignedOfficers}
+              availableOfficers={availableOfficers}
+              onAssignOfficer={handleAssignOfficer}
+              onRemoveOfficer={handleRemoveOfficer}
             />
           </TabsContent>
 
@@ -485,6 +512,7 @@ export default function InstitutionDetail() {
                 created_at: c.created_at || '',
                 updated_at: c.updated_at || '',
               }))}
+              assignedOfficers={assignedOfficers}
               periods={transformedPeriods}
               timetableData={transformedTimetable}
               onSavePeriods={async (newPeriods) => {
