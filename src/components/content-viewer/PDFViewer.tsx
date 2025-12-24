@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { Button } from '@/components/ui/button';
@@ -16,26 +16,38 @@ interface PDFViewerProps {
 }
 
 export function PDFViewer({ filePath, title }: PDFViewerProps) {
-  const [pdfData, setPdfData] = useState<Uint8Array | null>(null);
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
+
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [scale, setScale] = useState<number>(1.0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch PDF as blob using Supabase SDK (bypasses CORS)
+  // Fetch PDF as blob using storage SDK (bypasses CORS)
+  // IMPORTANT: Use an object URL string as the react-pdf "file" prop to avoid
+  // DataCloneError (detached ArrayBuffer) when pdf.js posts data to the worker.
   const fetchPdf = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const blob = await downloadCourseContent(filePath);
-      if (blob) {
-        const arrayBuffer = await blob.arrayBuffer();
-        setPdfData(new Uint8Array(arrayBuffer));
-      } else {
+      if (!blob) {
         setError('Failed to load PDF file');
+        return;
       }
+
+      // Revoke any previous object URL
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+
+      const url = URL.createObjectURL(blob);
+      objectUrlRef.current = url;
+      setObjectUrl(url);
     } catch (err) {
       console.error('Error fetching PDF:', err);
       setError('An error occurred while loading the PDF');
@@ -45,10 +57,18 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
   }, [filePath]);
 
   useEffect(() => {
-    if (filePath) {
-      fetchPdf();
-    }
+    if (filePath) fetchPdf();
   }, [filePath, fetchPdf]);
+
+  // Cleanup object URL on unmount
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+    };
+  }, []);
 
   const onDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -60,10 +80,10 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
     setError('Failed to render PDF');
   }, []);
 
-  const goToPrevPage = () => setPageNumber(prev => Math.max(prev - 1, 1));
-  const goToNextPage = () => setPageNumber(prev => Math.min(prev + 1, numPages));
-  const zoomIn = () => setScale(prev => Math.min(prev + 0.25, 2.5));
-  const zoomOut = () => setScale(prev => Math.max(prev - 0.25, 0.5));
+  const goToPrevPage = () => setPageNumber((prev) => Math.max(prev - 1, 1));
+  const goToNextPage = () => setPageNumber((prev) => Math.min(prev + 1, numPages));
+  const zoomIn = () => setScale((prev) => Math.min(prev + 0.25, 2.5));
+  const zoomOut = () => setScale((prev) => Math.max(prev - 0.25, 0.5));
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -72,7 +92,7 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4" aria-label={`${title} PDF loading`}>
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         <p className="text-muted-foreground">Loading PDF...</p>
       </div>
@@ -81,7 +101,7 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4" aria-label={`${title} PDF error`}>
         <AlertCircle className="h-12 w-12 text-destructive" />
         <p className="text-destructive">{error}</p>
         <Button variant="outline" onClick={fetchPdf}>
@@ -93,31 +113,17 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
   }
 
   return (
-    <div 
-      className="flex flex-col items-center select-none"
-      onContextMenu={handleContextMenu}
-      style={{ userSelect: 'none' }}
-    >
+    <div className="flex flex-col items-center select-none" onContextMenu={handleContextMenu} style={{ userSelect: 'none' }}>
       {/* Controls */}
       <div className="flex items-center gap-4 mb-4 p-2 bg-muted rounded-lg">
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={goToPrevPage}
-            disabled={pageNumber <= 1}
-          >
+          <Button variant="ghost" size="sm" onClick={goToPrevPage} disabled={pageNumber <= 1}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="text-sm min-w-[80px] text-center">
             {pageNumber} / {numPages || '...'}
           </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={goToNextPage}
-            disabled={pageNumber >= numPages}
-          >
+          <Button variant="ghost" size="sm" onClick={goToNextPage} disabled={pageNumber >= numPages}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -125,33 +131,21 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
         <div className="h-4 w-px bg-border" />
 
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={zoomOut}
-            disabled={scale <= 0.5}
-          >
+          <Button variant="ghost" size="sm" onClick={zoomOut} disabled={scale <= 0.5}>
             <ZoomOut className="h-4 w-4" />
           </Button>
-          <span className="text-sm min-w-[50px] text-center">
-            {Math.round(scale * 100)}%
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={zoomIn}
-            disabled={scale >= 2.5}
-          >
+          <span className="text-sm min-w-[50px] text-center">{Math.round(scale * 100)}%</span>
+          <Button variant="ghost" size="sm" onClick={zoomIn} disabled={scale >= 2.5}>
             <ZoomIn className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       {/* PDF Document */}
-      <div className="relative overflow-auto max-h-[65vh] border rounded-lg bg-muted/50 p-4">
-        {pdfData && (
+      <div className="relative overflow-auto max-h-[65vh] border rounded-lg bg-muted/50 p-4" aria-label={`${title} PDF viewer`}>
+        {objectUrl && (
           <Document
-            file={{ data: pdfData }}
+            file={objectUrl}
             onLoadSuccess={onDocumentLoadSuccess}
             onLoadError={onDocumentLoadError}
             loading={
@@ -160,6 +154,7 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
               </div>
             }
             className="flex justify-center"
+            aria-label={title}
           >
             <Page
               pageNumber={pageNumber}
@@ -174,3 +169,4 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
     </div>
   );
 }
+
