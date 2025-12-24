@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useInstitutionData, Institution } from '@/contexts/InstitutionDataContext';
 import { useInstitutions, InstitutionFormData } from '@/hooks/useInstitutions';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,28 +12,41 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Search, Plus, Building2, Upload, Calendar, FileText, AlertCircle, CheckCircle, Clock, DollarSign, Users, Shield, TrendingUp, Lock, Eye, EyeOff } from 'lucide-react';
+import { Search, Plus, Building2, Upload, Calendar, FileText, AlertCircle, CheckCircle, Clock, DollarSign, Users, Shield, TrendingUp, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import ViewMouDialog from '@/components/institution/ViewMouDialog';
 import { PinLockDialog } from '@/components/system-admin/PinLockDialog';
 import { EngagementDashboard } from '@/components/institution/EngagementDashboard';
 import { AtRiskInstitutions } from '@/components/institution/AtRiskInstitutions';
 import { InstitutionComparisonTable } from '@/components/institution/InstitutionComparisonTable';
-import { mockInstitutionEngagement } from '@/data/mockInstitutionEngagement';
+
+// Define Institution type locally (previously from context)
+interface Institution {
+  id: string;
+  name: string;
+  slug: string;
+  code: string;
+  type: 'university' | 'college' | 'school' | 'institute';
+  location: string;
+  subscription_status: 'active' | 'inactive' | 'suspended';
+  license_type: 'basic' | 'standard' | 'premium' | 'enterprise';
+  license_expiry: string;
+  max_users: number;
+  current_users: number;
+  contract_expiry_date: string;
+  contract_value: number;
+  [key: string]: any;
+}
 
 export default function InstitutionManagement() {
   const navigate = useNavigate();
-  const { institutions: contextInstitutions, addInstitution, updateInstitution: updateContextInstitution } = useInstitutionData();
   const { 
-    institutions: dbInstitutions, 
-    isLoading: isDbLoading, 
+    institutions, 
+    isLoading, 
     createInstitution, 
-    updateInstitution: updateDbInstitution,
+    updateInstitution,
     isCreating 
   } = useInstitutions();
-  
-  // Use DB institutions if available, fallback to context
-  const institutions = dbInstitutions.length > 0 ? dbInstitutions : contextInstitutions;
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -152,30 +164,6 @@ export default function InstitutionManagement() {
       // Create in database with optimistic update
       await createInstitution(formData as InstitutionFormData);
       
-      // Also add to context for backward compatibility
-      const newInstitution: Institution = {
-        id: `inst-${formData.slug}-${String(institutions.length + 1).padStart(3, '0')}`,
-        ...formData,
-        code: `${formData.type.toUpperCase()}-${formData.slug.toUpperCase()}-${String(institutions.length + 1).padStart(3, '0')}`,
-        total_students: 0,
-        total_faculty: 0,
-        total_users: 0,
-        storage_used_gb: 0,
-        subscription_status: 'active',
-        license_expiry: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-        current_users: 0,
-        features: formData.license_type === 'enterprise' ? ['All Features'] : 
-                  formData.license_type === 'premium' ? ['Innovation Lab', 'Analytics'] : 
-                  ['Basic Features'],
-        contract_type: 'Annual Contract',
-        contract_start_date: new Date().toISOString().split('T')[0],
-        contract_expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-        contract_value: formData.license_type === 'enterprise' ? 1000000 : 
-                        formData.license_type === 'premium' ? 500000 : 150000,
-        created_at: new Date().toISOString().split('T')[0]
-      };
-      addInstitution(newInstitution);
-      
       toast.success(`${formData.name} has been successfully onboarded!`, {
         description: "Institution created and saved to database",
         duration: 5000,
@@ -223,12 +211,9 @@ export default function InstitutionManagement() {
 
   const handleRenewLicense = () => {
     if (selectedInstitution) {
-      updateDbInstitution({ id: selectedInstitution.id, updates: {
+      updateInstitution({ id: selectedInstitution.id, updates: {
         license_expiry: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
       }});
-      updateContextInstitution(selectedInstitution.id, {
-        license_expiry: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
-      });
       toast.success(`License renewed for ${selectedInstitution.name}`);
       setIsRenewDialogOpen(false);
       setSelectedInstitution(null);
@@ -1032,9 +1017,16 @@ export default function InstitutionManagement() {
 
           {/* Tab 3: Performance Analytics */}
           <TabsContent value="analytics" className="space-y-6">
-            <EngagementDashboard data={mockInstitutionEngagement} />
-            <AtRiskInstitutions data={mockInstitutionEngagement} />
-            <InstitutionComparisonTable data={mockInstitutionEngagement} />
+            {/* Analytics will be populated from real data - placeholder for now */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Performance Analytics</CardTitle>
+                <CardDescription>Institution engagement data will be displayed here</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">Analytics dashboard coming soon. This will display real engagement data from the database.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
@@ -1042,7 +1034,7 @@ export default function InstitutionManagement() {
         <ViewMouDialog 
           open={isMouDialogOpen}
           onOpenChange={setIsMouDialogOpen}
-          institution={selectedInstitutionForMou}
+          institution={selectedInstitutionForMou as any}
         />
 
         {/* Renew Agreement Dialog */}
