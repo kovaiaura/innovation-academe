@@ -134,16 +134,26 @@ export function BulkUploadStudentsToClassDialog({
     setImportProgress(0);
 
     try {
-      for (let i = 0; i <= 100; i += 10) {
-        setImportProgress(i);
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
-
+      // Real import - no fake delays
+      const validRows = parsedData.filter(row => row.validation.isValid);
+      setImportProgress(10);
+      
       const result = await onUploadComplete(uploadedFile);
-      toast.success(`Successfully imported ${result.imported} students!`);
+      setImportProgress(100);
+      
+      if (result.imported > 0) {
+        toast.success(`Successfully imported ${result.imported} students!`);
+      }
+      if (result.skipped > 0) {
+        toast.info(`Skipped ${result.skipped} duplicate entries`);
+      }
+      if (result.failed > 0) {
+        toast.warning(`${result.failed} students failed to import`);
+      }
+      
       handleReset();
-    } catch (error) {
-      toast.error('Failed to import students');
+    } catch (error: any) {
+      toast.error(`Failed to import students: ${error.message}`);
       console.error(error);
     } finally {
       setIsImporting(false);

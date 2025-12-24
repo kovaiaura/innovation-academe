@@ -16,18 +16,17 @@ import { InstitutionTimetableTab } from '@/components/institution/InstitutionTim
 import { InstitutionClass } from '@/types/student';
 import { getInstitutionOfficers, getAvailableOfficers } from '@/data/mockInstitutionOfficers';
 import { getInstitutionAnalytics } from '@/data/mockInstitutionAnalytics';
-import { getInstitutionPeriods, saveInstitutionPeriodsForInstitution } from '@/data/mockInstitutionPeriods';
-import { getInstitutionTimetable, saveInstitutionTimetable } from '@/data/mockInstitutionTimetable';
-import { syncInstitutionToOfficerTimetable } from '@/utils/timetableSync';
 import { toast } from 'sonner';
-import { useInstitutionData } from '@/contexts/InstitutionDataContext';
+import { useInstitutions } from '@/hooks/useInstitutions';
 import { useClasses } from '@/hooks/useClasses';
 import { useStudents } from '@/hooks/useStudents';
+import { useInstitutionPeriods, useInstitutionTimetable } from '@/hooks/useTimetable';
+import { PeriodConfig, InstitutionTimetableAssignment } from '@/types/institution';
 
 export default function InstitutionDetail() {
   const { institutionId } = useParams();
   const navigate = useNavigate();
-  const { institutions, updateInstitution } = useInstitutionData();
+  const { institutions, updateInstitution } = useInstitutions();
   const [isEditInstitutionOpen, setIsEditInstitutionOpen] = useState(false);
   const [isAddClassOpen, setIsAddClassOpen] = useState(false);
   const [isEditClassOpen, setIsEditClassOpen] = useState(false);
@@ -46,6 +45,19 @@ export default function InstitutionDetail() {
     students, 
     isLoading: isLoadingStudents 
   } = useStudents(institutionId);
+
+  // Use database hooks for timetable
+  const { 
+    periods, 
+    savePeriods,
+    isLoading: isLoadingPeriods 
+  } = useInstitutionPeriods(institutionId);
+  
+  const { 
+    assignments: timetableAssignments, 
+    saveTimetable,
+    isLoading: isLoadingTimetable 
+  } = useInstitutionTimetable(institutionId);
 
   const institution = institutions.find(inst => inst.id === institutionId);
 
@@ -119,13 +131,47 @@ export default function InstitutionDetail() {
     }
   };
 
-  const handleSaveInstitution = (updatedInstitution: Partial<any>) => {
+  const handleSaveInstitution = async (updatedInstitution: Partial<any>) => {
     if (institutionId) {
-      updateInstitution(institutionId, updatedInstitution);
-      toast.success('Institution details updated successfully');
-      setIsEditInstitutionOpen(false);
+      try {
+        await updateInstitution({ id: institutionId, updates: updatedInstitution });
+        toast.success('Institution details updated successfully');
+        setIsEditInstitutionOpen(false);
+      } catch (error) {
+        console.error('Failed to update institution:', error);
+      }
     }
   };
+
+  // Transform periods to PeriodConfig format
+  const transformedPeriods: PeriodConfig[] = periods.map(p => ({
+    id: p.id,
+    institution_id: p.institution_id,
+    label: p.label,
+    start_time: p.start_time,
+    end_time: p.end_time,
+    is_break: p.is_break,
+    display_order: p.display_order,
+    created_at: p.created_at,
+    updated_at: p.updated_at,
+  }));
+
+  // Transform timetable assignments
+  const transformedTimetable: InstitutionTimetableAssignment[] = timetableAssignments.map(a => ({
+    id: a.id,
+    institution_id: a.institution_id,
+    academic_year: a.academic_year,
+    day: a.day as InstitutionTimetableAssignment['day'],
+    period_id: a.period_id,
+    class_id: a.class_id,
+    class_name: a.class_name,
+    subject: a.subject,
+    teacher_id: a.teacher_id,
+    teacher_name: a.teacher_name,
+    room: a.room,
+    created_at: a.created_at,
+    updated_at: a.updated_at,
+  }));
 
   return (
     <Layout>
@@ -439,17 +485,13 @@ export default function InstitutionDetail() {
                 created_at: c.created_at || '',
                 updated_at: c.updated_at || '',
               }))}
-              periods={getInstitutionPeriods(institutionId!)}
-              timetableData={getInstitutionTimetable(institutionId!)}
-              onSavePeriods={async (periods) => {
-                saveInstitutionPeriodsForInstitution(institutionId!, periods);
-                toast.success('Periods saved successfully');
+              periods={transformedPeriods}
+              timetableData={transformedTimetable}
+              onSavePeriods={async (newPeriods) => {
+                await savePeriods(newPeriods);
               }}
               onSaveTimetable={async (assignments) => {
-                const periods = getInstitutionPeriods(institutionId!);
-                saveInstitutionTimetable(institutionId!, assignments);
-                syncInstitutionToOfficerTimetable(institutionId!, assignments, periods);
-                toast.success('Timetable saved and synced to officers');
+                await saveTimetable(assignments);
               }}
             />
           </TabsContent>
