@@ -60,6 +60,7 @@ export const authService = {
       position_name: profileData?.position_name || undefined,
       is_ceo: profileData?.is_ceo || false,
       institution_id: profileData?.institution_id || undefined,
+      tenant_id: profileData?.institution_id || undefined, // Add tenant_id for sidebar routing
       class_id: profileData?.class_id || undefined,
       created_at: profileData?.created_at || data.user.created_at,
       hourly_rate: profileData?.hourly_rate || undefined,
@@ -181,6 +182,7 @@ export const authService = {
       position_name: profileData.position_name || undefined,
       is_ceo: profileData.is_ceo || false,
       institution_id: profileData.institution_id || undefined,
+      tenant_id: profileData.institution_id || undefined, // Add tenant_id for sidebar routing
       class_id: profileData.class_id || undefined,
       created_at: profileData.created_at || '',
       hourly_rate: profileData.hourly_rate || undefined,
