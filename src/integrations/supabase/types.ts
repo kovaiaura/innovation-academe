@@ -455,6 +455,7 @@ export type Database = {
         Args: { p_entity_type: string; p_institution_id: string }
         Returns: number
       }
+      get_user_institution_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
