@@ -678,13 +678,12 @@ export function useInstitutionCourseAssignments(institutionId?: string) {
   });
 }
 
-// Fetch all published courses (for management view - all CEO published courses)
+// Fetch all active courses (for management view - all CEO active/published courses)
 export function useAllPublishedCourses() {
   return useQuery({
-    queryKey: ['all-published-courses'],
+    queryKey: ['all-active-courses'],
     queryFn: async () => {
-      // Get all published courses
-      // Get all courses (not filtering by status - management sees all)
+      // Get all active/published courses (management sees both active and published)
       const { data: courses, error: coursesError } = await supabase
         .from('courses')
         .select(`
@@ -700,6 +699,7 @@ export function useAllPublishedCourses() {
           learning_outcomes,
           created_at
         `)
+        .in('status', ['active', 'published'])
         .order('created_at', { ascending: false });
 
       if (coursesError) throw coursesError;

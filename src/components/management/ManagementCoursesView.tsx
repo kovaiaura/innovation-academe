@@ -12,7 +12,7 @@ export function ManagementCoursesView() {
   const { tenantId } = useParams();
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Fetch all published courses
+  // Fetch all active courses
   const { data: courses, isLoading } = useAllPublishedCourses();
 
   // Apply search filter only
@@ -38,9 +38,9 @@ export function ManagementCoursesView() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Published Courses</h2>
+        <h2 className="text-2xl font-bold">Active Courses</h2>
         <p className="text-muted-foreground">
-          Browse all published courses available in the system
+          Browse all active courses available in the system
         </p>
       </div>
 
@@ -62,7 +62,7 @@ export function ManagementCoursesView() {
           <p className="text-muted-foreground">
             {searchQuery
               ? "No courses found matching your search."
-              : "No published courses available yet."}
+              : "No active courses available yet."}
           </p>
         </div>
       ) : (
