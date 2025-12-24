@@ -372,7 +372,7 @@ export function useStudentCourses(studentId?: string, classId?: string) {
       if (assignmentError) throw assignmentError;
       if (!assignments || assignments.length === 0) return [];
 
-      // Get only unlocked module assignments
+      // Get ALL module assignments (including locked) so we can show titles
       const assignmentIds = assignments.map(a => a.id);
       const { data: moduleAssignments, error: moduleError } = await supabase
         .from('class_module_assignments')
@@ -390,12 +390,11 @@ export function useStudentCourses(studentId?: string, classId?: string) {
           )
         `)
         .in('class_assignment_id', assignmentIds)
-        .eq('is_unlocked', true)
         .order('unlock_order', { ascending: true });
 
       if (moduleError) throw moduleError;
 
-      // Get only unlocked session assignments
+      // Get ALL session assignments (including locked) so we can show titles
       const moduleAssignmentIds = moduleAssignments?.map(m => m.id) || [];
       let sessionAssignments: any[] = [];
 
@@ -416,22 +415,23 @@ export function useStudentCourses(studentId?: string, classId?: string) {
             )
           `)
           .in('class_module_assignment_id', moduleAssignmentIds)
-          .eq('is_unlocked', true)
           .order('unlock_order', { ascending: true });
 
         if (sessionError) throw sessionError;
         sessionAssignments = sessions || [];
       }
 
-      // Get content for unlocked sessions
-      const sessionIds = sessionAssignments.map(s => s.session_id);
+      // Get content for UNLOCKED sessions only (not locked ones)
+      const unlockedSessionIds = sessionAssignments
+        .filter(s => s.is_unlocked === true)
+        .map(s => s.session_id);
       let contentItems: any[] = [];
 
-      if (sessionIds.length > 0) {
+      if (unlockedSessionIds.length > 0) {
         const { data: content, error: contentError } = await supabase
           .from('course_content')
           .select('*')
-          .in('session_id', sessionIds)
+          .in('session_id', unlockedSessionIds)
           .order('display_order', { ascending: true });
 
         if (contentError) throw contentError;
@@ -675,5 +675,117 @@ export function useInstitutionCourseAssignments(institutionId?: string) {
       return Array.from(courseMap.values());
     },
     enabled: !!institutionId,
+  });
+}
+
+// Fetch all published courses (for management view - all CEO published courses)
+export function useAllPublishedCourses() {
+  return useQuery({
+    queryKey: ['all-published-courses'],
+    queryFn: async () => {
+      // Get all published courses
+      const { data: courses, error: coursesError } = await supabase
+        .from('courses')
+        .select(`
+          id,
+          title,
+          course_code,
+          description,
+          category,
+          difficulty,
+          status,
+          thumbnail_url,
+          duration_weeks,
+          learning_outcomes,
+          created_at
+        `)
+        .eq('status', 'published')
+        .order('created_at', { ascending: false });
+
+      if (coursesError) throw coursesError;
+      if (!courses || courses.length === 0) return [];
+
+      // Get course IDs
+      const courseIds = courses.map(c => c.id);
+
+      // Get modules for all courses
+      const { data: modules, error: modulesError } = await supabase
+        .from('course_modules')
+        .select(`
+          id,
+          course_id,
+          title,
+          description,
+          display_order
+        `)
+        .in('course_id', courseIds)
+        .order('display_order', { ascending: true });
+
+      if (modulesError) throw modulesError;
+
+      // Get sessions for all modules
+      const moduleIds = modules?.map(m => m.id) || [];
+      let sessions: any[] = [];
+      
+      if (moduleIds.length > 0) {
+        const { data: sessionsData, error: sessionsError } = await supabase
+          .from('course_sessions')
+          .select(`
+            id,
+            module_id,
+            title,
+            description,
+            display_order
+          `)
+          .in('module_id', moduleIds)
+          .order('display_order', { ascending: true });
+
+        if (sessionsError) throw sessionsError;
+        sessions = sessionsData || [];
+      }
+
+      // Get content for all sessions
+      const sessionIds = sessions.map(s => s.id);
+      let content: any[] = [];
+      
+      if (sessionIds.length > 0) {
+        const { data: contentData, error: contentError } = await supabase
+          .from('course_content')
+          .select('*')
+          .in('session_id', sessionIds)
+          .order('display_order', { ascending: true });
+
+        if (contentError) throw contentError;
+        content = contentData || [];
+      }
+
+      // Combine the data
+      return courses.map(course => ({
+        ...course,
+        modules: (modules || [])
+          .filter(m => m.course_id === course.id)
+          .map(m => ({
+            id: m.id,
+            module: {
+              id: m.id,
+              title: m.title,
+              description: m.description,
+            },
+            is_unlocked: true, // Always unlocked for management view
+            sessions: sessions
+              .filter(s => s.module_id === m.id)
+              .map(s => ({
+                id: s.id,
+                session: {
+                  id: s.id,
+                  title: s.title,
+                  description: s.description,
+                },
+                is_unlocked: true, // Always unlocked for management view
+                content: content.filter(c => c.session_id === s.id),
+              })),
+          })),
+      }));
+    },
   });
 }

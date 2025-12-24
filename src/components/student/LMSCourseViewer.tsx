@@ -257,6 +257,15 @@ export function LMSCourseViewer({ course, modules, viewOnly = false, backPath }:
         );
 
       case 'pdf':
+        if (!selectedContent.file_path) {
+          return (
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
+              <FileText className="h-16 w-16" />
+              <p className="text-lg font-medium">PDF Not Uploaded Yet</p>
+              <p className="text-sm">The instructor has not uploaded this PDF document.</p>
+            </div>
+          );
+        }
         return contentUrl ? (
           <iframe
             src={contentUrl}
@@ -264,12 +273,22 @@ export function LMSCourseViewer({ course, modules, viewOnly = false, backPath }:
             title={selectedContent.title}
           />
         ) : (
-          <div className="flex items-center justify-center h-full text-destructive">
-            PDF not available
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <p>Loading PDF...</p>
           </div>
         );
 
       case 'ppt':
+        if (!selectedContent.file_path) {
+          return (
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
+              <FileText className="h-16 w-16" />
+              <p className="text-lg font-medium">Presentation Not Uploaded Yet</p>
+              <p className="text-sm">The instructor has not uploaded this presentation.</p>
+            </div>
+          );
+        }
         return contentUrl ? (
           <iframe
             src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(contentUrl)}`}
@@ -277,8 +296,9 @@ export function LMSCourseViewer({ course, modules, viewOnly = false, backPath }:
             title={selectedContent.title}
           />
         ) : (
-          <div className="flex items-center justify-center h-full text-destructive">
-            Presentation not available
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <p>Loading presentation...</p>
           </div>
         );
 
@@ -312,13 +332,13 @@ export function LMSCourseViewer({ course, modules, viewOnly = false, backPath }:
       <div 
         className={cn(
           "border-r bg-card transition-all duration-300 flex flex-col",
-          sidebarOpen ? "w-80" : "w-0 overflow-hidden"
+          sidebarOpen ? "w-72 md:w-80" : "w-0 overflow-hidden"
         )}
       >
-        <div className="p-4 border-b flex items-center justify-between">
+        <div className="p-3 md:p-4 border-b flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <h2 className="font-semibold text-lg truncate">{course.title}</h2>
-            <p className="text-sm text-muted-foreground">{course.course_code}</p>
+            <h2 className="font-semibold text-base md:text-lg line-clamp-2 break-words">{course.title}</h2>
+            <p className="text-xs md:text-sm text-muted-foreground">{course.course_code}</p>
           </div>
           <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="shrink-0">
             <X className="h-4 w-4" />
@@ -331,51 +351,83 @@ export function LMSCourseViewer({ course, modules, viewOnly = false, backPath }:
               const module = moduleAssignment.module;
               const sessions = moduleAssignment.sessions || [];
               const isModuleExpanded = expandedModules.has(moduleAssignment.id);
+              const isModuleLocked = moduleAssignment.is_unlocked === false;
 
               return (
                 <div key={moduleAssignment.id} className="mb-2">
                   <button
-                    onClick={() => toggleModule(moduleAssignment.id)}
-                    className="w-full flex items-center gap-2 p-3 rounded-lg hover:bg-accent text-left"
+                    onClick={() => !isModuleLocked && toggleModule(moduleAssignment.id)}
+                    disabled={isModuleLocked}
+                    className={cn(
+                      "w-full flex items-center gap-2 p-3 rounded-lg text-left",
+                      isModuleLocked 
+                        ? "opacity-60 cursor-not-allowed" 
+                        : "hover:bg-accent"
+                    )}
                   >
-                    <BookOpen className="h-4 w-4 shrink-0 text-primary" />
-                    <span className="flex-1 font-medium text-sm truncate">
+                    {isModuleLocked ? (
+                      <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <BookOpen className="h-4 w-4 shrink-0 text-primary" />
+                    )}
+                    <span className={cn(
+                      "flex-1 font-medium text-sm break-words whitespace-normal",
+                      isModuleLocked && "text-muted-foreground"
+                    )}>
                       {module?.title || 'Module'}
                     </span>
-                    <ChevronRight 
-                      className={cn(
-                        "h-4 w-4 shrink-0 transition-transform",
-                        isModuleExpanded && "rotate-90"
-                      )} 
-                    />
+                    {!isModuleLocked && (
+                      <ChevronRight 
+                        className={cn(
+                          "h-4 w-4 shrink-0 transition-transform",
+                          isModuleExpanded && "rotate-90"
+                        )} 
+                      />
+                    )}
                   </button>
 
-                  {isModuleExpanded && (
+                  {isModuleExpanded && !isModuleLocked && (
                     <div className="ml-4 border-l pl-2">
                       {sessions.map((sessionAssignment) => {
                         const session = sessionAssignment.session;
                         const contentItems = sessionAssignment.content || [];
                         const isSessionExpanded = expandedSessions.has(sessionAssignment.id);
+                        const isSessionLocked = sessionAssignment.is_unlocked === false;
 
                         return (
                           <div key={sessionAssignment.id} className="mb-1">
                             <button
-                              onClick={() => toggleSession(sessionAssignment.id)}
-                              className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-accent text-left"
+                              onClick={() => !isSessionLocked && toggleSession(sessionAssignment.id)}
+                              disabled={isSessionLocked}
+                              className={cn(
+                                "w-full flex items-center gap-2 p-2 rounded-lg text-left",
+                                isSessionLocked 
+                                  ? "opacity-60 cursor-not-allowed" 
+                                  : "hover:bg-accent"
+                              )}
                             >
-                              <PlayCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
-                              <span className="flex-1 text-sm truncate">
+                              {isSessionLocked ? (
+                                <Lock className="h-3 w-3 shrink-0 text-muted-foreground" />
+                              ) : (
+                                <PlayCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              )}
+                              <span className={cn(
+                                "flex-1 text-sm break-words whitespace-normal",
+                                isSessionLocked && "text-muted-foreground"
+                              )}>
                                 {session?.title || 'Session'}
                               </span>
-                              <ChevronRight 
-                                className={cn(
-                                  "h-4 w-4 shrink-0 transition-transform",
-                                  isSessionExpanded && "rotate-90"
-                                )} 
-                              />
+                              {!isSessionLocked && (
+                                <ChevronRight 
+                                  className={cn(
+                                    "h-4 w-4 shrink-0 transition-transform",
+                                    isSessionExpanded && "rotate-90"
+                                  )} 
+                                />
+                              )}
                             </button>
 
-                            {isSessionExpanded && (
+                            {isSessionExpanded && !isSessionLocked && (
                               <div className="ml-4 space-y-1">
                                 {contentItems.map((content) => (
                                   <button
@@ -389,7 +441,7 @@ export function LMSCourseViewer({ course, modules, viewOnly = false, backPath }:
                                     )}
                                   >
                                     {getContentIcon(content.type)}
-                                    <span className="flex-1 truncate">{content.title}</span>
+                                    <span className="flex-1 break-words whitespace-normal">{content.title}</span>
                                     {content.isCompleted && (
                                       <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
                                     )}
