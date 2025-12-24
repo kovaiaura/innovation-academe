@@ -1,15 +1,10 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, Loader2 } from "lucide-react";
 import { CourseCard } from "./CourseCard";
 import { CoursePerformanceDialog } from "./CoursePerformanceDialog";
-import { getCoursesByInstitution } from "@/utils/courseHelpers";
-import { 
-  mockCourses, 
-  mockCourseAssignments, 
-  mockEnrollments 
-} from "@/data/mockCourseData";
+import { useInstitutionCourseAssignments } from "@/hooks/useClassCourseAssignments";
 
 interface ManagementCoursesViewProps {
   institutionId: string;
@@ -22,19 +17,14 @@ export function ManagementCoursesView({ institutionId }: ManagementCoursesViewPr
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  // Get courses for this institution
-  const institutionCourses = getCoursesByInstitution(
-    mockCourses,
-    mockCourseAssignments,
-    mockEnrollments,
-    institutionId
-  );
+  // Fetch courses assigned to this institution from Supabase
+  const { data: institutionCourses, isLoading } = useInstitutionCourseAssignments(institutionId);
 
   // Apply filters
-  const filteredCourses = institutionCourses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          course.course_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          course.description.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredCourses = (institutionCourses || []).filter(course => {
+    const matchesSearch = course.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          course.course_code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          course.description?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesCategory = categoryFilter === "all" || course.category === categoryFilter;
     const matchesDifficulty = difficultyFilter === "all" || course.difficulty === difficultyFilter;
@@ -47,12 +37,20 @@ export function ManagementCoursesView({ institutionId }: ManagementCoursesViewPr
     setDialogOpen(true);
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">STEM Course Catalog</h2>
         <p className="text-muted-foreground">
-          View course performance and student progress
+          View courses assigned to your institution
         </p>
       </div>
 
@@ -80,6 +78,7 @@ export function ManagementCoursesView({ institutionId }: ManagementCoursesViewPr
             <SelectItem value="iot">IoT</SelectItem>
             <SelectItem value="robotics">Robotics</SelectItem>
             <SelectItem value="data_science">Data Science</SelectItem>
+            <SelectItem value="general">General</SelectItem>
           </SelectContent>
         </Select>
 
@@ -110,7 +109,25 @@ export function ManagementCoursesView({ institutionId }: ManagementCoursesViewPr
           {filteredCourses.map((course) => (
             <CourseCard
               key={course.id}
-              course={course}
+              course={{
+                id: course.id,
+                title: course.title || '',
+                course_code: course.course_code || '',
+                description: course.description || '',
+                category: course.category || 'general',
+                difficulty: course.difficulty || 'beginner',
+                thumbnail_url: course.thumbnail_url || null,
+                duration_weeks: course.duration_weeks || 4,
+                status: course.status || 'published',
+                learning_outcomes: Array.isArray(course.learning_outcomes) ? course.learning_outcomes as string[] : [],
+                classes: (course.classes || []).map((c: any) => c.class_name || 'Unknown'),
+                total_enrollments: (course.classes || []).length,
+                current_enrollments: (course.classes || []).length,
+                avg_progress: 0,
+                created_by: null,
+                created_at: '',
+                updated_at: '',
+              }}
               onViewDetails={handleViewDetails}
             />
           ))}
