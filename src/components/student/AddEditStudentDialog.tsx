@@ -37,6 +37,8 @@ export function AddEditStudentDialog({
 }: AddEditStudentDialogProps) {
   const [formData, setFormData] = useState({
     student_name: '',
+    email: '',
+    password: '',
     roll_number: '',
     admission_number: '',
     class: '',
@@ -62,6 +64,8 @@ export function AddEditStudentDialog({
     if (mode === 'edit' && student) {
       setFormData({
         student_name: student.student_name,
+        email: student.email || '',
+        password: '',
         roll_number: student.roll_number,
         admission_number: student.admission_number,
         class: student.class,
@@ -84,6 +88,8 @@ export function AddEditStudentDialog({
       // Reset form for add mode
       setFormData({
         student_name: '',
+        email: '',
+        password: '',
         roll_number: '',
         admission_number: '',
         class: '',
@@ -190,6 +196,8 @@ export function AddEditStudentDialog({
       const newStudent = {
         ...formData,
         student_id: idResponse.success ? idResponse.data.id : `STU-TEMP-${Date.now()}`,
+        email: formData.email,
+        blood_group: formData.blood_group,
         institution_id: institutionId,
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.student_name}`,
       };

@@ -273,12 +273,38 @@ export default function InstitutionDetail() {
               </CardContent>
             </Card>
 
+            {/* Student ID Configuration */}
+            {(institution.student_id_prefix || institution.student_id_suffix) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Student ID Configuration</CardTitle>
+                  <CardDescription>Settings for generating unique student IDs</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground">ID Prefix</div>
+                      <div className="font-medium">{institution.student_id_prefix || 'Not set'}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground">ID Suffix</div>
+                      <div className="font-medium">{institution.student_id_suffix || 'Not set'}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground">Example ID</div>
+                      <div className="font-medium text-primary">{institution.student_id_prefix || 'XXX'}-0001-{institution.student_id_suffix || 'XXXX'}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* GPS & Attendance Configuration */}
             {institution.gps_location && (
               <Card>
                 <CardHeader>
                   <CardTitle>GPS & Attendance Configuration</CardTitle>
-                  <CardDescription>Location-based attendance validation settings</CardDescription>
+                  <CardDescription>Location-based attendance validation settings for Innovation Officers</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
@@ -299,13 +325,20 @@ export default function InstitutionDetail() {
                     </div>
                     <div className="space-y-2">
                       <div className="text-sm font-medium text-muted-foreground">Attendance Radius</div>
-                      <div className="font-medium">{institution.attendance_radius_meters || 1500} meters (1.5km)</div>
+                      <div className="font-medium">{institution.attendance_radius_meters || 1500} meters</div>
                       <p className="text-xs text-muted-foreground">Officers must be within this radius to check in</p>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground">Check-in Time</div>
+                      <div className="font-medium">{institution.check_in_time || '09:00'}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground">Check-out Time</div>
+                      <div className="font-medium">{institution.check_out_time || '17:00'}</div>
                     </div>
                     <div className="space-y-2">
                       <div className="text-sm font-medium text-muted-foreground">Normal Working Hours</div>
                       <div className="font-medium">{institution.normal_working_hours || 8} hours/day</div>
-                      <p className="text-xs text-muted-foreground">Standard working hours for payroll calculation</p>
                     </div>
                   </div>
                 </CardContent>

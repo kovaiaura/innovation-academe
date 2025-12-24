@@ -54,6 +54,8 @@ export default function InstitutionManagement() {
     license_type: 'basic' as Institution['license_type'],
     max_users: 500,
     subscription_plan: 'basic' as Institution['subscription_plan'],
+    student_id_prefix: '',
+    student_id_suffix: '',
     pricing_model: {
       per_student_cost: 0,
       lms_cost: 0,
@@ -68,6 +70,8 @@ export default function InstitutionManagement() {
     },
     attendance_radius_meters: 1500,
     normal_working_hours: 8,
+    check_in_time: '09:00',
+    check_out_time: '17:00',
   });
 
   const getStatusBadge = (status: string) => {
@@ -124,7 +128,7 @@ export default function InstitutionManagement() {
 
   const handleAddInstitution = () => {
     const newInstitution: Institution = {
-      id: String(institutions.length + 1),
+      id: `inst-${formData.slug}-${String(institutions.length + 1).padStart(3, '0')}`,
       ...formData,
       code: `${formData.type.toUpperCase()}-${formData.slug.toUpperCase()}-${String(institutions.length + 1).padStart(3, '0')}`,
       total_students: 0,
@@ -167,6 +171,8 @@ export default function InstitutionManagement() {
       license_type: 'basic',
       max_users: 500,
       subscription_plan: 'basic',
+      student_id_prefix: '',
+      student_id_suffix: '',
       pricing_model: {
         per_student_cost: 0,
         lms_cost: 0,
@@ -181,6 +187,8 @@ export default function InstitutionManagement() {
       },
       attendance_radius_meters: 1500,
       normal_working_hours: 8,
+      check_in_time: '09:00',
+      check_out_time: '17:00',
     });
     setActiveTab('list');
   };
@@ -419,6 +427,26 @@ export default function InstitutionManagement() {
                       </Select>
                     </div>
                     <div className="space-y-2">
+                      <Label htmlFor="student_id_prefix">Student ID Prefix *</Label>
+                      <Input
+                        id="student_id_prefix"
+                        value={formData.student_id_prefix}
+                        onChange={(e) => setFormData({ ...formData, student_id_prefix: e.target.value.toUpperCase() })}
+                        placeholder="e.g., MSD"
+                      />
+                      <p className="text-xs text-muted-foreground">Used to generate unique student IDs</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="student_id_suffix">Student ID Suffix *</Label>
+                      <Input
+                        id="student_id_suffix"
+                        value={formData.student_id_suffix}
+                        onChange={(e) => setFormData({ ...formData, student_id_suffix: e.target.value })}
+                        placeholder="e.g., 2025"
+                      />
+                      <p className="text-xs text-muted-foreground">Usually the academic year</p>
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="location">Location *</Label>
                       <Input
                         id="location"
@@ -428,7 +456,7 @@ export default function InstitutionManagement() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="established_year">Established Year</Label>
+                      <Label htmlFor="established_year">Established Year *</Label>
                       <Input
                         id="established_year"
                         type="number"
@@ -646,6 +674,24 @@ export default function InstitutionManagement() {
                         placeholder="8"
                       />
                       <p className="text-xs text-muted-foreground">Default: 8 hours/day</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="check_in_time">Check-in Time *</Label>
+                      <Input
+                        id="check_in_time"
+                        type="time"
+                        value={formData.check_in_time}
+                        onChange={(e) => setFormData({ ...formData, check_in_time: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="check_out_time">Check-out Time *</Label>
+                      <Input
+                        id="check_out_time"
+                        type="time"
+                        value={formData.check_out_time}
+                        onChange={(e) => setFormData({ ...formData, check_out_time: e.target.value })}
+                      />
                     </div>
                   </div>
                   {formData.gps_location.latitude !== 0 && formData.gps_location.longitude !== 0 && (
