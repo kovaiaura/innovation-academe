@@ -142,11 +142,11 @@ export function SecureContentViewer({
       }
 
       case 'pdf':
-        if (!signedUrl) {
-          return <p className="text-destructive">PDF URL not available</p>;
+        if (!content.file_path) {
+          return <p className="text-destructive">PDF file not available</p>;
         }
-        // Use react-pdf to render PDF client-side (bypasses X-Frame-Options blocking)
-        return <PDFViewer url={signedUrl} title={content.title} />;
+        // Use react-pdf with blob data to bypass CORS restrictions
+        return <PDFViewer filePath={content.file_path} title={content.title} />;
 
       case 'ppt':
         if (!signedUrl) {
