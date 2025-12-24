@@ -67,6 +67,164 @@ export type Database = {
           },
         ]
       }
+      id_counters: {
+        Row: {
+          counter_padding: number | null
+          created_at: string
+          current_counter: number
+          entity_type: string
+          id: string
+          institution_id: string
+          prefix: string | null
+          updated_at: string
+          year_format: string | null
+        }
+        Insert: {
+          counter_padding?: number | null
+          created_at?: string
+          current_counter?: number
+          entity_type: string
+          id?: string
+          institution_id: string
+          prefix?: string | null
+          updated_at?: string
+          year_format?: string | null
+        }
+        Update: {
+          counter_padding?: number | null
+          created_at?: string
+          current_counter?: number
+          entity_type?: string
+          id?: string
+          institution_id?: string
+          prefix?: string | null
+          updated_at?: string
+          year_format?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "id_counters_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      institution_periods: {
+        Row: {
+          created_at: string
+          display_order: number
+          end_time: string
+          id: string
+          institution_id: string
+          is_break: boolean
+          label: string
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          end_time: string
+          id?: string
+          institution_id: string
+          is_break?: boolean
+          label: string
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          end_time?: string
+          id?: string
+          institution_id?: string
+          is_break?: boolean
+          label?: string
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "institution_periods_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      institution_timetable_assignments: {
+        Row: {
+          academic_year: string
+          class_id: string
+          class_name: string
+          created_at: string
+          day: string
+          id: string
+          institution_id: string
+          period_id: string
+          room: string | null
+          subject: string
+          teacher_id: string | null
+          teacher_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          academic_year?: string
+          class_id: string
+          class_name: string
+          created_at?: string
+          day: string
+          id?: string
+          institution_id: string
+          period_id: string
+          room?: string | null
+          subject: string
+          teacher_id?: string | null
+          teacher_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          academic_year?: string
+          class_id?: string
+          class_name?: string
+          created_at?: string
+          day?: string
+          id?: string
+          institution_id?: string
+          period_id?: string
+          room?: string | null
+          subject?: string
+          teacher_id?: string | null
+          teacher_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "institution_timetable_assignments_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "institution_timetable_assignments_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "institution_timetable_assignments_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "institution_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       institutions: {
         Row: {
           address: Json | null
@@ -293,6 +451,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_next_id: {
+        Args: { p_entity_type: string; p_institution_id: string }
+        Returns: number
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -303,6 +465,17 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      reserve_id_range: {
+        Args: {
+          p_count: number
+          p_entity_type: string
+          p_institution_id: string
+        }
+        Returns: {
+          end_counter: number
+          start_counter: number
+        }[]
       }
     }
     Enums: {
