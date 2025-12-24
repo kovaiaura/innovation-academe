@@ -95,6 +95,7 @@ import SystemAdminTaskManagement from "./pages/system-admin/TaskManagement";
 import SystemAdminTasks from "./pages/system-admin/Tasks";
 import SystemAdminGamification from "./pages/system-admin/GamificationManagement";
 import OfficerTasks from "./pages/officer/Tasks";
+import OfficerTimetable from "./pages/officer/Timetable";
 import IdConfiguration from "./pages/system-admin/IdConfiguration";
 import SDGManagement from "./pages/system-admin/SDGManagement";
 import SystemAdminAskMetova from "./pages/system-admin/AskMetova";
@@ -597,6 +598,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['officer']}>
                   <OfficerSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/officer/timetable"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <OfficerTimetable />
                 </ProtectedRoute>
               }
             />
