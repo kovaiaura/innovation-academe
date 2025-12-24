@@ -67,6 +67,307 @@ export type Database = {
           },
         ]
       }
+      course_class_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          class_id: string
+          course_id: string
+          id: string
+          institution_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          class_id: string
+          course_id: string
+          id?: string
+          institution_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          class_id?: string
+          course_id?: string
+          id?: string
+          institution_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_class_assignments_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_class_assignments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_class_assignments_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_content: {
+        Row: {
+          course_id: string
+          created_at: string
+          display_order: number
+          duration_minutes: number | null
+          file_path: string | null
+          file_size_mb: number | null
+          id: string
+          module_id: string
+          session_id: string
+          title: string
+          type: string
+          views_count: number | null
+          youtube_url: string | null
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          display_order?: number
+          duration_minutes?: number | null
+          file_path?: string | null
+          file_size_mb?: number | null
+          id?: string
+          module_id: string
+          session_id: string
+          title: string
+          type: string
+          views_count?: number | null
+          youtube_url?: string | null
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          display_order?: number
+          duration_minutes?: number | null
+          file_path?: string | null
+          file_size_mb?: number | null
+          id?: string
+          module_id?: string
+          session_id?: string
+          title?: string
+          type?: string
+          views_count?: number | null
+          youtube_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_content_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_content_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_content_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "course_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_institution_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          course_id: string
+          id: string
+          institution_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          course_id: string
+          id?: string
+          institution_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          course_id?: string
+          id?: string
+          institution_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_institution_assignments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_institution_assignments_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_modules: {
+        Row: {
+          course_id: string
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          title: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          title: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_modules_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_sessions: {
+        Row: {
+          course_id: string
+          created_at: string
+          description: string | null
+          display_order: number
+          duration_minutes: number | null
+          id: string
+          learning_objectives: Json | null
+          module_id: string
+          title: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          duration_minutes?: number | null
+          id?: string
+          learning_objectives?: Json | null
+          module_id: string
+          title: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          duration_minutes?: number | null
+          id?: string
+          learning_objectives?: Json | null
+          module_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_sessions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_sessions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courses: {
+        Row: {
+          category: string
+          certificate_template_id: string | null
+          course_code: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          difficulty: string
+          duration_weeks: number | null
+          id: string
+          learning_outcomes: Json | null
+          prerequisites: string | null
+          sdg_goals: Json | null
+          status: string
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          certificate_template_id?: string | null
+          course_code: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          difficulty?: string
+          duration_weeks?: number | null
+          id?: string
+          learning_outcomes?: Json | null
+          prerequisites?: string | null
+          sdg_goals?: Json | null
+          status?: string
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          certificate_template_id?: string | null
+          course_code?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          difficulty?: string
+          duration_weeks?: number | null
+          id?: string
+          learning_outcomes?: Json | null
+          prerequisites?: string | null
+          sdg_goals?: Json | null
+          status?: string
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       id_counters: {
         Row: {
           counter_padding: number | null

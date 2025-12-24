@@ -10,47 +10,28 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { BookOpen, Plus, Upload, FileText, Video, Link as LinkIcon, Search, Filter, Edit, Trash2, Copy, BarChart3, Users, TrendingUp, Award, Clock, Eye, Layers } from 'lucide-react';
+import { BookOpen, Plus, Upload, FileText, Search, Filter, Edit, Trash2, BarChart3, Users, TrendingUp, Award, Clock, Eye, Layers, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { mockCourseAnalytics } from '@/data/mockCourseData';
-import { LevelBuilder } from '@/components/course/LevelBuilder';
-import { CreateAssignmentDialog } from '@/components/course/CreateAssignmentDialog';
-import { CreateQuizDialog } from '@/components/course/CreateQuizDialog';
-import { AssignCourseDialog } from '@/components/course/AssignCourseDialog';
 import { CertificateSelector } from '@/components/gamification/CertificateSelector';
 import { CoursePreviewDialog } from '@/components/course/CoursePreviewDialog';
 import { EditCourseDialog } from '@/components/course/EditCourseDialog';
-import { courseService } from '@/services/course.service';
-import { Assignment, Quiz, CourseAssignmentRequest, Course } from '@/types/course';
-import { loadCourses, saveCourses, loadLevels, loadAssignments, loadQuizzes, loadCourseAssignments, getCourseAnalytics } from '@/utils/courseDataHelpers';
+import { useCourses, useCreateCourse, useDeleteCourse, DbCourse } from '@/hooks/useCourses';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function CourseManagement() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('all-courses');
-  const [courses, setCourses] = useState<Course[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-  const [courseAssignments, setCourseAssignments] = useState(loadCourseAssignments());
-  const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
-  const [quizDialogOpen, setQuizDialogOpen] = useState(false);
-  const [assignCourseDialogOpen, setAssignCourseDialogOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   
-  // Load data from localStorage
-  useEffect(() => {
-    setCourses(loadCourses());
-    setAssignments(loadAssignments());
-    setQuizzes(loadQuizzes());
-  }, []);
-
-  const refreshCourses = () => {
-    setCourses(loadCourses());
-  };
+  // Supabase hooks
+  const { data: courses = [], isLoading, refetch } = useCourses();
+  const createCourse = useCreateCourse();
+  const deleteCourse = useDeleteCourse();
   
   // Course creation form state
   const [newCourse, setNewCourse] = useState({
@@ -64,7 +45,6 @@ export default function CourseManagement() {
     prerequisites: '',
     learning_outcomes: [''],
     certificate_template_id: undefined as string | undefined,
-    levels: [] as any[] // Changed from modules to levels
   });
 
   const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
@@ -78,97 +58,56 @@ export default function CourseManagement() {
     total: courses.length,
     active: courses.filter(c => c.status === 'active').length,
     draft: courses.filter(c => c.status === 'draft').length,
-    totalEnrollments: mockCourseAnalytics.reduce((sum, a) => sum + a.total_enrollments, 0)
+    totalEnrollments: 0 // TODO: Add actual enrollments count
   };
 
-  const handleCreateCourse = (isDraft = false) => {
+  const handleCreateCourse = async (isDraft = false) => {
     if (!newCourse.title || !newCourse.course_code) {
       toast.error("Please fill in course title and code");
       return;
     }
 
-    // Create new course and save to localStorage
-    const newCourseData: Course = {
-      id: `course-${Date.now()}`,
-      course_code: newCourse.course_code,
-      title: newCourse.title,
-      description: newCourse.description,
-      category: newCourse.category as any,
-      thumbnail_url: newCourse.thumbnail_url,
-      difficulty: newCourse.difficulty as any,
-      duration_weeks: newCourse.duration_weeks,
-      prerequisites: newCourse.prerequisites,
-      learning_outcomes: newCourse.learning_outcomes.filter(o => o.trim()),
-      certificate_template_id: newCourse.certificate_template_id,
-      status: isDraft ? 'draft' : 'active',
-      created_by: 'admin-1',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    const updatedCourses = [...courses, newCourseData];
-    saveCourses(updatedCourses);
-    setCourses(updatedCourses);
-
-    toast.success(`Course ${isDraft ? 'saved as draft' : 'created and published'} successfully!`);
-    
-    // Reset form after creation
-    setNewCourse({
-      course_code: '',
-      title: '',
-      description: '',
-      category: 'ai_ml',
-      thumbnail_url: '',
-      difficulty: 'beginner',
-      duration_weeks: 8,
-      prerequisites: '',
-      learning_outcomes: [''],
-      certificate_template_id: undefined,
-      levels: []
-    });
-    setThumbnailPreview('');
-    setActiveTab('all-courses');
-  };
-
-  const handleCreateAssignment = async (data: Partial<Assignment>) => {
     try {
-      const response = await courseService.createAssignment(data.course_id!, data);
-      if (response.success) {
-        setAssignments([...assignments, response.data]);
-        toast.success('Assignment created successfully!');
-        setAssignmentDialogOpen(false);
-      }
+      await createCourse.mutateAsync({
+        course_code: newCourse.course_code,
+        title: newCourse.title,
+        description: newCourse.description,
+        category: newCourse.category,
+        thumbnail_url: newCourse.thumbnail_url || null,
+        difficulty: newCourse.difficulty,
+        duration_weeks: newCourse.duration_weeks,
+        prerequisites: newCourse.prerequisites || null,
+        learning_outcomes: newCourse.learning_outcomes.filter(o => o.trim()),
+        certificate_template_id: newCourse.certificate_template_id,
+        status: isDraft ? 'draft' : 'active',
+        created_by: user?.id || null
+      });
+
+      // Reset form after creation
+      setNewCourse({
+        course_code: '',
+        title: '',
+        description: '',
+        category: 'ai_ml',
+        thumbnail_url: '',
+        difficulty: 'beginner',
+        duration_weeks: 8,
+        prerequisites: '',
+        learning_outcomes: [''],
+        certificate_template_id: undefined,
+      });
+      setThumbnailPreview('');
+      setActiveTab('all-courses');
     } catch (error) {
-      toast.error('Failed to create assignment');
-      console.error(error);
+      // Error handled by mutation
     }
   };
 
-  const handleCreateQuiz = async (data: Partial<Quiz>) => {
+  const handleDeleteCourse = async (courseId: string) => {
     try {
-      const response = await courseService.createQuiz(data.course_id!, data);
-      if (response.success) {
-        setQuizzes([...quizzes, response.data]);
-        toast.success('Quiz created successfully!');
-        setQuizDialogOpen(false);
-      }
+      await deleteCourse.mutateAsync(courseId);
     } catch (error) {
-      toast.error('Failed to create quiz');
-      console.error(error);
-    }
-  };
-
-  const handleAssignCourse = async (data: CourseAssignmentRequest) => {
-    try {
-      const response = await courseService.assignCourse(data);
-      if (response.success) {
-        setCourseAssignments([...courseAssignments, response.data]);
-        toast.success('Course assigned successfully!');
-        setAssignCourseDialogOpen(false);
-      }
-    } catch (error) {
-      toast.error('Failed to assign course');
-      console.error(error);
+      // Error handled by mutation
     }
   };
 
@@ -176,26 +115,22 @@ export default function CourseManagement() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       toast.error('Please upload an image file');
       return;
     }
 
-    // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast.error('Image size should be less than 5MB');
       return;
     }
 
-    // Generate preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setThumbnailPreview(reader.result as string);
       setNewCourse({ ...newCourse, thumbnail_url: reader.result as string });
     };
     reader.readAsDataURL(file);
-
     toast.success('Thumbnail uploaded successfully');
   };
 
@@ -205,6 +140,7 @@ export default function CourseManagement() {
     iot: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
     robotics: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
     data_science: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
+    general: 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300',
   };
 
   const difficultyColors: Record<string, string> = {
@@ -301,7 +237,11 @@ export default function CourseManagement() {
                   </Button>
                 </div>
 
-{filteredCourses.length === 0 ? (
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-16">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : filteredCourses.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-center">
                     <BookOpen className="h-16 w-16 text-muted-foreground mb-4" />
                     <h3 className="text-lg font-semibold mb-2">No courses found</h3>
@@ -324,7 +264,6 @@ export default function CourseManagement() {
                         className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer"
                         onClick={() => navigate(`/system-admin/courses/${course.id}`)}
                       >
-                        {/* Thumbnail */}
                         <div className="relative aspect-video overflow-hidden bg-muted">
                           <img
                             src={course.thumbnail_url || '/placeholder.svg'}
@@ -339,14 +278,11 @@ export default function CourseManagement() {
                           </Badge>
                         </div>
 
-                        {/* Card Content */}
                         <CardContent className="p-4 space-y-3">
-                          {/* Category Badge */}
-                          <Badge className={categoryColors[course.category] || ''}>
+                          <Badge className={categoryColors[course.category] || categoryColors.general}>
                             {course.category.replace('_', ' ').toUpperCase()}
                           </Badge>
 
-                          {/* Course Info */}
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">{course.course_code}</p>
                             <h3 className="font-semibold text-lg line-clamp-2 mb-2">{course.title}</h3>
@@ -355,7 +291,6 @@ export default function CourseManagement() {
                             </p>
                           </div>
 
-                          {/* Stats */}
                           <Separator />
                           <div className="flex items-center justify-between text-xs text-muted-foreground">
                             <div className="flex items-center gap-3">
@@ -369,7 +304,6 @@ export default function CourseManagement() {
                             </div>
                           </div>
 
-                          {/* Actions */}
                           <div className="flex gap-2 pt-2">
                             <Button 
                               variant="ghost" 
@@ -400,10 +334,7 @@ export default function CourseManagement() {
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const updatedCourses = courses.filter(c => c.id !== course.id);
-                                saveCourses(updatedCourses);
-                                setCourses(updatedCourses);
-                                toast.success('Course deleted');
+                                handleDeleteCourse(course.id);
                               }}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -420,7 +351,6 @@ export default function CourseManagement() {
 
           {/* Tab 2: Create Course */}
           <TabsContent value="create" className="space-y-6">
-            {/* Basic Course Information */}
             <Card>
               <CardHeader>
                 <CardTitle>Basic Course Information</CardTitle>
@@ -518,7 +448,7 @@ export default function CourseManagement() {
                         <SelectItem value="data_science">Data Science</SelectItem>
                         <SelectItem value="business">Business</SelectItem>
                         <SelectItem value="design">Design</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value="general">General</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -600,7 +530,6 @@ export default function CourseManagement() {
               </CardContent>
             </Card>
 
-            {/* Course Structure - Levels and Content */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -608,26 +537,37 @@ export default function CourseManagement() {
                   Course Structure
                 </CardTitle>
                 <CardDescription>
-                  Build your course by adding levels (unlocked per class), sessions, and content (PDFs, videos, presentations, YouTube links, etc.)
+                  After creating the course, you can add modules, sessions, and content from the course detail page.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <LevelBuilder
-                  levels={newCourse.levels}
-                  onChange={(levels) => setNewCourse({ ...newCourse, levels })}
-                />
+                <p className="text-sm text-muted-foreground">
+                  First create the basic course, then navigate to the course detail page to build the full curriculum with modules, sessions, and content (PDFs, presentations, YouTube videos).
+                </p>
               </CardContent>
             </Card>
 
-            {/* Action Buttons */}
             <Card>
               <CardContent className="pt-6">
                 <div className="flex gap-4">
-                  <Button onClick={() => handleCreateCourse(false)} className="flex-1">
-                    <BookOpen className="mr-2 h-4 w-4" />
+                  <Button 
+                    onClick={() => handleCreateCourse(false)} 
+                    className="flex-1"
+                    disabled={createCourse.isPending}
+                  >
+                    {createCourse.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <BookOpen className="mr-2 h-4 w-4" />
+                    )}
                     Save & Publish Course
                   </Button>
-                  <Button variant="outline" className="flex-1" onClick={() => handleCreateCourse(true)}>
+                  <Button 
+                    variant="outline" 
+                    className="flex-1" 
+                    onClick={() => handleCreateCourse(true)}
+                    disabled={createCourse.isPending}
+                  >
                     Save as Draft
                   </Button>
                   <Button 
@@ -644,7 +584,6 @@ export default function CourseManagement() {
                         prerequisites: '',
                         learning_outcomes: [''],
                         certificate_template_id: undefined,
-                        levels: []
                       });
                       setThumbnailPreview('');
                       setActiveTab('all-courses');
@@ -666,9 +605,7 @@ export default function CourseManagement() {
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
-                    {mockCourseAnalytics.reduce((sum, a) => sum + a.total_enrollments, 0)}
-                  </div>
+                  <div className="text-2xl font-bold">0</div>
                   <p className="text-xs text-muted-foreground">Across all courses</p>
                 </CardContent>
               </Card>
@@ -678,9 +615,7 @@ export default function CourseManagement() {
                   <Award className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
-                    {(mockCourseAnalytics.reduce((sum, a) => sum + a.completion_rate, 0) / mockCourseAnalytics.length).toFixed(1)}%
-                  </div>
+                  <div className="text-2xl font-bold">0%</div>
                   <p className="text-xs text-muted-foreground">Course completion</p>
                 </CardContent>
               </Card>
@@ -690,9 +625,7 @@ export default function CourseManagement() {
                   <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
-                    {(mockCourseAnalytics.reduce((sum, a) => sum + a.average_assignment_score, 0) / mockCourseAnalytics.length).toFixed(1)}%
-                  </div>
+                  <div className="text-2xl font-bold">0%</div>
                   <p className="text-xs text-muted-foreground">Student performance</p>
                 </CardContent>
               </Card>
@@ -702,9 +635,7 @@ export default function CourseManagement() {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
-                    {(mockCourseAnalytics.reduce((sum, a) => sum + a.average_quiz_score, 0) / mockCourseAnalytics.length).toFixed(1)}%
-                  </div>
+                  <div className="text-2xl font-bold">0%</div>
                   <p className="text-xs text-muted-foreground">Assessment performance</p>
                 </CardContent>
               </Card>
@@ -726,21 +657,27 @@ export default function CourseManagement() {
                         <TableHead>Completed</TableHead>
                         <TableHead>Completion Rate</TableHead>
                         <TableHead>Avg Score</TableHead>
-                        <TableHead>Submission Rate</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {mockCourseAnalytics.map((analytics) => (
-                        <TableRow key={analytics.course_id}>
-                          <TableCell className="font-medium">{analytics.course_title}</TableCell>
-                          <TableCell>{analytics.total_enrollments}</TableCell>
-                          <TableCell>{analytics.active_students}</TableCell>
-                          <TableCell>{analytics.completed_students}</TableCell>
-                          <TableCell>{analytics.completion_rate.toFixed(1)}%</TableCell>
-                          <TableCell>{analytics.average_assignment_score.toFixed(1)}%</TableCell>
-                          <TableCell>{analytics.assignment_submission_rate.toFixed(1)}%</TableCell>
+                      {courses.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                            No courses to display analytics for
+                          </TableCell>
                         </TableRow>
-                      ))}
+                      ) : (
+                        courses.map((course) => (
+                          <TableRow key={course.id}>
+                            <TableCell className="font-medium">{course.title}</TableCell>
+                            <TableCell>0</TableCell>
+                            <TableCell>0</TableCell>
+                            <TableCell>0</TableCell>
+                            <TableCell>0%</TableCell>
+                            <TableCell>0%</TableCell>
+                          </TableRow>
+                        ))
+                      )}
                     </TableBody>
                   </Table>
                 </div>
@@ -750,40 +687,17 @@ export default function CourseManagement() {
         </Tabs>
       </div>
 
-      <CreateAssignmentDialog
-        open={assignmentDialogOpen}
-        onOpenChange={setAssignmentDialogOpen}
-        courses={courses}
-        modules={loadLevels()}
-        onSubmit={handleCreateAssignment}
-      />
-
-      <CreateQuizDialog
-        open={quizDialogOpen}
-        onOpenChange={setQuizDialogOpen}
-        courses={courses}
-        modules={loadLevels()}
-        onSubmit={handleCreateQuiz}
-      />
-
-      <AssignCourseDialog
-        open={assignCourseDialogOpen}
-        onOpenChange={setAssignCourseDialogOpen}
-        courses={courses}
-        onSubmit={handleAssignCourse}
-      />
-
       <CoursePreviewDialog
         open={previewDialogOpen}
         onOpenChange={setPreviewDialogOpen}
-        course={courses.find(c => c.id === selectedCourseId) || null}
+        course={courses.find(c => c.id === selectedCourseId) as any || null}
       />
 
       <EditCourseDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         courseId={selectedCourseId}
-        onSave={refreshCourses}
+        onSave={() => refetch()}
       />
     </Layout>
   );
