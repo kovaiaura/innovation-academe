@@ -28,25 +28,31 @@ export function SecureContentViewer({
   const viewStartTime = useRef<number>(Date.now());
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Fetch signed URL when content changes
+  // Fetch signed URL when content changes (only needed for PPT)
   useEffect(() => {
-    if (open && content && content.file_path) {
+    if (!open || !content) return;
+
+    setError(null);
+
+    if (content.type === 'ppt' && content.file_path) {
       setLoading(true);
-      setError(null);
       getContentSignedUrl(content.file_path)
-        .then(url => {
+        .then((url) => {
           setSignedUrl(url);
           setLoading(false);
         })
-        .catch(err => {
+        .catch(() => {
           setError('Failed to load content');
           setLoading(false);
         });
-    } else if (content?.youtube_url) {
-      setSignedUrl(null);
-      setLoading(false);
+      return;
     }
-  }, [open, content?.id, content?.file_path, content?.youtube_url]);
+
+    // PDFs are rendered via in-app viewer (no signed URL needed)
+    setSignedUrl(null);
+    setLoading(false);
+  }, [open, content?.id, content?.type, content?.file_path]);
+
 
   // Reset viewed state when dialog opens
   useEffect(() => {
