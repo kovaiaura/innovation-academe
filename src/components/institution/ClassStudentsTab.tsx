@@ -49,7 +49,7 @@ export function ClassStudentsTab({
 
   const filteredStudents = students.filter(student =>
     student.student_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.parent_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (student.email && student.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (student.roll_number && student.roll_number.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
@@ -144,7 +144,7 @@ export function ClassStudentsTab({
                           </div>
                         </TableCell>
                         <TableCell>{student.roll_number || '-'}</TableCell>
-                        <TableCell className="text-sm">{student.parent_email}</TableCell>
+                        <TableCell className="text-sm">{student.email}</TableCell>
                         <TableCell className="text-sm">{student.parent_phone || '-'}</TableCell>
                         <TableCell>
                           <Badge 

@@ -28,7 +28,7 @@ export const exportStudentsToCSV = (students: Student[], filename: string) => {
     student.date_of_birth,
     student.parent_name,
     student.parent_phone,
-    student.parent_email,
+    student.email,
     student.blood_group || '',
     student.address
   ]);

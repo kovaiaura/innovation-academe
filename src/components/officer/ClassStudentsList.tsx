@@ -94,7 +94,7 @@ export function ClassStudentsList({ classId, className }: ClassStudentsListProps
                     <TableRow key={student.id}>
                       <TableCell className="font-medium">{student.roll_number}</TableCell>
                       <TableCell>{student.student_name}</TableCell>
-                      <TableCell className="text-muted-foreground">{student.parent_email}</TableCell>
+                      <TableCell className="text-muted-foreground">{student.email}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span className={attendancePercent >= 75 ? 'text-green-600' : 'text-orange-600'}>

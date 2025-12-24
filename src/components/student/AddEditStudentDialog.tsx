@@ -53,7 +53,6 @@ export function AddEditStudentDialog({
     previous_school: '',
     parent_name: '',
     parent_phone: '',
-    parent_email: '',
     address: '',
     status: 'active' as 'active' | 'inactive' | 'transferred' | 'graduated',
   });
@@ -104,7 +103,6 @@ export function AddEditStudentDialog({
         previous_school: student.previous_school || '',
         parent_name: student.parent_name,
         parent_phone: student.parent_phone,
-        parent_email: student.parent_email,
         address: student.address,
         status: student.status,
       });
@@ -128,7 +126,6 @@ export function AddEditStudentDialog({
         previous_school: '',
         parent_name: '',
         parent_phone: '',
-        parent_email: '',
         address: '',
         status: 'active',
       });
@@ -190,10 +187,6 @@ export function AddEditStudentDialog({
     } else if (!validatePhoneNumber(formData.parent_phone)) {
       newErrors.parent_phone = 'Invalid phone number format';
     }
-    if (formData.parent_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.parent_email)) {
-      newErrors.parent_email = 'Invalid email format';
-    }
-
     // Age validation
     if (formData.date_of_birth) {
       const dob = new Date(formData.date_of_birth);
@@ -275,7 +268,7 @@ export function AddEditStudentDialog({
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="email">Email *</Label>
+                  <Label htmlFor="email">Email * (For Login & Communication)</Label>
                   <Input
                     id="email"
                     type="email"
@@ -502,18 +495,6 @@ export function AddEditStudentDialog({
                   className={errors.parent_phone ? 'border-destructive' : ''}
                 />
                 {errors.parent_phone && <p className="text-xs text-destructive mt-1">{errors.parent_phone}</p>}
-              </div>
-
-              <div>
-                <Label htmlFor="parent_email">Email</Label>
-                <Input
-                  id="parent_email"
-                  type="email"
-                  value={formData.parent_email}
-                  onChange={(e) => setFormData({ ...formData, parent_email: e.target.value })}
-                  className={errors.parent_email ? 'border-destructive' : ''}
-                />
-                {errors.parent_email && <p className="text-xs text-destructive mt-1">{errors.parent_email}</p>}
               </div>
 
               <div className="col-span-2">

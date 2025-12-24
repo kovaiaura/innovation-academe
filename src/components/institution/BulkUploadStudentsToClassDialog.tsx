@@ -47,8 +47,6 @@ export function BulkUploadStudentsToClassDialog({
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<ValidatedRow[]>([]);
   const [skipDuplicates, setSkipDuplicates] = useState(true);
-  const [updateExisting, setUpdateExisting] = useState(false);
-  const [sendWelcomeEmails, setSendWelcomeEmails] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
 
@@ -166,8 +164,6 @@ export function BulkUploadStudentsToClassDialog({
     setUploadedFile(null);
     setParsedData([]);
     setSkipDuplicates(true);
-    setUpdateExisting(false);
-    setSendWelcomeEmails(false);
     onOpenChange(false);
   };
 
@@ -406,27 +402,7 @@ export function BulkUploadStudentsToClassDialog({
                     onCheckedChange={(checked) => setSkipDuplicates(!!checked)}
                   />
                   <Label htmlFor="skip-duplicates" className="cursor-pointer">
-                    Skip duplicate entries
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="update-existing" 
-                    checked={updateExisting} 
-                    onCheckedChange={(checked) => setUpdateExisting(!!checked)}
-                  />
-                  <Label htmlFor="update-existing" className="cursor-pointer">
-                    Update existing student records
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="send-welcome" 
-                    checked={sendWelcomeEmails} 
-                    onCheckedChange={(checked) => setSendWelcomeEmails(!!checked)}
-                  />
-                  <Label htmlFor="send-welcome" className="cursor-pointer">
-                    Send welcome emails to parents
+                    Skip duplicate entries (based on email)
                   </Label>
                 </div>
               </CardContent>

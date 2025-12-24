@@ -456,7 +456,7 @@ export default function CredentialManagement() {
                               <TableRow key={student.id}>
                                 <TableCell className="font-medium">{student.student_id}</TableCell>
                                 <TableCell>{student.student_name}</TableCell>
-                                <TableCell>{student.parent_email}</TableCell>
+                                <TableCell>{student.email}</TableCell>
                                 <TableCell>{student.class}</TableCell>
                                 <TableCell>{student.section}</TableCell>
                                 <TableCell className="text-right">
@@ -464,7 +464,7 @@ export default function CredentialManagement() {
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      onClick={() => handleSetPassword(student.id, student.student_name, student.parent_email, 'student')}
+                                      onClick={() => handleSetPassword(student.id, student.student_name, student.email, 'student')}
                                     >
                                       <Key className="h-4 w-4 mr-1" />
                                       Set Password
@@ -472,7 +472,7 @@ export default function CredentialManagement() {
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      onClick={() => handleSendResetLink(student.parent_email, student.student_name, 'student')}
+                                      onClick={() => handleSendResetLink(student.email, student.student_name, 'student')}
                                     >
                                       <Mail className="h-4 w-4 mr-1" />
                                       Send Reset Link
