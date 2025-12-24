@@ -99,7 +99,7 @@ export function useStudents(institutionId?: string, classId?: string) {
     staleTime: 30000,
   });
 
-  // Create student mutation (without auth user creation to avoid session issues)
+  // Create student mutation with auth user creation via edge function
   const createStudentMutation = useMutation({
     mutationFn: async (formData: StudentFormData & { 
       institution_id: string; 
@@ -113,7 +113,37 @@ export function useStudents(institutionId?: string, classId?: string) {
         throw new Error(authCheck.error);
       }
 
-      // Create student record (without auth user - that should be done separately)
+      let userId: string | null = null;
+
+      // If email and password provided, create auth user via edge function
+      if (formData.email && formData.password) {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        const response = await supabase.functions.invoke('create-student-user', {
+          body: {
+            email: formData.email,
+            password: formData.password,
+            student_name: formData.student_name,
+            institution_id: formData.institution_id,
+            class_id: formData.class_id,
+          },
+        });
+
+        if (response.error) {
+          console.error('[Students] Edge function error:', response.error);
+          throw new Error(response.error.message || 'Failed to create student user account');
+        }
+
+        if (response.data?.error) {
+          console.error('[Students] Create user error:', response.data.error);
+          throw new Error(response.data.error);
+        }
+
+        userId = response.data?.user_id || null;
+        console.log('[Students] Created auth user:', userId);
+      }
+
+      // Create student record with user_id linked
       const { data, error } = await supabase
         .from('students')
         .insert({
@@ -122,6 +152,7 @@ export function useStudents(institutionId?: string, classId?: string) {
           student_id: formData.student_id,
           student_name: formData.student_name,
           email: formData.email,
+          user_id: userId,
           roll_number: formData.roll_number,
           admission_number: formData.admission_number,
           date_of_birth: formData.date_of_birth,
@@ -133,7 +164,7 @@ export function useStudents(institutionId?: string, classId?: string) {
           parent_phone: formData.parent_phone,
           parent_email: formData.parent_email,
           address: formData.address,
-          avatar: formData.avatar,
+          avatar: null, // Use null for placeholder - students can update later
           status: formData.status || 'active',
         })
         .select()

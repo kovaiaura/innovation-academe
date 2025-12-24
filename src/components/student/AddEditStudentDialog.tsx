@@ -131,6 +131,21 @@ export function AddEditStudentDialog({
     const newErrors: Record<string, string> = {};
 
     if (!formData.student_name.trim()) newErrors.student_name = 'Name is required';
+    
+    // Email and password required for new students
+    if (mode === 'add') {
+      if (!formData.email.trim()) {
+        newErrors.email = 'Email is required for student login';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        newErrors.email = 'Invalid email format';
+      }
+      if (!formData.password.trim()) {
+        newErrors.password = 'Password is required for student login';
+      } else if (formData.password.length < 6) {
+        newErrors.password = 'Password must be at least 6 characters';
+      }
+    }
+    
     if (!formData.roll_number.trim()) newErrors.roll_number = 'Roll number is required';
     if (!formData.admission_number.trim()) newErrors.admission_number = 'Admission number is required';
     if (!formData.class) newErrors.class = 'Class is required';
@@ -183,7 +198,7 @@ export function AddEditStudentDialog({
       const updatedStudent: Student = {
         ...student,
         ...formData,
-        avatar: student.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.student_name}`,
+        avatar: student.avatar, // Keep existing avatar, don't auto-generate
       };
       onSave(updatedStudent);
     } else {
@@ -197,9 +212,10 @@ export function AddEditStudentDialog({
         ...formData,
         student_id: idResponse.success ? idResponse.data.id : `STU-TEMP-${Date.now()}`,
         email: formData.email,
+        password: formData.password, // Include password for auth user creation
         blood_group: formData.blood_group,
         institution_id: institutionId,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.student_name}`,
+        avatar: null, // Use null placeholder - students can update their own avatar
       };
       onSave(newStudent);
     }
@@ -218,6 +234,43 @@ export function AddEditStudentDialog({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Login Credentials - Required for new students */}
+          {mode === 'add' && (
+            <div>
+              <h3 className="font-semibold mb-3">Login Credentials</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                These credentials will be used by the student to log into the portal.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="student@example.com"
+                    className={errors.email ? 'border-destructive' : ''}
+                  />
+                  {errors.email && <p className="text-xs text-destructive mt-1">{errors.email}</p>}
+                </div>
+
+                <div>
+                  <Label htmlFor="password">Password *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Min 6 characters"
+                    className={errors.password ? 'border-destructive' : ''}
+                  />
+                  {errors.password && <p className="text-xs text-destructive mt-1">{errors.password}</p>}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Personal Information */}
           <div>
             <h3 className="font-semibold mb-3">Personal Information</h3>
