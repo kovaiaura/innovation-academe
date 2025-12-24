@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useInstitutionData, Institution } from '@/contexts/InstitutionDataContext';
+import { useInstitutions, InstitutionFormData } from '@/hooks/useInstitutions';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Search, Plus, Building2, Upload, Calendar, FileText, AlertCircle, CheckCircle, Clock, DollarSign, Users, Shield, TrendingUp, Lock } from 'lucide-react';
+import { Search, Plus, Building2, Upload, Calendar, FileText, AlertCircle, CheckCircle, Clock, DollarSign, Users, Shield, TrendingUp, Lock, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import ViewMouDialog from '@/components/institution/ViewMouDialog';
 import { PinLockDialog } from '@/components/system-admin/PinLockDialog';
@@ -23,7 +24,17 @@ import { mockInstitutionEngagement } from '@/data/mockInstitutionEngagement';
 
 export default function InstitutionManagement() {
   const navigate = useNavigate();
-  const { institutions, addInstitution, updateInstitution } = useInstitutionData();
+  const { institutions: contextInstitutions, addInstitution, updateInstitution: updateContextInstitution } = useInstitutionData();
+  const { 
+    institutions: dbInstitutions, 
+    isLoading: isDbLoading, 
+    createInstitution, 
+    updateInstitution: updateDbInstitution,
+    isCreating 
+  } = useInstitutions();
+  
+  // Use DB institutions if available, fallback to context
+  const institutions = dbInstitutions.length > 0 ? dbInstitutions : contextInstitutions;
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -40,6 +51,9 @@ export default function InstitutionManagement() {
   const [showPinDialog, setShowPinDialog] = useState(false);
   const [requestedTab, setRequestedTab] = useState<string>('');
 
+  // Password visibility toggle
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+
   // Add institution form state
   const [formData, setFormData] = useState({
     name: '',
@@ -51,6 +65,7 @@ export default function InstitutionManagement() {
     contact_phone: '',
     admin_name: '',
     admin_email: '',
+    admin_password: '',
     license_type: 'basic' as Institution['license_type'],
     max_users: 500,
     subscription_plan: 'basic' as Institution['subscription_plan'],
@@ -126,76 +141,92 @@ export default function InstitutionManagement() {
     return matchesSearch && matchesType && matchesStatus && matchesLicense && matchesContractStatus;
   });
 
-  const handleAddInstitution = () => {
-    const newInstitution: Institution = {
-      id: `inst-${formData.slug}-${String(institutions.length + 1).padStart(3, '0')}`,
-      ...formData,
-      code: `${formData.type.toUpperCase()}-${formData.slug.toUpperCase()}-${String(institutions.length + 1).padStart(3, '0')}`,
-      total_students: 0,
-      total_faculty: 0,
-      total_users: 0,
-      storage_used_gb: 0,
-      subscription_status: 'active',
-      license_expiry: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-      current_users: 0,
-      features: formData.license_type === 'enterprise' ? ['All Features'] : 
-                formData.license_type === 'premium' ? ['Innovation Lab', 'Analytics'] : 
-                ['Basic Features'],
-      contract_type: 'Annual Contract',
-      contract_start_date: new Date().toISOString().split('T')[0],
-      contract_expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-      contract_value: formData.license_type === 'enterprise' ? 1000000 : 
-                      formData.license_type === 'premium' ? 500000 : 150000,
-      created_at: new Date().toISOString().split('T')[0]
-    };
+  const handleAddInstitution = async () => {
+    // Validate required fields
+    if (!formData.name || !formData.slug || !formData.admin_email || !formData.admin_password) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
 
-    addInstitution(newInstitution);
-    toast.success(`${formData.name} has been successfully onboarded!`, {
-      description: "Next: Set up login credentials in Credential Management",
-      duration: 5000,
-      action: {
-        label: "Set Up Credentials Now →",
-        onClick: () => navigate('/system-admin/credential-management')
-      }
-    });
-    setFormData({
-      name: '',
-      slug: '',
-      type: 'school',
-      location: '',
-      established_year: new Date().getFullYear(),
-      contact_email: '',
-      contact_phone: '',
-      admin_name: '',
-      admin_email: '',
-      license_type: 'basic',
-      max_users: 500,
-      subscription_plan: 'basic',
-      student_id_prefix: '',
-      student_id_suffix: '',
-      pricing_model: {
-        per_student_cost: 0,
-        lms_cost: 0,
-        lap_setup_cost: 0,
-        monthly_recurring_cost: 0,
-        trainer_monthly_fee: 0,
-      },
-      gps_location: {
-        latitude: 0,
-        longitude: 0,
-        address: '',
-      },
-      attendance_radius_meters: 1500,
-      normal_working_hours: 8,
-      check_in_time: '09:00',
-      check_out_time: '17:00',
-    });
-    setActiveTab('list');
+    try {
+      // Create in database with optimistic update
+      await createInstitution(formData as InstitutionFormData);
+      
+      // Also add to context for backward compatibility
+      const newInstitution: Institution = {
+        id: `inst-${formData.slug}-${String(institutions.length + 1).padStart(3, '0')}`,
+        ...formData,
+        code: `${formData.type.toUpperCase()}-${formData.slug.toUpperCase()}-${String(institutions.length + 1).padStart(3, '0')}`,
+        total_students: 0,
+        total_faculty: 0,
+        total_users: 0,
+        storage_used_gb: 0,
+        subscription_status: 'active',
+        license_expiry: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+        current_users: 0,
+        features: formData.license_type === 'enterprise' ? ['All Features'] : 
+                  formData.license_type === 'premium' ? ['Innovation Lab', 'Analytics'] : 
+                  ['Basic Features'],
+        contract_type: 'Annual Contract',
+        contract_start_date: new Date().toISOString().split('T')[0],
+        contract_expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+        contract_value: formData.license_type === 'enterprise' ? 1000000 : 
+                        formData.license_type === 'premium' ? 500000 : 150000,
+        created_at: new Date().toISOString().split('T')[0]
+      };
+      addInstitution(newInstitution);
+      
+      toast.success(`${formData.name} has been successfully onboarded!`, {
+        description: "Institution created and saved to database",
+        duration: 5000,
+      });
+      
+      setFormData({
+        name: '',
+        slug: '',
+        type: 'school',
+        location: '',
+        established_year: new Date().getFullYear(),
+        contact_email: '',
+        contact_phone: '',
+        admin_name: '',
+        admin_email: '',
+        admin_password: '',
+        license_type: 'basic',
+        max_users: 500,
+        subscription_plan: 'basic',
+        student_id_prefix: '',
+        student_id_suffix: '',
+        pricing_model: {
+          per_student_cost: 0,
+          lms_cost: 0,
+          lap_setup_cost: 0,
+          monthly_recurring_cost: 0,
+          trainer_monthly_fee: 0,
+        },
+        gps_location: {
+          latitude: 0,
+          longitude: 0,
+          address: '',
+        },
+        attendance_radius_meters: 1500,
+        normal_working_hours: 8,
+        check_in_time: '09:00',
+        check_out_time: '17:00',
+      });
+      setActiveTab('list');
+    } catch (error) {
+      console.error('Error creating institution:', error);
+      toast.error('Failed to create institution');
+    }
   };
 
   const handleRenewLicense = () => {
     if (selectedInstitution) {
-      updateInstitution(selectedInstitution.id, {
+      updateDbInstitution({ id: selectedInstitution.id, updates: {
+        license_expiry: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
+      }});
+      updateContextInstitution(selectedInstitution.id, {
         license_expiry: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
       });
       toast.success(`License renewed for ${selectedInstitution.name}`);
@@ -508,14 +539,35 @@ export default function InstitutionManagement() {
                         placeholder="admin@institution.edu"
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="admin_password">Admin Password *</Label>
+                      <div className="relative">
+                        <Input
+                          id="admin_password"
+                          type={showAdminPassword ? 'text' : 'password'}
+                          value={formData.admin_password}
+                          onChange={(e) => setFormData({ ...formData, admin_password: e.target.value })}
+                          placeholder="Enter admin password"
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowAdminPassword(!showAdminPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showAdminPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Used for management portal login</p>
+                    </div>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <div className="font-semibold text-lg">Agreement Configuration</div>
+                  <div className="font-semibold text-lg">Agreement Configuration (Optional)</div>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="per_student_cost">Per Student Cost (₹) *</Label>
+                      <Label htmlFor="per_student_cost">Per Student Cost (₹)</Label>
                       <Input
                         id="per_student_cost"
                         type="number"
@@ -541,7 +593,7 @@ export default function InstitutionManagement() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="lap_setup_cost">Lap Setup - One Time (₹) *</Label>
+                      <Label htmlFor="lap_setup_cost">Lap Setup - One Time (₹)</Label>
                       <Input
                         id="lap_setup_cost"
                         type="number"
@@ -554,7 +606,7 @@ export default function InstitutionManagement() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="monthly_pay">Monthly Pay (₹) *</Label>
+                      <Label htmlFor="monthly_pay">Monthly Pay (₹)</Label>
                       <Input
                         id="monthly_pay"
                         type="number"
@@ -567,7 +619,7 @@ export default function InstitutionManagement() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="trainer_fee">Trainer Monthly Fee (₹) *</Label>
+                      <Label htmlFor="trainer_fee">Trainer Monthly Fee (₹)</Label>
                       <Input
                         id="trainer_fee"
                         type="number"
@@ -963,7 +1015,7 @@ export default function InstitutionManagement() {
                                 setSelectedInstitutionForMou(inst);
                                 setIsMouDialogOpen(true);
                               }}
-                              disabled={!inst.mou_document_url}
+                              disabled={!('mou_document_url' in inst && inst.mou_document_url)}
                             >
                               <FileText className="h-4 w-4 mr-2" />
                               View MoU
