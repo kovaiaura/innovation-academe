@@ -8,14 +8,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { OfficerDetails } from '@/services/systemadmin.service';
-import { LeaveBalance } from '@/types/attendance';
+
+// Leave balance type matching OfficerDetail component
+interface OfficerLeaveBalance {
+  sick_leave: number;
+  casual_leave: number;
+  annual_leave: number;
+}
 
 interface EditOfficerDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   officer: OfficerDetails;
-  leaveBalance?: LeaveBalance | null;
-  onSaveSuccess: (updatedOfficer: Partial<OfficerDetails> & { casual_leave?: number; sick_leave?: number; earned_leave?: number }) => void;
+  leaveBalance?: OfficerLeaveBalance | null;
+  onSaveSuccess: (updatedOfficer: Partial<OfficerDetails> & { casual_leave?: number; sick_leave?: number }) => void;
 }
 
 export default function EditOfficerDialog({
@@ -25,7 +31,7 @@ export default function EditOfficerDialog({
   leaveBalance,
   onSaveSuccess,
 }: EditOfficerDialogProps) {
-  const [formData, setFormData] = useState<Partial<OfficerDetails> & { casual_leave?: number; sick_leave?: number; earned_leave?: number }>({});
+  const [formData, setFormData] = useState<Partial<OfficerDetails> & { casual_leave?: number; sick_leave?: number }>({});
 
   useEffect(() => {
     if (officer) {
@@ -46,12 +52,11 @@ export default function EditOfficerDialog({
         normal_working_hours: officer.normal_working_hours,
         casual_leave: leaveBalance?.casual_leave,
         sick_leave: leaveBalance?.sick_leave,
-        earned_leave: leaveBalance?.earned_leave,
       });
     }
   }, [officer, leaveBalance]);
 
-  const handleChange = (field: keyof OfficerDetails | 'casual_leave' | 'sick_leave' | 'earned_leave', value: any) => {
+  const handleChange = (field: keyof OfficerDetails | 'casual_leave' | 'sick_leave', value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -278,19 +283,20 @@ export default function EditOfficerDialog({
                   type="number"
                   value={formData.sick_leave ?? ''}
                   onChange={(e) => handleChange('sick_leave', Number(e.target.value))}
-                  placeholder="12"
+                  placeholder="10"
                 />
               </div>
               
               <div>
-                <Label htmlFor="earned_leave">Earned Leave (days)</Label>
+                <Label htmlFor="annual_leave">Annual Leave (days)</Label>
                 <Input
-                  id="earned_leave"
+                  id="annual_leave"
                   type="number"
-                  value={formData.earned_leave ?? ''}
-                  onChange={(e) => handleChange('earned_leave', Number(e.target.value))}
-                  placeholder="15"
+                  value={(formData.casual_leave ?? 0) + (formData.sick_leave ?? 0)}
+                  disabled
+                  className="bg-muted"
                 />
+                <p className="text-xs text-muted-foreground mt-1">Auto-calculated: Sick + Casual</p>
               </div>
             </div>
           </div>
