@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { CheckCircle, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 import { getContentSignedUrl } from '@/services/courseStorage.service';
 import { DbCourseContent } from '@/hooks/useCourses';
+import { PDFViewer } from './PDFViewer';
 
 interface SecureContentViewerProps {
   open: boolean;
@@ -144,46 +145,34 @@ export function SecureContentViewer({
         if (!signedUrl) {
           return <p className="text-destructive">PDF URL not available</p>;
         }
-        // Use PDF.js viewer or Google Docs viewer to prevent download
-        // Adding #toolbar=0&navpanes=0 disables toolbar in most PDF viewers
-        return (
-          <div 
-            className="relative select-none"
-            onContextMenu={handleContextMenu}
-            style={{ userSelect: 'none' }}
-          >
-            <iframe
-              ref={iframeRef}
-              src={`${signedUrl}#toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
-              className="w-full h-[70vh] rounded-lg border"
-              title={content.title}
-              sandbox="allow-same-origin allow-scripts"
-            />
-            {/* Overlay to prevent right-click on PDF */}
-            <div 
-              className="absolute inset-0 bg-transparent" 
-              style={{ pointerEvents: 'none' }}
-            />
-          </div>
-        );
+        // Use react-pdf to render PDF client-side (bypasses X-Frame-Options blocking)
+        return <PDFViewer url={signedUrl} title={content.title} />;
 
       case 'ppt':
         if (!signedUrl) {
           return <p className="text-destructive">Presentation URL not available</p>;
         }
-        // Use Office Online viewer
+        // Office Online viewer doesn't work with signed URLs from private storage
+        // Provide a button to open the presentation in a new tab
         return (
           <div 
-            className="relative select-none"
+            className="flex flex-col items-center justify-center h-[50vh] gap-6 select-none"
             onContextMenu={handleContextMenu}
             style={{ userSelect: 'none' }}
           >
-            <iframe
-              src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(signedUrl)}`}
-              className="w-full h-[70vh] rounded-lg border"
-              title={content.title}
-              sandbox="allow-same-origin allow-scripts allow-popups"
-            />
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-medium">{content.title}</h3>
+              <p className="text-muted-foreground text-sm">
+                PowerPoint presentations open in a new tab for the best viewing experience.
+              </p>
+            </div>
+            <Button
+              size="lg"
+              onClick={() => window.open(signedUrl, '_blank', 'noopener,noreferrer')}
+            >
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Open Presentation
+            </Button>
           </div>
         );
 
