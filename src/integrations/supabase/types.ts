@@ -21,6 +21,7 @@ export type Database = {
           id: string
           is_unlocked: boolean | null
           module_id: string
+          unlock_mode: string | null
           unlock_order: number | null
           updated_at: string | null
         }
@@ -30,6 +31,7 @@ export type Database = {
           id?: string
           is_unlocked?: boolean | null
           module_id: string
+          unlock_mode?: string | null
           unlock_order?: number | null
           updated_at?: string | null
         }
@@ -39,6 +41,7 @@ export type Database = {
           id?: string
           is_unlocked?: boolean | null
           module_id?: string
+          unlock_mode?: string | null
           unlock_order?: number | null
           updated_at?: string | null
         }
@@ -66,6 +69,7 @@ export type Database = {
           id: string
           is_unlocked: boolean | null
           session_id: string
+          unlock_mode: string | null
           unlock_order: number | null
           updated_at: string | null
         }
@@ -75,6 +79,7 @@ export type Database = {
           id?: string
           is_unlocked?: boolean | null
           session_id: string
+          unlock_mode?: string | null
           unlock_order?: number | null
           updated_at?: string | null
         }
@@ -84,6 +89,7 @@ export type Database = {
           id?: string
           is_unlocked?: boolean | null
           session_id?: string
+          unlock_mode?: string | null
           unlock_order?: number | null
           updated_at?: string | null
         }

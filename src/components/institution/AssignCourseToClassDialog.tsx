@@ -10,8 +10,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { InstitutionClass } from '@/types/institution';
 import { useCourses, useCourseById } from '@/hooks/useCourses';
-import { useAssignCourseToClass } from '@/hooks/useClassCourseAssignments';
-import { BookOpen, Check, ChevronRight, Lock, Unlock, Loader2 } from 'lucide-react';
+import { useAssignCourseToClass, UnlockMode } from '@/hooks/useClassCourseAssignments';
+import { BookOpen, Check, ChevronRight, Lock, Unlock, Loader2, Link2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -21,6 +21,7 @@ interface ModuleConfig {
   displayOrder: number;
   isSelected: boolean;
   isUnlocked: boolean;
+  unlockMode: UnlockMode;
   sessions: SessionConfig[];
 }
 
@@ -30,6 +31,7 @@ interface SessionConfig {
   displayOrder: number;
   isSelected: boolean;
   isUnlocked: boolean;
+  unlockMode: UnlockMode;
 }
 
 interface AssignCourseToClassDialogProps {
@@ -48,6 +50,7 @@ export function AssignCourseToClassDialog({
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [moduleConfigs, setModuleConfigs] = useState<ModuleConfig[]>([]);
+  const [globalUnlockMode, setGlobalUnlockMode] = useState<UnlockMode>('manual');
 
   const { data: courses = [], isLoading: isLoadingCourses } = useCourses();
   const { data: selectedCourse, isLoading: isLoadingCourse } = useCourseById(selectedCourseId);
@@ -56,23 +59,25 @@ export function AssignCourseToClassDialog({
   // Initialize module configs when course is selected
   useEffect(() => {
     if (selectedCourse?.modules) {
-      const configs: ModuleConfig[] = selectedCourse.modules.map(module => ({
+      const configs: ModuleConfig[] = selectedCourse.modules.map((module, index) => ({
         moduleId: module.id,
         title: module.title,
         displayOrder: module.display_order,
         isSelected: true,
-        isUnlocked: false,
-        sessions: (module.sessions || []).map(session => ({
+        isUnlocked: index === 0, // First module unlocked by default
+        unlockMode: index === 0 ? 'manual' : globalUnlockMode,
+        sessions: (module.sessions || []).map((session, sIndex) => ({
           sessionId: session.id,
           title: session.title,
           displayOrder: session.display_order,
           isSelected: true,
-          isUnlocked: false,
+          isUnlocked: sIndex === 0, // First session unlocked by default
+          unlockMode: sIndex === 0 ? 'manual' : globalUnlockMode,
         })),
       }));
       setModuleConfigs(configs);
     }
-  }, [selectedCourse]);
+  }, [selectedCourse, globalUnlockMode]);
 
   const handleCourseSelect = (courseId: string) => {
     setSelectedCourseId(courseId);
@@ -90,7 +95,15 @@ export function AssignCourseToClassDialog({
   const handleModuleUnlockToggle = (moduleId: string) => {
     setModuleConfigs(prev => prev.map(mod => 
       mod.moduleId === moduleId 
-        ? { ...mod, isUnlocked: !mod.isUnlocked }
+        ? { ...mod, isUnlocked: !mod.isUnlocked, unlockMode: !mod.isUnlocked ? 'manual' : mod.unlockMode }
+        : mod
+    ));
+  };
+
+  const handleModuleUnlockModeChange = (moduleId: string, mode: UnlockMode) => {
+    setModuleConfigs(prev => prev.map(mod => 
+      mod.moduleId === moduleId 
+        ? { ...mod, unlockMode: mode, isUnlocked: mode === 'manual' ? mod.isUnlocked : false }
         : mod
     ));
   };
@@ -117,12 +130,41 @@ export function AssignCourseToClassDialog({
             ...mod,
             sessions: mod.sessions.map(sess =>
               sess.sessionId === sessionId
-                ? { ...sess, isUnlocked: !sess.isUnlocked }
+                ? { ...sess, isUnlocked: !sess.isUnlocked, unlockMode: !sess.isUnlocked ? 'manual' : sess.unlockMode }
                 : sess
             ),
           }
         : mod
     ));
+  };
+
+  const handleSessionUnlockModeChange = (moduleId: string, sessionId: string, mode: UnlockMode) => {
+    setModuleConfigs(prev => prev.map(mod => 
+      mod.moduleId === moduleId 
+        ? {
+            ...mod,
+            sessions: mod.sessions.map(sess =>
+              sess.sessionId === sessionId
+                ? { ...sess, unlockMode: mode, isUnlocked: mode === 'manual' ? sess.isUnlocked : false }
+                : sess
+            ),
+          }
+        : mod
+    ));
+  };
+
+  const applyGlobalUnlockMode = (mode: UnlockMode) => {
+    setGlobalUnlockMode(mode);
+    setModuleConfigs(prev => prev.map((mod, index) => ({
+      ...mod,
+      unlockMode: index === 0 ? 'manual' : mode,
+      isUnlocked: index === 0 ? true : (mode === 'manual' ? mod.isUnlocked : false),
+      sessions: mod.sessions.map((sess, sIndex) => ({
+        ...sess,
+        unlockMode: sIndex === 0 ? 'manual' : mode,
+        isUnlocked: sIndex === 0 ? true : (mode === 'manual' ? sess.isUnlocked : false),
+      })),
+    })));
   };
 
   const handleNext = () => {
@@ -148,12 +190,14 @@ export function AssignCourseToClassDialog({
           moduleId: mod.moduleId,
           isUnlocked: mod.isUnlocked,
           unlockOrder: index + 1,
+          unlockMode: mod.unlockMode,
           sessions: mod.sessions
             .filter(sess => sess.isSelected)
             .map((sess, sessIndex) => ({
               sessionId: sess.sessionId,
               isUnlocked: sess.isUnlocked,
               unlockOrder: sessIndex + 1,
+              unlockMode: sess.unlockMode,
             })),
         })),
       });
@@ -184,6 +228,7 @@ export function AssignCourseToClassDialog({
     setCurrentStep(1);
     setSelectedCourseId(null);
     setModuleConfigs([]);
+    setGlobalUnlockMode('manual');
     onOpenChange(false);
   };
 
@@ -268,6 +313,37 @@ export function AssignCourseToClassDialog({
               </div>
             ) : (
               <>
+                {/* Global Unlock Mode Selector */}
+                <Card className="bg-muted/30">
+                  <CardContent className="py-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Link2 className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="font-medium text-sm">Unlock Mode</p>
+                          <p className="text-xs text-muted-foreground">
+                            Choose how modules and sessions are unlocked
+                          </p>
+                        </div>
+                      </div>
+                      <Select value={globalUnlockMode} onValueChange={(v) => applyGlobalUnlockMode(v as UnlockMode)}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="manual">Manual Unlock</SelectItem>
+                          <SelectItem value="sequential">Auto Sequential</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {globalUnlockMode === 'sequential' && (
+                      <p className="text-xs text-muted-foreground mt-2 pl-7">
+                        Next module/session unlocks automatically when previous one is completed
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+
                 <div className="flex justify-between items-center">
                   <p className="text-sm text-muted-foreground">
                     {selectedModules.length} of {moduleConfigs.length} modules selected
@@ -290,7 +366,7 @@ export function AssignCourseToClassDialog({
                   </div>
                 </div>
 
-                <ScrollArea className="h-[500px]">
+                <ScrollArea className="h-[400px]">
                   <div className="space-y-4 pr-4">
                     {moduleConfigs.map((module, moduleIndex) => (
                       <Card 
@@ -312,22 +388,43 @@ export function AssignCourseToClassDialog({
                               </div>
                             </div>
                             {module.isSelected && (
-                              <div className="flex items-center gap-2">
-                                <Label className="text-sm text-muted-foreground">
-                                  {module.isUnlocked ? (
-                                    <span className="flex items-center gap-1 text-green-600">
-                                      <Unlock className="h-4 w-4" /> Unlocked
-                                    </span>
-                                  ) : (
-                                    <span className="flex items-center gap-1">
-                                      <Lock className="h-4 w-4" /> Locked
-                                    </span>
-                                  )}
-                                </Label>
-                                <Switch
-                                  checked={module.isUnlocked}
-                                  onCheckedChange={() => handleModuleUnlockToggle(module.moduleId)}
-                                />
+                              <div className="flex items-center gap-3">
+                                {module.unlockMode === 'sequential' && moduleIndex > 0 ? (
+                                  <Badge variant="outline" className="text-xs gap-1">
+                                    <Link2 className="h-3 w-3" />
+                                    Auto Unlock
+                                  </Badge>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <Label className="text-sm text-muted-foreground">
+                                      {module.isUnlocked ? (
+                                        <span className="flex items-center gap-1 text-green-600">
+                                          <Unlock className="h-4 w-4" /> Unlocked
+                                        </span>
+                                      ) : (
+                                        <span className="flex items-center gap-1">
+                                          <Lock className="h-4 w-4" /> Locked
+                                        </span>
+                                      )}
+                                    </Label>
+                                    <Switch
+                                      checked={module.isUnlocked}
+                                      onCheckedChange={() => handleModuleUnlockToggle(module.moduleId)}
+                                    />
+                                  </div>
+                                )}
+                                <Select 
+                                  value={module.unlockMode} 
+                                  onValueChange={(v) => handleModuleUnlockModeChange(module.moduleId, v as UnlockMode)}
+                                >
+                                  <SelectTrigger className="w-[130px] h-8 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="manual">Manual</SelectItem>
+                                    <SelectItem value="sequential">Sequential</SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </div>
                             )}
                           </div>
@@ -356,13 +453,35 @@ export function AssignCourseToClassDialog({
                                   </div>
                                   {session.isSelected && (
                                     <div className="flex items-center gap-2">
-                                      <span className="text-xs text-muted-foreground">
-                                        {session.isUnlocked ? 'Unlocked' : 'Locked'}
-                                      </span>
-                                      <Switch
-                                        checked={session.isUnlocked}
-                                        onCheckedChange={() => handleSessionUnlockToggle(module.moduleId, session.sessionId)}
-                                      />
+                                      {session.unlockMode === 'sequential' && sessionIndex > 0 ? (
+                                        <Badge variant="outline" className="text-xs gap-1">
+                                          <Link2 className="h-3 w-3" />
+                                          Auto
+                                        </Badge>
+                                      ) : (
+                                        <>
+                                          <span className="text-xs text-muted-foreground">
+                                            {session.isUnlocked ? 'Unlocked' : 'Locked'}
+                                          </span>
+                                          <Switch
+                                            checked={session.isUnlocked}
+                                            onCheckedChange={() => handleSessionUnlockToggle(module.moduleId, session.sessionId)}
+                                            className="scale-75"
+                                          />
+                                        </>
+                                      )}
+                                      <Select 
+                                        value={session.unlockMode} 
+                                        onValueChange={(v) => handleSessionUnlockModeChange(module.moduleId, session.sessionId, v as UnlockMode)}
+                                      >
+                                        <SelectTrigger className="w-[100px] h-7 text-xs">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="manual">Manual</SelectItem>
+                                          <SelectItem value="sequential">Sequential</SelectItem>
+                                        </SelectContent>
+                                      </Select>
                                     </div>
                                   )}
                                 </div>

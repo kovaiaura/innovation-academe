@@ -3,12 +3,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 // Types for class module/session assignments
+export type UnlockMode = 'manual' | 'sequential';
+
 export interface ClassModuleAssignment {
   id: string;
   class_assignment_id: string;
   module_id: string;
   is_unlocked: boolean;
   unlock_order: number;
+  unlock_mode: UnlockMode;
   created_at: string;
   updated_at: string;
   module?: {
@@ -26,6 +29,7 @@ export interface ClassSessionAssignment {
   session_id: string;
   is_unlocked: boolean;
   unlock_order: number;
+  unlock_mode: UnlockMode;
   created_at: string;
   updated_at: string;
   session?: {
@@ -95,6 +99,7 @@ export function useClassCourseAssignments(classId?: string) {
           module_id,
           is_unlocked,
           unlock_order,
+          unlock_mode,
           created_at,
           updated_at,
           course_modules (
@@ -122,6 +127,7 @@ export function useClassCourseAssignments(classId?: string) {
             session_id,
             is_unlocked,
             unlock_order,
+            unlock_mode,
             created_at,
             updated_at,
             course_sessions (
@@ -178,10 +184,12 @@ export function useAssignCourseToClass() {
         moduleId: string;
         isUnlocked: boolean;
         unlockOrder: number;
+        unlockMode: UnlockMode;
         sessions: {
           sessionId: string;
           isUnlocked: boolean;
           unlockOrder: number;
+          unlockMode: UnlockMode;
         }[];
       }[];
     }) => {
@@ -207,6 +215,7 @@ export function useAssignCourseToClass() {
             module_id: mod.moduleId,
             is_unlocked: mod.isUnlocked,
             unlock_order: mod.unlockOrder,
+            unlock_mode: mod.unlockMode,
           })
           .select()
           .single();
@@ -220,6 +229,7 @@ export function useAssignCourseToClass() {
             session_id: sess.sessionId,
             is_unlocked: sess.isUnlocked,
             unlock_order: sess.unlockOrder,
+            unlock_mode: sess.unlockMode,
           }));
 
           const { error: sessionError } = await supabase

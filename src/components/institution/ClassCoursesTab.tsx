@@ -23,7 +23,7 @@ import {
   useToggleSessionUnlock,
   ClassCourseAssignmentWithDetails 
 } from '@/hooks/useClassCourseAssignments';
-import { BookOpen, Plus, Lock, Unlock, MoreHorizontal, Trash2, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { BookOpen, Plus, Lock, Unlock, MoreHorizontal, Trash2, ChevronDown, ChevronRight, Loader2, Link2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
@@ -213,9 +213,16 @@ export function ClassCoursesTab({
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs text-muted-foreground">
-                                    {moduleAssignment.is_unlocked ? 'Unlocked' : 'Locked'}
-                                  </span>
+                                  {(moduleAssignment as any).unlock_mode === 'sequential' ? (
+                                    <Badge variant="outline" className="text-xs gap-1">
+                                      <Link2 className="h-3 w-3" />
+                                      Sequential
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">
+                                      {moduleAssignment.is_unlocked ? 'Unlocked' : 'Locked'}
+                                    </span>
+                                  )}
                                   <Switch
                                     checked={moduleAssignment.is_unlocked}
                                     onCheckedChange={() => handleModuleUnlockToggle(
@@ -245,9 +252,16 @@ export function ClassCoursesTab({
                                         </span>
                                       </div>
                                       <div className="flex items-center gap-2">
-                                        <span className="text-xs text-muted-foreground">
-                                          {sessionAssignment.is_unlocked ? 'Unlocked' : 'Locked'}
-                                        </span>
+                                        {(sessionAssignment as any).unlock_mode === 'sequential' ? (
+                                          <Badge variant="outline" className="text-xs gap-1">
+                                            <Link2 className="h-3 w-3" />
+                                            Sequential
+                                          </Badge>
+                                        ) : (
+                                          <span className="text-xs text-muted-foreground">
+                                            {sessionAssignment.is_unlocked ? 'Unlocked' : 'Locked'}
+                                          </span>
+                                        )}
                                         <Switch
                                           checked={sessionAssignment.is_unlocked}
                                           onCheckedChange={() => handleSessionUnlockToggle(
