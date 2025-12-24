@@ -9,22 +9,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Plus, Trash2, Save, X, Layers, PlayCircle, FileText } from 'lucide-react';
+import { Plus, Trash2, Save, Layers, PlayCircle, FileText } from 'lucide-react';
 import { toast } from 'sonner';
-import { Course, CourseModule, CourseSession, CourseContent, CourseCategory, CourseDifficulty, CourseStatus } from '@/types/course';
 import { 
-  getCourseById, 
-  updateCourse, 
-  getLevelsByCourse, 
-  saveLevels,
-  getSessionsByLevel,
-  saveSessions,
-  getContentBySession,
-  saveContent,
-  loadLevels,
-  loadSessions,
-  loadContent
-} from '@/utils/courseDataHelpers';
+  useCourseById, 
+  useUpdateCourse, 
+  useUpdateModule, 
+  useDeleteModule,
+  useUpdateSession,
+  useDeleteSession,
+  useUpdateContent,
+  useDeleteContent,
+  DbCourseModule,
+  DbCourseSession,
+  DbCourseContent
+} from '@/hooks/useCourses';
 
 interface EditCourseDialogProps {
   open: boolean;
@@ -33,203 +32,141 @@ interface EditCourseDialogProps {
   onSave?: () => void;
 }
 
-const categoryOptions: { value: CourseCategory; label: string }[] = [
-  { value: 'electronics', label: 'Electronics' },
-  { value: 'iot', label: 'IoT' },
-  { value: 'robotics', label: 'Robotics' },
-  { value: 'ai_ml', label: 'AI/ML' },
-  { value: 'data_science', label: 'Data Science' },
-  { value: 'ar_vr', label: 'AR/VR/XR' },
-  { value: 'blockchain', label: 'Blockchain' },
-  { value: 'drones', label: 'Drones' },
-  { value: 'cybersecurity', label: 'Cybersecurity' },
-  { value: 'design_thinking', label: 'Design Thinking' },
-  { value: 'product_design', label: 'Product Design' },
-  { value: 'prototyping', label: 'Prototyping' },
-  { value: 'environmental_tech', label: 'Environmental Tech' },
-  { value: 'sdg', label: 'SDG' },
-  { value: 'ethics', label: 'Ethics' },
-  { value: 'etiquettes', label: 'Etiquettes' },
-  { value: 'human_values', label: 'Human Values' },
-  { value: 'digital_media', label: 'Digital Media' },
-  { value: 'communication', label: 'Communication' },
-  { value: 'prompt_engineering', label: 'Prompt Engineering' },
-  { value: 'entrepreneurship', label: 'Entrepreneurship' },
-  { value: 'financial_literacy', label: 'Financial Literacy' },
-  { value: 'career_prep', label: 'Career Preparation' },
-];
-
 export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditCourseDialogProps) {
   const [activeTab, setActiveTab] = useState('basic');
-  const [course, setCourse] = useState<Course | null>(null);
-  const [levels, setLevels] = useState<CourseModule[]>([]);
-  const [sessions, setSessions] = useState<CourseSession[]>([]);
-  const [content, setContent] = useState<CourseContent[]>([]);
   const [selectedLevelId, setSelectedLevelId] = useState<string | null>(null);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  
+  // Local state for editing
+  const [courseTitle, setCourseTitle] = useState('');
+  const [courseCode, setCourseCode] = useState('');
+  const [description, setDescription] = useState('');
+  const [prerequisites, setPrerequisites] = useState('');
+  const [status, setStatus] = useState('draft');
+  const [learningOutcomes, setLearningOutcomes] = useState<string[]>([]);
+
+  const { data: course, isLoading } = useCourseById(open ? courseId : null);
+  const updateCourse = useUpdateCourse();
+  const updateModule = useUpdateModule();
+  const deleteModule = useDeleteModule();
+  const updateSession = useUpdateSession();
+  const deleteSession = useDeleteSession();
+  const updateContent = useUpdateContent();
+  const deleteContent = useDeleteContent();
 
   useEffect(() => {
-    if (open && courseId) {
-      const courseData = getCourseById(courseId);
-      if (courseData) {
-        setCourse(courseData);
-        const courseLevels = getLevelsByCourse(courseId);
-        setLevels(courseLevels);
-        
-        // Load all sessions for this course
-        const allSessions = loadSessions().filter(s => s.course_id === courseId);
-        setSessions(allSessions);
-        
-        // Load all content for this course
-        const allContent = loadContent().filter(c => c.course_id === courseId);
-        setContent(allContent);
-        
-        if (courseLevels.length > 0) {
-          setSelectedLevelId(courseLevels[0].id);
-        }
+    if (course) {
+      setCourseTitle(course.title);
+      setCourseCode(course.course_code);
+      setDescription(course.description || '');
+      setPrerequisites(course.prerequisites || '');
+      setStatus(course.status);
+      setLearningOutcomes(course.learning_outcomes || []);
+      
+      if (course.modules?.length > 0 && !selectedLevelId) {
+        setSelectedLevelId(course.modules[0].id);
       }
     }
-  }, [open, courseId]);
+  }, [course]);
 
-  const handleSave = () => {
-    if (!course) return;
+  const handleSave = async () => {
+    if (!courseId) return;
 
-    // Save course
-    updateCourse(course.id, course);
-    
-    // Save levels - update global list
-    const allLevels = loadLevels();
-    const otherLevels = allLevels.filter(l => l.course_id !== course.id);
-    saveLevels([...otherLevels, ...levels]);
-    
-    // Save sessions
-    const allSessions = loadSessions();
-    const otherSessions = allSessions.filter(s => s.course_id !== course.id);
-    saveSessions([...otherSessions, ...sessions]);
-    
-    // Save content
-    const allContent = loadContent();
-    const otherContent = allContent.filter(c => c.course_id !== course.id);
-    saveContent([...otherContent, ...content]);
-
-    toast.success('Course updated successfully!');
-    onSave?.();
-    onOpenChange(false);
-  };
-
-  const updateCourseField = (field: keyof Course, value: any) => {
-    if (!course) return;
-    setCourse({ ...course, [field]: value });
+    try {
+      await updateCourse.mutateAsync({
+        courseId,
+        updates: {
+          title: courseTitle,
+          course_code: courseCode,
+          description,
+          prerequisites,
+          status,
+          learning_outcomes: learningOutcomes
+        }
+      });
+      onSave?.();
+      onOpenChange(false);
+    } catch (error) {
+      // Error handled by hook
+    }
   };
 
   const addLearningOutcome = () => {
-    if (!course) return;
-    setCourse({ ...course, learning_outcomes: [...course.learning_outcomes, ''] });
+    setLearningOutcomes([...learningOutcomes, '']);
   };
 
   const updateLearningOutcome = (index: number, value: string) => {
-    if (!course) return;
-    const outcomes = [...course.learning_outcomes];
+    const outcomes = [...learningOutcomes];
     outcomes[index] = value;
-    setCourse({ ...course, learning_outcomes: outcomes });
+    setLearningOutcomes(outcomes);
   };
 
   const removeLearningOutcome = (index: number) => {
-    if (!course) return;
-    setCourse({ 
-      ...course, 
-      learning_outcomes: course.learning_outcomes.filter((_, i) => i !== index) 
+    setLearningOutcomes(learningOutcomes.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateModule = async (moduleId: string, field: keyof DbCourseModule, value: any) => {
+    if (!courseId) return;
+    await updateModule.mutateAsync({
+      moduleId,
+      courseId,
+      updates: { [field]: value }
     });
   };
 
-  // Level management
-  const addLevel = () => {
-    if (!course) return;
-    const newLevel: CourseModule = {
-      id: `level-${Date.now()}`,
-      course_id: course.id,
-      title: '',
-      description: '',
-      order: levels.length + 1,
-      created_at: new Date().toISOString(),
-    };
-    setLevels([...levels, newLevel]);
-    setSelectedLevelId(newLevel.id);
-  };
-
-  const updateLevel = (levelId: string, field: keyof CourseModule, value: any) => {
-    setLevels(levels.map(l => l.id === levelId ? { ...l, [field]: value } : l));
-  };
-
-  const deleteLevel = (levelId: string) => {
-    setLevels(levels.filter(l => l.id !== levelId));
-    setSessions(sessions.filter(s => s.module_id !== levelId));
-    setContent(content.filter(c => c.module_id !== levelId));
-    if (selectedLevelId === levelId) {
-      setSelectedLevelId(levels[0]?.id || null);
+  const handleDeleteModule = async (moduleId: string) => {
+    if (!courseId) return;
+    await deleteModule.mutateAsync({ moduleId, courseId });
+    if (selectedLevelId === moduleId) {
+      setSelectedLevelId(course?.modules?.[0]?.id || null);
     }
   };
 
-  // Session management
-  const addSession = () => {
-    if (!course || !selectedLevelId) return;
-    const levelSessions = sessions.filter(s => s.module_id === selectedLevelId);
-    const newSession: CourseSession = {
-      id: `session-${Date.now()}`,
-      course_id: course.id,
-      module_id: selectedLevelId,
-      title: '',
-      description: '',
-      order: levelSessions.length + 1,
-      duration_minutes: 45,
-      learning_objectives: [],
-      created_at: new Date().toISOString(),
-    };
-    setSessions([...sessions, newSession]);
-    setSelectedSessionId(newSession.id);
+  const handleUpdateSession = async (sessionId: string, field: keyof DbCourseSession, value: any) => {
+    if (!courseId) return;
+    await updateSession.mutateAsync({
+      sessionId,
+      courseId,
+      updates: { [field]: value }
+    });
   };
 
-  const updateSession = (sessionId: string, field: keyof CourseSession, value: any) => {
-    setSessions(sessions.map(s => s.id === sessionId ? { ...s, [field]: value } : s));
-  };
-
-  const deleteSession = (sessionId: string) => {
-    setSessions(sessions.filter(s => s.id !== sessionId));
-    setContent(content.filter(c => c.session_id !== sessionId));
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!courseId) return;
+    await deleteSession.mutateAsync({ sessionId, courseId });
     if (selectedSessionId === sessionId) {
       setSelectedSessionId(null);
     }
   };
 
-  // Content management
-  const addContentItem = () => {
-    if (!course || !selectedLevelId || !selectedSessionId) return;
-    const sessionContent = content.filter(c => c.session_id === selectedSessionId);
-    const newContent: CourseContent = {
-      id: `content-${Date.now()}`,
-      course_id: course.id,
-      module_id: selectedLevelId,
-      session_id: selectedSessionId,
-      title: '',
-      type: 'pdf',
-      order: sessionContent.length + 1,
-      views_count: 0,
-      created_at: new Date().toISOString(),
-    };
-    setContent([...content, newContent]);
+  const handleUpdateContent = async (contentId: string, field: keyof DbCourseContent, value: any) => {
+    if (!courseId) return;
+    await updateContent.mutateAsync({
+      contentId,
+      courseId,
+      updates: { [field]: value }
+    });
   };
 
-  const updateContentItem = (contentId: string, field: keyof CourseContent, value: any) => {
-    setContent(content.map(c => c.id === contentId ? { ...c, [field]: value } : c));
+  const handleDeleteContent = async (contentId: string) => {
+    if (!courseId) return;
+    await deleteContent.mutateAsync({ contentId, courseId });
   };
 
-  const deleteContentItem = (contentId: string) => {
-    setContent(content.filter(c => c.id !== contentId));
-  };
-
+  const levels = course?.modules || [];
   const selectedLevel = levels.find(l => l.id === selectedLevelId);
-  const levelSessions = sessions.filter(s => s.module_id === selectedLevelId).sort((a, b) => a.order - b.order);
-  const sessionContent = content.filter(c => c.session_id === selectedSessionId).sort((a, b) => a.order - b.order);
+  const levelSessions = selectedLevel?.sessions || [];
+  const sessionContent = levelSessions.find(s => s.id === selectedSessionId)?.content || [];
+
+  if (isLoading) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-5xl h-[90vh] flex items-center justify-center">
+          <p>Loading course data...</p>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   if (!course) return null;
 
@@ -240,8 +177,8 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
           <div className="flex items-center justify-between">
             <DialogTitle>Edit Course: {course.title}</DialogTitle>
             <div className="flex items-center gap-2">
-              <Badge variant={course.status === 'active' ? 'default' : 'secondary'}>
-                {course.status}
+              <Badge variant={status === 'active' ? 'default' : 'secondary'}>
+                {status}
               </Badge>
             </div>
           </div>
@@ -250,7 +187,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
           <TabsList className="mx-4 grid grid-cols-4">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
-            <TabsTrigger value="levels">Levels ({levels.length})</TabsTrigger>
+            <TabsTrigger value="levels">Modules ({levels.length})</TabsTrigger>
             <TabsTrigger value="sessions">Sessions</TabsTrigger>
             <TabsTrigger value="content">Content</TabsTrigger>
           </TabsList>
@@ -262,15 +199,15 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
                 <div className="space-y-2">
                   <Label>Course Code</Label>
                   <Input
-                    value={course.course_code}
-                    onChange={(e) => updateCourseField('course_code', e.target.value)}
+                    value={courseCode}
+                    onChange={(e) => setCourseCode(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Course Title</Label>
                   <Input
-                    value={course.title}
-                    onChange={(e) => updateCourseField('title', e.target.value)}
+                    value={courseTitle}
+                    onChange={(e) => setCourseTitle(e.target.value)}
                   />
                 </div>
               </div>
@@ -278,71 +215,23 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
               <div className="space-y-2">
                 <Label>Description</Label>
                 <Textarea
-                  value={course.description}
-                  onChange={(e) => updateCourseField('description', e.target.value)}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                   rows={4}
                 />
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Select
-                    value={course.category}
-                    onValueChange={(value) => updateCourseField('category', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categoryOptions.map((cat) => (
-                        <SelectItem key={cat.value} value={cat.value}>
-                          {cat.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Difficulty</Label>
-                  <Select
-                    value={course.difficulty}
-                    onValueChange={(value) => updateCourseField('difficulty', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="beginner">Beginner</SelectItem>
-                      <SelectItem value="intermediate">Intermediate</SelectItem>
-                      <SelectItem value="advanced">Advanced</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Duration (weeks)</Label>
-                  <Input
-                    type="number"
-                    value={course.duration_weeks}
-                    onChange={(e) => updateCourseField('duration_weeks', parseInt(e.target.value) || 0)}
-                  />
-                </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Prerequisites</Label>
                   <Input
-                    value={course.prerequisites || ''}
-                    onChange={(e) => updateCourseField('prerequisites', e.target.value)}
+                    value={prerequisites}
+                    onChange={(e) => setPrerequisites(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Status</Label>
-                  <Select
-                    value={course.status}
-                    onValueChange={(value) => updateCourseField('status', value)}
-                  >
+                  <Select value={status} onValueChange={setStatus}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -363,7 +252,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
                     Add
                   </Button>
                 </div>
-                {course.learning_outcomes.map((outcome, index) => (
+                {learningOutcomes.map((outcome, index) => (
                   <div key={index} className="flex items-center gap-2">
                     <Input
                       value={outcome}
@@ -385,11 +274,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
             {/* Levels Tab */}
             <TabsContent value="levels" className="p-4 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold">Course Levels</h3>
-                <Button onClick={addLevel}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Level
-                </Button>
+                <h3 className="font-semibold">Course Modules</h3>
               </div>
 
               <div className="space-y-3">
@@ -398,22 +283,22 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
                     <div className="flex items-start gap-4">
                       <div className="flex items-center gap-2">
                         <Layers className="h-5 w-5 text-primary" />
-                        <span className="font-medium">Level {index + 1}</span>
+                        <span className="font-medium">Module {index + 1}</span>
                       </div>
                       <div className="flex-1 grid gap-3 md:grid-cols-2">
                         <div className="space-y-1">
                           <Label className="text-xs">Title</Label>
                           <Input
                             value={level.title}
-                            onChange={(e) => updateLevel(level.id, 'title', e.target.value)}
-                            placeholder="Level title"
+                            onChange={(e) => handleUpdateModule(level.id, 'title', e.target.value)}
+                            placeholder="Module title"
                           />
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs">Description</Label>
                           <Input
-                            value={level.description}
-                            onChange={(e) => updateLevel(level.id, 'description', e.target.value)}
+                            value={level.description || ''}
+                            onChange={(e) => handleUpdateModule(level.id, 'description', e.target.value)}
                             placeholder="Brief description"
                           />
                         </div>
@@ -421,7 +306,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => deleteLevel(level.id)}
+                        onClick={() => handleDeleteModule(level.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -436,7 +321,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
               <div className="grid grid-cols-3 gap-4 h-[500px]">
                 {/* Level Selection */}
                 <div className="border rounded-lg p-3 space-y-2">
-                  <h4 className="font-medium text-sm">Select Level</h4>
+                  <h4 className="font-medium text-sm">Select Module</h4>
                   {levels.map((level, index) => (
                     <Button
                       key={level.id}
@@ -448,69 +333,54 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
                       }}
                     >
                       <Layers className="h-4 w-4 mr-2" />
-                      Level {index + 1}: {level.title || 'Untitled'}
+                      Module {index + 1}: {level.title || 'Untitled'}
                     </Button>
                   ))}
                 </div>
 
                 {/* Sessions List */}
-                <div className="border rounded-lg p-3 space-y-2 col-span-2">
-                  <div className="flex items-center justify-between">
+                <div className="col-span-2 border rounded-lg p-3 space-y-2 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-sm">
-                      Sessions {selectedLevel ? `for Level: ${selectedLevel.title || 'Untitled'}` : ''}
+                      Sessions in {selectedLevel?.title || 'Module'}
                     </h4>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={addSession}
-                      disabled={!selectedLevelId}
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Add Session
-                    </Button>
                   </div>
-
-                  <div className="space-y-2">
-                    {levelSessions.map((session, index) => (
+                  {levelSessions.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No sessions in this module</p>
+                  ) : (
+                    levelSessions.map((session, index) => (
                       <Card key={session.id} className="p-3">
                         <div className="flex items-start gap-3">
                           <PlayCircle className="h-4 w-4 text-blue-500 mt-1" />
-                          <div className="flex-1 grid gap-2 md:grid-cols-2">
+                          <div className="flex-1 space-y-2">
                             <div className="space-y-1">
                               <Label className="text-xs">Title</Label>
                               <Input
                                 value={session.title}
-                                onChange={(e) => updateSession(session.id, 'title', e.target.value)}
+                                onChange={(e) => handleUpdateSession(session.id, 'title', e.target.value)}
                                 placeholder="Session title"
                               />
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-xs">Duration (min)</Label>
+                              <Label className="text-xs">Description</Label>
                               <Input
-                                type="number"
-                                value={session.duration_minutes || ''}
-                                onChange={(e) => updateSession(session.id, 'duration_minutes', parseInt(e.target.value) || 0)}
+                                value={session.description || ''}
+                                onChange={(e) => handleUpdateSession(session.id, 'description', e.target.value)}
+                                placeholder="Session description"
                               />
                             </div>
                           </div>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setSelectedSessionId(session.id)}
-                          >
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteSession(session.id)}
+                            onClick={() => handleDeleteSession(session.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </Card>
-                    ))}
-                  </div>
+                    ))
+                  )}
                 </div>
               </div>
             </TabsContent>
@@ -519,134 +389,121 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
             <TabsContent value="content" className="p-4">
               <div className="grid grid-cols-4 gap-4 h-[500px]">
                 {/* Level Selection */}
-                <div className="border rounded-lg p-3 space-y-2 overflow-auto">
-                  <h4 className="font-medium text-sm">Levels</h4>
+                <div className="border rounded-lg p-3 space-y-2 overflow-y-auto">
+                  <h4 className="font-medium text-sm">Modules</h4>
                   {levels.map((level, index) => (
                     <Button
                       key={level.id}
                       variant={selectedLevelId === level.id ? 'default' : 'ghost'}
                       className="w-full justify-start text-left text-xs"
-                      size="sm"
                       onClick={() => {
                         setSelectedLevelId(level.id);
                         setSelectedSessionId(null);
                       }}
                     >
-                      L{index + 1}: {level.title || 'Untitled'}
+                      <Layers className="h-3 w-3 mr-1" />
+                      {level.title || `Module ${index + 1}`}
                     </Button>
                   ))}
                 </div>
 
                 {/* Session Selection */}
-                <div className="border rounded-lg p-3 space-y-2 overflow-auto">
+                <div className="border rounded-lg p-3 space-y-2 overflow-y-auto">
                   <h4 className="font-medium text-sm">Sessions</h4>
                   {levelSessions.map((session, index) => (
                     <Button
                       key={session.id}
                       variant={selectedSessionId === session.id ? 'default' : 'ghost'}
                       className="w-full justify-start text-left text-xs"
-                      size="sm"
                       onClick={() => setSelectedSessionId(session.id)}
                     >
-                      S{index + 1}: {session.title || 'Untitled'}
+                      <PlayCircle className="h-3 w-3 mr-1" />
+                      {session.title || `Session ${index + 1}`}
                     </Button>
                   ))}
                 </div>
 
                 {/* Content List */}
-                <div className="border rounded-lg p-3 space-y-2 col-span-2 overflow-auto">
-                  <div className="flex items-center justify-between">
+                <div className="col-span-2 border rounded-lg p-3 space-y-2 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-sm">Content Items</h4>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={addContentItem}
-                      disabled={!selectedSessionId}
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Add Content
-                    </Button>
                   </div>
-
-                  <div className="space-y-2">
-                    {sessionContent.map((item) => (
-                      <Card key={item.id} className="p-3">
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Badge variant="outline">{item.type}</Badge>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteContentItem(item.id)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                  {!selectedSessionId ? (
+                    <p className="text-sm text-muted-foreground">Select a session to view content</p>
+                  ) : sessionContent.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No content in this session</p>
+                  ) : (
+                    sessionContent.map((content) => (
+                      <Card key={content.id} className="p-3">
+                        <div className="flex items-start gap-3">
+                          <FileText className="h-4 w-4 text-orange-500 mt-1" />
+                          <div className="flex-1 space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Title</Label>
+                                <Input
+                                  value={content.title}
+                                  onChange={(e) => handleUpdateContent(content.id, 'title', e.target.value)}
+                                  placeholder="Content title"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Type</Label>
+                                <Select
+                                  value={content.type}
+                                  onValueChange={(value) => handleUpdateContent(content.id, 'type', value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="pdf">PDF</SelectItem>
+                                    <SelectItem value="ppt">PowerPoint</SelectItem>
+                                    <SelectItem value="youtube">YouTube</SelectItem>
+                                    <SelectItem value="video">Video</SelectItem>
+                                    <SelectItem value="link">Link</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            {content.type === 'youtube' && (
+                              <div className="space-y-1">
+                                <Label className="text-xs">YouTube URL</Label>
+                                <Input
+                                  value={content.youtube_url || ''}
+                                  onChange={(e) => handleUpdateContent(content.id, 'youtube_url', e.target.value)}
+                                  placeholder="https://youtube.com/..."
+                                />
+                              </div>
+                            )}
                           </div>
-                          <div className="grid gap-2 md:grid-cols-2">
-                            <div className="space-y-1">
-                              <Label className="text-xs">Title</Label>
-                              <Input
-                                value={item.title}
-                                onChange={(e) => updateContentItem(item.id, 'title', e.target.value)}
-                                placeholder="Content title"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Type</Label>
-                              <Select
-                                value={item.type}
-                                onValueChange={(value) => updateContentItem(item.id, 'type', value)}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="pdf">PDF</SelectItem>
-                                  <SelectItem value="ppt">PowerPoint</SelectItem>
-                                  <SelectItem value="video">Video</SelectItem>
-                                  <SelectItem value="youtube">YouTube</SelectItem>
-                                  <SelectItem value="link">Link</SelectItem>
-                                  <SelectItem value="simulation">Simulation</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                          {['youtube', 'link', 'simulation'].includes(item.type) && (
-                            <div className="space-y-1">
-                              <Label className="text-xs">URL</Label>
-                              <Input
-                                value={item.youtube_url || item.external_url || ''}
-                                onChange={(e) => {
-                                  if (item.type === 'youtube') {
-                                    updateContentItem(item.id, 'youtube_url', e.target.value);
-                                  } else {
-                                    updateContentItem(item.id, 'external_url', e.target.value);
-                                  }
-                                }}
-                                placeholder="https://..."
-                              />
-                            </div>
-                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteContent(content.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </Card>
-                    ))}
-                  </div>
+                    ))
+                  )}
                 </div>
               </div>
             </TabsContent>
           </ScrollArea>
-        </Tabs>
 
-        {/* Footer */}
-        <div className="p-4 border-t flex items-center justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave}>
-            <Save className="h-4 w-4 mr-2" />
-            Save Changes
-          </Button>
-        </div>
+          {/* Footer */}
+          <div className="p-4 border-t flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={updateCourse.isPending}>
+              <Save className="h-4 w-4 mr-2" />
+              Save Changes
+            </Button>
+          </div>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

@@ -7,7 +7,6 @@ import { Separator } from '@/components/ui/separator';
 import {
   ChevronLeft,
   ChevronRight,
-  X,
   Layers,
   PlayCircle,
   FileText,
@@ -15,16 +14,14 @@ import {
   Link as LinkIcon,
   Youtube,
   Presentation,
-  Clock,
   BookOpen,
 } from 'lucide-react';
-import { Course, CourseModule, CourseSession, CourseContent } from '@/types/course';
-import { getLevelsByCourse, getSessionsByLevel, getContentBySession } from '@/utils/courseDataHelpers';
+import { CourseWithStructure, DbCourseModule, DbCourseSession, DbCourseContent } from '@/hooks/useCourses';
 
 interface CoursePreviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  course: Course | null;
+  course: CourseWithStructure | null;
 }
 
 export function CoursePreviewDialog({ open, onOpenChange, course }: CoursePreviewDialogProps) {
@@ -35,11 +32,11 @@ export function CoursePreviewDialog({ open, onOpenChange, course }: CoursePrevie
 
   if (!course) return null;
 
-  const levels = getLevelsByCourse(course.id);
+  const levels = course.modules || [];
   const currentLevel = levels[currentLevelIndex];
-  const sessions = currentLevel ? getSessionsByLevel(currentLevel.id) : [];
+  const sessions = currentLevel?.sessions || [];
   const currentSession = sessions[currentSessionIndex];
-  const contentItems = currentSession ? getContentBySession(currentSession.id) : [];
+  const contentItems = currentSession?.content || [];
   const currentContent = contentItems[currentContentIndex];
 
   const getContentIcon = (type: string) => {
@@ -79,36 +76,35 @@ export function CoursePreviewDialog({ open, onOpenChange, course }: CoursePrevie
     } else if (currentSessionIndex > 0) {
       setCurrentSessionIndex(currentSessionIndex - 1);
       const prevSession = sessions[currentSessionIndex - 1];
-      const prevContent = prevSession ? getContentBySession(prevSession.id) : [];
-      setCurrentContentIndex(prevContent.length - 1);
+      const prevContent = prevSession?.content || [];
+      setCurrentContentIndex(Math.max(0, prevContent.length - 1));
     } else if (currentLevelIndex > 0) {
       setCurrentLevelIndex(currentLevelIndex - 1);
       const prevLevel = levels[currentLevelIndex - 1];
-      const prevSessions = prevLevel ? getSessionsByLevel(prevLevel.id) : [];
-      setCurrentSessionIndex(prevSessions.length - 1);
+      const prevSessions = prevLevel?.sessions || [];
+      setCurrentSessionIndex(Math.max(0, prevSessions.length - 1));
       const lastSession = prevSessions[prevSessions.length - 1];
-      const lastContent = lastSession ? getContentBySession(lastSession.id) : [];
-      setCurrentContentIndex(lastContent.length - 1);
+      const lastContent = lastSession?.content || [];
+      setCurrentContentIndex(Math.max(0, lastContent.length - 1));
     }
   };
 
   const totalContent = levels.reduce((acc, level) => {
-    const levelSessions = getSessionsByLevel(level.id);
-    return acc + levelSessions.reduce((sAcc, session) => {
-      return sAcc + getContentBySession(session.id).length;
+    return acc + (level.sessions || []).reduce((sAcc, session) => {
+      return sAcc + (session.content || []).length;
     }, 0);
   }, 0);
 
   const currentPosition = (() => {
     let pos = 0;
     for (let li = 0; li < currentLevelIndex; li++) {
-      const levelSessions = getSessionsByLevel(levels[li].id);
+      const levelSessions = levels[li]?.sessions || [];
       for (const session of levelSessions) {
-        pos += getContentBySession(session.id).length;
+        pos += (session.content || []).length;
       }
     }
     for (let si = 0; si < currentSessionIndex; si++) {
-      pos += getContentBySession(sessions[si].id).length;
+      pos += (sessions[si]?.content || []).length;
     }
     pos += currentContentIndex + 1;
     return pos;
@@ -123,7 +119,7 @@ export function CoursePreviewDialog({ open, onOpenChange, course }: CoursePrevie
             <div>
               <DialogTitle className="text-xl">{course.title}</DialogTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                {course.course_code} • {levels.length} Levels • {totalContent} Content Items
+                {course.course_code} • {levels.length} Modules • {totalContent} Content Items
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -161,10 +157,9 @@ export function CoursePreviewDialog({ open, onOpenChange, course }: CoursePrevie
                   </div>
                   <div className="flex gap-4">
                     <Badge variant="secondary">{course.difficulty}</Badge>
-                    <Badge variant="outline">{course.duration_weeks} weeks</Badge>
-                    <Badge variant="outline">{course.category.replace('_', ' ')}</Badge>
+                    <Badge variant="outline">{course.category?.replace('_', ' ')}</Badge>
                   </div>
-                  {course.learning_outcomes.length > 0 && (
+                  {course.learning_outcomes && course.learning_outcomes.length > 0 && (
                     <div>
                       <h3 className="font-semibold mb-2">Learning Outcomes</h3>
                       <ul className="list-disc list-inside space-y-1 text-muted-foreground">
@@ -182,14 +177,14 @@ export function CoursePreviewDialog({ open, onOpenChange, course }: CoursePrevie
                 <div className="space-y-4">
                   <h3 className="font-semibold text-lg">Course Structure</h3>
                   {levels.map((level, levelIdx) => {
-                    const levelSessions = getSessionsByLevel(level.id);
+                    const levelSessions = level.sessions || [];
                     return (
                       <div key={level.id} className="border rounded-lg p-4 space-y-3">
                         <div className="flex items-center gap-3">
                           <Layers className="h-5 w-5 text-primary" />
                           <div>
                             <h4 className="font-medium">
-                              Level {levelIdx + 1}: {level.title}
+                              Module {levelIdx + 1}: {level.title}
                             </h4>
                             <p className="text-sm text-muted-foreground">{level.description}</p>
                           </div>
@@ -199,7 +194,7 @@ export function CoursePreviewDialog({ open, onOpenChange, course }: CoursePrevie
                         </div>
 
                         {levelSessions.map((session, sessionIdx) => {
-                          const sessionContent = getContentBySession(session.id);
+                          const sessionContent = session.content || [];
                           return (
                             <div key={session.id} className="ml-8 border-l-2 pl-4 py-2">
                               <div className="flex items-center gap-2">
@@ -207,12 +202,6 @@ export function CoursePreviewDialog({ open, onOpenChange, course }: CoursePrevie
                                 <span className="font-medium text-sm">
                                   Session {sessionIdx + 1}: {session.title}
                                 </span>
-                                {session.duration_minutes && (
-                                  <Badge variant="outline" className="text-xs">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    {session.duration_minutes} min
-                                  </Badge>
-                                )}
                               </div>
                               {sessionContent.length > 0 && (
                                 <div className="mt-2 ml-6 space-y-1">
@@ -246,7 +235,7 @@ export function CoursePreviewDialog({ open, onOpenChange, course }: CoursePrevie
               <div className="p-3 border-b bg-muted/30 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <span className="text-sm font-medium">
-                    Level {currentLevelIndex + 1}: {currentLevel?.title}
+                    Module {currentLevelIndex + 1}: {currentLevel?.title}
                   </span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">
@@ -280,9 +269,9 @@ export function CoursePreviewDialog({ open, onOpenChange, course }: CoursePrevie
                         />
                       </div>
                     )}
-                    {currentContent.file_url && (
+                    {currentContent.file_path && (
                       <p className="text-muted-foreground">
-                        File: {currentContent.file_url}
+                        File: {currentContent.file_path}
                       </p>
                     )}
                   </div>
