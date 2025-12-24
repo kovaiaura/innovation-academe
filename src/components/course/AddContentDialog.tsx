@@ -5,72 +5,113 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ContentType } from '@/types/course';
 import { toast } from 'sonner';
+import { Loader2, Upload } from 'lucide-react';
+import { uploadCourseContent } from '@/services/courseStorage.service';
+
+type ContentType = 'pdf' | 'ppt' | 'youtube';
 
 interface AddContentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (content: any) => void;
+  onSave: (content: {
+    title: string;
+    type: ContentType;
+    file_path?: string;
+    youtube_url?: string;
+    duration_minutes?: number;
+    file_size_mb?: number;
+  }) => void;
   sessionName: string;
+  courseId: string;
 }
 
-export function AddContentDialog({ open, onOpenChange, onSave, sessionName }: AddContentDialogProps) {
+export function AddContentDialog({ 
+  open, 
+  onOpenChange, 
+  onSave, 
+  sessionName,
+  courseId 
+}: AddContentDialogProps) {
   const [contentType, setContentType] = useState<ContentType>('pdf');
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
   const [url, setUrl] = useState('');
   const [duration, setDuration] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!title.trim()) {
       toast.error('Please enter a title');
       return;
     }
 
-    if (['pdf', 'ppt', 'video'].includes(contentType) && !file) {
+    if (['pdf', 'ppt'].includes(contentType) && !file) {
       toast.error('Please upload a file');
       return;
     }
 
-    if (['youtube', 'link', 'simulation'].includes(contentType) && !url.trim()) {
-      toast.error('Please enter a URL');
+    if (contentType === 'youtube' && !url.trim()) {
+      toast.error('Please enter a YouTube URL');
       return;
     }
 
-    const contentData: any = {
-      title: title.trim(),
-      type: contentType,
-      description: description.trim()
-    };
+    try {
+      setIsUploading(true);
 
-    if (file) {
-      contentData.file_url = `/files/${file.name}`;
-      contentData.file_size_mb = file.size / (1024 * 1024);
-    }
+      let filePath: string | undefined;
+      let fileSizeMb: number | undefined;
 
-    if (url) {
-      if (contentType === 'youtube') {
-        contentData.youtube_url = url;
-      } else {
-        contentData.external_url = url;
+      // Upload file if it's PDF or PPT
+      if (['pdf', 'ppt'].includes(contentType) && file) {
+        const uploadResult = await uploadCourseContent(
+          file, 
+          courseId, 
+          contentType as 'pdf' | 'ppt'
+        );
+        filePath = uploadResult.path;
+        fileSizeMb = uploadResult.fileSizeMb;
       }
-    }
 
-    if (duration) {
-      contentData.duration_minutes = parseInt(duration);
-    }
+      const contentData: {
+        title: string;
+        type: ContentType;
+        file_path?: string;
+        youtube_url?: string;
+        duration_minutes?: number;
+        file_size_mb?: number;
+      } = {
+        title: title.trim(),
+        type: contentType,
+      };
 
-    onSave(contentData);
-    resetForm();
-    onOpenChange(false);
+      if (filePath) {
+        contentData.file_path = filePath;
+        contentData.file_size_mb = fileSizeMb;
+      }
+
+      if (contentType === 'youtube' && url) {
+        contentData.youtube_url = url;
+      }
+
+      if (duration) {
+        contentData.duration_minutes = parseInt(duration);
+      }
+
+      onSave(contentData);
+      resetForm();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error(`Failed to upload content: ${error.message}`);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const resetForm = () => {
     setTitle('');
-    setDescription('');
     setUrl('');
     setDuration('');
     setFile(null);
@@ -78,25 +119,19 @@ export function AddContentDialog({ open, onOpenChange, onSave, sessionName }: Ad
   };
 
   const getAcceptedFileTypes = (type: ContentType) => {
-    const acceptMap = {
+    const acceptMap: Record<ContentType, string> = {
       pdf: '.pdf',
       ppt: '.ppt,.pptx',
-      video: '.mp4,.mov,.avi,.mkv',
       youtube: '',
-      link: '',
-      simulation: ''
     };
     return acceptMap[type];
   };
 
   const getMaxFileSize = (type: ContentType) => {
-    const sizeMap = {
+    const sizeMap: Record<ContentType, string> = {
       pdf: '50MB',
       ppt: '50MB',
-      video: '500MB',
       youtube: '',
-      link: '',
-      simulation: ''
     };
     return sizeMap[type];
   };
@@ -108,7 +143,6 @@ export function AddContentDialog({ open, onOpenChange, onSave, sessionName }: Ad
     const maxSizes: Record<string, number> = {
       pdf: 50 * 1024 * 1024,
       ppt: 50 * 1024 * 1024,
-      video: 500 * 1024 * 1024
     };
 
     if (selectedFile.size > maxSizes[contentType]) {
@@ -124,23 +158,29 @@ export function AddContentDialog({ open, onOpenChange, onSave, sessionName }: Ad
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add Content to {sessionName}</DialogTitle>
-          <DialogDescription>Upload files or add links to session materials</DialogDescription>
+          <DialogDescription>
+            Upload PDF, PowerPoint files or add YouTube video links. Content will be displayed securely without download options.
+          </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label>Content Type *</Label>
-            <Select value={contentType} onValueChange={(value) => setContentType(value as ContentType)}>
+            <Select 
+              value={contentType} 
+              onValueChange={(value) => {
+                setContentType(value as ContentType);
+                setFile(null);
+                setUrl('');
+              }}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="pdf">PDF Document</SelectItem>
-                <SelectItem value="ppt">Presentation (PPT)</SelectItem>
-                <SelectItem value="video">Video File</SelectItem>
+                <SelectItem value="ppt">Presentation (PPT/PPTX)</SelectItem>
                 <SelectItem value="youtube">YouTube Video</SelectItem>
-                <SelectItem value="simulation">Interactive Simulation</SelectItem>
-                <SelectItem value="link">External Link</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -156,67 +196,101 @@ export function AddContentDialog({ open, onOpenChange, onSave, sessionName }: Ad
             />
           </div>
           
-          {['pdf', 'ppt', 'video'].includes(contentType) && (
+          {['pdf', 'ppt'].includes(contentType) && (
             <div>
               <Label htmlFor="content-file">Upload File *</Label>
-              <Input
-                id="content-file"
-                type="file"
-                accept={getAcceptedFileTypes(contentType)}
-                onChange={handleFileChange}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Max size: {getMaxFileSize(contentType)}
-              </p>
+              <div className="mt-2">
+                {!file ? (
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer">
+                    <input
+                      id="content-file"
+                      type="file"
+                      accept={getAcceptedFileTypes(contentType)}
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <label htmlFor="content-file" className="cursor-pointer">
+                      <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                      <p className="text-sm font-medium">Click to upload</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {contentType === 'pdf' ? 'PDF files' : 'PPT/PPTX files'} up to {getMaxFileSize(contentType)}
+                      </p>
+                    </label>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{file.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setFile(null)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
           
-          {['youtube', 'link', 'simulation'].includes(contentType) && (
-            <div>
-              <Label htmlFor="content-url">
-                {contentType === 'youtube' ? 'YouTube URL' : 'URL'} *
-              </Label>
-              <Input
-                id="content-url"
-                type="url"
-                placeholder="https://..."
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                required
-              />
-            </div>
+          {contentType === 'youtube' && (
+            <>
+              <div>
+                <Label htmlFor="content-url">YouTube URL *</Label>
+                <Input
+                  id="content-url"
+                  type="url"
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  required
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Paste the full YouTube video URL
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="content-duration">Duration (minutes)</Label>
+                <Input
+                  id="content-duration"
+                  type="number"
+                  min="1"
+                  placeholder="15"
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                />
+              </div>
+            </>
           )}
-          
-          {['video', 'youtube'].includes(contentType) && (
-            <div>
-              <Label htmlFor="content-duration">Duration (minutes)</Label>
-              <Input
-                id="content-duration"
-                type="number"
-                min="1"
-                placeholder="15"
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-              />
-            </div>
-          )}
-          
-          <div>
-            <Label htmlFor="content-description">Description (Optional)</Label>
-            <Textarea
-              id="content-description"
-              placeholder="Additional notes about this content"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-            />
-          </div>
           
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => {
+                resetForm();
+                onOpenChange(false);
+              }}
+            >
               Cancel
             </Button>
-            <Button type="submit">Add Content</Button>
+            <Button type="submit" disabled={isUploading}>
+              {isUploading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                'Add Content'
+              )}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
