@@ -335,7 +335,7 @@ export function useStudents(institutionId?: string, classId?: string) {
     },
   });
 
-  // Bulk create students
+  // Bulk create students with auth user creation
   const bulkCreateStudentsMutation = useMutation({
     mutationFn: async (students: Array<StudentFormData & { institution_id: string; class_id: string }>) => {
       console.log('[Students] Bulk creating:', students.length, 'students');
@@ -346,44 +346,102 @@ export function useStudents(institutionId?: string, classId?: string) {
         throw new Error(authCheck.error);
       }
 
-      const { data, error } = await supabase
-        .from('students')
-        .insert(students.map(s => ({
-          institution_id: s.institution_id,
-          class_id: s.class_id,
-          student_id: s.student_id,
-          student_name: s.student_name,
-          email: s.email,
-          roll_number: s.roll_number,
-          admission_number: s.admission_number,
-          date_of_birth: s.date_of_birth,
-          gender: s.gender || 'male',
-          blood_group: s.blood_group,
-          admission_date: s.admission_date,
-          previous_school: s.previous_school,
-          parent_name: s.parent_name,
-          parent_phone: s.parent_phone,
-          parent_email: s.parent_email,
-          address: s.address,
-          avatar: s.avatar,
-          status: s.status || 'active',
-        })))
-        .select();
+      const createdStudents: any[] = [];
+      const errors: string[] = [];
 
-      if (error) {
-        console.error('[Students] Bulk create error:', error);
-        throw new Error(`Failed to import students: ${error.message}`);
+      // Process each student - create auth user if email/password provided
+      for (const student of students) {
+        try {
+          let userId: string | null = null;
+
+          // Create auth user via edge function if credentials provided
+          if (student.email && student.password) {
+            console.log('[Students] Creating auth user for:', student.email);
+            const response = await supabase.functions.invoke('create-student-user', {
+              body: {
+                email: student.email,
+                password: student.password,
+                student_name: student.student_name,
+                institution_id: student.institution_id,
+                class_id: student.class_id,
+              },
+            });
+
+            if (response.error) {
+              console.error('[Students] Edge function error for', student.email, ':', response.error);
+              errors.push(`${student.student_name}: ${response.error.message}`);
+              continue;
+            }
+
+            if (response.data?.error) {
+              console.error('[Students] Create user error for', student.email, ':', response.data.error);
+              errors.push(`${student.student_name}: ${response.data.error}`);
+              continue;
+            }
+
+            userId = response.data?.user_id || null;
+            console.log('[Students] Created auth user:', userId);
+          }
+
+          // Create student record
+          const { data, error } = await supabase
+            .from('students')
+            .insert({
+              institution_id: student.institution_id,
+              class_id: student.class_id,
+              student_id: student.student_id,
+              student_name: student.student_name,
+              email: student.email,
+              user_id: userId,
+              roll_number: student.roll_number,
+              admission_number: student.admission_number,
+              date_of_birth: student.date_of_birth,
+              gender: student.gender || 'male',
+              blood_group: student.blood_group,
+              admission_date: student.admission_date,
+              previous_school: student.previous_school,
+              parent_name: student.parent_name,
+              parent_phone: student.parent_phone,
+              parent_email: student.parent_email,
+              address: student.address,
+              avatar: null, // Neutral placeholder
+              status: student.status || 'active',
+            })
+            .select()
+            .single();
+
+          if (error) {
+            console.error('[Students] Insert error for', student.student_name, ':', error);
+            errors.push(`${student.student_name}: ${error.message}`);
+          } else {
+            createdStudents.push(data);
+          }
+        } catch (err: any) {
+          console.error('[Students] Error creating student:', student.student_name, err);
+          errors.push(`${student.student_name}: ${err.message}`);
+        }
+      }
+
+      if (errors.length > 0 && createdStudents.length === 0) {
+        throw new Error(`Failed to import students: ${errors.join(', ')}`);
+      }
+
+      console.log('[Students] Bulk created successfully:', createdStudents.length, 'students');
+      if (errors.length > 0) {
+        console.warn('[Students] Some students failed:', errors);
       }
       
-      console.log('[Students] Bulk created successfully:', data?.length || 0, 'students');
-      return data;
+      return { created: createdStudents, errors };
     },
     onError: (err: Error) => {
       console.error('[Students] Bulk create mutation error:', err);
       toast.error(err.message || 'Failed to import students');
     },
-    onSuccess: (data) => {
-      toast.success(`${data?.length || 0} students imported successfully`);
+    onSuccess: (result) => {
+      toast.success(`${result.created?.length || 0} students imported successfully`);
+      if (result.errors?.length > 0) {
+        toast.warning(`${result.errors.length} students failed to import`);
+      }
     },
     onSettled: (_, __, variables) => {
       if (variables.length > 0) {

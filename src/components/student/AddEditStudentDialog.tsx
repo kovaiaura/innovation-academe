@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DatePickerWithYearMonth } from "@/components/ui/date-picker-with-year-month";
 import { Student } from "@/types/student";
 import { generateRollNumber, generateAdmissionNumber, generateStudentId, validatePhoneNumber } from "@/utils/studentHelpers";
 import { idGenerationService } from '@/services/id-generation.service';
@@ -15,6 +16,7 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AddEditStudentDialogProps {
   isOpen: boolean;
@@ -59,6 +61,30 @@ export function AddEditStudentDialog({
   const [dobDate, setDobDate] = useState<Date>();
   const [admissionDate, setAdmissionDate] = useState<Date>();
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [institutionSettings, setInstitutionSettings] = useState<{ prefix: string; suffix: string }>({ prefix: '', suffix: '' });
+
+  // Fetch institution settings for roll number prefix/suffix
+  useEffect(() => {
+    const fetchInstitutionSettings = async () => {
+      if (!institutionId) return;
+      
+      const { data, error } = await supabase
+        .from('institutions')
+        .select('settings')
+        .eq('id', institutionId)
+        .single();
+      
+      if (!error && data?.settings) {
+        const settings = data.settings as any;
+        setInstitutionSettings({
+          prefix: settings.student_id_prefix || '',
+          suffix: settings.student_id_suffix || '',
+        });
+      }
+    };
+    
+    fetchInstitutionSettings();
+  }, [institutionId]);
 
   useEffect(() => {
     if (mode === 'edit' && student) {
@@ -114,10 +140,16 @@ export function AddEditStudentDialog({
   // Auto-generate roll number when class and section are selected (add mode only)
   useEffect(() => {
     if (mode === 'add' && formData.class && formData.section) {
-      const rollNum = generateRollNumber(formData.class, formData.section, existingStudents);
+      const rollNum = generateRollNumber(
+        formData.class, 
+        formData.section, 
+        existingStudents,
+        institutionSettings.prefix,
+        institutionSettings.suffix
+      );
       setFormData(prev => ({ ...prev, roll_number: rollNum }));
     }
-  }, [formData.class, formData.section, mode, existingStudents]);
+  }, [formData.class, formData.section, mode, existingStudents, institutionSettings]);
 
   // Auto-generate admission number (add mode only)
   useEffect(() => {
@@ -288,34 +320,18 @@ export function AddEditStudentDialog({
 
               <div>
                 <Label htmlFor="date_of_birth">Date of Birth *</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !dobDate && "text-muted-foreground",
-                        errors.date_of_birth && "border-destructive"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dobDate ? format(dobDate, "PPP") : "Pick a date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={dobDate}
-                      onSelect={(date) => {
-                        setDobDate(date);
-                        setFormData({ ...formData, date_of_birth: date ? format(date, 'yyyy-MM-dd') : '' });
-                      }}
-                      disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
+                <DatePickerWithYearMonth
+                  date={dobDate}
+                  onDateChange={(date) => {
+                    setDobDate(date);
+                    setFormData({ ...formData, date_of_birth: date ? format(date, 'yyyy-MM-dd') : '' });
+                  }}
+                  placeholder="Select date of birth"
+                  disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
+                  minYear={new Date().getFullYear() - 25}
+                  maxYear={new Date().getFullYear() - 3}
+                  hasError={!!errors.date_of_birth}
+                />
                 {errors.date_of_birth && <p className="text-xs text-destructive mt-1">{errors.date_of_birth}</p>}
               </div>
 

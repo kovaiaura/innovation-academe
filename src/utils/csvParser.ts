@@ -2,6 +2,8 @@ import Papa from 'papaparse';
 
 export interface ParsedRow {
   student_name: string;
+  email: string;
+  password: string;
   roll_number: string;
   admission_number: string;
   date_of_birth: string;
@@ -23,6 +25,7 @@ export interface ValidationResult {
 export interface DuplicateInfo {
   rollNumbers: string[];
   admissionNumbers: string[];
+  emails: string[];
 }
 
 export function parseCSV(file: File): Promise<ParsedRow[]> {
@@ -52,10 +55,25 @@ export function validateRow(row: ParsedRow, rowIndex: number): ValidationResult 
     errors.push('Student name must be 2-100 characters');
   }
 
+  // Email validation for student login
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!row.email?.trim()) {
+    errors.push('Student email is required for login');
+  } else if (!emailRegex.test(row.email)) {
+    errors.push('Invalid student email format');
+  }
+
+  // Password validation for student login
+  if (!row.password?.trim()) {
+    errors.push('Password is required for student login');
+  } else if (row.password.length < 6) {
+    errors.push('Password must be at least 6 characters');
+  }
+
   if (!row.roll_number?.trim()) {
     errors.push('Roll number is required');
-  } else if (row.roll_number.length < 1 || row.roll_number.length > 20) {
-    errors.push('Roll number must be 1-20 characters');
+  } else if (row.roll_number.length < 1 || row.roll_number.length > 30) {
+    errors.push('Roll number must be 1-30 characters');
   }
 
   if (!row.admission_number?.trim()) {
@@ -86,8 +104,7 @@ export function validateRow(row: ParsedRow, rowIndex: number): ValidationResult 
     errors.push('Parent name is required');
   }
 
-  // Email validation
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // Parent email validation
   if (!row.parent_email || !emailRegex.test(row.parent_email)) {
     errors.push('Valid parent email is required');
   }
@@ -118,12 +135,15 @@ export function validateRow(row: ParsedRow, rowIndex: number): ValidationResult 
 export function findDuplicates(data: ParsedRow[]): DuplicateInfo {
   const rollNumbers = new Map<string, number>();
   const admissionNumbers = new Map<string, number>();
+  const emails = new Map<string, number>();
   const duplicateRolls: string[] = [];
   const duplicateAdmissions: string[] = [];
+  const duplicateEmails: string[] = [];
 
   data.forEach((row, index) => {
     const rollNum = row.roll_number?.trim();
     const admNum = row.admission_number?.trim();
+    const email = row.email?.trim()?.toLowerCase();
 
     if (rollNum) {
       if (rollNumbers.has(rollNum)) {
@@ -140,17 +160,28 @@ export function findDuplicates(data: ParsedRow[]): DuplicateInfo {
         admissionNumbers.set(admNum, index);
       }
     }
+
+    if (email) {
+      if (emails.has(email)) {
+        duplicateEmails.push(email);
+      } else {
+        emails.set(email, index);
+      }
+    }
   });
 
   return {
     rollNumbers: [...new Set(duplicateRolls)],
-    admissionNumbers: [...new Set(duplicateAdmissions)]
+    admissionNumbers: [...new Set(duplicateAdmissions)],
+    emails: [...new Set(duplicateEmails)]
   };
 }
 
 export function generateTemplate(): Blob {
   const headers = [
     'student_name',
+    'email',
+    'password',
     'roll_number',
     'admission_number',
     'date_of_birth',
@@ -165,8 +196,10 @@ export function generateTemplate(): Blob {
 
   const exampleRow = [
     'John Doe',
-    '2024001',
-    'ADM2024001',
+    'john.doe@school.com',
+    'Student@123',
+    'MSA-5-A-001-KGA',
+    'ADM-2025-001',
     '2010-05-15',
     'male',
     'Mr. Robert Doe',
