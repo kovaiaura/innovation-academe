@@ -684,6 +684,7 @@ export function useAllPublishedCourses() {
     queryKey: ['all-published-courses'],
     queryFn: async () => {
       // Get all published courses
+      // Get all courses (not filtering by status - management sees all)
       const { data: courses, error: coursesError } = await supabase
         .from('courses')
         .select(`
@@ -699,7 +700,6 @@ export function useAllPublishedCourses() {
           learning_outcomes,
           created_at
         `)
-        .eq('status', 'published')
         .order('created_at', { ascending: false });
 
       if (coursesError) throw coursesError;
