@@ -238,7 +238,14 @@ export default function SystemAdminCourseDetail() {
     setIsAddContentOpen(true);
   };
 
-  const handleSaveContent = async (contentData: Partial<CourseContent>) => {
+  const handleSaveContent = async (contentData: {
+    title?: string;
+    type?: string;
+    file_path?: string;
+    youtube_url?: string;
+    duration_minutes?: number;
+    file_size_mb?: number;
+  }) => {
     if (!courseId || !selectedModule || !selectedSession) return;
 
     if (selectedContent) {
@@ -249,7 +256,7 @@ export default function SystemAdminCourseDetail() {
         updates: {
           title: contentData.title,
           type: contentData.type,
-          file_path: contentData.file_url,
+          file_path: contentData.file_path,
           youtube_url: contentData.youtube_url,
           duration_minutes: contentData.duration_minutes,
           file_size_mb: contentData.file_size_mb
@@ -264,7 +271,7 @@ export default function SystemAdminCourseDetail() {
         contentData: {
           title: contentData.title!,
           type: contentData.type!,
-          file_path: contentData.file_url,
+          file_path: contentData.file_path,
           youtube_url: contentData.youtube_url,
           duration_minutes: contentData.duration_minutes,
           file_size_mb: contentData.file_size_mb
