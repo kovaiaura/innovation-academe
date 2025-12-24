@@ -120,7 +120,6 @@ export function transformFormToDb(form: InstitutionFormData, existingCount: numb
       phone: form.contact_phone,
       admin_name: form.admin_name,
       admin_email: form.admin_email,
-      // Note: password should be hashed server-side in production
     },
     settings: {
       established_year: form.established_year,
@@ -152,47 +151,104 @@ export function transformFormToDb(form: InstitutionFormData, existingCount: numb
   };
 }
 
+// Helper to check authentication and role
+async function verifyAuthAndRole(requiredRole?: string): Promise<{ userId: string; isValid: boolean; error?: string }> {
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  
+  if (sessionError || !session?.user) {
+    console.error('[Auth] No active session:', sessionError);
+    return { userId: '', isValid: false, error: 'You must be logged in to perform this action' };
+  }
+
+  const userId = session.user.id;
+  console.log('[Auth] User authenticated:', userId);
+
+  if (requiredRole) {
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (roleError) {
+      console.error('[Auth] Role check failed:', roleError);
+      return { userId, isValid: false, error: 'Failed to verify permissions' };
+    }
+
+    const userRole = roleData?.role;
+    console.log('[Auth] User role:', userRole);
+
+    // Check if user has required role or higher privilege
+    const roleHierarchy = ['student', 'teacher', 'officer', 'management', 'system_admin', 'super_admin'];
+    const userRoleIndex = roleHierarchy.indexOf(userRole || '');
+    const requiredRoleIndex = roleHierarchy.indexOf(requiredRole);
+
+    if (userRoleIndex < requiredRoleIndex) {
+      return { userId, isValid: false, error: `Insufficient permissions. Required: ${requiredRole}` };
+    }
+  }
+
+  return { userId, isValid: true };
+}
+
 export function useInstitutions() {
   const queryClient = useQueryClient();
 
   // Fetch all institutions
-  const { data: institutions = [], isLoading, error } = useQuery({
+  const { data: institutions = [], isLoading, error, refetch } = useQuery({
     queryKey: ['institutions'],
     queryFn: async () => {
+      console.log('[Institutions] Fetching institutions...');
+      
       const { data, error } = await supabase
         .from('institutions')
         .select('*')
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('[Institutions] Fetch error:', error);
+        throw error;
+      }
+      
+      console.log('[Institutions] Fetched:', data?.length || 0, 'institutions');
       return (data || []).map(transformDbToApp);
     },
-    staleTime: 30000, // Cache for 30 seconds
+    staleTime: 30000,
   });
 
-  // Create institution mutation with optimistic update
+  // Create institution mutation with improved error handling
   const createMutation = useMutation({
     mutationFn: async (formData: InstitutionFormData) => {
-      const dbData = transformFormToDb(formData, institutions.length);
+      console.log('[Institutions] Creating institution:', formData.name);
       
-      // First create the institution
+      // Verify authentication and super_admin role
+      const authCheck = await verifyAuthAndRole('super_admin');
+      if (!authCheck.isValid) {
+        throw new Error(authCheck.error);
+      }
+
+      const dbData = transformFormToDb(formData, institutions.length);
+      console.log('[Institutions] DB data prepared:', dbData);
+      
+      // Create the institution
       const { data: institutionData, error: institutionError } = await supabase
         .from('institutions')
         .insert(dbData)
         .select()
         .single();
       
-      if (institutionError) throw institutionError;
+      if (institutionError) {
+        console.error('[Institutions] Create error:', institutionError);
+        throw new Error(`Database error: ${institutionError.message}`);
+      }
 
-      // Note: Admin user creation should be done separately via edge function
-      // to avoid logging out the current user (signUp auto-logs in the new user)
-      // Store admin credentials in institution settings for later setup
-      if (formData.admin_email && formData.admin_password) {
-        // Fetch current settings first
+      console.log('[Institutions] Created successfully:', institutionData.id);
+
+      // Store pending admin info in settings (admin will be created via separate flow)
+      if (formData.admin_email) {
         const currentSettings = (institutionData.settings || {}) as Record<string, any>;
         
-        // Update settings with pending admin info (admin will be created via separate flow)
-        await supabase
+        const { error: updateError } = await supabase
           .from('institutions')
           .update({
             settings: {
@@ -200,20 +256,20 @@ export function useInstitutions() {
               pending_admin: {
                 email: formData.admin_email,
                 name: formData.admin_name || formData.name + ' Admin',
-                // Password will need to be set separately for security
               }
             }
           })
           .eq('id', institutionData.id);
+
+        if (updateError) {
+          console.warn('[Institutions] Failed to save pending admin:', updateError);
+        }
       }
       
       return { data: institutionData, formData };
     },
     onMutate: async (formData) => {
-      // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['institutions'] });
-      
-      // Snapshot previous value
       const previousInstitutions = queryClient.getQueryData(['institutions']);
       
       // Optimistically add new institution
@@ -243,23 +299,33 @@ export function useInstitutions() {
       
       return { previousInstitutions };
     },
-    onError: (err, formData, context) => {
+    onError: (err: Error, formData, context) => {
+      console.error('[Institutions] Mutation error:', err);
       // Rollback on error
       if (context?.previousInstitutions) {
         queryClient.setQueryData(['institutions'], context.previousInstitutions);
       }
-      toast.error('Failed to create institution');
-      console.error('Create error:', err);
+      toast.error(err.message || 'Failed to create institution');
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      console.log('[Institutions] Mutation success, refetching...');
+      toast.success(`Institution "${result.formData.name}" created successfully`);
       // Refetch to get actual data
       queryClient.invalidateQueries({ queryKey: ['institutions'] });
     },
   });
 
-  // Update institution mutation
+  // Update institution mutation with improved error handling
   const updateMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<any> }) => {
+      console.log('[Institutions] Updating institution:', id, updates);
+      
+      // Verify authentication
+      const authCheck = await verifyAuthAndRole('super_admin');
+      if (!authCheck.isValid) {
+        throw new Error(authCheck.error);
+      }
+
       // Map updates to DB format
       const dbUpdates: Record<string, any> = {};
       
@@ -268,12 +334,16 @@ export function useInstitutions() {
       
       // Handle settings updates
       if (updates.license_expiry || updates.current_users || updates.subscription_status) {
-        // Need to fetch current settings first
-        const { data: current } = await supabase
+        const { data: current, error: fetchError } = await supabase
           .from('institutions')
           .select('settings')
           .eq('id', id)
           .single();
+        
+        if (fetchError) {
+          console.error('[Institutions] Fetch for update failed:', fetchError);
+          throw new Error(`Failed to fetch institution: ${fetchError.message}`);
+        }
         
         const currentSettings = (current?.settings || {}) as Record<string, any>;
         dbUpdates.settings = {
@@ -292,7 +362,12 @@ export function useInstitutions() {
         .update(dbUpdates)
         .eq('id', id);
       
-      if (error) throw error;
+      if (error) {
+        console.error('[Institutions] Update error:', error);
+        throw new Error(`Update failed: ${error.message}`);
+      }
+      
+      console.log('[Institutions] Updated successfully');
       return { id, updates };
     },
     onMutate: async ({ id, updates }) => {
@@ -305,26 +380,41 @@ export function useInstitutions() {
       
       return { previousInstitutions };
     },
-    onError: (err, vars, context) => {
+    onError: (err: Error, vars, context) => {
+      console.error('[Institutions] Update mutation error:', err);
       if (context?.previousInstitutions) {
         queryClient.setQueryData(['institutions'], context.previousInstitutions);
       }
-      toast.error('Failed to update institution');
+      toast.error(err.message || 'Failed to update institution');
     },
     onSuccess: () => {
+      toast.success('Institution updated successfully');
       queryClient.invalidateQueries({ queryKey: ['institutions'] });
     },
   });
 
-  // Delete institution mutation
+  // Delete institution mutation with improved error handling
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      console.log('[Institutions] Deleting institution:', id);
+      
+      // Verify authentication
+      const authCheck = await verifyAuthAndRole('super_admin');
+      if (!authCheck.isValid) {
+        throw new Error(authCheck.error);
+      }
+
       const { error } = await supabase
         .from('institutions')
         .delete()
         .eq('id', id);
       
-      if (error) throw error;
+      if (error) {
+        console.error('[Institutions] Delete error:', error);
+        throw new Error(`Delete failed: ${error.message}`);
+      }
+      
+      console.log('[Institutions] Deleted successfully');
       return id;
     },
     onMutate: async (id) => {
@@ -337,13 +427,15 @@ export function useInstitutions() {
       
       return { previousInstitutions };
     },
-    onError: (err, id, context) => {
+    onError: (err: Error, id, context) => {
+      console.error('[Institutions] Delete mutation error:', err);
       if (context?.previousInstitutions) {
         queryClient.setQueryData(['institutions'], context.previousInstitutions);
       }
-      toast.error('Failed to delete institution');
+      toast.error(err.message || 'Failed to delete institution');
     },
     onSuccess: () => {
+      toast.success('Institution deleted successfully');
       queryClient.invalidateQueries({ queryKey: ['institutions'] });
     },
   });
@@ -352,6 +444,7 @@ export function useInstitutions() {
     institutions,
     isLoading,
     error,
+    refetch,
     createInstitution: createMutation.mutateAsync,
     updateInstitution: updateMutation.mutateAsync,
     deleteInstitution: deleteMutation.mutateAsync,

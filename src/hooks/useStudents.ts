@@ -47,6 +47,18 @@ export interface DbStudent {
   updated_at: string | null;
 }
 
+// Helper to verify authentication
+async function verifyAuth(): Promise<{ userId: string; isValid: boolean; error?: string }> {
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  
+  if (sessionError || !session?.user) {
+    console.error('[Students] No active session:', sessionError);
+    return { userId: '', isValid: false, error: 'You must be logged in to perform this action' };
+  }
+
+  return { userId: session.user.id, isValid: true };
+}
+
 export function useStudents(institutionId?: string, classId?: string) {
   const queryClient = useQueryClient();
 
@@ -61,6 +73,8 @@ export function useStudents(institutionId?: string, classId?: string) {
     queryFn: async () => {
       if (!institutionId) return [];
       
+      console.log('[Students] Fetching students for institution:', institutionId, classId ? `class: ${classId}` : '');
+      
       let query = supabase
         .from('students')
         .select('*')
@@ -73,77 +87,36 @@ export function useStudents(institutionId?: string, classId?: string) {
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Students] Fetch error:', error);
+        throw error;
+      }
+      
+      console.log('[Students] Fetched:', data?.length || 0, 'students');
       return data as DbStudent[];
     },
     enabled: !!institutionId,
     staleTime: 30000,
   });
 
-  // Create student mutation (with optional auth user creation)
+  // Create student mutation (without auth user creation to avoid session issues)
   const createStudentMutation = useMutation({
     mutationFn: async (formData: StudentFormData & { 
       institution_id: string; 
       class_id: string;
-      createAuthUser?: boolean;
     }) => {
-      let userId: string | null = null;
-
-      // Create auth user if email and password provided
-      if (formData.createAuthUser && formData.email && formData.password) {
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: {
-              name: formData.student_name,
-            }
-          }
-        });
-
-        if (authError) {
-          // If user already exists, try to continue without creating auth user
-          if (!authError.message.includes('already registered')) {
-            throw authError;
-          }
-        } else {
-          userId = authData.user?.id || null;
-          
-          // Assign student role
-          if (userId) {
-            const { error: roleError } = await supabase
-              .from('user_roles')
-              .insert({
-                user_id: userId,
-                role: 'student'
-              });
-            
-            if (roleError && !roleError.message.includes('duplicate')) {
-              console.error('Failed to assign student role:', roleError);
-            }
-
-            // Update profile with institution_id and class_id
-            const { error: profileError } = await supabase
-              .from('profiles')
-              .update({
-                institution_id: formData.institution_id,
-                class_id: formData.class_id,
-              })
-              .eq('id', userId);
-
-            if (profileError) {
-              console.error('Failed to update profile:', profileError);
-            }
-          }
-        }
+      console.log('[Students] Creating student:', formData.student_name);
+      
+      // Verify authentication
+      const authCheck = await verifyAuth();
+      if (!authCheck.isValid) {
+        throw new Error(authCheck.error);
       }
 
-      // Create student record
+      // Create student record (without auth user - that should be done separately)
       const { data, error } = await supabase
         .from('students')
         .insert({
-          user_id: userId,
           institution_id: formData.institution_id,
           class_id: formData.class_id,
           student_id: formData.student_id,
@@ -166,7 +139,12 @@ export function useStudents(institutionId?: string, classId?: string) {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Students] Create error:', error);
+        throw new Error(`Failed to create student: ${error.message}`);
+      }
+      
+      console.log('[Students] Created successfully:', data.id);
       return data;
     },
     onMutate: async (newStudent) => {
@@ -205,11 +183,12 @@ export function useStudents(institutionId?: string, classId?: string) {
 
       return { previousStudents };
     },
-    onError: (err, newStudent, context) => {
+    onError: (err: Error, newStudent, context) => {
+      console.error('[Students] Create mutation error:', err);
       if (context?.previousStudents) {
         queryClient.setQueryData(['students', newStudent.institution_id, newStudent.class_id], context.previousStudents);
       }
-      toast.error(`Failed to create student: ${err.message}`);
+      toast.error(err.message || 'Failed to create student');
     },
     onSuccess: (data) => {
       toast.success(`Student "${data.student_name}" added successfully`);
@@ -223,6 +202,14 @@ export function useStudents(institutionId?: string, classId?: string) {
   // Update student mutation
   const updateStudentMutation = useMutation({
     mutationFn: async ({ id, ...formData }: StudentFormData & { id: string; institution_id: string; class_id: string }) => {
+      console.log('[Students] Updating student:', id);
+      
+      // Verify authentication
+      const authCheck = await verifyAuth();
+      if (!authCheck.isValid) {
+        throw new Error(authCheck.error);
+      }
+
       const { data, error } = await supabase
         .from('students')
         .update({
@@ -246,8 +233,17 @@ export function useStudents(institutionId?: string, classId?: string) {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Students] Update error:', error);
+        throw new Error(`Failed to update student: ${error.message}`);
+      }
+      
+      console.log('[Students] Updated successfully:', data.id);
       return data;
+    },
+    onError: (err: Error) => {
+      console.error('[Students] Update mutation error:', err);
+      toast.error(err.message || 'Failed to update student');
     },
     onSuccess: (data) => {
       toast.success(`Student "${data.student_name}" updated successfully`);
@@ -260,12 +256,25 @@ export function useStudents(institutionId?: string, classId?: string) {
   // Delete student mutation
   const deleteStudentMutation = useMutation({
     mutationFn: async ({ id, institution_id, class_id }: { id: string; institution_id: string; class_id?: string }) => {
+      console.log('[Students] Deleting student:', id);
+      
+      // Verify authentication
+      const authCheck = await verifyAuth();
+      if (!authCheck.isValid) {
+        throw new Error(authCheck.error);
+      }
+
       const { error } = await supabase
         .from('students')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Students] Delete error:', error);
+        throw new Error(`Failed to delete student: ${error.message}`);
+      }
+      
+      console.log('[Students] Deleted successfully');
       return id;
     },
     onMutate: async ({ id, institution_id, class_id }) => {
@@ -279,11 +288,12 @@ export function useStudents(institutionId?: string, classId?: string) {
 
       return { previousStudents };
     },
-    onError: (err, variables, context) => {
+    onError: (err: Error, variables, context) => {
+      console.error('[Students] Delete mutation error:', err);
       if (context?.previousStudents) {
         queryClient.setQueryData(['students', variables.institution_id, variables.class_id], context.previousStudents);
       }
-      toast.error('Failed to delete student');
+      toast.error(err.message || 'Failed to delete student');
     },
     onSuccess: () => {
       toast.success('Student deleted successfully');
@@ -297,6 +307,14 @@ export function useStudents(institutionId?: string, classId?: string) {
   // Bulk create students
   const bulkCreateStudentsMutation = useMutation({
     mutationFn: async (students: Array<StudentFormData & { institution_id: string; class_id: string }>) => {
+      console.log('[Students] Bulk creating:', students.length, 'students');
+      
+      // Verify authentication
+      const authCheck = await verifyAuth();
+      if (!authCheck.isValid) {
+        throw new Error(authCheck.error);
+      }
+
       const { data, error } = await supabase
         .from('students')
         .insert(students.map(s => ({
@@ -321,11 +339,20 @@ export function useStudents(institutionId?: string, classId?: string) {
         })))
         .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Students] Bulk create error:', error);
+        throw new Error(`Failed to import students: ${error.message}`);
+      }
+      
+      console.log('[Students] Bulk created successfully:', data?.length || 0, 'students');
       return data;
     },
+    onError: (err: Error) => {
+      console.error('[Students] Bulk create mutation error:', err);
+      toast.error(err.message || 'Failed to import students');
+    },
     onSuccess: (data) => {
-      toast.success(`${data.length} students imported successfully`);
+      toast.success(`${data?.length || 0} students imported successfully`);
     },
     onSettled: (_, __, variables) => {
       if (variables.length > 0) {
@@ -337,12 +364,19 @@ export function useStudents(institutionId?: string, classId?: string) {
 
   // Get student count for institution
   const getStudentCount = async (instId: string): Promise<number> => {
+    console.log('[Students] Getting count for institution:', instId);
+    
     const { count, error } = await supabase
       .from('students')
       .select('*', { count: 'exact', head: true })
       .eq('institution_id', instId);
 
-    if (error) throw error;
+    if (error) {
+      console.error('[Students] Count error:', error);
+      throw error;
+    }
+    
+    console.log('[Students] Count:', count);
     return count || 0;
   };
 

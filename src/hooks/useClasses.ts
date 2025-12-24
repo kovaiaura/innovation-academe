@@ -32,6 +32,18 @@ export interface ClassWithStudentCount extends DbClass {
   student_count?: number;
 }
 
+// Helper to verify authentication
+async function verifyAuth(): Promise<{ userId: string; isValid: boolean; error?: string }> {
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  
+  if (sessionError || !session?.user) {
+    console.error('[Classes] No active session:', sessionError);
+    return { userId: '', isValid: false, error: 'You must be logged in to perform this action' };
+  }
+
+  return { userId: session.user.id, isValid: true };
+}
+
 export function useClasses(institutionId?: string) {
   const queryClient = useQueryClient();
 
@@ -46,13 +58,20 @@ export function useClasses(institutionId?: string) {
     queryFn: async () => {
       if (!institutionId) return [];
       
+      console.log('[Classes] Fetching classes for institution:', institutionId);
+      
       const { data, error } = await supabase
         .from('classes')
         .select('*')
         .eq('institution_id', institutionId)
         .order('display_order', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Classes] Fetch error:', error);
+        throw error;
+      }
+      
+      console.log('[Classes] Fetched:', data?.length || 0, 'classes');
       return data as DbClass[];
     },
     enabled: !!institutionId,
@@ -68,13 +87,18 @@ export function useClasses(institutionId?: string) {
     queryFn: async () => {
       if (!institutionId) return [];
       
+      console.log('[Classes] Fetching classes with counts for:', institutionId);
+      
       const { data: classData, error: classError } = await supabase
         .from('classes')
         .select('*')
         .eq('institution_id', institutionId)
         .order('display_order', { ascending: true });
 
-      if (classError) throw classError;
+      if (classError) {
+        console.error('[Classes] Fetch classes error:', classError);
+        throw classError;
+      }
 
       // Get student counts per class
       const { data: studentCounts, error: countError } = await supabase
@@ -82,7 +106,10 @@ export function useClasses(institutionId?: string) {
         .select('class_id')
         .eq('institution_id', institutionId);
 
-      if (countError) throw countError;
+      if (countError) {
+        console.error('[Classes] Fetch student counts error:', countError);
+        throw countError;
+      }
 
       const countMap: Record<string, number> = {};
       studentCounts?.forEach(s => {
@@ -91,10 +118,13 @@ export function useClasses(institutionId?: string) {
         }
       });
 
-      return (classData || []).map(cls => ({
+      const result = (classData || []).map(cls => ({
         ...cls,
         student_count: countMap[cls.id] || 0
       })) as ClassWithStudentCount[];
+      
+      console.log('[Classes] Fetched with counts:', result.length, 'classes');
+      return result;
     },
     enabled: !!institutionId,
     staleTime: 30000,
@@ -103,6 +133,14 @@ export function useClasses(institutionId?: string) {
   // Create class mutation
   const createClassMutation = useMutation({
     mutationFn: async (formData: ClassFormData & { institution_id: string }) => {
+      console.log('[Classes] Creating class:', formData.class_name);
+      
+      // Verify authentication
+      const authCheck = await verifyAuth();
+      if (!authCheck.isValid) {
+        throw new Error(authCheck.error);
+      }
+
       const { data, error } = await supabase
         .from('classes')
         .insert({
@@ -119,7 +157,12 @@ export function useClasses(institutionId?: string) {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Classes] Create error:', error);
+        throw new Error(`Failed to create class: ${error.message}`);
+      }
+      
+      console.log('[Classes] Created successfully:', data.id);
       return data;
     },
     onMutate: async (newClass) => {
@@ -148,11 +191,12 @@ export function useClasses(institutionId?: string) {
 
       return { previousClasses };
     },
-    onError: (err, newClass, context) => {
+    onError: (err: Error, newClass, context) => {
+      console.error('[Classes] Create mutation error:', err);
       if (context?.previousClasses) {
         queryClient.setQueryData(['classes', newClass.institution_id], context.previousClasses);
       }
-      toast.error('Failed to create class');
+      toast.error(err.message || 'Failed to create class');
     },
     onSuccess: (data) => {
       toast.success(`Class "${data.class_name}" created successfully`);
@@ -166,6 +210,14 @@ export function useClasses(institutionId?: string) {
   // Update class mutation
   const updateClassMutation = useMutation({
     mutationFn: async ({ id, ...formData }: ClassFormData & { id: string; institution_id: string }) => {
+      console.log('[Classes] Updating class:', id);
+      
+      // Verify authentication
+      const authCheck = await verifyAuth();
+      if (!authCheck.isValid) {
+        throw new Error(authCheck.error);
+      }
+
       const { data, error } = await supabase
         .from('classes')
         .update({
@@ -182,8 +234,17 @@ export function useClasses(institutionId?: string) {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Classes] Update error:', error);
+        throw new Error(`Failed to update class: ${error.message}`);
+      }
+      
+      console.log('[Classes] Updated successfully:', data.id);
       return data;
+    },
+    onError: (err: Error) => {
+      console.error('[Classes] Update mutation error:', err);
+      toast.error(err.message || 'Failed to update class');
     },
     onSuccess: (data) => {
       toast.success(`Class "${data.class_name}" updated successfully`);
@@ -197,12 +258,25 @@ export function useClasses(institutionId?: string) {
   // Delete class mutation
   const deleteClassMutation = useMutation({
     mutationFn: async ({ id, institution_id }: { id: string; institution_id: string }) => {
+      console.log('[Classes] Deleting class:', id);
+      
+      // Verify authentication
+      const authCheck = await verifyAuth();
+      if (!authCheck.isValid) {
+        throw new Error(authCheck.error);
+      }
+
       const { error } = await supabase
         .from('classes')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Classes] Delete error:', error);
+        throw new Error(`Failed to delete class: ${error.message}`);
+      }
+      
+      console.log('[Classes] Deleted successfully');
       return id;
     },
     onMutate: async ({ id, institution_id }) => {
@@ -216,11 +290,12 @@ export function useClasses(institutionId?: string) {
 
       return { previousClasses };
     },
-    onError: (err, variables, context) => {
+    onError: (err: Error, variables, context) => {
+      console.error('[Classes] Delete mutation error:', err);
       if (context?.previousClasses) {
         queryClient.setQueryData(['classes', variables.institution_id], context.previousClasses);
       }
-      toast.error('Failed to delete class');
+      toast.error(err.message || 'Failed to delete class');
     },
     onSuccess: () => {
       toast.success('Class deleted successfully');
