@@ -177,26 +177,34 @@ async function verifyAuthAndRole(requiredRole?: string): Promise<{ userId: strin
   console.log('[Auth] User authenticated:', userId);
 
   if (requiredRole) {
-    const { data: roleData, error: roleError } = await supabase
+    // Fetch ALL roles for the user (they may have multiple roles like CEO)
+    const { data: rolesData, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', userId)
-      .maybeSingle();
+      .eq('user_id', userId);
 
     if (roleError) {
       console.error('[Auth] Role check failed:', roleError);
       return { userId, isValid: false, error: 'Failed to verify permissions' };
     }
 
-    const userRole = roleData?.role;
-    console.log('[Auth] User role:', userRole);
+    if (!rolesData || rolesData.length === 0) {
+      return { userId, isValid: false, error: 'No roles assigned to your account' };
+    }
 
-    // Check if user has required role or higher privilege
+    const userRoles = rolesData.map(r => r.role);
+    console.log('[Auth] User roles:', userRoles);
+
+    // Check if ANY of the user's roles meets the required role level
     const roleHierarchy = ['student', 'teacher', 'officer', 'management', 'system_admin', 'super_admin'];
-    const userRoleIndex = roleHierarchy.indexOf(userRole || '');
     const requiredRoleIndex = roleHierarchy.indexOf(requiredRole);
+    
+    const hasRequiredRole = userRoles.some(role => {
+      const userRoleIndex = roleHierarchy.indexOf(role);
+      return userRoleIndex >= requiredRoleIndex;
+    });
 
-    if (userRoleIndex < requiredRoleIndex) {
+    if (!hasRequiredRole) {
       return { userId, isValid: false, error: `Insufficient permissions. Required: ${requiredRole}` };
     }
   }
