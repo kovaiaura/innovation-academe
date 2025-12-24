@@ -31,14 +31,19 @@ export interface Institution {
   contract_value: number;
   mou_document_url?: string;
   created_at: string;
+  // Student ID Configuration
+  student_id_prefix?: string; // e.g., "MSD"
+  student_id_suffix?: string; // e.g., "2025"
   // GPS Attendance Configuration
   gps_location?: {
     latitude: number;
     longitude: number;
     address?: string;
   };
-  attendance_radius_meters?: number; // Validation radius, default 200m
+  attendance_radius_meters?: number; // Validation radius, default 1500m
   normal_working_hours?: number; // Default 8 hours per day
+  check_in_time?: string; // e.g., "09:00"
+  check_out_time?: string; // e.g., "17:00"
   // Detailed Pricing Model
   pricing_model?: {
     per_student_cost: number;

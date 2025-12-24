@@ -39,6 +39,8 @@ export function AddStudentToClassDialog({
 }: AddStudentToClassDialogProps) {
   const [formData, setFormData] = useState({
     student_name: '',
+    email: '',
+    password: '',
     roll_number: '',
     admission_number: '',
     date_of_birth: '',
@@ -62,6 +64,8 @@ export function AddStudentToClassDialog({
     if (mode === 'edit' && student) {
       setFormData({
         student_name: student.student_name,
+        email: student.email || '',
+        password: '',
         roll_number: student.roll_number,
         admission_number: student.admission_number,
         date_of_birth: student.date_of_birth,
@@ -84,6 +88,8 @@ export function AddStudentToClassDialog({
       
       setFormData({
         student_name: '',
+        email: '',
+        password: '',
         roll_number: rollNum,
         admission_number: admNum,
         date_of_birth: '',
@@ -106,7 +112,18 @@ export function AddStudentToClassDialog({
     const newErrors: Record<string, string> = {};
 
     if (!formData.student_name.trim()) newErrors.student_name = 'Name is required';
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Invalid email format';
+    }
+    if (mode === 'add' && !formData.password.trim()) {
+      newErrors.password = 'Password is required';
+    } else if (mode === 'add' && formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
     if (!formData.date_of_birth) newErrors.date_of_birth = 'Date of birth is required';
+    if (!formData.blood_group) newErrors.blood_group = 'Blood group is required';
     if (!formData.parent_name.trim()) newErrors.parent_name = 'Parent name is required';
     if (!formData.parent_phone.trim()) {
       newErrors.parent_phone = 'Parent phone is required';
@@ -148,10 +165,12 @@ export function AddStudentToClassDialog({
       const studentData = {
         ...formData,
         student_id: idResponse.success ? idResponse.data.id : `STU-TEMP-${Date.now()}`,
+        email: formData.email,
         institution_id: institutionId,
         class_id: classData.id,
         class: classData.class_name,
         section: 'A',
+        blood_group: formData.blood_group,
         avatar: student?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.student_name}`,
       };
 
@@ -189,6 +208,32 @@ export function AddStudentToClassDialog({
                   className={errors.student_name ? 'border-destructive' : ''}
                 />
                 {errors.student_name && <p className="text-xs text-destructive mt-1">{errors.student_name}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="email">Email * (For Student Login)</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="student@school.edu"
+                  className={errors.email ? 'border-destructive' : ''}
+                />
+                {errors.email && <p className="text-xs text-destructive mt-1">{errors.email}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="password">{mode === 'add' ? 'Password *' : 'Password (leave blank to keep unchanged)'}</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder={mode === 'add' ? 'Min 6 characters' : '••••••••'}
+                  className={errors.password ? 'border-destructive' : ''}
+                />
+                {errors.password && <p className="text-xs text-destructive mt-1">{errors.password}</p>}
               </div>
 
               <div>
@@ -239,9 +284,9 @@ export function AddStudentToClassDialog({
               </div>
 
               <div>
-                <Label>Blood Group</Label>
+                <Label>Blood Group *</Label>
                 <Select value={formData.blood_group} onValueChange={(value) => setFormData({ ...formData, blood_group: value })}>
-                  <SelectTrigger>
+                  <SelectTrigger className={errors.blood_group ? 'border-destructive' : ''}>
                     <SelectValue placeholder="Select blood group" />
                   </SelectTrigger>
                   <SelectContent>
@@ -250,6 +295,7 @@ export function AddStudentToClassDialog({
                     ))}
                   </SelectContent>
                 </Select>
+                {errors.blood_group && <p className="text-xs text-destructive mt-1">{errors.blood_group}</p>}
               </div>
             </div>
           </div>

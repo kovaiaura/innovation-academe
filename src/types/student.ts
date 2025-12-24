@@ -16,6 +16,8 @@ export interface Student {
   id: string;
   student_id: string; // Unique lifelong ID generated from ID configuration
   student_name: string;
+  email: string; // Student login email
+  password?: string; // Student login password (hashed/managed by auth)
   roll_number: string;
   admission_number: string;
   class: string;
@@ -31,7 +33,7 @@ export interface Student {
   address: string;
   avatar?: string;
   institution_id: string;
-  blood_group?: string;
+  blood_group: string; // Required blood group
   previous_school?: string;
   created_at: string;
 }

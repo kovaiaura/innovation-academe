@@ -42,6 +42,7 @@ const generateStudentsForClass = (
       id: `stu-${institutionId}-${classId}-${i + 1}`,
       student_id: `${institutionCode}-2024-${String(index).padStart(4, '0')}`, // Lifelong student ID
       student_name: `${firstName} ${lastName}`,
+      email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}.${institutionCode.toLowerCase()}@student.edu`,
       roll_number: `${gradeNumber}${section}${String(i + 1).padStart(3, '0')}`,
       admission_number: `${institutionCode}-ADM-2024-${String(index).padStart(4, '0')}`,
       class: `Grade ${gradeNumber}`,
