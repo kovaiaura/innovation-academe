@@ -48,9 +48,9 @@ export function ManagementCoursesView({ institutionId }: ManagementCoursesViewPr
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">STEM Course Catalog</h2>
+        <h2 className="text-2xl font-bold">Courses Assigned to Your Institution</h2>
         <p className="text-muted-foreground">
-          View courses assigned to your institution
+          Browse and view all courses available for your classes
         </p>
       </div>
 

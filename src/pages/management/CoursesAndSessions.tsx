@@ -1,25 +1,20 @@
 import { Layout } from "@/components/layout/Layout";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ManagementCoursesView } from "@/components/management/ManagementCoursesView";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
-import { InstitutionTimetableView } from "@/components/management/InstitutionTimetableView";
 import { getInstitutionBySlug } from "@/data/mockInstitutionData";
-import { getInstitutionPeriods } from "@/data/mockInstitutionPeriods";
-import { getInstitutionTimetable } from "@/data/mockInstitutionTimetable";
-import { getOfficerTimetablesByInstitution } from "@/data/mockOfficerTimetable";
 import { useLocation } from "react-router-dom";
-
+import { useAuth } from "@/contexts/AuthContext";
 
 const CoursesAndSessions = () => {
-  // Extract institution from URL
+  const { user } = useAuth();
+  
+  // Extract institution from URL for header display
   const location = useLocation();
   const institutionSlug = location.pathname.split('/')[2];
   const institution = getInstitutionBySlug(institutionSlug);
   
-  // Load timetable data from localStorage
-  const periods = institution ? getInstitutionPeriods(institution.id) : [];
-  const timetableData = institution ? getInstitutionTimetable(institution.id) : [];
-  const officerTimetables = institution ? getOfficerTimetablesByInstitution(institution.id) : [];
+  // Use the real institution ID from authenticated user
+  const institutionId = user?.institution_id;
 
   return (
     <Layout>
@@ -40,28 +35,17 @@ const CoursesAndSessions = () => {
         
         <div>
           <h1 className="text-3xl font-bold">Courses & Sessions</h1>
-          <p className="text-muted-foreground">Manage course catalog and session schedule</p>
+          <p className="text-muted-foreground">View courses assigned to your institution</p>
         </div>
 
-        <Tabs defaultValue="courses" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="courses">STEM Course Catalog</TabsTrigger>
-            <TabsTrigger value="timetable">STEM Class Schedule</TabsTrigger>
-          </TabsList>
-          <TabsContent value="courses" className="mt-6">
-            <ManagementCoursesView institutionId="springfield" />
-          </TabsContent>
-          <TabsContent value="timetable" className="mt-6">
-            {institution && (
-              <InstitutionTimetableView
-                institutionId={institution.id}
-                periods={periods}
-                timetableData={timetableData}
-                officerTimetables={officerTimetables}
-              />
-            )}
-          </TabsContent>
-        </Tabs>
+        {/* Course catalog - view only */}
+        {institutionId ? (
+          <ManagementCoursesView institutionId={institutionId} />
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Loading institution data...</p>
+          </div>
+        )}
       </div>
     </Layout>
   );
