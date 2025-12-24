@@ -257,25 +257,28 @@ export function useInstitutions() {
 
       console.log('[Institutions] Created successfully:', institutionData.id);
 
-      // Store pending admin info in settings (admin will be created via separate flow)
-      if (formData.admin_email) {
-        const currentSettings = (institutionData.settings || {}) as Record<string, any>;
+      // Create the institution admin user via edge function
+      if (formData.admin_email && formData.admin_password) {
+        console.log('[Institutions] Creating admin user via edge function...');
         
-        const { error: updateError } = await supabase
-          .from('institutions')
-          .update({
-            settings: {
-              ...currentSettings,
-              pending_admin: {
-                email: formData.admin_email,
-                name: formData.admin_name || formData.name + ' Admin',
-              }
-            }
-          })
-          .eq('id', institutionData.id);
+        const { data: adminResult, error: adminError } = await supabase.functions.invoke(
+          'create-institution-admin',
+          {
+            body: {
+              admin_email: formData.admin_email,
+              admin_name: formData.admin_name || formData.name + ' Admin',
+              admin_password: formData.admin_password,
+              institution_id: institutionData.id,
+            },
+          }
+        );
 
-        if (updateError) {
-          console.warn('[Institutions] Failed to save pending admin:', updateError);
+        if (adminError) {
+          console.error('[Institutions] Admin creation failed:', adminError);
+          // Don't throw - institution was created successfully, admin can be added later
+          toast.error(`Institution created but admin setup failed: ${adminError.message}`);
+        } else {
+          console.log('[Institutions] Admin created successfully:', adminResult);
         }
       }
       

@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.reset-institution-admin-password]
 verify_jwt = true
+
+[functions.create-institution-admin]
+verify_jwt = true
