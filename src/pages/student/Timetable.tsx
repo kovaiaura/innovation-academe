@@ -1,9 +1,7 @@
-import { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, MapPin, User } from 'lucide-react';
-import { format, addDays, startOfWeek } from 'date-fns';
+import { Clock, MapPin, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getStudentTimetable, getTypeColor } from '@/utils/studentTimetableHelpers';
 
@@ -11,7 +9,6 @@ const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Satur
 
 export default function Timetable() {
   const { user } = useAuth();
-  const startDate = startOfWeek(new Date(), { weekStartsOn: 1 });
 
   // Get student timetable from officer schedules
   const events = user?.institution_id && user?.class_id 
@@ -21,7 +18,6 @@ export default function Timetable() {
   // Group events by day
   const eventsByDay = weekDays.map((day, index) => ({
     day,
-    date: format(addDays(startDate, index), 'MMM dd'),
     events: events.filter(e => e.day === index)
   }));
 
@@ -38,9 +34,7 @@ export default function Timetable() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>Weekly Schedule</CardTitle>
-                <CardDescription>
-                  Week of {format(startDate, 'MMMM dd, yyyy')}
-                </CardDescription>
+                <CardDescription>Your class timetable for each day</CardDescription>
               </div>
               <div className="flex gap-4 text-sm">
                 <div className="flex items-center gap-2">
@@ -63,10 +57,7 @@ export default function Timetable() {
               {eventsByDay.map((dayData) => (
                 <Card key={dayData.day} className="border-2">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center justify-between">
-                      <span>{dayData.day}</span>
-                      <Badge variant="outline">{dayData.date}</Badge>
-                    </CardTitle>
+                    <CardTitle className="text-lg">{dayData.day}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {dayData.events.length > 0 ? (
