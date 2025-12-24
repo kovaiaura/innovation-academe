@@ -16,7 +16,6 @@ import {
   Phone,
   MapPin,
   Calendar,
-  DollarSign,
   Building2,
   FileText,
   Upload,
@@ -26,8 +25,9 @@ import {
   Plus,
   Clock,
   UserCheck,
+  IndianRupee,
 } from 'lucide-react';
-import { systemAdminService, OfficerDetails, OfficerDocument, OfficerActivityLog } from '@/services/systemadmin.service';
+import { OfficerDetails, OfficerDocument, OfficerActivityLog } from '@/services/systemadmin.service';
 import DocumentUploadDialog from '@/components/officer/DocumentUploadDialog';
 import EditOfficerDialog from '@/components/officer/EditOfficerDialog';
 import DocumentCard from '@/components/officer/DocumentCard';
@@ -36,7 +36,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getLeaveBalance, initializeLeaveBalance } from '@/data/mockLeaveData';
 import { LeaveBalance } from '@/types/attendance';
-import { getOfficerById, updateOfficer } from '@/data/mockOfficerData';
+import { useOfficer, useUpdateOfficer, type Officer } from '@/hooks/useOfficers';
+import { supabase } from '@/integrations/supabase/client';
 
 // Mock institutions for assignment
 const mockInstitutions = [
@@ -45,120 +46,6 @@ const mockInstitutions = [
   { id: 'inst3', name: 'Oakwood Institute' },
   { id: 'inst4', name: 'Tech Valley School' },
   { id: 'inst5', name: 'Innovation Hub' },
-];
-
-// Mock data for officer details
-const mockOfficerDetails: Record<string, OfficerDetails> = {
-  '1': {
-    id: '1',
-    name: 'John Smith',
-    email: 'john.smith@metainnova.com',
-    phone: '+1234567890',
-    assigned_institutions: ['Springfield University', 'River College'],
-    employment_type: 'full_time',
-    salary: 65000,
-    join_date: '2023-01-15',
-    status: 'active',
-    date_of_birth: '1985-06-15',
-    address: '123 Main St, Springfield, IL 62701',
-    emergency_contact_name: 'Jane Smith',
-    emergency_contact_phone: '+1234567899',
-    employee_id: 'EMP001',
-    department: 'Innovation Management',
-    bank_account_number: '****1234',
-    bank_name: 'Chase Bank',
-    bank_ifsc: 'CHAS0001234',
-    bank_branch: 'Springfield Branch',
-    hourly_rate: 312.50,
-    overtime_rate_multiplier: 1.5,
-    normal_working_hours: 8,
-    statutory_info: {
-      pf_number: 'PF123456789',
-      uan_number: 'UAN987654321',
-      esi_number: '',
-      pan_number: 'ABCDE1234F',
-      pt_registration: 'PT12345',
-      pf_applicable: true,
-      esi_applicable: false,
-      pt_applicable: true,
-    },
-    salary_structure: {
-      basic_pay: 26000,
-      hra: 13000,
-      da: 6500,
-      transport_allowance: 3250,
-      special_allowance: 13000,
-      medical_allowance: 3250,
-    },
-    qualifications: ['MBA in Innovation Management', 'BS in Computer Science'],
-    certifications: ['PMP', 'Agile Scrum Master'],
-    skills: ['Project Management', 'Innovation Strategy', 'Team Leadership'],
-    profile_photo_url: '',
-  },
-  '2': {
-    id: '2',
-    name: 'Sarah Johnson',
-    email: 'sarah.j@metainnova.com',
-    phone: '+1234567891',
-    assigned_institutions: ['Oakwood Institute'],
-    employment_type: 'full_time',
-    salary: 62000,
-    join_date: '2023-03-20',
-    status: 'active',
-    date_of_birth: '1990-03-22',
-    address: '456 Oak Ave, Oakwood, CA 90210',
-    emergency_contact_name: 'Michael Johnson',
-    emergency_contact_phone: '+1234567898',
-    employee_id: 'EMP002',
-    department: 'Innovation Management',
-    qualifications: ['MS in Educational Technology'],
-    certifications: ['ITIL Foundation'],
-    skills: ['Educational Innovation', 'Digital Transformation'],
-  },
-  '3': {
-    id: '3',
-    name: 'Michael Chen',
-    email: 'michael.c@metainnova.com',
-    phone: '+1234567892',
-    assigned_institutions: ['Tech Valley School', 'Innovation Hub'],
-    employment_type: 'contract',
-    salary: 55000,
-    join_date: '2023-06-10',
-    status: 'active',
-    date_of_birth: '1988-11-05',
-    address: '789 Tech Blvd, Valley City, TX 75001',
-    employee_id: 'EMP003',
-    department: 'Innovation Management',
-    qualifications: ['BS in Engineering'],
-    skills: ['Technology Integration', 'STEM Education'],
-  },
-};
-
-// Mock documents
-const mockDocuments: OfficerDocument[] = [
-  {
-    id: '1',
-    officer_id: '1',
-    document_type: 'appointment_letter',
-    document_name: 'Appointment Letter 2023',
-    file_url: '#',
-    file_size_mb: 2.5,
-    file_type: 'pdf',
-    uploaded_by: 'Admin',
-    uploaded_date: '2023-01-15',
-    description: 'Official appointment letter',
-  },
-  {
-    id: '2',
-    officer_id: '1',
-    document_type: 'certificate',
-    document_name: 'MBA Certificate',
-    file_url: '#',
-    file_size_mb: 1.8,
-    file_type: 'pdf',
-    uploaded_by: 'John Smith',
-    uploaded_date: '2023-02-01',
-  },
 ];
 
 // Mock activity log
@@ -189,14 +76,64 @@ const mockActivityLog: OfficerActivityLog[] = [
   },
 ];
 
+// Convert database Officer to OfficerDetails format
+function mapOfficerToDetails(officer: Officer): OfficerDetails {
+  return {
+    id: officer.id,
+    name: officer.full_name,
+    email: officer.email,
+    phone: officer.phone || '',
+    assigned_institutions: officer.assigned_institutions || [],
+    employment_type: officer.employment_type as 'full_time' | 'part_time' | 'contract',
+    salary: officer.annual_salary,
+    join_date: officer.join_date || new Date().toISOString().split('T')[0],
+    status: officer.status as 'active' | 'on_leave' | 'terminated',
+    date_of_birth: officer.date_of_birth || '',
+    address: officer.address || '',
+    emergency_contact_name: officer.emergency_contact_name || '',
+    emergency_contact_phone: officer.emergency_contact_phone || '',
+    employee_id: officer.employee_id || '',
+    department: officer.department || 'Innovation & STEM Education',
+    bank_account_number: officer.bank_account_number || '',
+    bank_name: officer.bank_name || '',
+    bank_ifsc: officer.bank_ifsc || '',
+    bank_branch: officer.bank_branch || '',
+    hourly_rate: officer.hourly_rate || 0,
+    overtime_rate_multiplier: officer.overtime_rate_multiplier || 1.5,
+    normal_working_hours: officer.normal_working_hours || 8,
+    statutory_info: {
+      pf_applicable: true,
+      esi_applicable: false,
+      pt_applicable: true,
+      ...officer.statutory_info,
+    },
+    salary_structure: {
+      basic_pay: 0,
+      hra: 0,
+      da: 0,
+      transport_allowance: 0,
+      special_allowance: 0,
+      medical_allowance: 0,
+      ...officer.salary_structure,
+    },
+    qualifications: officer.qualifications || [],
+    certifications: officer.certifications || [],
+    skills: officer.skills || [],
+    profile_photo_url: officer.profile_photo_url || '',
+  };
+}
+
 export default function OfficerDetail() {
   const { officerId } = useParams<{ officerId: string }>();
   const navigate = useNavigate();
   
+  // Fetch officer from database
+  const { data: officerData, isLoading, error } = useOfficer(officerId || '');
+  const updateOfficer = useUpdateOfficer();
+  
   const [officer, setOfficer] = useState<OfficerDetails | null>(null);
   const [documents, setDocuments] = useState<OfficerDocument[]>([]);
   const [activityLog, setActivityLog] = useState<OfficerActivityLog[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
   
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
@@ -206,51 +143,94 @@ export default function OfficerDetail() {
   const [selectedInstitution, setSelectedInstitution] = useState<string>('');
   const [leaveBalance, setLeaveBalance] = useState<LeaveBalance | null>(null);
 
+  // Fetch documents from database
   useEffect(() => {
-    const fetchOfficerData = async () => {
+    const fetchDocuments = async () => {
       if (!officerId) return;
       
-      setIsLoading(true);
-      try {
-        // Load from localStorage
-        const officerData = getOfficerById(officerId);
-        const documentsData = mockDocuments.filter(d => d.officer_id === officerId);
-        const activityData = mockActivityLog.filter(a => a.officer_id === officerId);
-        
-        if (officerData) {
-          setOfficer(officerData);
-          setDocuments(documentsData);
-          setActivityLog(activityData);
-          
-          // Fetch leave balance
-          const currentYear = new Date().getFullYear().toString();
-          const leaveData = getLeaveBalance(officerId, currentYear);
-          setLeaveBalance(leaveData);
-        } else {
-          toast.error('Officer not found');
-          navigate('/system-admin/officers');
-        }
-      } catch (error) {
-        toast.error('Failed to load officer data');
-      } finally {
-        setIsLoading(false);
+      const { data: docs, error } = await supabase
+        .from('officer_documents')
+        .select('*')
+        .eq('officer_id', officerId);
+      
+      if (!error && docs) {
+        const mappedDocs: OfficerDocument[] = docs.map(doc => ({
+          id: doc.id,
+          officer_id: doc.officer_id,
+          document_type: doc.document_type as any,
+          document_name: doc.document_name,
+          file_url: doc.file_url,
+          file_size_mb: doc.file_size_mb || 0,
+          file_type: doc.file_type || '',
+          uploaded_by: doc.uploaded_by || '',
+          uploaded_date: doc.created_at?.split('T')[0] || '',
+          description: doc.description || '',
+        }));
+        setDocuments(mappedDocs);
       }
     };
     
-    fetchOfficerData();
-  }, [officerId, navigate]);
+    fetchDocuments();
+  }, [officerId]);
+
+  // Map officer data when loaded
+  useEffect(() => {
+    if (officerData) {
+      setOfficer(mapOfficerToDetails(officerData));
+      setActivityLog(mockActivityLog);
+      
+      // Fetch leave balance
+      const currentYear = new Date().getFullYear().toString();
+      const leaveData = getLeaveBalance(officerId || '', currentYear);
+      setLeaveBalance(leaveData);
+    }
+  }, [officerData, officerId]);
+
+  // Handle error
+  useEffect(() => {
+    if (error) {
+      toast.error('Officer not found');
+      navigate('/system-admin/officers');
+    }
+  }, [error, navigate]);
 
   const handleProfileUpdate = async (updatedData: Partial<OfficerDetails> & { casual_leave?: number; sick_leave?: number; earned_leave?: number }) => {
-    if (!officerId) return;
+    if (!officerId || !officerData) return;
     
     try {
       toast.loading('Updating profile...', { id: 'update' });
       
-      const { casual_leave, sick_leave, earned_leave, ...officerData } = updatedData;
+      const { casual_leave, sick_leave, earned_leave, ...officerDetailsData } = updatedData;
       
-      // Update officer details in localStorage
-      updateOfficer(officerId, officerData);
-      setOfficer(prev => prev ? { ...prev, ...officerData } : null);
+      // Map OfficerDetails fields back to database Officer fields
+      const updatePayload: Partial<Officer> = {};
+      if (officerDetailsData.name) updatePayload.full_name = officerDetailsData.name;
+      if (officerDetailsData.email) updatePayload.email = officerDetailsData.email;
+      if (officerDetailsData.phone !== undefined) updatePayload.phone = officerDetailsData.phone || null;
+      if (officerDetailsData.address !== undefined) updatePayload.address = officerDetailsData.address || null;
+      if (officerDetailsData.date_of_birth) updatePayload.date_of_birth = officerDetailsData.date_of_birth;
+      if (officerDetailsData.emergency_contact_name !== undefined) updatePayload.emergency_contact_name = officerDetailsData.emergency_contact_name || null;
+      if (officerDetailsData.emergency_contact_phone !== undefined) updatePayload.emergency_contact_phone = officerDetailsData.emergency_contact_phone || null;
+      if (officerDetailsData.bank_name !== undefined) updatePayload.bank_name = officerDetailsData.bank_name || null;
+      if (officerDetailsData.bank_account_number !== undefined) updatePayload.bank_account_number = officerDetailsData.bank_account_number || null;
+      if (officerDetailsData.bank_ifsc !== undefined) updatePayload.bank_ifsc = officerDetailsData.bank_ifsc || null;
+      if (officerDetailsData.bank_branch !== undefined) updatePayload.bank_branch = officerDetailsData.bank_branch || null;
+      if (officerDetailsData.salary !== undefined) updatePayload.annual_salary = officerDetailsData.salary;
+      if (officerDetailsData.hourly_rate !== undefined) updatePayload.hourly_rate = officerDetailsData.hourly_rate;
+      if (officerDetailsData.overtime_rate_multiplier !== undefined) updatePayload.overtime_rate_multiplier = officerDetailsData.overtime_rate_multiplier;
+      if (officerDetailsData.employment_type) updatePayload.employment_type = officerDetailsData.employment_type;
+      if (officerDetailsData.status) updatePayload.status = officerDetailsData.status;
+      if (officerDetailsData.qualifications) updatePayload.qualifications = officerDetailsData.qualifications;
+      if (officerDetailsData.certifications) updatePayload.certifications = officerDetailsData.certifications;
+      if (officerDetailsData.skills) updatePayload.skills = officerDetailsData.skills;
+      if (officerDetailsData.statutory_info) updatePayload.statutory_info = officerDetailsData.statutory_info;
+      if (officerDetailsData.salary_structure) updatePayload.salary_structure = officerDetailsData.salary_structure;
+      
+      // Update in database
+      await updateOfficer.mutateAsync({ id: officerId, data: updatePayload });
+      
+      // Update local state
+      setOfficer(prev => prev ? { ...prev, ...officerDetailsData } : null);
       
       // Update leave balance if leave fields are present
       if (casual_leave !== undefined || sick_leave !== undefined || earned_leave !== undefined) {
@@ -283,15 +263,43 @@ export default function OfficerDetail() {
     
     try {
       toast.loading('Uploading document...', { id: 'upload' });
-      // API call would go here
-      // const result = await systemAdminService.uploadOfficerDocument(officerId, file, documentType, documentName, description);
+      
+      // Upload file to storage
+      const filePath = `${officerId}/${Date.now()}_${file.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('officer-documents')
+        .upload(filePath, file);
+      
+      if (uploadError) throw uploadError;
+      
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('officer-documents')
+        .getPublicUrl(filePath);
+      
+      // Insert document record
+      const { data: docData, error: docError } = await supabase
+        .from('officer_documents')
+        .insert({
+          officer_id: officerId,
+          document_type: documentType,
+          document_name: documentName,
+          file_url: urlData.publicUrl,
+          file_size_mb: file.size / (1024 * 1024),
+          file_type: file.type.split('/')[1],
+          description,
+        })
+        .select()
+        .single();
+      
+      if (docError) throw docError;
       
       const newDoc: OfficerDocument = {
-        id: String(documents.length + 1),
+        id: docData.id,
         officer_id: officerId,
         document_type: documentType as any,
         document_name: documentName,
-        file_url: '#',
+        file_url: urlData.publicUrl,
         file_size_mb: file.size / (1024 * 1024),
         file_type: file.type.split('/')[1],
         uploaded_by: 'Current User',
@@ -303,6 +311,7 @@ export default function OfficerDetail() {
       setIsUploadDocumentOpen(false);
       toast.success('Document uploaded successfully', { id: 'upload' });
     } catch (error) {
+      console.error('Upload error:', error);
       toast.error('Failed to upload document', { id: 'upload' });
     }
   };
@@ -313,11 +322,26 @@ export default function OfficerDetail() {
     
     try {
       toast.loading('Uploading photo...', { id: 'photo' });
-      // API call would go here
-      // const result = await systemAdminService.uploadOfficerPhoto(officerId, file);
       
-      const photoUrl = URL.createObjectURL(file);
-      setOfficer(prev => prev ? { ...prev, profile_photo_url: photoUrl } : null);
+      // Upload to storage
+      const filePath = `${officerId}/profile_${Date.now()}.${file.name.split('.').pop()}`;
+      const { error: uploadError } = await supabase.storage
+        .from('officer-documents')
+        .upload(filePath, file);
+      
+      if (uploadError) throw uploadError;
+      
+      const { data: urlData } = supabase.storage
+        .from('officer-documents')
+        .getPublicUrl(filePath);
+      
+      // Update officer record
+      await updateOfficer.mutateAsync({
+        id: officerId,
+        data: { profile_photo_url: urlData.publicUrl }
+      });
+      
+      setOfficer(prev => prev ? { ...prev, profile_photo_url: urlData.publicUrl } : null);
       toast.success('Photo updated successfully', { id: 'photo' });
     } catch (error) {
       toast.error('Failed to upload photo', { id: 'photo' });
@@ -329,8 +353,13 @@ export default function OfficerDetail() {
     
     try {
       toast.loading('Deleting document...', { id: 'delete' });
-      // API call would go here
-      // await systemAdminService.deleteOfficerDocument(officerId, documentId);
+      
+      const { error } = await supabase
+        .from('officer_documents')
+        .delete()
+        .eq('id', documentId);
+      
+      if (error) throw error;
       
       setDocuments(documents.filter(d => d.id !== documentId));
       toast.success('Document deleted successfully', { id: 'delete' });
@@ -349,10 +378,17 @@ export default function OfficerDetail() {
       toast.loading('Adding assignment...', { id: 'assign' });
       const institution = mockInstitutions.find(i => i.id === selectedInstitution);
       
-      if (institution && officer) {
+      if (institution && officer && officerData) {
+        const newInstitutions = [...(officerData.assigned_institutions || []), institution.name];
+        
+        await updateOfficer.mutateAsync({
+          id: officerId,
+          data: { assigned_institutions: newInstitutions }
+        });
+        
         setOfficer({
           ...officer,
-          assigned_institutions: [...officer.assigned_institutions, institution.name],
+          assigned_institutions: newInstitutions,
         });
         setIsAssignInstitutionOpen(false);
         setSelectedInstitution('');
@@ -364,13 +400,21 @@ export default function OfficerDetail() {
   };
 
   const handleRemoveInstitution = async (institutionName: string) => {
-    if (!officerId || !officer) return;
+    if (!officerId || !officer || !officerData) return;
     
     try {
       toast.loading('Removing assignment...', { id: 'remove' });
+      
+      const newInstitutions = (officerData.assigned_institutions || []).filter(i => i !== institutionName);
+      
+      await updateOfficer.mutateAsync({
+        id: officerId,
+        data: { assigned_institutions: newInstitutions }
+      });
+      
       setOfficer({
         ...officer,
-        assigned_institutions: officer.assigned_institutions.filter(i => i !== institutionName),
+        assigned_institutions: newInstitutions,
       });
       toast.success('Institution removed successfully', { id: 'remove' });
     } catch (error) {
@@ -401,7 +445,7 @@ export default function OfficerDetail() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', { 
+    return new Date(dateString).toLocaleDateString('en-IN', { 
       year: 'numeric', 
       month: 'short', 
       day: 'numeric' 
@@ -498,16 +542,16 @@ export default function OfficerDetail() {
                     <p className="font-semibold">₹{officer.salary.toLocaleString('en-IN')}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Institutions</p>
+                    <p className="text-sm text-muted-foreground">Assigned Institutions</p>
                     <p className="font-semibold">{officer.assigned_institutions.length}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
+              {/* Actions */}
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setIsEditProfileOpen(true)}>
-                  <Edit className="h-4 w-4 mr-2" />
+                  <Edit className="mr-2 h-4 w-4" />
                   Edit Profile
                 </Button>
               </div>
@@ -517,477 +561,412 @@ export default function OfficerDetail() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="institutions">Institutions</TabsTrigger>
+            <TabsTrigger value="employment">Employment</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
+            <TabsTrigger value="assignments">Assignments</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
 
           {/* Profile Tab */}
           <TabsContent value="profile" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Personal Information */}
               <Card>
-                <CardContent className="pt-6 space-y-4">
-                  <h3 className="font-semibold text-lg mb-4">Personal Information</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{officer.email}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{officer.phone}</span>
-                    </div>
-                    {officer.date_of_birth && (
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">DOB: {formatDate(officer.date_of_birth)}</span>
-                      </div>
-                    )}
-                    {officer.address && (
-                      <div className="flex items-start gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <span className="text-sm">{officer.address}</span>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Employment Information */}
-              <Card>
-                <CardContent className="pt-6 space-y-4">
-                  <h3 className="font-semibold text-lg mb-4">Employment Information</h3>
-                  <div className="space-y-3">
-                    {officer.employee_id && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Employee ID</p>
-                        <p className="font-medium">{officer.employee_id}</p>
-                      </div>
-                    )}
-                    {officer.department && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Department</p>
-                        <p className="font-medium">{officer.department}</p>
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-sm text-muted-foreground">Employment Type</p>
-                      <p className="font-medium">{officer.employment_type.replace('_', ' ')}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">Annual Salary</p>
-                        <p className="font-medium">₹{officer.salary.toLocaleString('en-IN')}</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Payroll Configuration */}
-              <Card>
-                <CardContent className="pt-6 space-y-4">
-                  <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                    <DollarSign className="h-5 w-5" />
-                    Payroll Configuration
+                <CardContent className="pt-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <UserCheck className="h-4 w-4" />
+                    Personal Information
                   </h3>
                   <div className="space-y-3">
-                    {officer.hourly_rate && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Hourly Rate</p>
-                        <p className="font-medium">₹{officer.hourly_rate.toFixed(2)}/hour</p>
-                      </div>
-                    )}
-                    {officer.overtime_rate_multiplier && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Overtime Multiplier</p>
-                        <p className="font-medium">{officer.overtime_rate_multiplier}x</p>
-                      </div>
-                    )}
-                    {officer.normal_working_hours && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Normal Working Hours</p>
-                        <p className="font-medium">{officer.normal_working_hours} hours/day</p>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2 text-sm">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span>{officer.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <span>{officer.phone || 'Not provided'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span>DOB: {officer.date_of_birth ? formatDate(officer.date_of_birth) : 'Not provided'}</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-sm">
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <span>{officer.address || 'Address not provided'}</span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Leave Allowances */}
-              {leaveBalance && (
-                <Card>
-                  <CardContent className="pt-6 space-y-4">
-                    <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                      <Calendar className="h-5 w-5" />
-                      Leave Allowances ({leaveBalance.year})
-                    </h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Casual Leave</span>
-                        <Badge variant="secondary" className="bg-blue-500/10 text-blue-600">
-                          {leaveBalance.casual_leave} days
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Sick Leave</span>
-                        <Badge variant="secondary" className="bg-orange-500/10 text-orange-600">
-                          {leaveBalance.sick_leave} days
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Earned Leave</span>
-                        <Badge variant="secondary" className="bg-green-500/10 text-green-600">
-                          {leaveBalance.earned_leave} days
-                        </Badge>
-                      </div>
+              {/* Emergency Contact */}
+              <Card>
+                <CardContent className="pt-6">
+                  <h3 className="font-semibold mb-4">Emergency Contact</h3>
+                  <div className="space-y-3">
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Name: </span>
+                      <span>{officer.emergency_contact_name || 'Not provided'}</span>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Phone: </span>
+                      <span>{officer.emergency_contact_phone || 'Not provided'}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Bank Details */}
-              {(officer.bank_account_number || officer.bank_name) && (
-                <Card>
-                  <CardContent className="pt-6 space-y-4">
-                    <h3 className="font-semibold text-lg mb-4">Banking Information</h3>
-                    <div className="space-y-3">
-                      {officer.bank_account_number && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">Account Number</p>
-                          <p className="font-medium">{officer.bank_account_number}</p>
-                        </div>
-                      )}
-                      {officer.bank_name && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">Bank Name</p>
-                          <p className="font-medium">{officer.bank_name}</p>
-                        </div>
-                      )}
-                      {officer.bank_ifsc && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">IFSC Code</p>
-                          <p className="font-medium">{officer.bank_ifsc}</p>
-                        </div>
-                      )}
-                      {officer.bank_branch && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">Branch</p>
-                          <p className="font-medium">{officer.bank_branch}</p>
-                        </div>
-                      )}
+              <Card>
+                <CardContent className="pt-6">
+                  <h3 className="font-semibold mb-4">Bank Details</h3>
+                  <div className="space-y-3">
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Bank Name: </span>
+                      <span>{officer.bank_name || 'Not provided'}</span>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Statutory Information */}
-              {officer.statutory_info && (
-                <Card>
-                  <CardContent className="pt-6 space-y-4">
-                    <h3 className="font-semibold text-lg mb-4">Statutory Information</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      {officer.statutory_info.pf_number && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">PF Number</p>
-                          <p className="font-medium">{officer.statutory_info.pf_number}</p>
-                        </div>
-                      )}
-                      {officer.statutory_info.uan_number && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">UAN Number</p>
-                          <p className="font-medium">{officer.statutory_info.uan_number}</p>
-                        </div>
-                      )}
-                      {officer.statutory_info.esi_number && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">ESI Number</p>
-                          <p className="font-medium">{officer.statutory_info.esi_number}</p>
-                        </div>
-                      )}
-                      {officer.statutory_info.pan_number && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">PAN Number</p>
-                          <p className="font-medium">{officer.statutory_info.pan_number}</p>
-                        </div>
-                      )}
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Account Number: </span>
+                      <span>{officer.bank_account_number || 'Not provided'}</span>
                     </div>
-                    <div className="pt-2 space-y-2">
-                      <p className="text-sm font-medium">Applicability:</p>
-                      <div className="flex gap-4">
-                        <Badge variant={officer.statutory_info.pf_applicable ? "default" : "outline"}>
-                          PF {officer.statutory_info.pf_applicable ? "Applicable" : "Not Applicable"}
-                        </Badge>
-                        <Badge variant={officer.statutory_info.esi_applicable ? "default" : "outline"}>
-                          ESI {officer.statutory_info.esi_applicable ? "Applicable" : "Not Applicable"}
-                        </Badge>
-                        <Badge variant={officer.statutory_info.pt_applicable ? "default" : "outline"}>
-                          PT {officer.statutory_info.pt_applicable ? "Applicable" : "Not Applicable"}
-                        </Badge>
-                      </div>
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">IFSC Code: </span>
+                      <span>{officer.bank_ifsc || 'Not provided'}</span>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Salary Structure */}
-              {officer.salary_structure && (
-                <Card>
-                  <CardContent className="pt-6 space-y-4">
-                    <h3 className="font-semibold text-lg mb-4">Salary Structure</h3>
-                    <div className="space-y-2">
-                      <div className="flex justify-between py-2 border-b">
-                        <span className="text-sm text-muted-foreground">Basic Pay</span>
-                        <span className="font-medium">₹{officer.salary_structure.basic_pay.toLocaleString('en-IN')}</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b">
-                        <span className="text-sm text-muted-foreground">HRA</span>
-                        <span className="font-medium">₹{officer.salary_structure.hra.toLocaleString('en-IN')}</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b">
-                        <span className="text-sm text-muted-foreground">DA</span>
-                        <span className="font-medium">₹{officer.salary_structure.da.toLocaleString('en-IN')}</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b">
-                        <span className="text-sm text-muted-foreground">Transport Allowance</span>
-                        <span className="font-medium">₹{officer.salary_structure.transport_allowance.toLocaleString('en-IN')}</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b">
-                        <span className="text-sm text-muted-foreground">Special Allowance</span>
-                        <span className="font-medium">₹{officer.salary_structure.special_allowance.toLocaleString('en-IN')}</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b">
-                        <span className="text-sm text-muted-foreground">Medical Allowance</span>
-                        <span className="font-medium">₹{officer.salary_structure.medical_allowance.toLocaleString('en-IN')}</span>
-                      </div>
-                      <div className="flex justify-between py-3 border-t-2 mt-2">
-                        <span className="font-bold">Total (CTC)</span>
-                        <span className="font-bold text-lg">₹{officer.salary.toLocaleString('en-IN')}</span>
-                      </div>
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Branch: </span>
+                      <span>{officer.bank_branch || 'Not provided'}</span>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Emergency Contact */}
-              {(officer.emergency_contact_name || officer.emergency_contact_phone) && (
-                <Card>
-                  <CardContent className="pt-6 space-y-4">
-                    <h3 className="font-semibold text-lg mb-4">Emergency Contact</h3>
-                    <div className="space-y-3">
-                      {officer.emergency_contact_name && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">Name</p>
-                          <p className="font-medium">{officer.emergency_contact_name}</p>
-                        </div>
-                      )}
-                      {officer.emergency_contact_phone && (
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{officer.emergency_contact_phone}</span>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Qualifications */}
-              {officer.qualifications && officer.qualifications.length > 0 && (
-                <Card>
-                  <CardContent className="pt-6 space-y-4">
-                    <h3 className="font-semibold text-lg mb-4">Qualifications</h3>
-                    <ul className="space-y-2">
-                      {officer.qualifications.map((qual, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <span className="text-primary mt-1">•</span>
-                          <span className="text-sm">{qual}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              )}
+              <Card>
+                <CardContent className="pt-6">
+                  <h3 className="font-semibold mb-4">Qualifications & Skills</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Qualifications</p>
+                      <div className="flex flex-wrap gap-1">
+                        {officer.qualifications?.length > 0 ? (
+                          officer.qualifications.map((q, i) => (
+                            <Badge key={i} variant="secondary">{String(q)}</Badge>
+                          ))
+                        ) : (
+                          <span className="text-sm text-muted-foreground">No qualifications added</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Certifications</p>
+                      <div className="flex flex-wrap gap-1">
+                        {officer.certifications?.length > 0 ? (
+                          officer.certifications.map((c, i) => (
+                            <Badge key={i} variant="outline">{String(c)}</Badge>
+                          ))
+                        ) : (
+                          <span className="text-sm text-muted-foreground">No certifications added</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Skills</p>
+                      <div className="flex flex-wrap gap-1">
+                        {officer.skills?.length > 0 ? (
+                          officer.skills.map((s, i) => (
+                            <Badge key={i} variant="outline">{String(s)}</Badge>
+                          ))
+                        ) : (
+                          <span className="text-sm text-muted-foreground">No skills added</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
-          {/* Institutions Tab */}
-          <TabsContent value="institutions" className="space-y-4">
+          {/* Employment Tab */}
+          <TabsContent value="employment" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Salary Details */}
+              <Card>
+                <CardContent className="pt-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <IndianRupee className="h-4 w-4" />
+                    Salary & Payroll
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Annual Salary</span>
+                      <span className="font-semibold">₹{officer.salary.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Hourly Rate</span>
+                      <span>₹{(officer.hourly_rate || 0).toLocaleString('en-IN')}/hr</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Overtime Rate Multiplier</span>
+                      <span>{officer.overtime_rate_multiplier}x</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Normal Working Hours</span>
+                      <span>{officer.normal_working_hours} hrs/day</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Leave Balance */}
+              <Card>
+                <CardContent className="pt-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Leave Allowance
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Sick Leave</span>
+                      <span>{officerData?.sick_leave_allowance || 10} days/year</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Casual Leave</span>
+                      <span>{officerData?.casual_leave_allowance || 12} days/year</span>
+                    </div>
+                    <div className="flex justify-between text-sm border-t pt-2">
+                      <span className="text-muted-foreground font-medium">Annual Leave (Total)</span>
+                      <span className="font-semibold">{officerData?.annual_leave_allowance || 22} days/year</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Statutory Info */}
+              <Card className="md:col-span-2">
+                <CardContent className="pt-6">
+                  <h3 className="font-semibold mb-4">Statutory Information</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">PF Number</span>
+                      <p>{officer.statutory_info?.pf_number || 'Not provided'}</p>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">UAN Number</span>
+                      <p>{officer.statutory_info?.uan_number || 'Not provided'}</p>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">PAN Number</span>
+                      <p>{officer.statutory_info?.pan_number || 'Not provided'}</p>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">PT Registration</span>
+                      <p>{officer.statutory_info?.pt_registration || 'Not provided'}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Documents Tab */}
+          <TabsContent value="documents" className="space-y-4">
             <div className="flex justify-end">
+              <Button onClick={() => openUploadDialog('other')}>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload Document
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Appointment Letter */}
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-semibold">Appointment Letter</h4>
+                    <Button size="sm" variant="outline" onClick={() => openUploadDialog('appointment_letter')}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {getDocumentsByType('appointment_letter').length > 0 ? (
+                    <div className="space-y-2">
+                      {getDocumentsByType('appointment_letter').map(doc => (
+                        <DocumentCard 
+                          key={doc.id} 
+                          document={doc} 
+                          onView={() => window.open(doc.file_url, '_blank')}
+                          onDownload={() => window.open(doc.file_url, '_blank')}
+                          onDelete={() => handleDeleteDocument(doc.id)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No appointment letter uploaded</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Certificates */}
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-semibold">Certificates</h4>
+                    <Button size="sm" variant="outline" onClick={() => openUploadDialog('certificate')}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {getDocumentsByType('certificate').length > 0 ? (
+                    <div className="space-y-2">
+                      {getDocumentsByType('certificate').map(doc => (
+                        <DocumentCard 
+                          key={doc.id} 
+                          document={doc} 
+                          onView={() => window.open(doc.file_url, '_blank')}
+                          onDownload={() => window.open(doc.file_url, '_blank')}
+                          onDelete={() => handleDeleteDocument(doc.id)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No certificates uploaded</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* ID Cards */}
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-semibold">ID Cards</h4>
+                    <Button size="sm" variant="outline" onClick={() => openUploadDialog('id_card')}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {getDocumentsByType('id_card').length > 0 ? (
+                    <div className="space-y-2">
+                      {getDocumentsByType('id_card').map(doc => (
+                        <DocumentCard 
+                          key={doc.id} 
+                          document={doc} 
+                          onView={() => window.open(doc.file_url, '_blank')}
+                          onDownload={() => window.open(doc.file_url, '_blank')}
+                          onDelete={() => handleDeleteDocument(doc.id)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No ID cards uploaded</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Other Documents */}
+              <Card className="md:col-span-2 lg:col-span-3">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-semibold">Other Documents</h4>
+                    <Button size="sm" variant="outline" onClick={() => openUploadDialog('other')}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {getDocumentsByType('other').length > 0 || getDocumentsByType('contract').length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      {[...getDocumentsByType('other'), ...getDocumentsByType('contract')].map(doc => (
+                        <DocumentCard 
+                          key={doc.id} 
+                          document={doc} 
+                          onView={() => window.open(doc.file_url, '_blank')}
+                          onDownload={() => window.open(doc.file_url, '_blank')}
+                          onDelete={() => handleDeleteDocument(doc.id)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No other documents uploaded</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Assignments Tab */}
+          <TabsContent value="assignments" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Institution Assignments</h3>
               <Button onClick={() => setIsAssignInstitutionOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Assign Institution
               </Button>
             </div>
 
-            <div className="grid gap-4">
-              {officer.assigned_institutions.length === 0 ? (
-                <Card>
-                  <CardContent className="pt-6 text-center py-12">
-                    <Building2 className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground">No institutions assigned yet</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                officer.assigned_institutions.map((institution, index) => (
-                  <Card key={index}>
+            {officer.assigned_institutions.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {officer.assigned_institutions.map((inst, idx) => (
+                  <Card key={idx}>
                     <CardContent className="pt-6">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           <Building2 className="h-5 w-5 text-muted-foreground" />
-                          <div>
-                            <h4 className="font-medium">{institution}</h4>
-                            <p className="text-sm text-muted-foreground">Active Assignment</p>
-                          </div>
+                          <span className="font-medium">{inst}</span>
                         </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm">View Institution</Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveInstitution(institution)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleRemoveInstitution(inst)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="pt-6 text-center">
+                  <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No institutions assigned yet</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
-          {/* Documents Tab */}
-          <TabsContent value="documents" className="space-y-4">
-            {/* Appointment Letters */}
+          {/* Activity Tab */}
+          <TabsContent value="activity" className="space-y-4">
             <Card>
               <CardContent className="pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-lg">Appointment Letters</h3>
-                  <Button size="sm" onClick={() => openUploadDialog('appointment_letter')}>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload
-                  </Button>
-                </div>
-                <div className="space-y-3">
-                  {getDocumentsByType('appointment_letter').length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      No appointment letters uploaded
-                    </p>
-                  ) : (
-                    getDocumentsByType('appointment_letter').map(doc => (
-                      <DocumentCard
-                        key={doc.id}
-                        document={doc}
-                        onView={() => window.open(doc.file_url, '_blank')}
-                        onDownload={() => window.open(doc.file_url, '_blank')}
-                        onDelete={() => handleDeleteDocument(doc.id)}
-                      />
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Certificates */}
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-lg">Certificates</h3>
-                  <Button size="sm" onClick={() => openUploadDialog('certificate')}>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload
-                  </Button>
-                </div>
-                <div className="space-y-3">
-                  {getDocumentsByType('certificate').length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      No certificates uploaded
-                    </p>
-                  ) : (
-                    getDocumentsByType('certificate').map(doc => (
-                      <DocumentCard
-                        key={doc.id}
-                        document={doc}
-                        onView={() => window.open(doc.file_url, '_blank')}
-                        onDownload={() => window.open(doc.file_url, '_blank')}
-                        onDelete={() => handleDeleteDocument(doc.id)}
-                      />
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* ID Cards */}
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-lg">ID Cards</h3>
-                  <Button size="sm" onClick={() => openUploadDialog('id_card')}>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload
-                  </Button>
-                </div>
-                <div className="space-y-3">
-                  {getDocumentsByType('id_card').length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      No ID cards uploaded
-                    </p>
-                  ) : (
-                    getDocumentsByType('id_card').map(doc => (
-                      <DocumentCard
-                        key={doc.id}
-                        document={doc}
-                        onView={() => window.open(doc.file_url, '_blank')}
-                        onDownload={() => window.open(doc.file_url, '_blank')}
-                        onDelete={() => handleDeleteDocument(doc.id)}
-                      />
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* History Tab */}
-          <TabsContent value="history" className="space-y-4">
-            <Card>
-              <CardContent className="pt-6">
-                <h3 className="font-semibold text-lg mb-4">Activity Log</h3>
-                {activityLog.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    No activity recorded yet
-                  </p>
-                ) : (
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Recent Activity
+                </h3>
+                {activityLog.length > 0 ? (
                   <div className="space-y-4">
                     {activityLog.map((log) => (
-                      <div key={log.id} className="flex gap-4 border-l-2 border-primary pl-4 py-2">
+                      <div key={log.id} className="flex items-start gap-4 border-b pb-4 last:border-0">
+                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                          <FileText className="h-4 w-4" />
+                        </div>
                         <div className="flex-1">
-                          <p className="font-medium">{log.action_description}</p>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                            <Clock className="h-3 w-3" />
-                            {formatDate(log.performed_at)}
-                            <span>•</span>
-                            <UserCheck className="h-3 w-3" />
-                            {log.performed_by}
-                          </div>
+                          <p className="text-sm font-medium">{log.action_description}</p>
+                          <p className="text-xs text-muted-foreground">
+                            by {log.performed_by} • {formatDate(log.performed_at)}
+                          </p>
                         </div>
                       </div>
                     ))}
                   </div>
+                ) : (
+                  <p className="text-muted-foreground text-center py-4">No activity recorded</p>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
 
-        {/* Dialogs */}
+        {/* Edit Profile Dialog */}
         <EditOfficerDialog
           isOpen={isEditProfileOpen}
           onOpenChange={setIsEditProfileOpen}
@@ -996,6 +975,7 @@ export default function OfficerDetail() {
           onSaveSuccess={handleProfileUpdate}
         />
 
+        {/* Upload Document Dialog */}
         <DocumentUploadDialog
           isOpen={isUploadDocumentOpen}
           onOpenChange={setIsUploadDocumentOpen}
@@ -1004,22 +984,23 @@ export default function OfficerDetail() {
           onUploadSuccess={handleDocumentUpload}
         />
 
+        {/* Assign Institution Dialog */}
         <Dialog open={isAssignInstitutionOpen} onOpenChange={setIsAssignInstitutionOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Assign to Institution</DialogTitle>
+              <DialogTitle>Assign Institution</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 mt-4">
               <div>
-                <Label htmlFor="institution">Select Institution</Label>
+                <Label>Select Institution</Label>
                 <Select value={selectedInstitution} onValueChange={setSelectedInstitution}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose institution..." />
+                    <SelectValue placeholder="Choose an institution" />
                   </SelectTrigger>
                   <SelectContent>
                     {mockInstitutions
                       .filter(inst => !officer.assigned_institutions.includes(inst.name))
-                      .map((inst) => (
+                      .map(inst => (
                         <SelectItem key={inst.id} value={inst.id}>
                           {inst.name}
                         </SelectItem>
