@@ -65,19 +65,21 @@ export function useBulkImportStudents(institutionId: string, classId: string) {
         
         const institutionCode = instData?.code || instData?.slug?.toUpperCase() || 'STU';
 
-        // Check for existing students if needed
-        let existingRollNumbers: Set<string> = new Set();
-        let existingAdmissionNumbers: Set<string> = new Set();
+        // Check for existing students by email if needed
+        let existingEmails: Set<string> = new Set();
         
-        if (options.skipDuplicates || options.updateExisting) {
+        if (options.skipDuplicates) {
           const { data: existingStudents } = await supabase
             .from('students')
-            .select('roll_number, admission_number')
+            .select('email')
             .eq('institution_id', institutionId);
           
           if (existingStudents) {
-            existingRollNumbers = new Set(existingStudents.map(s => s.roll_number).filter(Boolean));
-            existingAdmissionNumbers = new Set(existingStudents.map(s => s.admission_number).filter(Boolean));
+            existingEmails = new Set(
+              existingStudents
+                .map(s => s.email?.toLowerCase())
+                .filter((email): email is string => Boolean(email))
+            );
           }
         }
 
@@ -89,28 +91,31 @@ export function useBulkImportStudents(institutionId: string, classId: string) {
         }
 
         let processedCount = 0;
+        let counterOffset = 0;
         
         for (const batch of batches) {
           const studentsToInsert: any[] = [];
           
           for (let i = 0; i < batch.length; i++) {
             const student = batch[i];
-            const globalIndex = processedCount + i;
-            const counter = startCounter + globalIndex;
             
-            // Check for duplicates
-            const isDuplicate = 
-              (student.roll_number && existingRollNumbers.has(student.roll_number)) ||
-              (student.admission_number && existingAdmissionNumbers.has(student.admission_number));
+            // Check for duplicates by email
+            const studentEmail = student.email?.toLowerCase();
+            const isDuplicate = studentEmail && existingEmails.has(studentEmail);
             
-            if (isDuplicate) {
-              if (options.skipDuplicates) {
-                result.skipped++;
-                result.duplicates.push(student.roll_number || student.admission_number || student.student_name);
-                continue;
-              }
-              // TODO: Handle updateExisting case
+            if (isDuplicate && options.skipDuplicates) {
+              result.skipped++;
+              result.duplicates.push(student.email || student.student_name);
+              continue;
             }
+
+            // Add to existing emails set to prevent duplicates within the same import
+            if (studentEmail) {
+              existingEmails.add(studentEmail);
+            }
+
+            const counter = startCounter + counterOffset;
+            counterOffset++;
 
             // Generate student ID
             const studentId = `${institutionCode}-${currentYear}-${String(counter).padStart(4, '0')}`;
@@ -120,6 +125,7 @@ export function useBulkImportStudents(institutionId: string, classId: string) {
               class_id: classId,
               student_id: studentId,
               student_name: student.student_name,
+              email: student.email || null,
               roll_number: student.roll_number || null,
               admission_number: student.admission_number || null,
               date_of_birth: student.date_of_birth || null,
@@ -128,7 +134,6 @@ export function useBulkImportStudents(institutionId: string, classId: string) {
               admission_date: new Date().toISOString().split('T')[0],
               parent_name: student.parent_name || null,
               parent_phone: student.parent_phone || null,
-              parent_email: student.parent_email || null,
               address: student.address || null,
               previous_school: student.previous_school || null,
               status: 'active',
