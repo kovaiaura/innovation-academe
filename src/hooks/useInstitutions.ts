@@ -48,19 +48,30 @@ export interface DbInstitution {
   settings: Record<string, any> | null;
   created_at: string | null;
   updated_at: string | null;
+  // New license columns
+  max_users: number | null;
+  license_expiry: string | null;
+  current_users: number | null;
+  license_type: string | null;
+  contract_value: number | null;
+  contract_expiry_date: string | null;
+  admin_user_id: string | null;
 }
 
-// Transform DB institution to app format
-export function transformDbToApp(db: DbInstitution) {
-  const address = (db.address || {}) as Record<string, any>;
-  const contact = (db.contact_info || {}) as Record<string, any>;
-  const settings = (db.settings || {}) as Record<string, any>;
+// Transform DB institution to app format - use new DB columns when available
+export function transformDbToApp(db: any) {
+  const address = (typeof db.address === 'object' && db.address !== null ? db.address : {}) as Record<string, any>;
+  const contact = (typeof db.contact_info === 'object' && db.contact_info !== null ? db.contact_info : {}) as Record<string, any>;
+  const settings = (typeof db.settings === 'object' && db.settings !== null ? db.settings : {}) as Record<string, any>;
+  
+  // Use new DB columns directly, fallback to settings for legacy data
+  const defaultExpiry = new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0];
   
   return {
     id: db.id,
     name: db.name,
     slug: db.slug,
-    code: db.code || db.slug.toUpperCase(),
+    code: db.code || db.slug?.toUpperCase() || '',
     type: (db.type || 'school') as 'school' | 'college' | 'university' | 'institute',
     location: address.location || '',
     established_year: settings.established_year || new Date().getFullYear(),
@@ -68,11 +79,15 @@ export function transformDbToApp(db: DbInstitution) {
     contact_phone: contact.phone || '',
     admin_name: contact.admin_name || '',
     admin_email: contact.admin_email || '',
+    admin_user_id: db.admin_user_id || null,
     subscription_status: (db.status || 'active') as 'active' | 'inactive' | 'suspended',
-    license_type: (settings.license_type || 'basic') as 'basic' | 'standard' | 'premium' | 'enterprise',
-    license_expiry: settings.license_expiry || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-    max_users: settings.max_users || 500,
-    current_users: settings.current_users || 0,
+    // Use new DB columns directly
+    license_type: (db.license_type || settings.license_type || 'basic') as 'basic' | 'standard' | 'premium' | 'enterprise',
+    license_expiry: db.license_expiry || settings.license_expiry || defaultExpiry,
+    max_users: db.max_users ?? settings.max_users ?? 500,
+    current_users: db.current_users ?? settings.current_users ?? 0,
+    contract_value: db.contract_value ?? settings.contract_value ?? 150000,
+    contract_expiry_date: db.contract_expiry_date || settings.contract_expiry_date || defaultExpiry,
     subscription_plan: (settings.subscription_plan || 'basic') as 'basic' | 'premium' | 'enterprise',
     student_id_prefix: settings.student_id_prefix || '',
     student_id_suffix: settings.student_id_suffix || '',
@@ -95,8 +110,6 @@ export function transformDbToApp(db: DbInstitution) {
     features: settings.features || ['Basic Features'],
     contract_type: settings.contract_type || 'Annual Contract',
     contract_start_date: settings.contract_start_date || new Date().toISOString().split('T')[0],
-    contract_expiry_date: settings.contract_expiry_date || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-    contract_value: settings.contract_value || 150000,
     created_at: db.created_at || new Date().toISOString(),
   };
 }

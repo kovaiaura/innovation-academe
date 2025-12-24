@@ -50,13 +50,31 @@ export default function Login() {
 
           // Get tenant slug for path-based routing
           const tenantSlug = response.tenant?.slug;
+          
+          // Validate tenant slug for tenant-level roles
+          const tenantRoles = ['management', 'officer', 'teacher', 'student'];
+          if (tenantRoles.includes(response.user.role) && !tenantSlug) {
+            console.error('[Login] User has tenant role but no institution assigned');
+            toast.error('Your account is not associated with any institution. Please contact your administrator.');
+            await authService.logout();
+            setIsLoading(false);
+            return;
+          }
 
           // Redirect based on role (uses multi-role path for CEO)
           const dashboardPath = getMultiRoleDashboardPath(response.user, tenantSlug);
-          const from = location.state?.from?.pathname || dashboardPath;
-          navigate(from, {
-            replace: true
-          });
+          
+          // Don't use location.state.from if it contains 'undefined' or invalid paths
+          const fromPath = location.state?.from?.pathname;
+          const isValidFromPath = fromPath && 
+            !fromPath.includes('undefined') && 
+            !fromPath.includes('/login') &&
+            fromPath !== '/';
+          
+          const redirectPath = isValidFromPath ? fromPath : dashboardPath;
+          console.log('[Login] Redirecting to:', redirectPath);
+          
+          navigate(redirectPath, { replace: true });
         }
       }
     } catch (error: unknown) {

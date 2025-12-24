@@ -19,6 +19,7 @@ import { PinLockDialog } from '@/components/system-admin/PinLockDialog';
 import { EngagementDashboard } from '@/components/institution/EngagementDashboard';
 import { AtRiskInstitutions } from '@/components/institution/AtRiskInstitutions';
 import { InstitutionComparisonTable } from '@/components/institution/InstitutionComparisonTable';
+import { InstitutionEditDialog } from '@/components/institution/InstitutionEditDialog';
 
 // Define Institution type locally (previously from context)
 interface Institution {
@@ -57,6 +58,10 @@ export default function InstitutionManagement() {
   const [activeTab, setActiveTab] = useState('list');
   const [isMouDialogOpen, setIsMouDialogOpen] = useState(false);
   const [selectedInstitutionForMou, setSelectedInstitutionForMou] = useState<Institution | null>(null);
+  
+  // Edit dialog state
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingInstitution, setEditingInstitution] = useState<Institution | null>(null);
   
   // PIN protection state
   const [isPinVerified, setIsPinVerified] = useState(false);
@@ -367,12 +372,13 @@ export default function InstitutionManagement() {
                       <TableHead>License</TableHead>
                       <TableHead>Expiry</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredInstitutions.map((inst) => (
-                      <TableRow key={inst.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/system-admin/institutions/${inst.id}`)}>
-                        <TableCell>
+                      <TableRow key={inst.id} className="hover:bg-muted/50">
+                        <TableCell className="cursor-pointer" onClick={() => navigate(`/system-admin/institutions/${inst.id}`)}>
                           <div>
                             <div className="font-medium text-primary hover:underline">{inst.name}</div>
                             <div className="text-sm text-muted-foreground">{inst.code}</div>
@@ -391,6 +397,19 @@ export default function InstitutionManagement() {
                           </div>
                         </TableCell>
                         <TableCell>{getStatusBadge(inst.subscription_status)}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingInstitution(inst);
+                              setIsEditDialogOpen(true);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -1083,6 +1102,16 @@ export default function InstitutionManagement() {
           open={showPinDialog}
           onOpenChange={setShowPinDialog}
           onSuccess={handlePinSuccess}
+        />
+
+        {/* Institution Edit Dialog */}
+        <InstitutionEditDialog
+          institution={editingInstitution}
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          onSave={async (id, updates) => {
+            await updateInstitution({ id, updates });
+          }}
         />
       </div>
     </Layout>

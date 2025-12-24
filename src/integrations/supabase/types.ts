@@ -228,10 +228,17 @@ export type Database = {
       institutions: {
         Row: {
           address: Json | null
+          admin_user_id: string | null
           code: string | null
           contact_info: Json | null
+          contract_expiry_date: string | null
+          contract_value: number | null
           created_at: string | null
+          current_users: number | null
           id: string
+          license_expiry: string | null
+          license_type: string | null
+          max_users: number | null
           name: string
           settings: Json | null
           slug: string
@@ -241,10 +248,17 @@ export type Database = {
         }
         Insert: {
           address?: Json | null
+          admin_user_id?: string | null
           code?: string | null
           contact_info?: Json | null
+          contract_expiry_date?: string | null
+          contract_value?: number | null
           created_at?: string | null
+          current_users?: number | null
           id?: string
+          license_expiry?: string | null
+          license_type?: string | null
+          max_users?: number | null
           name: string
           settings?: Json | null
           slug: string
@@ -254,10 +268,17 @@ export type Database = {
         }
         Update: {
           address?: Json | null
+          admin_user_id?: string | null
           code?: string | null
           contact_info?: Json | null
+          contract_expiry_date?: string | null
+          contract_value?: number | null
           created_at?: string | null
+          current_users?: number | null
           id?: string
+          license_expiry?: string | null
+          license_type?: string | null
+          max_users?: number | null
           name?: string
           settings?: Json | null
           slug?: string
