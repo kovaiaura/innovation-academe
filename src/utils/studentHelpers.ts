@@ -129,14 +129,27 @@ export const calculateClassStatistics = (students: Student[]) => {
   };
 };
 
-// Generate roll number: "5-A-003"
-export const generateRollNumber = (classValue: string, section: string, existingStudents: Student[]): string => {
-  const classNum = classValue.replace('Class ', '');
+// Generate roll number with institution prefix/suffix: "MSA-5-A-003-KGA"
+export const generateRollNumber = (
+  classValue: string, 
+  section: string, 
+  existingStudents: Student[],
+  prefix?: string,
+  suffix?: string
+): string => {
+  const classNum = classValue.replace('Class ', '').replace('Grade ', '');
   const sameClassSection = existingStudents.filter(
     s => s.class === classValue && s.section === section
   );
   const nextNum = (sameClassSection.length + 1).toString().padStart(3, '0');
-  return `${classNum}-${section}-${nextNum}`;
+  
+  // Build roll number with prefix and suffix if provided
+  const parts: string[] = [];
+  if (prefix?.trim()) parts.push(prefix.trim());
+  parts.push(classNum, section, nextNum);
+  if (suffix?.trim()) parts.push(suffix.trim());
+  
+  return parts.join('-');
 };
 
 // Generate admission number: "ADM-2025-1-001"
