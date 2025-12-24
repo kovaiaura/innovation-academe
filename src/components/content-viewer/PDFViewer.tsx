@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Loader2, AlertCircle, RefreshCw, Maximize2 } from 'lucide-react';
 import { downloadCourseContent } from '@/services/courseStorage.service';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -18,19 +18,38 @@ interface PDFViewerProps {
 export function PDFViewer({ filePath, title }: PDFViewerProps) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const objectUrlRef = useRef<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [scale, setScale] = useState<number>(1.0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // For fit-to-width calculation
+  const [containerWidth, setContainerWidth] = useState<number>(0);
+  const [pageWidth, setPageWidth] = useState<number>(0);
+  const [initialFitDone, setInitialFitDone] = useState<boolean>(false);
+
+  // Track container width with ResizeObserver
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? 0;
+      setContainerWidth(width);
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   // Fetch PDF as blob using storage SDK (bypasses CORS)
-  // IMPORTANT: Use an object URL string as the react-pdf "file" prop to avoid
-  // DataCloneError (detached ArrayBuffer) when pdf.js posts data to the worker.
   const fetchPdf = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setInitialFitDone(false);
 
     try {
       const blob = await downloadCourseContent(filePath);
@@ -80,6 +99,30 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
     setError('Failed to render PDF');
   }, []);
 
+  // Called when each page renders - use to get page dimensions and auto-fit
+  const onPageLoadSuccess = useCallback(({ width }: { width: number }) => {
+    setPageWidth(width);
+    
+    // Auto fit-to-width on initial load
+    if (!initialFitDone && containerWidth > 0 && width > 0) {
+      const padding = 48; // Account for container padding
+      const availableWidth = containerWidth - padding;
+      const fitScale = Math.min(availableWidth / width, 2.0);
+      setScale(Math.max(fitScale, 0.5));
+      setInitialFitDone(true);
+    }
+  }, [containerWidth, initialFitDone]);
+
+  // Fit to width button handler
+  const fitToWidth = useCallback(() => {
+    if (pageWidth > 0 && containerWidth > 0) {
+      const padding = 48;
+      const availableWidth = containerWidth - padding;
+      const fitScale = Math.min(availableWidth / pageWidth, 2.0);
+      setScale(Math.max(fitScale, 0.5));
+    }
+  }, [pageWidth, containerWidth]);
+
   const goToPrevPage = () => setPageNumber((prev) => Math.max(prev - 1, 1));
   const goToNextPage = () => setPageNumber((prev) => Math.min(prev + 1, numPages));
   const zoomIn = () => setScale((prev) => Math.min(prev + 0.25, 2.5));
@@ -113,14 +156,19 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
   }
 
   return (
-    <div className="flex flex-col items-center select-none" onContextMenu={handleContextMenu} style={{ userSelect: 'none' }}>
+    <div 
+      ref={containerRef}
+      className="flex flex-col items-center select-none w-full" 
+      onContextMenu={handleContextMenu} 
+      style={{ userSelect: 'none' }}
+    >
       {/* Controls */}
-      <div className="flex items-center gap-4 mb-4 p-2 bg-muted rounded-lg">
+      <div className="flex items-center gap-2 sm:gap-4 mb-4 p-2 bg-muted rounded-lg flex-wrap justify-center">
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" onClick={goToPrevPage} disabled={pageNumber <= 1}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-sm min-w-[80px] text-center">
+          <span className="text-sm min-w-[60px] sm:min-w-[80px] text-center">
             {pageNumber} / {numPages || '...'}
           </span>
           <Button variant="ghost" size="sm" onClick={goToNextPage} disabled={pageNumber >= numPages}>
@@ -128,21 +176,37 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
           </Button>
         </div>
 
-        <div className="h-4 w-px bg-border" />
+        <div className="h-4 w-px bg-border hidden sm:block" />
 
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" onClick={zoomOut} disabled={scale <= 0.5}>
             <ZoomOut className="h-4 w-4" />
           </Button>
-          <span className="text-sm min-w-[50px] text-center">{Math.round(scale * 100)}%</span>
+          <span className="text-sm min-w-[45px] text-center">{Math.round(scale * 100)}%</span>
           <Button variant="ghost" size="sm" onClick={zoomIn} disabled={scale >= 2.5}>
             <ZoomIn className="h-4 w-4" />
           </Button>
         </div>
+
+        <div className="h-4 w-px bg-border hidden sm:block" />
+
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={fitToWidth}
+          title="Fit to Width"
+          className="gap-1"
+        >
+          <Maximize2 className="h-4 w-4" />
+          <span className="hidden sm:inline text-xs">Fit</span>
+        </Button>
       </div>
 
-      {/* PDF Document */}
-      <div className="relative overflow-auto max-h-[65vh] border rounded-lg bg-muted/50 p-4" aria-label={`${title} PDF viewer`}>
+      {/* PDF Document - responsive container */}
+      <div 
+        className="relative overflow-auto max-h-[70vh] w-full border rounded-lg bg-muted/50 p-4 sm:p-6" 
+        aria-label={`${title} PDF viewer`}
+      >
         {objectUrl && (
           <Document
             file={objectUrl}
@@ -162,6 +226,7 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
               renderTextLayer={true}
               renderAnnotationLayer={true}
               className="shadow-lg"
+              onLoadSuccess={onPageLoadSuccess}
             />
           </Document>
         )}
@@ -169,4 +234,3 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
     </div>
   );
 }
-
