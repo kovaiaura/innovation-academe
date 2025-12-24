@@ -73,11 +73,29 @@ export const authService = {
 
     // Fetch tenant/institution info if user has an institution
     let tenant: { id: string; name: string; slug: string } | undefined;
-    if (profileData?.institution_id) {
+    let institutionId = profileData?.institution_id;
+
+    // For officers, check assigned_institutions if profile doesn't have institution_id
+    if (!institutionId && role === 'officer') {
+      const { data: officerData } = await supabase
+        .from('officers')
+        .select('assigned_institutions')
+        .eq('user_id', data.user.id)
+        .maybeSingle();
+
+      if (officerData?.assigned_institutions?.length > 0) {
+        institutionId = officerData.assigned_institutions[0];
+        // Update user object with institution_id
+        user.institution_id = institutionId;
+        user.tenant_id = institutionId;
+      }
+    }
+
+    if (institutionId) {
       const { data: institutionData } = await supabase
         .from('institutions')
         .select('id, name, slug')
-        .eq('id', profileData.institution_id)
+        .eq('id', institutionId)
         .maybeSingle();
 
       if (institutionData) {

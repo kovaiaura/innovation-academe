@@ -65,9 +65,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Primary role: prefer system_admin for CEO, otherwise use first role
         const role: UserRole = roles.includes('system_admin') ? 'system_admin' : roles[0];
         
-        // Fetch tenant info if user has institution_id and it's not already in localStorage
+        // Get institution_id from profile or officers table (for officers)
+        let institutionId = profileData.institution_id;
+        
+        // For officers, check assigned_institutions if profile doesn't have institution_id
+        if (!institutionId && role === 'officer') {
+          const { data: officerData } = await supabase
+            .from('officers')
+            .select('assigned_institutions')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (officerData?.assigned_institutions?.length > 0) {
+            institutionId = officerData.assigned_institutions[0];
+          }
+        }
+        
+        // Fetch tenant info if user has institution and it's not already in localStorage
         let tenantSlug: string | undefined;
-        if (profileData.institution_id) {
+        if (institutionId) {
           const existingTenant = localStorage.getItem('tenant');
           if (existingTenant) {
             try {
@@ -80,7 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const { data: institutionData } = await supabase
               .from('institutions')
               .select('id, name, slug')
-              .eq('id', profileData.institution_id)
+              .eq('id', institutionId)
               .maybeSingle();
             
             if (institutionData) {
@@ -104,8 +120,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           position_id: profileData.position_id || undefined,
           position_name: profileData.position_name || undefined,
           is_ceo: profileData.is_ceo || false,
-          institution_id: profileData.institution_id || undefined,
-          tenant_id: profileData.institution_id || undefined, // Add tenant_id for sidebar routing
+          institution_id: institutionId || undefined,
+          tenant_id: institutionId || undefined, // Add tenant_id for sidebar routing
           class_id: profileData.class_id || undefined,
           created_at: profileData.created_at || '',
           hourly_rate: profileData.hourly_rate || undefined,
