@@ -184,48 +184,27 @@ export function useInstitutions() {
       
       if (institutionError) throw institutionError;
 
-      // Create auth user for institution admin
+      // Note: Admin user creation should be done separately via edge function
+      // to avoid logging out the current user (signUp auto-logs in the new user)
+      // Store admin credentials in institution settings for later setup
       if (formData.admin_email && formData.admin_password) {
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: formData.admin_email,
-          password: formData.admin_password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: {
-              name: formData.admin_name || formData.name + ' Admin',
+        // Fetch current settings first
+        const currentSettings = (institutionData.settings || {}) as Record<string, any>;
+        
+        // Update settings with pending admin info (admin will be created via separate flow)
+        await supabase
+          .from('institutions')
+          .update({
+            settings: {
+              ...currentSettings,
+              pending_admin: {
+                email: formData.admin_email,
+                name: formData.admin_name || formData.name + ' Admin',
+                // Password will need to be set separately for security
+              }
             }
-          }
-        });
-
-        if (authError) {
-          // Don't fail institution creation if auth user creation fails
-          console.error('Failed to create admin user:', authError);
-          toast.error(`Institution created but admin user failed: ${authError.message}`);
-        } else if (authData.user) {
-          // Assign management role to the admin
-          const { error: roleError } = await supabase
-            .from('user_roles')
-            .insert({
-              user_id: authData.user.id,
-              role: 'management'
-            });
-          
-          if (roleError && !roleError.message.includes('duplicate')) {
-            console.error('Failed to assign management role:', roleError);
-          }
-
-          // Update profile with institution_id
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .update({
-              institution_id: institutionData.id,
-            })
-            .eq('id', authData.user.id);
-
-          if (profileError) {
-            console.error('Failed to update admin profile:', profileError);
-          }
-        }
+          })
+          .eq('id', institutionData.id);
       }
       
       return { data: institutionData, formData };
