@@ -1,20 +1,38 @@
 import { User, UserRole } from '@/types';
 
 export const getRoleBasePath = (role: UserRole, tenantSlug?: string): string => {
-  const basePaths: Record<UserRole, string> = {
-    super_admin: '/super-admin',
-    system_admin: '/system-admin',
-    management: tenantSlug ? `/tenant/${tenantSlug}/management` : '/management',
-    officer: tenantSlug ? `/tenant/${tenantSlug}/officer` : '/officer',
-    teacher: tenantSlug ? `/tenant/${tenantSlug}/teacher` : '/teacher',
-    student: tenantSlug ? `/tenant/${tenantSlug}/student` : '/student',
+  // System-level roles don't need tenant slug
+  if (role === 'super_admin') {
+    return '/super-admin';
+  }
+  if (role === 'system_admin') {
+    return '/system-admin';
+  }
+  
+  // Tenant-level roles require tenant slug
+  if (!tenantSlug) {
+    console.warn(`[RoleHelpers] Missing tenant slug for role: ${role}`);
+    // Return login as fallback to prevent undefined in URL
+    return '/login';
+  }
+  
+  const tenantPaths: Record<string, string> = {
+    management: `/tenant/${tenantSlug}/management`,
+    officer: `/tenant/${tenantSlug}/officer`,
+    teacher: `/tenant/${tenantSlug}/teacher`,
+    student: `/tenant/${tenantSlug}/student`,
   };
   
-  return basePaths[role];
+  return tenantPaths[role] || '/login';
 };
 
 export const getRoleDashboardPath = (role: UserRole, tenantSlug?: string): string => {
-  return `${getRoleBasePath(role, tenantSlug)}/dashboard`;
+  const basePath = getRoleBasePath(role, tenantSlug);
+  // If basePath is /login (fallback), don't append /dashboard
+  if (basePath === '/login') {
+    return '/login';
+  }
+  return `${basePath}/dashboard`;
 };
 
 // Get dashboard path for multi-role user (prioritizes system_admin for CEO)
@@ -22,11 +40,19 @@ export const getMultiRoleDashboardPath = (user: User, tenantSlug?: string): stri
   const roles = user.roles || [user.role];
   
   // Priority: system_admin > super_admin > others
+  // System-level admins don't need tenant slug
   if (roles.includes('system_admin')) {
-    return getRoleDashboardPath('system_admin', tenantSlug);
+    return '/system-admin/dashboard';
   }
   if (roles.includes('super_admin')) {
-    return getRoleDashboardPath('super_admin', tenantSlug);
+    return '/super-admin/dashboard';
+  }
+  
+  // For tenant-level roles, require tenant slug
+  if (!tenantSlug && ['management', 'officer', 'teacher', 'student'].includes(user.role)) {
+    console.error('[RoleHelpers] Missing tenant slug for tenant-level role:', user.role);
+    // This indicates a data issue - user has a tenant role but no institution
+    return '/login';
   }
   
   return getRoleDashboardPath(user.role, tenantSlug);

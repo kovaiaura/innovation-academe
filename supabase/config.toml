@@ -2,3 +2,6 @@ project_id = "ftadmxcxzhptngqbbqpk"
 
 [functions.seed-admin]
 verify_jwt = false
+
+[functions.reset-institution-admin-password]
+verify_jwt = true
