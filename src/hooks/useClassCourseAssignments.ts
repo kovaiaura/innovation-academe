@@ -360,8 +360,11 @@ export function useStudentCourses(studentId?: string, classId?: string) {
             course_code,
             description,
             category,
+            difficulty,
             status,
-            thumbnail_url
+            thumbnail_url,
+            duration_weeks,
+            learning_outcomes
           )
         `)
         .eq('class_id', classId);
@@ -511,5 +514,141 @@ export function useMarkContentComplete() {
     onError: (error: any) => {
       toast.error(`Failed to save progress: ${error.message}`);
     },
+  });
+}
+
+// Fetch institution course assignments (for management view - all courses assigned to institution)
+export function useInstitutionCourseAssignments(institutionId?: string) {
+  return useQuery({
+    queryKey: ['institution-course-assignments', institutionId],
+    queryFn: async () => {
+      if (!institutionId) return [];
+
+      // Get all course class assignments for this institution
+      const { data: assignments, error: assignmentError } = await supabase
+        .from('course_class_assignments')
+        .select(`
+          id,
+          class_id,
+          course_id,
+          institution_id,
+          assigned_at,
+          assigned_by,
+          courses (
+            id,
+            title,
+            course_code,
+            description,
+            category,
+            difficulty,
+            status,
+            thumbnail_url,
+            duration_weeks,
+            learning_outcomes
+          ),
+          classes (
+            id,
+            class_name,
+            section
+          )
+        `)
+        .eq('institution_id', institutionId);
+
+      if (assignmentError) throw assignmentError;
+      if (!assignments || assignments.length === 0) return [];
+
+      // Get module assignments for all course assignments
+      const assignmentIds = assignments.map(a => a.id);
+      const { data: moduleAssignments, error: moduleError } = await supabase
+        .from('class_module_assignments')
+        .select(`
+          id,
+          class_assignment_id,
+          module_id,
+          is_unlocked,
+          unlock_order,
+          unlock_mode,
+          course_modules (
+            id,
+            title,
+            description,
+            display_order
+          )
+        `)
+        .in('class_assignment_id', assignmentIds)
+        .order('unlock_order', { ascending: true });
+
+      if (moduleError) throw moduleError;
+
+      // Get session assignments
+      const moduleAssignmentIds = moduleAssignments?.map(m => m.id) || [];
+      let sessionAssignments: any[] = [];
+      
+      if (moduleAssignmentIds.length > 0) {
+        const { data: sessions, error: sessionError } = await supabase
+          .from('class_session_assignments')
+          .select(`
+            id,
+            class_module_assignment_id,
+            session_id,
+            is_unlocked,
+            unlock_order,
+            unlock_mode,
+            course_sessions (
+              id,
+              title,
+              description,
+              display_order
+            )
+          `)
+          .in('class_module_assignment_id', moduleAssignmentIds)
+          .order('unlock_order', { ascending: true });
+
+        if (sessionError) throw sessionError;
+        sessionAssignments = sessions || [];
+      }
+
+      // Group by course to get unique courses with their class assignments
+      const courseMap = new Map<string, any>();
+      
+      assignments.forEach(assignment => {
+        const courseId = assignment.course_id;
+        if (!courseMap.has(courseId)) {
+          courseMap.set(courseId, {
+            ...assignment.courses,
+            classes: [],
+            assignments: [],
+          });
+        }
+        
+        const course = courseMap.get(courseId);
+        course.classes.push({
+          ...assignment.classes,
+          assignment_id: assignment.id,
+          assigned_at: assignment.assigned_at,
+        });
+        
+        course.assignments.push({
+          id: assignment.id,
+          class_id: assignment.class_id,
+          class: assignment.classes,
+          module_assignments: (moduleAssignments || [])
+            .filter(ma => ma.class_assignment_id === assignment.id)
+            .map(ma => ({
+              ...ma,
+              module: ma.course_modules,
+              session_assignments: sessionAssignments
+                .filter(sa => sa.class_module_assignment_id === ma.id)
+                .map(sa => ({
+                  ...sa,
+                  session: sa.course_sessions,
+                })),
+            })),
+        });
+      });
+
+      return Array.from(courseMap.values());
+    },
+    enabled: !!institutionId,
   });
 }

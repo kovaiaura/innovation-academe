@@ -1,15 +1,25 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { CourseContent } from '@/types/course';
-import { CheckCircle, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+
+interface ContentItem {
+  id: string;
+  title: string;
+  type: string;
+  youtube_url?: string;
+  file_url?: string;
+  file_path?: string;
+  external_url?: string;
+}
 
 interface ContentViewerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  content: CourseContent | null;
+  content: ContentItem | null;
   isCompleted: boolean;
   onMarkComplete: () => void;
+  viewOnly?: boolean;
 }
 
 export function ContentViewerDialog({
@@ -17,7 +27,8 @@ export function ContentViewerDialog({
   onOpenChange,
   content,
   isCompleted,
-  onMarkComplete
+  onMarkComplete,
+  viewOnly = false
 }: ContentViewerDialogProps) {
   const [hasViewed, setHasViewed] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -32,18 +43,18 @@ export function ContentViewerDialog({
 
   useEffect(() => {
     // Auto-mark as viewed after 10 seconds for non-video content
-    if (open && content && content.type !== 'video') {
+    if (open && content && content.type !== 'video' && !viewOnly) {
       const timer = setTimeout(() => {
         setHasViewed(true);
       }, 10000);
       return () => clearTimeout(timer);
     }
-  }, [open, content]);
+  }, [open, content, viewOnly]);
 
   // Track video progress
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || viewOnly) return;
 
     const handleProgress = () => {
       if (video.currentTime / video.duration >= 0.8) {
@@ -53,7 +64,7 @@ export function ContentViewerDialog({
 
     video.addEventListener('timeupdate', handleProgress);
     return () => video.removeEventListener('timeupdate', handleProgress);
-  }, []);
+  }, [viewOnly]);
 
   if (!content) return null;
 
@@ -76,7 +87,7 @@ export function ContentViewerDialog({
       case 'simulation':
         return content.external_url;
       default:
-        return content.file_url;
+        return content.file_url || content.file_path;
     }
   };
 
@@ -154,36 +165,32 @@ export function ContentViewerDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>{content.title}</span>
-            {isCompleted && (
-              <CheckCircle className="h-5 w-5 text-green-600" />
-            )}
-          </DialogTitle>
+          <DialogTitle>{content.title}</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
           {renderContent()}
           
-          <div className="flex justify-between items-center pt-4 border-t">
-            <div className="text-sm text-muted-foreground">
-              {hasViewed ? (
-                <span className="text-green-600">✓ Content viewed</span>
-              ) : (
-                <span>Keep viewing to mark as complete</span>
+          {!viewOnly && (
+            <div className="flex justify-between items-center pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                {hasViewed ? (
+                  <span className="text-green-600">✓ Content viewed</span>
+                ) : (
+                  <span>Keep viewing to mark as complete</span>
+                )}
+              </div>
+              
+              {!isCompleted && (
+                <Button
+                  onClick={handleMarkComplete}
+                  disabled={!hasViewed && content.type !== 'link'}
+                >
+                  Mark as Complete
+                </Button>
               )}
             </div>
-            
-            {!isCompleted && (
-              <Button
-                onClick={handleMarkComplete}
-                disabled={!hasViewed && content.type !== 'link'}
-              >
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Mark as Complete
-              </Button>
-            )}
-          </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
