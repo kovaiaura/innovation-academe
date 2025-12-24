@@ -206,7 +206,7 @@ export default function ClassDetail() {
         options: {
           skipDuplicates: true,
           updateExisting: false,
-          createAuthUsers: false,
+          createAuthUsers: true,
         },
       });
 

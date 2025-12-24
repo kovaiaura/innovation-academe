@@ -120,12 +120,37 @@ export function useBulkImportStudents(institutionId: string, classId: string) {
             // Generate student ID
             const studentId = `${institutionCode}-${currentYear}-${String(counter).padStart(4, '0')}`;
 
+            // Create auth user if option enabled and email/password provided
+            let userId: string | null = null;
+            if (options.createAuthUsers && student.email && student.password) {
+              try {
+                const response = await supabase.functions.invoke('create-student-user', {
+                  body: {
+                    email: student.email,
+                    password: student.password,
+                    student_name: student.student_name,
+                    institution_id: institutionId,
+                    class_id: classId,
+                  },
+                });
+                
+                if (response.data?.user_id) {
+                  userId = response.data.user_id;
+                } else if (response.error) {
+                  console.error('[BulkImport] Failed to create auth user for:', student.email, response.error);
+                }
+              } catch (err) {
+                console.error('[BulkImport] Error creating auth user for:', student.email, err);
+              }
+            }
+
             studentsToInsert.push({
               institution_id: institutionId,
               class_id: classId,
               student_id: studentId,
               student_name: student.student_name,
               email: student.email || null,
+              user_id: userId,
               roll_number: student.roll_number || null,
               admission_number: student.admission_number || null,
               date_of_birth: student.date_of_birth || null,
