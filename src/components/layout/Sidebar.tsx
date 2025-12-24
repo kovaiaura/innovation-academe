@@ -88,7 +88,7 @@ const menuItems: MenuItem[] = [
   { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['teacher'] },
   // Officer menu items
   { label: 'Task', icon: <CheckSquare className="h-5 w-5" />, path: '/tasks', roles: ['officer'] },
-  { label: 'My Timetable', icon: <Calendar className="h-5 w-5" />, path: '/sessions', roles: ['officer'] },
+  { label: 'My Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['officer'] },
   { label: 'Assessments', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['officer'] },
   { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['officer'] },
   { label: 'Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['officer'] },
