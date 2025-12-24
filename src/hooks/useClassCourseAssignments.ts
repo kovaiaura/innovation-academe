@@ -608,6 +608,21 @@ export function useInstitutionCourseAssignments(institutionId?: string) {
         sessionAssignments = sessions || [];
       }
 
+      // Get content for all sessions
+      const sessionIds = sessionAssignments.map(s => s.session_id);
+      let contentItems: any[] = [];
+
+      if (sessionIds.length > 0) {
+        const { data: content, error: contentError } = await supabase
+          .from('course_content')
+          .select('*')
+          .in('session_id', sessionIds)
+          .order('display_order', { ascending: true });
+
+        if (contentError) throw contentError;
+        contentItems = content || [];
+      }
+
       // Group by course to get unique courses with their class assignments
       const courseMap = new Map<string, any>();
       
@@ -618,6 +633,7 @@ export function useInstitutionCourseAssignments(institutionId?: string) {
             ...assignment.courses,
             classes: [],
             assignments: [],
+            modules: [], // Add modules at course level for easier access
           });
         }
         
@@ -628,22 +644,31 @@ export function useInstitutionCourseAssignments(institutionId?: string) {
           assigned_at: assignment.assigned_at,
         });
         
+        // Build module structure with sessions and content
+        const assignmentModules = (moduleAssignments || [])
+          .filter(ma => ma.class_assignment_id === assignment.id)
+          .map(ma => ({
+            ...ma,
+            module: ma.course_modules,
+            sessions: sessionAssignments
+              .filter(sa => sa.class_module_assignment_id === ma.id)
+              .map(sa => ({
+                ...sa,
+                session: sa.course_sessions,
+                content: contentItems.filter(c => c.session_id === sa.session_id),
+              })),
+          }));
+
+        // Merge modules at course level (take first assignment's modules as representative)
+        if (course.modules.length === 0) {
+          course.modules = assignmentModules;
+        }
+        
         course.assignments.push({
           id: assignment.id,
           class_id: assignment.class_id,
           class: assignment.classes,
-          module_assignments: (moduleAssignments || [])
-            .filter(ma => ma.class_assignment_id === assignment.id)
-            .map(ma => ({
-              ...ma,
-              module: ma.course_modules,
-              session_assignments: sessionAssignments
-                .filter(sa => sa.class_module_assignment_id === ma.id)
-                .map(sa => ({
-                  ...sa,
-                  session: sa.course_sessions,
-                })),
-            })),
+          module_assignments: assignmentModules,
         });
       });
 

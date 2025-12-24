@@ -3,21 +3,20 @@ import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { BookOpen, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useStudentCourses } from '@/hooks/useClassCourseAssignments';
+import { useInstitutionCourseAssignments } from '@/hooks/useClassCourseAssignments';
 import { LMSCourseViewer } from '@/components/student/LMSCourseViewer';
 
-export default function StudentCourseDetail() {
-  const { courseId } = useParams();
+export default function ManagementCourseDetail() {
+  const { courseId, tenantId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const institutionId = user?.institution_id;
 
-  // Fetch student courses from Supabase
-  const { data: assignedCourses, isLoading } = useStudentCourses(user?.id, user?.class_id);
+  // Fetch institution courses
+  const { data: institutionCourses, isLoading } = useInstitutionCourseAssignments(institutionId || '');
   
-  // Find the specific course assignment
-  const courseAssignment = assignedCourses?.find(a => a.course_id === courseId);
-  const course = courseAssignment?.course;
-  const modules = courseAssignment?.modules || [];
+  // Find the specific course
+  const course = institutionCourses?.find(c => c.id === courseId);
 
   if (isLoading) {
     return (
@@ -37,7 +36,7 @@ export default function StudentCourseDetail() {
             <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Course Not Found</h3>
             <p className="text-muted-foreground text-center">
-              This course is not available or has not been assigned to your class.
+              This course is not available or has not been assigned to your institution.
             </p>
           </CardContent>
         </Card>
@@ -45,16 +44,31 @@ export default function StudentCourseDetail() {
     );
   }
 
+  // Use the modules from the course data (already structured from hook)
+  const modules = (course.modules || []).map((mod: any) => ({
+    id: mod.id,
+    module: mod.module || mod.course_modules,
+    sessions: (mod.sessions || mod.session_assignments || []).map((sess: any) => ({
+      id: sess.id,
+      session: sess.session || sess.course_sessions,
+      content: sess.content || [],
+      is_unlocked: true
+    })),
+    is_unlocked: true
+  }));
+
   return (
     <Layout hideNav>
       <LMSCourseViewer 
         course={{
           id: course.id,
-          title: course.title,
-          course_code: course.course_code,
+          title: course.title || '',
+          course_code: course.course_code || '',
           description: course.description
         }} 
         modules={modules}
+        viewOnly={true}
+        backPath={`/tenant/${tenantId}/management/courses-sessions`}
       />
     </Layout>
   );
