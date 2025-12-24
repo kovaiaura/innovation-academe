@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,26 +6,48 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { ArrowLeft, Users, Clock, BarChart3, Plus, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Users, Clock, BarChart3, Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { mockCourses, mockModules, mockSessions, mockContent, mockAssignments, mockQuizzes, mockCourseAnalytics, mockEnrollments } from '@/data/mockCourseData';
-import { Course, CourseModule, CourseSession, CourseContent } from '@/types/course';
 import { ContentItem } from '@/components/course/ContentItem';
 import { AddModuleDialog } from '@/components/course/AddModuleDialog';
 import { AddSessionDialog } from '@/components/course/AddSessionDialog';
 import { AddContentDialog } from '@/components/course/AddContentDialog';
 import { EditContentDialog } from '@/components/course/EditContentDialog';
+import { StorageImage } from '@/components/course/StorageImage';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { 
+  useCourseById, 
+  useCreateModule, 
+  useUpdateModule, 
+  useDeleteModule,
+  useCreateSession,
+  useUpdateSession,
+  useDeleteSession,
+  useCreateContent,
+  useUpdateContent,
+  useDeleteContent,
+  DbCourseModule,
+  DbCourseSession,
+  DbCourseContent
+} from '@/hooks/useCourses';
+import { CourseModule, CourseSession, CourseContent } from '@/types/course';
 
 export default function SystemAdminCourseDetail() {
   const { courseId } = useParams();
   const navigate = useNavigate();
-  const [course, setCourse] = useState<Course | null>(null);
-  const [modules, setModules] = useState<CourseModule[]>([]);
-  const [sessions, setSessions] = useState<CourseSession[]>([]);
-  const [content, setContent] = useState<CourseContent[]>([]);
   const [activeTab, setActiveTab] = useState('curriculum');
-  const [isLoading, setIsLoading] = useState(true);
+
+  // Supabase hooks
+  const { data: courseData, isLoading, error } = useCourseById(courseId || null);
+  const createModule = useCreateModule();
+  const updateModule = useUpdateModule();
+  const deleteModule = useDeleteModule();
+  const createSession = useCreateSession();
+  const updateSession = useUpdateSession();
+  const deleteSession = useDeleteSession();
+  const createContent = useCreateContent();
+  const updateContent = useUpdateContent();
+  const deleteContentMutation = useDeleteContent();
 
   // Dialog states
   const [isAddModuleOpen, setIsAddModuleOpen] = useState(false);
@@ -36,111 +58,113 @@ export default function SystemAdminCourseDetail() {
   const [isEditContentOpen, setIsEditContentOpen] = useState(false);
   const [isDeleteModuleOpen, setIsDeleteModuleOpen] = useState(false);
   const [isDeleteSessionOpen, setIsDeleteSessionOpen] = useState(false);
-  const [selectedModule, setSelectedModule] = useState<CourseModule | null>(null);
-  const [selectedSession, setSelectedSession] = useState<CourseSession | null>(null);
-  const [selectedContent, setSelectedContent] = useState<CourseContent | null>(null);
+  const [selectedModule, setSelectedModule] = useState<DbCourseModule | null>(null);
+  const [selectedSession, setSelectedSession] = useState<DbCourseSession | null>(null);
+  const [selectedContent, setSelectedContent] = useState<DbCourseContent | null>(null);
 
-  useEffect(() => {
-    const fetchCourseData = async () => {
-      setIsLoading(true);
-      try {
-      const courseData = mockCourses.find(c => c.id === courseId);
-        const modulesData = mockModules.filter(m => m.course_id === courseId);
-        const sessionsData = mockSessions.filter(s => s.course_id === courseId);
-        const contentData = mockContent.filter(c => c.course_id === courseId);
-        
-        if (!courseData) {
-          toast.error('Course not found');
-          navigate('/system-admin/course-management');
-          return;
-        }
+  // Convert DB types to UI types
+  const mapDbModuleToUi = (m: DbCourseModule): CourseModule => ({
+    id: m.id,
+    course_id: m.course_id,
+    title: m.title,
+    description: m.description || '',
+    order: m.display_order,
+    created_at: m.created_at
+  });
 
-        setCourse(courseData);
-        setModules(modulesData.sort((a, b) => a.order - b.order));
-        setSessions(sessionsData.sort((a, b) => a.order - b.order));
-        setContent(contentData);
-      } catch (error) {
-        toast.error('Failed to load course data');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchCourseData();
-  }, [courseId, navigate]);
+  const mapDbSessionToUi = (s: DbCourseSession): CourseSession => ({
+    id: s.id,
+    course_id: s.course_id,
+    module_id: s.module_id,
+    title: s.title,
+    description: s.description || '',
+    order: s.display_order,
+    duration_minutes: s.duration_minutes || undefined,
+    learning_objectives: s.learning_objectives || [],
+    created_at: s.created_at
+  });
 
-  const getModuleSessions = (moduleId: string) => {
-    return sessions
-      .filter(s => s.module_id === moduleId)
-      .sort((a, b) => a.order - b.order);
-  };
+  const mapDbContentToUi = (c: DbCourseContent): CourseContent => ({
+    id: c.id,
+    course_id: c.course_id,
+    module_id: c.module_id,
+    session_id: c.session_id,
+    title: c.title,
+    type: c.type as CourseContent['type'],
+    file_url: c.file_path || undefined,
+    youtube_url: c.youtube_url || undefined,
+    duration_minutes: c.duration_minutes || undefined,
+    file_size_mb: c.file_size_mb || undefined,
+    order: c.display_order,
+    views_count: c.views_count || 0,
+    created_at: c.created_at
+  });
 
-  const getSessionContent = (sessionId: string) => {
-    return content
-      .filter(c => c.session_id === sessionId)
-      .sort((a, b) => a.order - b.order);
-  };
-
-  const getModuleContent = (moduleId: string) => {
-    return content
-      .filter(c => c.module_id === moduleId)
-      .sort((a, b) => a.order - b.order);
-  };
-
-  const handleEditModule = (e: React.MouseEvent, module: CourseModule) => {
+  const handleEditModule = (e: React.MouseEvent, module: DbCourseModule) => {
     e.stopPropagation();
     setSelectedModule(module);
     setIsEditModuleOpen(true);
   };
 
-  const handleDeleteModule = (e: React.MouseEvent, module: CourseModule) => {
+  const handleDeleteModuleClick = (e: React.MouseEvent, module: DbCourseModule) => {
     e.stopPropagation();
     setSelectedModule(module);
     setIsDeleteModuleOpen(true);
   };
 
-  const confirmDeleteModule = () => {
-    if (selectedModule) {
-      setModules(modules.filter(m => m.id !== selectedModule.id));
-      setContent(content.filter(c => c.module_id !== selectedModule.id));
-      toast.success('Module deleted successfully');
+  const confirmDeleteModule = async () => {
+    if (selectedModule && courseId) {
+      await deleteModule.mutateAsync({ moduleId: selectedModule.id, courseId });
       setIsDeleteModuleOpen(false);
       setSelectedModule(null);
     }
   };
 
-  const handleAddContent = (module: CourseModule) => {
+  const handleAddContent = (module: DbCourseModule) => {
     setSelectedModule(module);
     setIsAddContentOpen(true);
   };
 
   const handleEditContent = (contentItem: CourseContent) => {
-    setSelectedContent(contentItem);
-    setIsEditContentOpen(true);
+    // Find the original DB content
+    const dbContent = courseData?.modules
+      .flatMap(m => m.sessions)
+      .flatMap(s => s.content)
+      .find(c => c.id === contentItem.id);
+    if (dbContent) {
+      setSelectedContent(dbContent);
+      setIsEditContentOpen(true);
+    }
   };
 
-  const handleDeleteContent = (contentId: string) => {
-    setContent(content.filter(c => c.id !== contentId));
-    toast.success('Content deleted successfully');
+  const handleDeleteContent = async (contentId: string) => {
+    if (courseId) {
+      await deleteContentMutation.mutateAsync({ contentId, courseId });
+    }
   };
 
-  const handleSaveModule = (moduleData: Partial<CourseModule>) => {
+  const handleSaveModule = async (moduleData: Partial<CourseModule>) => {
+    if (!courseId) return;
+
     if (selectedModule) {
       // Edit mode
-      setModules(modules.map(m => m.id === selectedModule.id ? { ...m, ...moduleData } : m));
-      toast.success('Module updated successfully');
+      await updateModule.mutateAsync({
+        moduleId: selectedModule.id,
+        courseId,
+        updates: {
+          title: moduleData.title,
+          description: moduleData.description
+        }
+      });
     } else {
       // Add mode
-      const newModule: CourseModule = {
-        id: `mod-${Date.now()}`,
-        course_id: courseId!,
-        title: moduleData.title!,
-        description: moduleData.description!,
-        order: modules.length + 1,
-        created_at: new Date().toISOString()
-      };
-      setModules([...modules, newModule]);
-      toast.success('Module added successfully');
+      await createModule.mutateAsync({
+        courseId,
+        moduleData: {
+          title: moduleData.title!,
+          description: moduleData.description
+        }
+      });
     }
     setIsAddModuleOpen(false);
     setIsEditModuleOpen(false);
@@ -148,129 +172,149 @@ export default function SystemAdminCourseDetail() {
   };
 
   // Session handlers
-  const handleAddSession = (module: CourseModule) => {
+  const handleAddSession = (module: DbCourseModule) => {
     setSelectedModule(module);
     setSelectedSession(null);
     setIsAddSessionOpen(true);
   };
 
-  const handleEditSession = (e: React.MouseEvent, session: CourseSession) => {
+  const handleEditSession = (e: React.MouseEvent, session: DbCourseSession) => {
     e.stopPropagation();
     setSelectedSession(session);
     setIsEditSessionOpen(true);
   };
 
-  const handleDeleteSession = (e: React.MouseEvent, session: CourseSession) => {
+  const handleDeleteSessionClick = (e: React.MouseEvent, session: DbCourseSession) => {
     e.stopPropagation();
     setSelectedSession(session);
     setIsDeleteSessionOpen(true);
   };
 
-  const confirmDeleteSession = () => {
-    if (selectedSession) {
-      setSessions(sessions.filter(s => s.id !== selectedSession.id));
-      setContent(content.filter(c => c.session_id !== selectedSession.id));
-      toast.success('Session deleted successfully');
+  const confirmDeleteSession = async () => {
+    if (selectedSession && courseId) {
+      await deleteSession.mutateAsync({ sessionId: selectedSession.id, courseId });
       setIsDeleteSessionOpen(false);
       setSelectedSession(null);
     }
   };
 
-  const handleSaveSession = (sessionData: Partial<CourseSession>) => {
+  const handleSaveSession = async (sessionData: Partial<CourseSession>) => {
+    if (!courseId || !selectedModule) return;
+
     if (selectedSession) {
       // Edit mode
-      setSessions(sessions.map(s => s.id === selectedSession.id ? { ...s, ...sessionData } : s));
-      toast.success('Session updated successfully');
+      await updateSession.mutateAsync({
+        sessionId: selectedSession.id,
+        courseId,
+        updates: {
+          title: sessionData.title,
+          description: sessionData.description,
+          duration_minutes: sessionData.duration_minutes,
+          learning_objectives: sessionData.learning_objectives
+        }
+      });
     } else {
       // Add mode
-      const moduleSessions = sessions.filter(s => s.module_id === selectedModule!.id);
-      const newSession: CourseSession = {
-        id: `session-${Date.now()}`,
-        course_id: courseId!,
-        module_id: selectedModule!.id,
-        title: sessionData.title!,
-        description: sessionData.description!,
-        order: moduleSessions.length + 1,
-        duration_minutes: sessionData.duration_minutes,
-        learning_objectives: sessionData.learning_objectives,
-        created_at: new Date().toISOString()
-      };
-      setSessions([...sessions, newSession]);
-      toast.success('Session added successfully');
+      await createSession.mutateAsync({
+        courseId,
+        moduleId: selectedModule.id,
+        sessionData: {
+          title: sessionData.title!,
+          description: sessionData.description,
+          duration_minutes: sessionData.duration_minutes,
+          learning_objectives: sessionData.learning_objectives
+        }
+      });
     }
     setIsAddSessionOpen(false);
     setIsEditSessionOpen(false);
     setSelectedSession(null);
   };
 
-  const handleAddContentToSession = (session: CourseSession) => {
+  const handleAddContentToSession = (session: DbCourseSession) => {
     setSelectedSession(session);
-    setSelectedModule(modules.find(m => m.id === session.module_id) || null);
+    const module = courseData?.modules.find(m => m.id === session.module_id);
+    setSelectedModule(module || null);
     setIsAddContentOpen(true);
   };
 
-  const handleSaveContent = (contentData: Partial<CourseContent>) => {
+  const handleSaveContent = async (contentData: Partial<CourseContent>) => {
+    if (!courseId || !selectedModule || !selectedSession) return;
+
     if (selectedContent) {
       // Edit mode
-      setContent(content.map(c => c.id === selectedContent.id ? { ...c, ...contentData } : c));
-      toast.success('Content updated successfully');
+      await updateContent.mutateAsync({
+        contentId: selectedContent.id,
+        courseId,
+        updates: {
+          title: contentData.title,
+          type: contentData.type,
+          file_path: contentData.file_url,
+          youtube_url: contentData.youtube_url,
+          duration_minutes: contentData.duration_minutes,
+          file_size_mb: contentData.file_size_mb
+        }
+      });
     } else {
       // Add mode
-      const sessionContent = content.filter(c => c.session_id === selectedSession!.id);
-      const newContent: CourseContent = {
-        id: `content-${Date.now()}`,
-        course_id: courseId!,
-        module_id: selectedModule!.id,
-        session_id: selectedSession!.id,
-        title: contentData.title!,
-        type: contentData.type!,
-        file_url: contentData.file_url,
-        youtube_url: contentData.youtube_url,
-        external_url: contentData.external_url,
-        duration_minutes: contentData.duration_minutes,
-        file_size_mb: contentData.file_size_mb,
-        order: getModuleContent(selectedModule!.id).length + 1,
-        views_count: 0,
-        created_at: new Date().toISOString()
-      };
-      setContent([...content, newContent]);
-      toast.success('Content added successfully');
+      await createContent.mutateAsync({
+        courseId,
+        moduleId: selectedModule.id,
+        sessionId: selectedSession.id,
+        contentData: {
+          title: contentData.title!,
+          type: contentData.type!,
+          file_path: contentData.file_url,
+          youtube_url: contentData.youtube_url,
+          duration_minutes: contentData.duration_minutes,
+          file_size_mb: contentData.file_size_mb
+        }
+      });
     }
     setIsAddContentOpen(false);
     setIsEditContentOpen(false);
     setSelectedContent(null);
   };
 
-  const categoryColors: Record<string, string> = {
-    ai_ml: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
-    web_dev: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-    iot: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-    robotics: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
-    data_science: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
-  };
-
-  const difficultyColors: Record<string, string> = {
-    beginner: 'text-green-600 dark:text-green-400',
-    intermediate: 'text-yellow-600 dark:text-yellow-400',
-    advanced: 'text-red-600 dark:text-red-400',
-  };
-
-  if (isLoading || !course) {
+  if (isLoading) {
     return (
       <Layout>
-        <div className="space-y-6 animate-pulse">
-          <div className="h-64 bg-muted rounded-lg" />
-          <div className="h-40 bg-muted rounded-lg" />
-          <div className="h-40 bg-muted rounded-lg" />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </Layout>
     );
   }
 
-  const courseAnalytics = mockCourseAnalytics.find(a => a.course_id === courseId);
-  const courseEnrollments = mockEnrollments.filter(e => e.course_id === courseId);
-  const courseAssignments = mockAssignments.filter(a => a.course_id === courseId);
-  const courseQuizzes = mockQuizzes.filter(q => q.course_id === courseId);
+  if (error || !courseData) {
+    return (
+      <Layout>
+        <div className="space-y-6">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/system-admin/course-management')}
+            className="mb-4"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Courses
+          </Button>
+          <Card>
+            <CardContent className="text-center py-16">
+              <p className="text-muted-foreground">Course not found</p>
+              <Button 
+                className="mt-4"
+                onClick={() => navigate('/system-admin/course-management')}
+              >
+                Return to Course Management
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+
+  const modules = courseData.modules || [];
 
   return (
     <Layout>
@@ -288,23 +332,20 @@ export default function SystemAdminCourseDetail() {
         {/* Hero Section */}
         <Card className="overflow-hidden">
           <div className="relative aspect-video overflow-hidden bg-muted">
-            <img
-              src={course.thumbnail_url || '/placeholder.svg'}
-              alt={course.title}
+            <StorageImage
+              filePath={courseData.thumbnail_url}
+              alt={courseData.title}
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-background/20" />
             <div className="absolute bottom-0 left-0 right-0 p-6">
               <div className="flex flex-wrap gap-2 mb-3">
-                <Badge className={categoryColors[course.category]}>
-                  {course.category.replace('_', ' ').toUpperCase()}
-                </Badge>
-                <Badge variant={course.status === 'active' ? 'default' : 'secondary'}>
-                  {course.status.toUpperCase()}
+                <Badge variant={courseData.status === 'active' ? 'default' : 'secondary'}>
+                  {courseData.status.toUpperCase()}
                 </Badge>
               </div>
-              <h1 className="text-4xl font-bold mb-2">{course.title}</h1>
-              <p className="text-muted-foreground mb-3">{course.course_code}</p>
+              <h1 className="text-4xl font-bold mb-2">{courseData.title}</h1>
+              <p className="text-muted-foreground mb-3">{courseData.course_code}</p>
             </div>
           </div>
         </Card>
@@ -313,40 +354,43 @@ export default function SystemAdminCourseDetail() {
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Enrollments</CardTitle>
+              <CardTitle className="text-sm font-medium">Modules</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{courseAnalytics?.total_enrollments || 0}</div>
+              <div className="text-2xl font-bold">{modules.length}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Duration</CardTitle>
+              <CardTitle className="text-sm font-medium">Sessions</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{course.duration_weeks} weeks</div>
+              <div className="text-2xl font-bold">
+                {modules.reduce((acc, m) => acc + m.sessions.length, 0)}
+              </div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+              <CardTitle className="text-sm font-medium">Content Items</CardTitle>
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{courseAnalytics?.completion_rate.toFixed(1) || 0}%</div>
+              <div className="text-2xl font-bold">
+                {modules.reduce((acc, m) => acc + m.sessions.reduce((a, s) => a + s.content.length, 0), 0)}
+              </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Tabbed Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="curriculum">Curriculum</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="curriculum">Curriculum</TabsTrigger>
+          </TabsList>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
@@ -355,30 +399,25 @@ export default function SystemAdminCourseDetail() {
                 <CardTitle>Course Description</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-muted-foreground">{course.description}</p>
-                
-                <div>
-                  <h3 className="font-semibold mb-2">Difficulty Level</h3>
-                  <Badge variant="outline" className={difficultyColors[course.difficulty]}>
-                    {course.difficulty.toUpperCase()}
-                  </Badge>
-                </div>
+                <p className="text-muted-foreground">{courseData.description}</p>
 
-                {course.prerequisites && (
+                {courseData.prerequisites && (
                   <div>
                     <h3 className="font-semibold mb-2">Prerequisites</h3>
-                    <p className="text-muted-foreground">{course.prerequisites}</p>
+                    <p className="text-muted-foreground">{courseData.prerequisites}</p>
                   </div>
                 )}
 
-                <div>
-                  <h3 className="font-semibold mb-2">Learning Outcomes</h3>
-                  <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                    {course.learning_outcomes.map((outcome, index) => (
-                      <li key={index}>{outcome}</li>
-                    ))}
-                  </ul>
-                </div>
+                {courseData.learning_outcomes && courseData.learning_outcomes.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Learning Outcomes</h3>
+                    <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                      {courseData.learning_outcomes.map((outcome, index) => (
+                        <li key={index}>{outcome}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -413,14 +452,14 @@ export default function SystemAdminCourseDetail() {
                     <AccordionTrigger className="hover:no-underline">
                       <div className="flex items-center justify-between w-full pr-4">
                         <div className="flex items-center gap-3">
-                          <Badge variant="outline">Module {module.order}</Badge>
+                          <Badge variant="outline">Module {module.display_order + 1}</Badge>
                           <h3 className="font-semibold text-lg">{module.title}</h3>
                         </div>
                         <div className="flex gap-2">
                           <Button variant="ghost" size="sm" onClick={(e) => handleEditModule(e, module)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={(e) => handleDeleteModule(e, module)}>
+                          <Button variant="ghost" size="sm" onClick={(e) => handleDeleteModuleClick(e, module)}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -431,18 +470,18 @@ export default function SystemAdminCourseDetail() {
                       
                       {/* Sessions within module */}
                       <div className="ml-4 space-y-3">
-                        {getModuleSessions(module.id).length === 0 ? (
+                        {module.sessions.length === 0 ? (
                           <p className="text-sm text-muted-foreground italic py-4">
                             No sessions yet. Click below to add sessions.
                           </p>
                         ) : (
-                          getModuleSessions(module.id).map((session) => (
+                          module.sessions.map((session) => (
                             <Card key={session.id} className="border-l-4 border-l-primary">
                               <CardHeader>
                                 <div className="flex justify-between items-start">
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-2">
-                                      <Badge variant="secondary">Session {session.order}</Badge>
+                                      <Badge variant="secondary">Session {session.display_order + 1}</Badge>
                                       {session.duration_minutes && (
                                         <Badge variant="outline">{session.duration_minutes} min</Badge>
                                       )}
@@ -464,7 +503,7 @@ export default function SystemAdminCourseDetail() {
                                     <Button variant="ghost" size="sm" onClick={(e) => handleEditSession(e, session)}>
                                       <Edit className="h-3 w-3" />
                                     </Button>
-                                    <Button variant="ghost" size="sm" onClick={(e) => handleDeleteSession(e, session)}>
+                                    <Button variant="ghost" size="sm" onClick={(e) => handleDeleteSessionClick(e, session)}>
                                       <Trash2 className="h-3 w-3 text-destructive" />
                                     </Button>
                                   </div>
@@ -472,13 +511,13 @@ export default function SystemAdminCourseDetail() {
                               </CardHeader>
                               <CardContent>
                                 <div className="space-y-2">
-                                  {getSessionContent(session.id).length === 0 ? (
+                                  {session.content.length === 0 ? (
                                     <p className="text-sm text-muted-foreground italic">No content yet</p>
                                   ) : (
-                                    getSessionContent(session.id).map((contentItem) => (
+                                    session.content.map((contentItem) => (
                                       <ContentItem
                                         key={contentItem.id}
-                                        content={contentItem}
+                                        content={mapDbContentToUi(contentItem)}
                                         onEdit={handleEditContent}
                                         onDelete={handleDeleteContent}
                                       />
@@ -509,102 +548,6 @@ export default function SystemAdminCourseDetail() {
               </Accordion>
             )}
           </TabsContent>
-
-          {/* Assignments Tab */}
-          <TabsContent value="assignments" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Course Assignments</CardTitle>
-                <CardDescription>{courseAssignments.length} assignments</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {courseAssignments.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No assignments yet</p>
-                ) : (
-                  <div className="space-y-4">
-                    {courseAssignments.map((assignment) => (
-                      <Card key={assignment.id}>
-                        <CardHeader>
-                          <CardTitle className="text-lg">{assignment.title}</CardTitle>
-                          <CardDescription>{assignment.description}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex gap-4 text-sm text-muted-foreground">
-                            <span>Points: {assignment.total_points}</span>
-                            <span>Due: {new Date(assignment.due_date).toLocaleDateString()}</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Quizzes Tab */}
-          <TabsContent value="quizzes" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Course Quizzes</CardTitle>
-                <CardDescription>{courseQuizzes.length} quizzes</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {courseQuizzes.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No quizzes yet</p>
-                ) : (
-                  <div className="space-y-4">
-                    {courseQuizzes.map((quiz) => (
-                      <Card key={quiz.id}>
-                        <CardHeader>
-                          <CardTitle className="text-lg">{quiz.title}</CardTitle>
-                          <CardDescription>{quiz.description}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex gap-4 text-sm text-muted-foreground">
-                            <span>Time: {quiz.time_limit_minutes} min</span>
-                            <span>Attempts: {quiz.attempts_allowed}</span>
-                            <span>Pass: {quiz.pass_percentage}%</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Analytics Tab */}
-          <TabsContent value="analytics" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Course Performance</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {courseAnalytics && (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Active Students</p>
-                      <p className="text-2xl font-bold">{courseAnalytics.active_students}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Completed Students</p>
-                      <p className="text-2xl font-bold">{courseAnalytics.completed_students}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Avg Assignment Score</p>
-                      <p className="text-2xl font-bold">{courseAnalytics.average_assignment_score.toFixed(1)}%</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Avg Quiz Score</p>
-                      <p className="text-2xl font-bold">{courseAnalytics.average_quiz_score.toFixed(1)}%</p>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
 
         {/* Dialogs */}
@@ -618,7 +561,7 @@ export default function SystemAdminCourseDetail() {
           open={isEditModuleOpen}
           onOpenChange={setIsEditModuleOpen}
           onSave={handleSaveModule}
-          module={selectedModule}
+          module={selectedModule ? mapDbModuleToUi(selectedModule) : undefined}
         />
 
         <AddSessionDialog
@@ -633,7 +576,7 @@ export default function SystemAdminCourseDetail() {
           open={isEditSessionOpen}
           onOpenChange={setIsEditSessionOpen}
           onSave={handleSaveSession}
-          session={selectedSession}
+          session={selectedSession ? mapDbSessionToUi(selectedSession) : null}
           moduleName={selectedModule?.title || ''}
         />
 
@@ -649,7 +592,7 @@ export default function SystemAdminCourseDetail() {
           open={isEditContentOpen}
           onOpenChange={setIsEditContentOpen}
           onSave={handleSaveContent}
-          content={selectedContent}
+          content={selectedContent ? mapDbContentToUi(selectedContent) : null}
         />
 
         <AlertDialog open={isDeleteModuleOpen} onOpenChange={setIsDeleteModuleOpen}>
