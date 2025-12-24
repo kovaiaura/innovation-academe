@@ -288,6 +288,164 @@ export type Database = {
         }
         Relationships: []
       }
+      officer_documents: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          document_name: string
+          document_type: string
+          file_size_mb: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          officer_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          document_name: string
+          document_type: string
+          file_size_mb?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          officer_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          document_name?: string
+          document_type?: string
+          file_size_mb?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          officer_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "officer_documents_officer_id_fkey"
+            columns: ["officer_id"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      officers: {
+        Row: {
+          address: string | null
+          annual_leave_allowance: number | null
+          annual_salary: number
+          assigned_institutions: string[] | null
+          bank_account_number: string | null
+          bank_branch: string | null
+          bank_ifsc: string | null
+          bank_name: string | null
+          casual_leave_allowance: number | null
+          certifications: Json | null
+          created_at: string | null
+          date_of_birth: string | null
+          department: string | null
+          email: string
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          employee_id: string | null
+          employment_type: string
+          full_name: string
+          hourly_rate: number | null
+          id: string
+          join_date: string | null
+          normal_working_hours: number | null
+          overtime_rate_multiplier: number | null
+          phone: string | null
+          profile_photo_url: string | null
+          qualifications: Json | null
+          salary_structure: Json | null
+          sick_leave_allowance: number | null
+          skills: Json | null
+          status: string
+          statutory_info: Json | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          address?: string | null
+          annual_leave_allowance?: number | null
+          annual_salary?: number
+          assigned_institutions?: string[] | null
+          bank_account_number?: string | null
+          bank_branch?: string | null
+          bank_ifsc?: string | null
+          bank_name?: string | null
+          casual_leave_allowance?: number | null
+          certifications?: Json | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          department?: string | null
+          email: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          employee_id?: string | null
+          employment_type?: string
+          full_name: string
+          hourly_rate?: number | null
+          id?: string
+          join_date?: string | null
+          normal_working_hours?: number | null
+          overtime_rate_multiplier?: number | null
+          phone?: string | null
+          profile_photo_url?: string | null
+          qualifications?: Json | null
+          salary_structure?: Json | null
+          sick_leave_allowance?: number | null
+          skills?: Json | null
+          status?: string
+          statutory_info?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          address?: string | null
+          annual_leave_allowance?: number | null
+          annual_salary?: number
+          assigned_institutions?: string[] | null
+          bank_account_number?: string | null
+          bank_branch?: string | null
+          bank_ifsc?: string | null
+          bank_name?: string | null
+          casual_leave_allowance?: number | null
+          certifications?: Json | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          department?: string | null
+          email?: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          employee_id?: string | null
+          employment_type?: string
+          full_name?: string
+          hourly_rate?: number | null
+          id?: string
+          join_date?: string | null
+          normal_working_hours?: number | null
+          overtime_rate_multiplier?: number | null
+          phone?: string | null
+          profile_photo_url?: string | null
+          qualifications?: Json | null
+          salary_structure?: Json | null
+          sick_leave_allowance?: number | null
+          skills?: Json | null
+          status?: string
+          statutory_info?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar: string | null

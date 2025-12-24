@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,160 +9,97 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus, Search, Mail, Phone, Building2, UserCheck, DollarSign, Calendar } from 'lucide-react';
+import { UserPlus, Search, Mail, Phone, Building2, Calendar, Loader2, IndianRupee } from 'lucide-react';
 import { toast } from 'sonner';
-import type { LeaveBalance } from '@/types/attendance';
-import { loadOfficers, addOfficer } from '@/data/mockOfficerData';
-import type { OfficerDetails } from '@/services/systemadmin.service';
-import { initializeLeaveBalance } from '@/data/mockLeaveData';
-
-interface Officer {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  assigned_institutions: string[];
-  employment_type: 'full_time' | 'part_time' | 'contract';
-  salary: number;
-  join_date: string;
-  status: 'active' | 'on_leave' | 'terminated';
-}
-
-interface Assignment {
-  officer_id: string;
-  officer_name: string;
-  institution_id: string;
-  institution_name: string;
-  assigned_date: string;
-  status: 'active' | 'inactive';
-}
+import { useOfficers, useCreateOfficer, type Officer } from '@/hooks/useOfficers';
 
 export default function OfficerManagement() {
   const navigate = useNavigate();
-  const [officers, setOfficers] = useState<OfficerDetails[]>([]);
+  const { data: officers = [], isLoading } = useOfficers();
+  const createOfficer = useCreateOfficer();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
+    full_name: '',
     email: '',
+    password: '',
     phone: '',
+    employee_id: '',
     employment_type: 'full_time',
-    salary: '',
+    annual_salary: '',
     // Payroll Configuration
-    hourly_rate: '',
     overtime_rate_multiplier: '1.5',
-    normal_working_hours: '8',
     // Leave Balance Configuration
-    casual_leave: '12',
-    sick_leave: '10',
-    earned_leave: '15',
+    annual_leave_allowance: '15',
+    sick_leave_allowance: '10',
+    casual_leave_allowance: '12',
   });
 
-  // Load officers from localStorage on mount
-  useEffect(() => {
-    refreshOfficers();
-  }, []);
-
-  const refreshOfficers = () => {
-    const loaded = loadOfficers();
-    setOfficers(loaded);
-  };
-
-  const handleAddOfficer = () => {
+  const handleAddOfficer = async () => {
     // Validation
-    if (!formData.name || !formData.email || !formData.phone || !formData.salary) {
+    if (!formData.full_name || !formData.email || !formData.password || !formData.annual_salary) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    if (!formData.hourly_rate || !formData.overtime_rate_multiplier || !formData.normal_working_hours) {
-      toast.error("Please fill in payroll configuration");
+    if (!formData.employee_id) {
+      toast.error("Employee ID is required");
       return;
     }
 
-    if (!formData.casual_leave || !formData.sick_leave || !formData.earned_leave) {
-      toast.error("Please fill in leave allowances");
-      return;
+    try {
+      await createOfficer.mutateAsync({
+        full_name: formData.full_name,
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone || undefined,
+        employee_id: formData.employee_id,
+        employment_type: formData.employment_type,
+        annual_salary: Number(formData.annual_salary),
+        overtime_rate_multiplier: Number(formData.overtime_rate_multiplier),
+        annual_leave_allowance: Number(formData.annual_leave_allowance),
+        sick_leave_allowance: Number(formData.sick_leave_allowance),
+        casual_leave_allowance: Number(formData.casual_leave_allowance),
+      });
+
+      setIsAddDialogOpen(false);
+      
+      // Reset form
+      setFormData({
+        full_name: '',
+        email: '',
+        password: '',
+        phone: '',
+        employee_id: '',
+        employment_type: 'full_time',
+        annual_salary: '',
+        overtime_rate_multiplier: '1.5',
+        annual_leave_allowance: '15',
+        sick_leave_allowance: '10',
+        casual_leave_allowance: '12',
+      });
+    } catch (error) {
+      // Error is handled in the mutation
     }
-
-    const newOfficer: OfficerDetails = {
-      id: `off-${Date.now()}`,
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      assigned_institutions: [],
-      employment_type: formData.employment_type as OfficerDetails['employment_type'],
-      salary: Number(formData.salary),
-      join_date: new Date().toISOString().split('T')[0],
-      status: 'active',
-      employee_id: `EMP-${Date.now()}`,
-      department: 'Innovation & STEM Education',
-      hourly_rate: parseFloat(formData.hourly_rate),
-      overtime_rate_multiplier: parseFloat(formData.overtime_rate_multiplier),
-      normal_working_hours: parseFloat(formData.normal_working_hours),
-      qualifications: [],
-      certifications: [],
-      skills: [],
-      profile_photo_url: '/placeholder.svg',
-    };
-
-    // Add to localStorage
-    addOfficer(newOfficer);
-
-    // Create initial leave balance
-    const leaveBalance: LeaveBalance = {
-      officer_id: newOfficer.id,
-      sick_leave: parseInt(formData.sick_leave),
-      casual_leave: parseInt(formData.casual_leave),
-      earned_leave: parseInt(formData.earned_leave),
-      year: new Date().getFullYear().toString(),
-    };
-    
-    initializeLeaveBalance(leaveBalance);
-
-    // Refresh officers list
-    refreshOfficers();
-
-    toast.success(`Officer ${formData.name} added successfully`, {
-      description: 'Configure credentials in Credential Management',
-      action: {
-        label: 'Go to Credentials',
-        onClick: () => navigate('/system-admin/credentials')
-      }
-    });
-    setIsAddDialogOpen(false);
-    
-    // Reset form
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      employment_type: 'full_time',
-      salary: '',
-      hourly_rate: '',
-      overtime_rate_multiplier: '1.5',
-      normal_working_hours: '8',
-      casual_leave: '12',
-      sick_leave: '10',
-      earned_leave: '15',
-    });
   };
 
   const filteredOfficers = officers.filter((officer) =>
-    officer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    officer.email.toLowerCase().includes(searchTerm.toLowerCase())
+    officer.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    officer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    officer.employee_id?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatusBadge = (status: OfficerDetails['status']) => {
-    const variants = {
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, 'default' | 'secondary' | 'destructive'> = {
       active: 'default',
       on_leave: 'secondary',
       terminated: 'destructive',
     };
-    return <Badge variant={variants[status] as any}>{status.replace('_', ' ')}</Badge>;
+    return <Badge variant={variants[status] || 'default'}>{status.replace('_', ' ')}</Badge>;
   };
 
-  const getEmploymentBadge = (type: OfficerDetails['employment_type']) => {
+  const getEmploymentBadge = (type: string) => {
     return <Badge variant="outline">{type.replace('_', ' ')}</Badge>;
   };
 
@@ -176,38 +113,48 @@ export default function OfficerManagement() {
           </p>
         </div>
 
-        {/* Directory Section - Assignments tab removed as per requirement */}
         <div className="space-y-4">
           <div className="flex justify-end">
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Add Officer
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add New Officer</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 mt-4">
-                    <div>
-                      <Label htmlFor="name">Full Name</Label>
+              <DialogTrigger asChild>
+                <Button>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Add Officer
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Add New Officer</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <Label htmlFor="full_name">Full Name *</Label>
                       <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="John Doe"
+                        id="full_name"
+                        value={formData.full_name}
+                        onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                        placeholder="Rajesh Kumar"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email">Email *</Label>
                       <Input
                         id="email"
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        placeholder="john@metainnova.com"
+                        placeholder="rajesh@metainnova.com"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="password">Password *</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        placeholder="••••••••"
                       />
                     </div>
                     <div>
@@ -216,9 +163,21 @@ export default function OfficerManagement() {
                         id="phone"
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        placeholder="+1234567890"
+                        placeholder="+91 98765 43210"
                       />
                     </div>
+                    <div>
+                      <Label htmlFor="employee_id">Employee ID *</Label>
+                      <Input
+                        id="employee_id"
+                        value={formData.employee_id}
+                        onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+                        placeholder="EMP-001"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="employment_type">Employment Type</Label>
                       <Select
@@ -236,128 +195,130 @@ export default function OfficerManagement() {
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="salary">Annual Salary</Label>
+                      <Label htmlFor="annual_salary">Annual Salary (₹) *</Label>
                       <Input
-                        id="salary"
+                        id="annual_salary"
                         type="number"
-                        value={formData.salary}
-                        onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
-                        placeholder="65000"
+                        value={formData.annual_salary}
+                        onChange={(e) => setFormData({ ...formData, annual_salary: e.target.value })}
+                        placeholder="600000"
                       />
                     </div>
-                    
-                    {/* Payroll Configuration Section */}
-                    <div className="border-t pt-4 mt-4">
-                      <h3 className="font-semibold mb-3 flex items-center gap-2">
-                        <DollarSign className="h-4 w-4" />
-                        Payroll Configuration
-                      </h3>
-                      
-                      <div className="grid grid-cols-3 gap-3">
-                        <div>
-                          <Label htmlFor="hourly_rate">Hourly Rate (₹)</Label>
-                          <Input
-                            id="hourly_rate"
-                            type="number"
-                            value={formData.hourly_rate}
-                            onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
-                            placeholder="500"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="overtime_multiplier">Overtime Rate</Label>
-                          <Input
-                            id="overtime_multiplier"
-                            type="number"
-                            step="0.1"
-                            value={formData.overtime_rate_multiplier}
-                            onChange={(e) => setFormData({ ...formData, overtime_rate_multiplier: e.target.value })}
-                            placeholder="1.5"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="working_hours">Working Hrs/Day</Label>
-                          <Input
-                            id="working_hours"
-                            type="number"
-                            value={formData.normal_working_hours}
-                            onChange={(e) => setFormData({ ...formData, normal_working_hours: e.target.value })}
-                            placeholder="8"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Leave Balance Configuration Section */}
-                    <div className="border-t pt-4 mt-4">
-                      <h3 className="font-semibold mb-3 flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        Annual Leave Allowance
-                      </h3>
-                      
-                      <div className="grid grid-cols-3 gap-3">
-                        <div>
-                          <Label htmlFor="casual_leave">Casual Leave</Label>
-                          <Input
-                            id="casual_leave"
-                            type="number"
-                            value={formData.casual_leave}
-                            onChange={(e) => setFormData({ ...formData, casual_leave: e.target.value })}
-                            placeholder="12"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">days/year</p>
-                        </div>
-                        <div>
-                          <Label htmlFor="sick_leave">Sick Leave</Label>
-                          <Input
-                            id="sick_leave"
-                            type="number"
-                            value={formData.sick_leave}
-                            onChange={(e) => setFormData({ ...formData, sick_leave: e.target.value })}
-                            placeholder="10"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">days/year</p>
-                        </div>
-                        <div>
-                          <Label htmlFor="earned_leave">Earned Leave</Label>
-                          <Input
-                            id="earned_leave"
-                            type="number"
-                            value={formData.earned_leave}
-                            onChange={(e) => setFormData({ ...formData, earned_leave: e.target.value })}
-                            placeholder="15"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">days/year</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <Button onClick={handleAddOfficer} className="w-full">
-                      Add Officer
-                    </Button>
                   </div>
-                </DialogContent>
-              </Dialog>
-            </div>
+                  
+                  {/* Payroll Configuration Section */}
+                  <div className="border-t pt-4 mt-4">
+                    <h3 className="font-semibold mb-3 flex items-center gap-2">
+                      <IndianRupee className="h-4 w-4" />
+                      Payroll Configuration
+                    </h3>
+                    
+                    <div>
+                      <Label htmlFor="overtime_multiplier">Overtime Rate Multiplier</Label>
+                      <Input
+                        id="overtime_multiplier"
+                        type="number"
+                        step="0.1"
+                        value={formData.overtime_rate_multiplier}
+                        onChange={(e) => setFormData({ ...formData, overtime_rate_multiplier: e.target.value })}
+                        placeholder="1.5"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">e.g., 1.5 = 1.5x hourly rate</p>
+                    </div>
+                  </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Officers ({filteredOfficers.length})</CardTitle>
-                <CardDescription>Search and manage innovation officers</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2 mb-4">
-                  <Search className="h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by name or email..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="max-w-sm"
-                  />
+                  {/* Leave Balance Configuration Section */}
+                  <div className="border-t pt-4 mt-4">
+                    <h3 className="font-semibold mb-3 flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Annual Leave Allowance
+                    </h3>
+                    
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <Label htmlFor="annual_leave">Annual Leave</Label>
+                        <Input
+                          id="annual_leave"
+                          type="number"
+                          value={formData.annual_leave_allowance}
+                          onChange={(e) => setFormData({ ...formData, annual_leave_allowance: e.target.value })}
+                          placeholder="15"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">days/year</p>
+                      </div>
+                      <div>
+                        <Label htmlFor="sick_leave">Sick Leave</Label>
+                        <Input
+                          id="sick_leave"
+                          type="number"
+                          value={formData.sick_leave_allowance}
+                          onChange={(e) => setFormData({ ...formData, sick_leave_allowance: e.target.value })}
+                          placeholder="10"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">days/year</p>
+                      </div>
+                      <div>
+                        <Label htmlFor="casual_leave">Casual Leave</Label>
+                        <Input
+                          id="casual_leave"
+                          type="number"
+                          value={formData.casual_leave_allowance}
+                          onChange={(e) => setFormData({ ...formData, casual_leave_allowance: e.target.value })}
+                          placeholder="12"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">days/year</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    onClick={handleAddOfficer} 
+                    className="w-full"
+                    disabled={createOfficer.isPending}
+                  >
+                    {createOfficer.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating Officer...
+                      </>
+                    ) : (
+                      'Add Officer'
+                    )}
+                  </Button>
                 </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Officers ({filteredOfficers.length})</CardTitle>
+              <CardDescription>Search and manage innovation officers</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2 mb-4">
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, email, or employee ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="max-w-sm"
+                />
+              </div>
+              
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredOfficers.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  {searchTerm ? 'No officers match your search' : 'No officers yet. Add your first officer above.'}
+                </div>
+              ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Employee ID</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Contact</TableHead>
                       <TableHead>Employment</TableHead>
@@ -373,43 +334,56 @@ export default function OfficerManagement() {
                         className="cursor-pointer hover:bg-muted/50 transition-colors"
                         onClick={() => navigate(`/system-admin/officers/${officer.id}`)}
                       >
-                        <TableCell className="font-medium">{officer.name}</TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {officer.employee_id || '-'}
+                        </TableCell>
+                        <TableCell className="font-medium">{officer.full_name}</TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1 text-sm">
                             <div className="flex items-center gap-1">
                               <Mail className="h-3 w-3" />
                               {officer.email}
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
-                              {officer.phone}
-                            </div>
+                            {officer.phone && (
+                              <div className="flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                {officer.phone}
+                              </div>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1">
                             {getEmploymentBadge(officer.employment_type)}
                             <span className="text-sm text-muted-foreground">
-                              ₹{officer.salary.toLocaleString('en-IN')}/yr
+                              ₹{officer.annual_salary.toLocaleString('en-IN')}/yr
                             </span>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Building2 className="h-3 w-3" />
-                            <span className="text-sm">{officer.assigned_institutions.length} schools</span>
+                            <span className="text-sm">
+                              {officer.assigned_institutions?.length || 0} schools
+                            </span>
                           </div>
                         </TableCell>
                         <TableCell>{getStatusBadge(officer.status)}</TableCell>
-                        <TableCell>{new Date(officer.join_date).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          {officer.join_date 
+                            ? new Date(officer.join_date).toLocaleDateString('en-IN')
+                            : '-'
+                          }
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </Layout>
-      );
-    }
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </Layout>
+  );
+}
