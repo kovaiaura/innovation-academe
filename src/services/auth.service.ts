@@ -1,45 +1,108 @@
-import api from './api';
-import { AuthResponse, User } from '@/types';
-import { jwtDecode } from 'jwt-decode';
-import { mockAuthService } from '@/data/mockUsers';
+import { supabase } from '@/integrations/supabase/client';
+import { AuthResponse, User, UserRole } from '@/types';
 
 export interface LoginCredentials {
   email: string;
   password: string;
 }
 
-// Toggle this to switch between mock and real API
-const USE_MOCK_AUTH = true;
-
 export const authService = {
-  // Login
+  // Login with Supabase
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    let response: AuthResponse;
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: credentials.email,
+      password: credentials.password,
+    });
 
-    if (USE_MOCK_AUTH) {
-      // Use mock authentication
-      response = await mockAuthService.login(credentials.email, credentials.password);
-    } else {
-      // Use real API
-      const apiResponse = await api.post<AuthResponse>('/auth/login', credentials);
-      response = apiResponse.data;
+    if (error) {
+      throw new Error(error.message);
     }
-    
-    // Store token and user data
-    if (response.success && response.token) {
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-      
-      if (response.tenant) {
-        localStorage.setItem('tenant', JSON.stringify(response.tenant));
+
+    if (!data.user || !data.session) {
+      throw new Error('Login failed - no user data returned');
+    }
+
+    // Fetch user role from user_roles table
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', data.user.id)
+      .maybeSingle();
+
+    if (roleError) {
+      console.error('Error fetching role:', roleError);
+    }
+
+    const role: UserRole = (roleData?.role as UserRole) || 'student';
+
+    // Fetch user profile from profiles table
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error('Error fetching profile:', profileError);
+    }
+
+    // Build user object
+    const user: User = {
+      id: data.user.id,
+      email: data.user.email || credentials.email,
+      name: profileData?.name || data.user.user_metadata?.name || credentials.email.split('@')[0],
+      avatar: profileData?.avatar || undefined,
+      role,
+      position_id: profileData?.position_id || undefined,
+      position_name: profileData?.position_name || undefined,
+      is_ceo: profileData?.is_ceo || false,
+      institution_id: profileData?.institution_id || undefined,
+      class_id: profileData?.class_id || undefined,
+      created_at: profileData?.created_at || data.user.created_at,
+      hourly_rate: profileData?.hourly_rate || undefined,
+      overtime_rate_multiplier: profileData?.overtime_rate_multiplier || undefined,
+      normal_working_hours: profileData?.normal_working_hours || undefined,
+      password_changed: profileData?.password_changed || false,
+      must_change_password: profileData?.must_change_password || false,
+      password_changed_at: profileData?.password_changed_at || undefined,
+    };
+
+    // Fetch tenant/institution info if user has an institution
+    let tenant: { id: string; name: string; slug: string } | undefined;
+    if (profileData?.institution_id) {
+      const { data: institutionData } = await supabase
+        .from('institutions')
+        .select('id, name, slug')
+        .eq('id', profileData.institution_id)
+        .maybeSingle();
+
+      if (institutionData) {
+        tenant = {
+          id: institutionData.id,
+          name: institutionData.name,
+          slug: institutionData.slug,
+        };
       }
     }
-    
-    return response;
+
+    // Store token and user data
+    localStorage.setItem('authToken', data.session.access_token);
+    localStorage.setItem('user', JSON.stringify(user));
+    if (tenant) {
+      localStorage.setItem('tenant', JSON.stringify(tenant));
+    }
+
+    return {
+      success: true,
+      token: data.session.access_token,
+      user,
+      tenant,
+    };
   },
 
   // Logout
-  logout(): void {
+  async logout(): Promise<void> {
+    await supabase.auth.signOut();
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
     localStorage.removeItem('tenant');
@@ -58,26 +121,15 @@ export const authService = {
   },
 
   // Check if token is valid
-  isAuthenticated(): boolean {
-    const token = localStorage.getItem('authToken');
-    if (!token) return false;
+  async isAuthenticated(): Promise<boolean> {
+    const { data: { session } } = await supabase.auth.getSession();
+    return !!session;
+  },
 
-    try {
-      const decoded: any = jwtDecode(token);
-      // Check if token is expired
-      if (decoded.exp && decoded.exp * 1000 < Date.now()) {
-        this.logout();
-        return false;
-      }
-      return true;
-    } catch (error) {
-      // If decode fails in mock mode, still consider authenticated if token exists
-      if (USE_MOCK_AUTH) {
-        console.warn('Mock token decode failed, but allowing authentication in mock mode');
-        return true;
-      }
-      return false;
-    }
+  // Sync check for immediate use (checks localStorage)
+  isAuthenticatedSync(): boolean {
+    const token = localStorage.getItem('authToken');
+    return !!token;
   },
 
   // Get tenant info
@@ -90,5 +142,50 @@ export const authService = {
     } catch {
       return null;
     }
+  },
+
+  // Get current session
+  async getSession() {
+    return supabase.auth.getSession();
+  },
+
+  // Refresh user data from database
+  async refreshUserData(userId: string): Promise<User | null> {
+    const { data: roleData } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!profileData) return null;
+
+    const user: User = {
+      id: userId,
+      email: profileData.email,
+      name: profileData.name,
+      avatar: profileData.avatar || undefined,
+      role: (roleData?.role as UserRole) || 'student',
+      position_id: profileData.position_id || undefined,
+      position_name: profileData.position_name || undefined,
+      is_ceo: profileData.is_ceo || false,
+      institution_id: profileData.institution_id || undefined,
+      class_id: profileData.class_id || undefined,
+      created_at: profileData.created_at || '',
+      hourly_rate: profileData.hourly_rate || undefined,
+      overtime_rate_multiplier: profileData.overtime_rate_multiplier || undefined,
+      normal_working_hours: profileData.normal_working_hours || undefined,
+      password_changed: profileData.password_changed || false,
+      must_change_password: profileData.must_change_password || false,
+      password_changed_at: profileData.password_changed_at || undefined,
+    };
+
+    localStorage.setItem('user', JSON.stringify(user));
+    return user;
   }
 };

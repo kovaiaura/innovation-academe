@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '@/types';
-import { authService } from '@/services/auth.service';
+import { User, UserRole } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
   user: User | null;
@@ -17,13 +17,78 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in
-    const currentUser = authService.getCurrentUser();
-    if (currentUser && authService.isAuthenticated()) {
-      setUser(currentUser);
-    }
-    setIsLoading(false);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (session?.user) {
+          // Defer Supabase calls with setTimeout to prevent deadlock
+          setTimeout(async () => {
+            await fetchAndSetUser(session.user.id);
+          }, 0);
+        } else {
+          setUser(null);
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
+          localStorage.removeItem('tenant');
+        }
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        await fetchAndSetUser(session.user.id);
+      }
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  const fetchAndSetUser = async (userId: string) => {
+    try {
+      // Fetch user role
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      // Fetch user profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (profileData) {
+        const userData: User = {
+          id: userId,
+          email: profileData.email,
+          name: profileData.name,
+          avatar: profileData.avatar || undefined,
+          role: (roleData?.role as UserRole) || 'student',
+          position_id: profileData.position_id || undefined,
+          position_name: profileData.position_name || undefined,
+          is_ceo: profileData.is_ceo || false,
+          institution_id: profileData.institution_id || undefined,
+          class_id: profileData.class_id || undefined,
+          created_at: profileData.created_at || '',
+          hourly_rate: profileData.hourly_rate || undefined,
+          overtime_rate_multiplier: profileData.overtime_rate_multiplier || undefined,
+          normal_working_hours: profileData.normal_working_hours || undefined,
+          password_changed: profileData.password_changed || false,
+          must_change_password: profileData.must_change_password || false,
+          password_changed_at: profileData.password_changed_at || undefined,
+        };
+
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
 
   const login = (userData: User, token: string) => {
     localStorage.setItem('authToken', token);
@@ -31,9 +96,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(userData);
   };
 
-  const logout = () => {
-    authService.logout();
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+    localStorage.removeItem('tenant');
   };
 
   return (

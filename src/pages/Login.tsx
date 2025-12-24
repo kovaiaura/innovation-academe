@@ -59,8 +59,9 @@ export default function Login() {
           });
         }
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Invalid credentials');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Invalid credentials';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
