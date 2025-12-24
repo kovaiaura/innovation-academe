@@ -1,22 +1,20 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/card';
-import { BookOpen, Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useInstitutionCourseAssignments } from '@/hooks/useClassCourseAssignments';
+import { BookOpen, Loader2, ChevronLeft } from 'lucide-react';
+import { useAllPublishedCourses } from '@/hooks/useClassCourseAssignments';
 import { LMSCourseViewer } from '@/components/student/LMSCourseViewer';
+import { Button } from '@/components/ui/button';
 
 export default function ManagementCourseDetail() {
   const { courseId, tenantId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const institutionId = user?.institution_id;
 
-  // Fetch institution courses
-  const { data: institutionCourses, isLoading } = useInstitutionCourseAssignments(institutionId || '');
+  // Fetch all published courses
+  const { data: courses, isLoading } = useAllPublishedCourses();
   
   // Find the specific course
-  const course = institutionCourses?.find(c => c.id === courseId);
+  const course = courses?.find(c => c.id === courseId);
 
   if (isLoading) {
     return (
@@ -32,30 +30,21 @@ export default function ManagementCourseDetail() {
     return (
       <Layout>
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Course Not Found</h3>
+          <CardContent className="flex flex-col items-center justify-center py-12 gap-4">
+            <BookOpen className="h-12 w-12 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Course Not Found</h3>
             <p className="text-muted-foreground text-center">
-              This course is not available or has not been assigned to your institution.
+              This course is not available or has not been published.
             </p>
+            <Button variant="outline" onClick={() => navigate(`/tenant/${tenantId}/management/courses-sessions`)}>
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Back to Courses
+            </Button>
           </CardContent>
         </Card>
       </Layout>
     );
   }
-
-  // Use the modules from the course data (already structured from hook)
-  const modules = (course.modules || []).map((mod: any) => ({
-    id: mod.id,
-    module: mod.module || mod.course_modules,
-    sessions: (mod.sessions || mod.session_assignments || []).map((sess: any) => ({
-      id: sess.id,
-      session: sess.session || sess.course_sessions,
-      content: sess.content || [],
-      is_unlocked: true
-    })),
-    is_unlocked: true
-  }));
 
   return (
     <Layout hideNav>
@@ -66,7 +55,7 @@ export default function ManagementCourseDetail() {
           course_code: course.course_code || '',
           description: course.description
         }} 
-        modules={modules}
+        modules={course.modules || []}
         viewOnly={true}
         backPath={`/tenant/${tenantId}/management/courses-sessions`}
       />

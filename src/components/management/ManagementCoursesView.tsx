@@ -1,24 +1,22 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
-import { Search, Loader2 } from "lucide-react";
-import { CourseCard } from "./CourseCard";
-import { useInstitutionCourseAssignments } from "@/hooks/useClassCourseAssignments";
+import { Search, Loader2, BookOpen } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useAllPublishedCourses } from "@/hooks/useClassCourseAssignments";
+import { StorageImage } from "@/components/course/StorageImage";
 
-interface ManagementCoursesViewProps {
-  institutionId: string;
-}
-
-export function ManagementCoursesView({ institutionId }: ManagementCoursesViewProps) {
+export function ManagementCoursesView() {
   const navigate = useNavigate();
   const { tenantId } = useParams();
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Fetch courses assigned to this institution from Supabase
-  const { data: institutionCourses, isLoading } = useInstitutionCourseAssignments(institutionId);
+  // Fetch all published courses
+  const { data: courses, isLoading } = useAllPublishedCourses();
 
   // Apply search filter only
-  const filteredCourses = (institutionCourses || []).filter(course => {
+  const filteredCourses = (courses || []).filter(course => {
     const matchesSearch = course.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           course.course_code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           course.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -40,9 +38,9 @@ export function ManagementCoursesView({ institutionId }: ManagementCoursesViewPr
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Courses Assigned to Your Institution</h2>
+        <h2 className="text-2xl font-bold">Published Courses</h2>
         <p className="text-muted-foreground">
-          Browse and view all courses available for your classes
+          Browse all published courses available in the system
         </p>
       </div>
 
@@ -60,38 +58,46 @@ export function ManagementCoursesView({ institutionId }: ManagementCoursesViewPr
       {/* Course Grid */}
       {filteredCourses.length === 0 ? (
         <div className="text-center py-12">
+          <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <p className="text-muted-foreground">
             {searchQuery
               ? "No courses found matching your search."
-              : "No courses assigned to this institution yet."}
+              : "No published courses available yet."}
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCourses.map((course) => (
-            <CourseCard
-              key={course.id}
-              course={{
-                id: course.id,
-                title: course.title || '',
-                course_code: course.course_code || '',
-                description: course.description || '',
-                category: course.category || 'general',
-                difficulty: course.difficulty || 'beginner',
-                thumbnail_url: course.thumbnail_url || null,
-                duration_weeks: course.duration_weeks || 4,
-                status: course.status || 'published',
-                learning_outcomes: Array.isArray(course.learning_outcomes) ? course.learning_outcomes as string[] : [],
-                classes: (course.classes || []).map((c: any) => c.class_name || 'Unknown'),
-                total_enrollments: (course.classes || []).length,
-                current_enrollments: (course.classes || []).length,
-                avg_progress: 0,
-                created_by: null,
-                created_at: '',
-                updated_at: '',
-              }}
-              onViewDetails={handleViewDetails}
-            />
+            <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleViewDetails(course.id)}>
+              <div className="aspect-video bg-muted relative">
+                {course.thumbnail_url ? (
+                  <StorageImage
+                    filePath={course.thumbnail_url}
+                    alt={course.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                    <BookOpen className="h-12 w-12 text-primary/50" />
+                  </div>
+                )}
+              </div>
+              <CardContent className="p-4">
+                <h3 className="font-semibold text-lg line-clamp-2 mb-1">{course.title}</h3>
+                <p className="text-sm text-muted-foreground mb-3">{course.course_code}</p>
+                <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+                  {course.description || 'No description available'}
+                </p>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    {course.modules?.length || 0} modules
+                  </span>
+                  <Button size="sm" variant="outline">
+                    View Course
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
