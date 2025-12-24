@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { downloadCourseContent } from '@/services/courseStorage.service';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
@@ -9,26 +10,53 @@ import 'react-pdf/dist/Page/TextLayer.css';
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface PDFViewerProps {
-  url: string;
+  filePath: string;
   title: string;
 }
 
-export function PDFViewer({ url, title }: PDFViewerProps) {
+export function PDFViewer({ filePath, title }: PDFViewerProps) {
+  const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [scale, setScale] = useState<number>(1.0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch PDF as blob using Supabase SDK (bypasses CORS)
+  const fetchPdf = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const blob = await downloadCourseContent(filePath);
+      if (blob) {
+        const arrayBuffer = await blob.arrayBuffer();
+        setPdfData(arrayBuffer);
+      } else {
+        setError('Failed to load PDF file');
+      }
+    } catch (err) {
+      console.error('Error fetching PDF:', err);
+      setError('An error occurred while loading the PDF');
+    } finally {
+      setLoading(false);
+    }
+  }, [filePath]);
+
+  useEffect(() => {
+    if (filePath) {
+      fetchPdf();
+    }
+  }, [filePath, fetchPdf]);
+
   const onDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
-    setLoading(false);
+    setPageNumber(1);
   }, []);
 
-  const onDocumentLoadError = useCallback((error: Error) => {
-    console.error('PDF load error:', error);
-    setError('Failed to load PDF. Please try again.');
-    setLoading(false);
+  const onDocumentLoadError = useCallback((err: Error) => {
+    console.error('PDF render error:', err);
+    setError('Failed to render PDF');
   }, []);
 
   const goToPrevPage = () => setPageNumber(prev => Math.max(prev - 1, 1));
@@ -41,11 +69,22 @@ export function PDFViewer({ url, title }: PDFViewerProps) {
     return false;
   }, []);
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <p className="text-muted-foreground">Loading PDF...</p>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+        <AlertCircle className="h-12 w-12 text-destructive" />
         <p className="text-destructive">{error}</p>
-        <Button variant="outline" onClick={() => window.location.reload()}>
+        <Button variant="outline" onClick={fetchPdf}>
+          <RefreshCw className="mr-2 h-4 w-4" />
           Retry
         </Button>
       </div>
@@ -109,27 +148,27 @@ export function PDFViewer({ url, title }: PDFViewerProps) {
 
       {/* PDF Document */}
       <div className="relative overflow-auto max-h-[65vh] border rounded-lg bg-muted/50 p-4">
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+        {pdfData && (
+          <Document
+            file={{ data: pdfData }}
+            onLoadSuccess={onDocumentLoadSuccess}
+            onLoadError={onDocumentLoadError}
+            loading={
+              <div className="flex items-center justify-center h-40">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            }
+            className="flex justify-center"
+          >
+            <Page
+              pageNumber={pageNumber}
+              scale={scale}
+              renderTextLayer={true}
+              renderAnnotationLayer={true}
+              className="shadow-lg"
+            />
+          </Document>
         )}
-        
-        <Document
-          file={url}
-          onLoadSuccess={onDocumentLoadSuccess}
-          onLoadError={onDocumentLoadError}
-          loading={null}
-          className="flex justify-center"
-        >
-          <Page
-            pageNumber={pageNumber}
-            scale={scale}
-            renderTextLayer={true}
-            renderAnnotationLayer={true}
-            className="shadow-lg"
-          />
-        </Document>
       </div>
     </div>
   );

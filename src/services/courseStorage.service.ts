@@ -102,6 +102,22 @@ export async function getContentSignedUrl(
 }
 
 /**
+ * Download a file as blob from storage (bypasses CORS issues)
+ */
+export async function downloadCourseContent(filePath: string): Promise<Blob | null> {
+  const { data, error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .download(filePath);
+
+  if (error) {
+    console.error('Failed to download content:', error);
+    return null;
+  }
+
+  return data;
+}
+
+/**
  * Delete a file from storage
  */
 export async function deleteCourseContent(filePath: string): Promise<boolean> {
