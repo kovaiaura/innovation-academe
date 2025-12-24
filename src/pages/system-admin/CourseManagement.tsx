@@ -10,10 +10,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Plus, Upload, FileText, Search, Filter, Edit, Trash2, BarChart3, Users, TrendingUp, Award, Clock, Eye, Layers, Loader2 } from 'lucide-react';
+import { BookOpen, Plus, Upload, FileText, Search, Filter, Edit, Trash2, BarChart3, Users, TrendingUp, Award, Eye, Layers, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { CertificateSelector } from '@/components/gamification/CertificateSelector';
+import { uploadCourseThumbnail, getContentSignedUrl } from '@/services/courseStorage.service';
 import { CoursePreviewDialog } from '@/components/course/CoursePreviewDialog';
 import { EditCourseDialog } from '@/components/course/EditCourseDialog';
 import { useCourses, useCreateCourse, useDeleteCourse, DbCourse } from '@/hooks/useCourses';
@@ -38,16 +38,14 @@ export default function CourseManagement() {
     course_code: '',
     title: '',
     description: '',
-    category: 'ai_ml',
     thumbnail_url: '',
-    difficulty: 'beginner',
-    duration_weeks: 8,
     prerequisites: '',
     learning_outcomes: [''],
-    certificate_template_id: undefined as string | undefined,
   });
 
   const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false);
 
   const filteredCourses = courses.filter(course =>
     course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -68,17 +66,31 @@ export default function CourseManagement() {
     }
 
     try {
+      let thumbnailPath = newCourse.thumbnail_url;
+      
+      // Upload thumbnail if file is selected
+      if (thumbnailFile) {
+        setIsUploadingThumbnail(true);
+        try {
+          // Generate a temporary course ID for the thumbnail path
+          const tempId = crypto.randomUUID();
+          const result = await uploadCourseThumbnail(thumbnailFile, tempId);
+          thumbnailPath = result.path;
+        } catch (uploadError: any) {
+          toast.error(`Failed to upload thumbnail: ${uploadError.message}`);
+          setIsUploadingThumbnail(false);
+          return;
+        }
+        setIsUploadingThumbnail(false);
+      }
+
       await createCourse.mutateAsync({
         course_code: newCourse.course_code,
         title: newCourse.title,
         description: newCourse.description,
-        category: newCourse.category,
-        thumbnail_url: newCourse.thumbnail_url || null,
-        difficulty: newCourse.difficulty,
-        duration_weeks: newCourse.duration_weeks,
+        thumbnail_url: thumbnailPath || null,
         prerequisites: newCourse.prerequisites || null,
         learning_outcomes: newCourse.learning_outcomes.filter(o => o.trim()),
-        certificate_template_id: newCourse.certificate_template_id,
         status: isDraft ? 'draft' : 'active',
         created_by: user?.id || null
       });
@@ -88,15 +100,12 @@ export default function CourseManagement() {
         course_code: '',
         title: '',
         description: '',
-        category: 'ai_ml',
         thumbnail_url: '',
-        difficulty: 'beginner',
-        duration_weeks: 8,
         prerequisites: '',
         learning_outcomes: [''],
-        certificate_template_id: undefined,
       });
       setThumbnailPreview('');
+      setThumbnailFile(null);
       setActiveTab('all-courses');
     } catch (error) {
       // Error handled by mutation
@@ -125,29 +134,18 @@ export default function CourseManagement() {
       return;
     }
 
+    // Store file for later upload
+    setThumbnailFile(file);
+    
+    // Show preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setThumbnailPreview(reader.result as string);
-      setNewCourse({ ...newCourse, thumbnail_url: reader.result as string });
     };
     reader.readAsDataURL(file);
-    toast.success('Thumbnail uploaded successfully');
+    toast.success('Thumbnail ready for upload');
   };
 
-  const categoryColors: Record<string, string> = {
-    ai_ml: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
-    web_dev: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-    iot: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-    robotics: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
-    data_science: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
-    general: 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300',
-  };
-
-  const difficultyColors: Record<string, string> = {
-    beginner: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-    intermediate: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
-    advanced: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
-  };
 
   return (
     <Layout>
@@ -279,10 +277,6 @@ export default function CourseManagement() {
                         </div>
 
                         <CardContent className="p-4 space-y-3">
-                          <Badge className={categoryColors[course.category] || categoryColors.general}>
-                            {course.category.replace('_', ' ').toUpperCase()}
-                          </Badge>
-
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">{course.course_code}</p>
                             <h3 className="font-semibold text-lg line-clamp-2 mb-2">{course.title}</h3>
@@ -292,17 +286,6 @@ export default function CourseManagement() {
                           </div>
 
                           <Separator />
-                          <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <div className="flex items-center gap-3">
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {course.duration_weeks}w
-                              </span>
-                              <Badge variant="outline" className={difficultyColors[course.difficulty]}>
-                                {course.difficulty}
-                              </Badge>
-                            </div>
-                          </div>
 
                           <div className="flex gap-2 pt-2">
                             <Button 
@@ -433,47 +416,6 @@ export default function CourseManagement() {
                   )}
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label>Category *</Label>
-                    <Select value={newCourse.category} onValueChange={(value) => setNewCourse({ ...newCourse, category: value })}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ai_ml">AI/ML</SelectItem>
-                        <SelectItem value="web_dev">Web Development</SelectItem>
-                        <SelectItem value="iot">IoT</SelectItem>
-                        <SelectItem value="robotics">Robotics</SelectItem>
-                        <SelectItem value="data_science">Data Science</SelectItem>
-                        <SelectItem value="business">Business</SelectItem>
-                        <SelectItem value="design">Design</SelectItem>
-                        <SelectItem value="general">General</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Difficulty *</Label>
-                    <Select value={newCourse.difficulty} onValueChange={(value) => setNewCourse({ ...newCourse, difficulty: value })}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="beginner">Beginner</SelectItem>
-                        <SelectItem value="intermediate">Intermediate</SelectItem>
-                        <SelectItem value="advanced">Advanced</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Duration (weeks) *</Label>
-                    <Input
-                      type="number"
-                      value={newCourse.duration_weeks}
-                      onChange={(e) => setNewCourse({ ...newCourse, duration_weeks: parseInt(e.target.value) })}
-                    />
-                  </div>
-                </div>
 
                 <div className="space-y-2">
                   <Label>Prerequisites</Label>
@@ -522,11 +464,6 @@ export default function CourseManagement() {
                   </Button>
                 </div>
 
-                <CertificateSelector
-                  category="course"
-                  selectedTemplateId={newCourse.certificate_template_id}
-                  onSelect={(templateId) => setNewCourse({ ...newCourse, certificate_template_id: templateId })}
-                />
               </CardContent>
             </Card>
 
@@ -577,15 +514,12 @@ export default function CourseManagement() {
                         course_code: '',
                         title: '',
                         description: '',
-                        category: 'ai_ml',
                         thumbnail_url: '',
-                        difficulty: 'beginner',
-                        duration_weeks: 8,
                         prerequisites: '',
                         learning_outcomes: [''],
-                        certificate_template_id: undefined,
                       });
                       setThumbnailPreview('');
+                      setThumbnailFile(null);
                       setActiveTab('all-courses');
                     }}
                   >
