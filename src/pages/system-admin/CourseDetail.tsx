@@ -482,9 +482,6 @@ export default function SystemAdminCourseDetail() {
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-2">
                                       <Badge variant="secondary">Session {session.display_order + 1}</Badge>
-                                      {session.duration_minutes && (
-                                        <Badge variant="outline">{session.duration_minutes} min</Badge>
-                                      )}
                                     </div>
                                     <CardTitle className="text-base">{session.title}</CardTitle>
                                     <CardDescription className="mt-1">{session.description}</CardDescription>

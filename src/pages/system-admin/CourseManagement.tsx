@@ -17,7 +17,7 @@ import { uploadCourseThumbnail } from '@/services/courseStorage.service';
 import { StorageImage } from '@/components/course/StorageImage';
 import { CoursePreviewDialog } from '@/components/course/CoursePreviewDialog';
 import { EditCourseDialog } from '@/components/course/EditCourseDialog';
-import { useCourses, useCreateCourse, useDeleteCourse, DbCourse } from '@/hooks/useCourses';
+import { useCourses, useCourseById, useCreateCourse, useDeleteCourse, DbCourse } from '@/hooks/useCourses';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function CourseManagement() {
@@ -31,6 +31,7 @@ export default function CourseManagement() {
   
   // Supabase hooks
   const { data: courses = [], isLoading, refetch } = useCourses();
+  const { data: selectedCourseData } = useCourseById(previewDialogOpen ? selectedCourseId : null);
   const createCourse = useCreateCourse();
   const deleteCourse = useDeleteCourse();
   
@@ -625,7 +626,7 @@ export default function CourseManagement() {
       <CoursePreviewDialog
         open={previewDialogOpen}
         onOpenChange={setPreviewDialogOpen}
-        course={courses.find(c => c.id === selectedCourseId) as any || null}
+        course={selectedCourseData || null}
       />
 
       <EditCourseDialog

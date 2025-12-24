@@ -25,14 +25,12 @@ export function AddSessionDialog({
 }: AddSessionDialogProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [durationMinutes, setDurationMinutes] = useState('');
   const [learningObjectives, setLearningObjectives] = useState<string[]>(['']);
 
   useEffect(() => {
     if (session) {
       setTitle(session.title);
       setDescription(session.description);
-      setDurationMinutes(session.duration_minutes?.toString() || '');
       setLearningObjectives(session.learning_objectives || ['']);
     } else {
       resetForm();
@@ -42,7 +40,6 @@ export function AddSessionDialog({
   const resetForm = () => {
     setTitle('');
     setDescription('');
-    setDurationMinutes('');
     setLearningObjectives(['']);
   };
 
@@ -80,10 +77,6 @@ export function AddSessionDialog({
       description: description.trim(),
       learning_objectives: filteredObjectives.length ? filteredObjectives : undefined,
     };
-
-    if (durationMinutes) {
-      sessionData.duration_minutes = parseInt(durationMinutes);
-    }
 
     onSave(sessionData);
     resetForm();
@@ -125,21 +118,6 @@ export function AddSessionDialog({
               rows={3}
               required
             />
-          </div>
-          
-          <div>
-            <Label htmlFor="session-duration">Duration (minutes)</Label>
-            <Input
-              id="session-duration"
-              type="number"
-              min="1"
-              placeholder="45"
-              value={durationMinutes}
-              onChange={(e) => setDurationMinutes(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Estimated time to complete this session
-            </p>
           </div>
           
           <div>
