@@ -65,7 +65,7 @@ export function InstitutionEditDialog({
         .from('institutions')
         .update({
           max_users: maxUsers,
-          license_expiry: licenseExpiry,
+          license_expiry: licenseExpiry || null, // Convert empty string to null for date field
           license_type: licenseType,
           status: isActive ? 'active' : 'inactive',
         })
