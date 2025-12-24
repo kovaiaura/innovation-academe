@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,9 +13,7 @@ import { InstitutionClassesTab } from '@/components/institution/InstitutionClass
 import { InstitutionOfficersTab } from '@/components/institution/InstitutionOfficersTab';
 import { InstitutionAnalyticsTab } from '@/components/institution/InstitutionAnalyticsTab';
 import { InstitutionTimetableTab } from '@/components/institution/InstitutionTimetableTab';
-import { Student, InstitutionClass } from '@/types/student';
-import { getStudentsByInstitution } from '@/data/mockStudentData';
-import { getClassesByInstitution } from '@/data/mockClassData';
+import { InstitutionClass } from '@/types/student';
 import { getInstitutionOfficers, getAvailableOfficers } from '@/data/mockInstitutionOfficers';
 import { getInstitutionAnalytics } from '@/data/mockInstitutionAnalytics';
 import { getInstitutionPeriods, saveInstitutionPeriodsForInstitution } from '@/data/mockInstitutionPeriods';
@@ -23,29 +21,33 @@ import { getInstitutionTimetable, saveInstitutionTimetable } from '@/data/mockIn
 import { syncInstitutionToOfficerTimetable } from '@/utils/timetableSync';
 import { toast } from 'sonner';
 import { useInstitutionData } from '@/contexts/InstitutionDataContext';
+import { useClasses } from '@/hooks/useClasses';
+import { useStudents } from '@/hooks/useStudents';
 
 export default function InstitutionDetail() {
   const { institutionId } = useParams();
   const navigate = useNavigate();
   const { institutions, updateInstitution } = useInstitutionData();
-  const [institutionClasses, setInstitutionClasses] = useState<InstitutionClass[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
   const [isEditInstitutionOpen, setIsEditInstitutionOpen] = useState(false);
   const [isAddClassOpen, setIsAddClassOpen] = useState(false);
   const [isEditClassOpen, setIsEditClassOpen] = useState(false);
   const [selectedClassForEdit, setSelectedClassForEdit] = useState<InstitutionClass | null>(null);
 
-  const institution = institutions.find(inst => inst.id === institutionId);
+  // Use database hooks
+  const { 
+    classesWithCounts, 
+    isLoading: isLoadingClasses,
+    createClass,
+    updateClass,
+    deleteClass,
+  } = useClasses(institutionId);
+  
+  const { 
+    students, 
+    isLoading: isLoadingStudents 
+  } = useStudents(institutionId);
 
-  useEffect(() => {
-    if (institutionId) {
-      const allStudents = getStudentsByInstitution(institutionId);
-      setStudents(allStudents);
-      
-      const classes = getClassesByInstitution(institutionId);
-      setInstitutionClasses(classes);
-    }
-  }, [institutionId]);
+  const institution = institutions.find(inst => inst.id === institutionId);
 
   if (!institution) {
     return (
@@ -62,31 +64,46 @@ export default function InstitutionDetail() {
     );
   }
 
-  const handleAddClass = (classData: Partial<InstitutionClass>) => {
-    const newClass: InstitutionClass = {
-      ...classData,
-      id: `class-${Date.now()}`,
-      institution_id: institutionId!,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    } as InstitutionClass;
-    
-    setInstitutionClasses([...institutionClasses, newClass]);
-    toast.success(`Class "${classData.class_name}" created successfully`);
+  const handleAddClass = async (classData: Partial<InstitutionClass>) => {
+    try {
+      await createClass({
+        institution_id: institutionId!,
+        class_name: classData.class_name || '',
+        display_order: classData.display_order,
+        academic_year: classData.academic_year,
+        capacity: classData.capacity,
+        room_number: classData.room_number,
+        class_teacher_id: classData.class_teacher_id,
+        status: classData.status,
+      });
+    } catch (error) {
+      console.error('Failed to create class:', error);
+    }
   };
 
-  const handleEditClass = (classData: Partial<InstitutionClass>) => {
-    const updated = institutionClasses.map(c => 
-      c.id === selectedClassForEdit?.id ? { ...c, ...classData, updated_at: new Date().toISOString() } : c
-    );
-    setInstitutionClasses(updated);
-    setSelectedClassForEdit(null);
-    toast.success('Class updated successfully');
+  const handleEditClass = async (classData: Partial<InstitutionClass>) => {
+    if (!selectedClassForEdit) return;
+    try {
+      await updateClass({
+        id: selectedClassForEdit.id,
+        institution_id: institutionId!,
+        class_name: classData.class_name || '',
+        display_order: classData.display_order,
+        academic_year: classData.academic_year,
+        capacity: classData.capacity,
+        room_number: classData.room_number,
+        class_teacher_id: classData.class_teacher_id,
+        status: classData.status,
+      });
+      setSelectedClassForEdit(null);
+    } catch (error) {
+      console.error('Failed to update class:', error);
+    }
   };
 
-  const handleDeleteClass = (classId: string) => {
-    const classToDelete = institutionClasses.find(c => c.id === classId);
-    const studentsInClass = students.filter(s => s.class_id === classId).length;
+  const handleDeleteClass = async (classId: string) => {
+    const classToDelete = classesWithCounts.find(c => c.id === classId);
+    const studentsInClass = classToDelete?.student_count || 0;
     
     if (studentsInClass > 0) {
       toast.error(`Cannot delete class with ${studentsInClass} students. Please move or delete students first.`);
@@ -94,8 +111,11 @@ export default function InstitutionDetail() {
     }
     
     if (window.confirm(`Delete class "${classToDelete?.class_name}"? This action cannot be undone.`)) {
-      setInstitutionClasses(institutionClasses.filter(c => c.id !== classId));
-      toast.success('Class deleted successfully');
+      try {
+        await deleteClass({ id: classId, institution_id: institutionId! });
+      } catch (error) {
+        console.error('Failed to delete class:', error);
+      }
     }
   };
 
@@ -195,11 +215,11 @@ export default function InstitutionDetail() {
                   <Building2 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{institutionClasses.length}</div>
+                  <div className="text-2xl font-bold">{classesWithCounts.length}</div>
                   <p className="text-xs text-muted-foreground">
-                    {institutionClasses.length === 0 
+                    {classesWithCounts.length === 0 
                       ? 'No classes created' 
-                      : `${institutionClasses.length} active class${institutionClasses.length !== 1 ? 'es' : ''}`
+                      : `${classesWithCounts.length} active class${classesWithCounts.length !== 1 ? 'es' : ''}`
                     }
                   </p>
                 </CardContent>
@@ -350,8 +370,20 @@ export default function InstitutionDetail() {
           <TabsContent value="classes" className="space-y-6">
             <InstitutionClassesTab
               institutionId={institutionId!}
-              institutionClasses={institutionClasses}
-              studentCounts={students.reduce((acc, s) => ({ ...acc, [s.class_id || '']: (acc[s.class_id || ''] || 0) + 1 }), {} as Record<string, number>)}
+              institutionClasses={classesWithCounts.map(c => ({
+                id: c.id,
+                institution_id: c.institution_id,
+                class_name: c.class_name,
+                display_order: c.display_order || 0,
+                academic_year: c.academic_year || '',
+                capacity: c.capacity || 30,
+                room_number: c.room_number || '',
+                class_teacher_id: c.class_teacher_id || '',
+                status: (c.status === 'active' ? 'active' : 'archived') as 'active' | 'archived',
+                created_at: c.created_at || '',
+                updated_at: c.updated_at || '',
+              }))}
+              studentCounts={classesWithCounts.reduce((acc, c) => ({ ...acc, [c.id]: c.student_count || 0 }), {} as Record<string, number>)}
               onAddClass={() => setIsAddClassOpen(true)}
               onEditClass={(cls) => { setSelectedClassForEdit(cls); setIsEditClassOpen(true); }}
               onDeleteClass={handleDeleteClass}
@@ -394,7 +426,19 @@ export default function InstitutionDetail() {
             <InstitutionTimetableTab
               institutionId={institutionId!}
               institutionName={institution.name}
-              classes={institutionClasses.filter(c => c.status === 'active')}
+              classes={classesWithCounts.filter(c => c.status === 'active').map(c => ({
+                id: c.id,
+                institution_id: c.institution_id,
+                class_name: c.class_name,
+                display_order: c.display_order || 0,
+                academic_year: c.academic_year || '',
+                capacity: c.capacity || 30,
+                room_number: c.room_number || '',
+                class_teacher_id: c.class_teacher_id || '',
+                status: 'active' as const,
+                created_at: c.created_at || '',
+                updated_at: c.updated_at || '',
+              }))}
               periods={getInstitutionPeriods(institutionId!)}
               timetableData={getInstitutionTimetable(institutionId!)}
               onSavePeriods={async (periods) => {

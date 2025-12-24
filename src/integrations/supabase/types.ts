@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      classes: {
+        Row: {
+          academic_year: string | null
+          capacity: number | null
+          class_name: string
+          class_teacher_id: string | null
+          created_at: string | null
+          display_order: number | null
+          id: string
+          institution_id: string
+          room_number: string | null
+          section: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          academic_year?: string | null
+          capacity?: number | null
+          class_name: string
+          class_teacher_id?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          institution_id: string
+          room_number?: string | null
+          section?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          academic_year?: string | null
+          capacity?: number | null
+          class_name?: string
+          class_teacher_id?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          institution_id?: string
+          room_number?: string | null
+          section?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classes_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       institutions: {
         Row: {
           address: Json | null
@@ -117,6 +170,96 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "profiles_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      students: {
+        Row: {
+          address: string | null
+          admission_date: string | null
+          admission_number: string | null
+          avatar: string | null
+          blood_group: string | null
+          class_id: string | null
+          created_at: string | null
+          date_of_birth: string | null
+          email: string | null
+          gender: string | null
+          id: string
+          institution_id: string
+          parent_email: string | null
+          parent_name: string | null
+          parent_phone: string | null
+          previous_school: string | null
+          roll_number: string | null
+          status: string | null
+          student_id: string
+          student_name: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          address?: string | null
+          admission_date?: string | null
+          admission_number?: string | null
+          avatar?: string | null
+          blood_group?: string | null
+          class_id?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          gender?: string | null
+          id?: string
+          institution_id: string
+          parent_email?: string | null
+          parent_name?: string | null
+          parent_phone?: string | null
+          previous_school?: string | null
+          roll_number?: string | null
+          status?: string | null
+          student_id: string
+          student_name: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          address?: string | null
+          admission_date?: string | null
+          admission_number?: string | null
+          avatar?: string | null
+          blood_group?: string | null
+          class_id?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          gender?: string | null
+          id?: string
+          institution_id?: string
+          parent_email?: string | null
+          parent_name?: string | null
+          parent_phone?: string | null
+          previous_school?: string | null
+          roll_number?: string | null
+          status?: string | null
+          student_id?: string
+          student_name?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_institution_id_fkey"
             columns: ["institution_id"]
             isOneToOne: false
             referencedRelation: "institutions"
