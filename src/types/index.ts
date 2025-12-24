@@ -13,7 +13,8 @@ export interface User {
   email: string;
   name: string;
   avatar?: string;
-  role: UserRole;
+  role: UserRole; // Primary role (for backward compatibility)
+  roles?: UserRole[]; // All user roles (for multi-role users like CEO)
   position_id?: string; // Dynamic position reference
   position_name?: string; // Display name for position
   is_ceo?: boolean; // True for CEO position
@@ -30,6 +31,20 @@ export interface User {
   must_change_password?: boolean; // Force password change on next login
   password_changed_at?: string; // Timestamp of last password change
 }
+
+// Helper to check if user has a specific role
+export const hasRole = (user: User | null, role: UserRole): boolean => {
+  if (!user) return false;
+  const userRoles = user.roles || [user.role];
+  return userRoles.includes(role);
+};
+
+// Helper to check if user has any of the specified roles
+export const hasAnyRole = (user: User | null, roles: UserRole[]): boolean => {
+  if (!user) return false;
+  const userRoles = user.roles || [user.role];
+  return roles.some(role => userRoles.includes(role));
+};
 
 
 // Auth Response

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/services/auth.service';
-import { getRoleDashboardPath } from '@/utils/roleHelpers';
+import { getMultiRoleDashboardPath } from '@/utils/roleHelpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,8 +51,8 @@ export default function Login() {
           // Get tenant slug for path-based routing
           const tenantSlug = response.tenant?.slug;
 
-          // Redirect based on role
-          const dashboardPath = getRoleDashboardPath(response.user.role, tenantSlug);
+          // Redirect based on role (uses multi-role path for CEO)
+          const dashboardPath = getMultiRoleDashboardPath(response.user, tenantSlug);
           const from = location.state?.from?.pathname || dashboardPath;
           navigate(from, {
             replace: true
@@ -79,8 +79,8 @@ export default function Login() {
       // Get tenant slug for path-based routing
       const tenantSlug = pendingLoginData.tenant?.slug;
       
-      // Redirect based on role
-      const dashboardPath = getRoleDashboardPath(pendingLoginData.user.role, tenantSlug);
+      // Redirect based on role (uses multi-role path for CEO)
+      const dashboardPath = getMultiRoleDashboardPath(pendingLoginData.user, tenantSlug);
       const from = location.state?.from?.pathname || dashboardPath;
       navigate(from, {
         replace: true

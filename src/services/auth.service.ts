@@ -22,18 +22,20 @@ export const authService = {
       throw new Error('Login failed - no user data returned');
     }
 
-    // Fetch user role from user_roles table
-    const { data: roleData, error: roleError } = await supabase
+    // Fetch ALL user roles from user_roles table (for multi-role support)
+    const { data: rolesData, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', data.user.id)
-      .maybeSingle();
+      .eq('user_id', data.user.id);
 
     if (roleError) {
-      console.error('Error fetching role:', roleError);
+      console.error('Error fetching roles:', roleError);
     }
 
-    const role: UserRole = (roleData?.role as UserRole) || 'student';
+    // Get all roles as array
+    const roles: UserRole[] = rolesData?.map(r => r.role as UserRole) || ['student'];
+    // Primary role: prefer system_admin for CEO, otherwise use first role
+    const role: UserRole = roles.includes('system_admin') ? 'system_admin' : roles[0];
 
     // Fetch user profile from profiles table
     const { data: profileData, error: profileError } = await supabase
@@ -53,6 +55,7 @@ export const authService = {
       name: profileData?.name || data.user.user_metadata?.name || credentials.email.split('@')[0],
       avatar: profileData?.avatar || undefined,
       role,
+      roles, // Include all roles for multi-role support
       position_id: profileData?.position_id || undefined,
       position_name: profileData?.position_name || undefined,
       is_ceo: profileData?.is_ceo || false,
@@ -151,11 +154,10 @@ export const authService = {
 
   // Refresh user data from database
   async refreshUserData(userId: string): Promise<User | null> {
-    const { data: roleData } = await supabase
+    const { data: rolesData } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', userId)
-      .maybeSingle();
+      .eq('user_id', userId);
 
     const { data: profileData } = await supabase
       .from('profiles')
@@ -165,12 +167,16 @@ export const authService = {
 
     if (!profileData) return null;
 
+    const roles: UserRole[] = rolesData?.map(r => r.role as UserRole) || ['student'];
+    const role: UserRole = roles.includes('system_admin') ? 'system_admin' : roles[0];
+
     const user: User = {
       id: userId,
       email: profileData.email,
       name: profileData.name,
       avatar: profileData.avatar || undefined,
-      role: (roleData?.role as UserRole) || 'student',
+      role,
+      roles,
       position_id: profileData.position_id || undefined,
       position_name: profileData.position_name || undefined,
       is_ceo: profileData.is_ceo || false,
