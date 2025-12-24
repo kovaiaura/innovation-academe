@@ -8,3 +8,6 @@ verify_jwt = true
 
 [functions.create-institution-admin]
 verify_jwt = true
+
+[functions.create-student-user]
+verify_jwt = true
