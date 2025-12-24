@@ -642,6 +642,7 @@ export default function SystemAdminCourseDetail() {
           onOpenChange={setIsAddContentOpen}
           onSave={handleSaveContent}
           sessionName={selectedSession?.title || ''}
+          courseId={courseId || ''}
         />
 
         <EditContentDialog
