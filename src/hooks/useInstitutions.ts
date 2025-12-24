@@ -175,14 +175,60 @@ export function useInstitutions() {
     mutationFn: async (formData: InstitutionFormData) => {
       const dbData = transformFormToDb(formData, institutions.length);
       
-      const { data, error } = await supabase
+      // First create the institution
+      const { data: institutionData, error: institutionError } = await supabase
         .from('institutions')
         .insert(dbData)
         .select()
         .single();
       
-      if (error) throw error;
-      return { data, formData };
+      if (institutionError) throw institutionError;
+
+      // Create auth user for institution admin
+      if (formData.admin_email && formData.admin_password) {
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: formData.admin_email,
+          password: formData.admin_password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              name: formData.admin_name || formData.name + ' Admin',
+            }
+          }
+        });
+
+        if (authError) {
+          // Don't fail institution creation if auth user creation fails
+          console.error('Failed to create admin user:', authError);
+          toast.error(`Institution created but admin user failed: ${authError.message}`);
+        } else if (authData.user) {
+          // Assign management role to the admin
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .insert({
+              user_id: authData.user.id,
+              role: 'management'
+            });
+          
+          if (roleError && !roleError.message.includes('duplicate')) {
+            console.error('Failed to assign management role:', roleError);
+          }
+
+          // Update profile with institution_id
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({
+              institution_id: institutionData.id,
+            })
+            .eq('id', authData.user.id);
+
+          if (profileError) {
+            console.error('Failed to update admin profile:', profileError);
+          }
+        }
+      }
+      
+      return { data: institutionData, formData };
     },
     onMutate: async (formData) => {
       // Cancel outgoing refetches
