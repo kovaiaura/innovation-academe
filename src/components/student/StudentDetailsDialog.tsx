@@ -123,7 +123,7 @@ export function StudentDetailsDialog({
                 <Mail className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-muted-foreground text-xs">Email</p>
-                  <p className="font-medium">{student.parent_email}</p>
+                  <p className="font-medium">{student.email}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2">

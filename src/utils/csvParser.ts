@@ -10,7 +10,6 @@ export interface ParsedRow {
   gender: 'male' | 'female' | 'other';
   parent_name: string;
   parent_phone: string;
-  parent_email: string;
   address: string;
   blood_group?: string;
   previous_school?: string;
@@ -104,11 +103,6 @@ export function validateRow(row: ParsedRow, rowIndex: number): ValidationResult 
     errors.push('Parent name is required');
   }
 
-  // Parent email validation
-  if (!row.parent_email || !emailRegex.test(row.parent_email)) {
-    errors.push('Valid parent email is required');
-  }
-
   // Phone validation
   const phoneRegex = /^[\+]?[0-9\s\-()]{10,20}$/;
   if (!row.parent_phone || !phoneRegex.test(row.parent_phone)) {
@@ -188,7 +182,6 @@ export function generateTemplate(): Blob {
     'gender',
     'parent_name',
     'parent_phone',
-    'parent_email',
     'address',
     'blood_group',
     'previous_school'
@@ -204,7 +197,6 @@ export function generateTemplate(): Blob {
     'male',
     'Mr. Robert Doe',
     '+91-98765-43210',
-    'robert.doe@email.com',
     '123 Main St, New Delhi',
     'O+',
     'XYZ School'

@@ -166,7 +166,7 @@ export function ClassStudentTable({ students, onEditStudent, institutionCode, cl
                       </div>
                       <div className="flex items-center gap-1 text-sm">
                         <Mail className="h-3 w-3" />
-                        <span className="text-muted-foreground truncate max-w-[150px]">{student.parent_email}</span>
+                        <span className="text-muted-foreground truncate max-w-[150px]">{student.email}</span>
                       </div>
                     </div>
                   </TableCell>

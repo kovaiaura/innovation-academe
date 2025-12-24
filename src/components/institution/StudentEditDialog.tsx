@@ -164,16 +164,6 @@ export function StudentEditDialog({ student, open, onOpenChange, onSave }: Stude
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="parent_email">Parent Email</Label>
-            <Input
-              id="parent_email"
-              type="email"
-              value={formData.parent_email}
-              onChange={(e) => setFormData({ ...formData, parent_email: e.target.value })}
-            />
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="address">Address</Label>
             <Textarea
               id="address"

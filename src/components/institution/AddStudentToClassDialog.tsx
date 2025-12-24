@@ -50,7 +50,6 @@ export function AddStudentToClassDialog({
     previous_school: '',
     parent_name: '',
     parent_phone: '',
-    parent_email: '',
     address: '',
     status: 'active' as 'active' | 'inactive' | 'transferred' | 'graduated',
   });
@@ -75,7 +74,6 @@ export function AddStudentToClassDialog({
         previous_school: student.previous_school || '',
         parent_name: student.parent_name,
         parent_phone: student.parent_phone,
-        parent_email: student.parent_email,
         address: student.address,
         status: student.status,
       });
@@ -99,7 +97,6 @@ export function AddStudentToClassDialog({
         previous_school: '',
         parent_name: '',
         parent_phone: '',
-        parent_email: '',
         address: '',
         status: 'active',
       });
@@ -129,9 +126,6 @@ export function AddStudentToClassDialog({
       newErrors.parent_phone = 'Parent phone is required';
     } else if (!validatePhoneNumber(formData.parent_phone)) {
       newErrors.parent_phone = 'Invalid phone number format';
-    }
-    if (formData.parent_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.parent_email)) {
-      newErrors.parent_email = 'Invalid email format';
     }
 
     // Age validation
@@ -385,17 +379,6 @@ export function AddStudentToClassDialog({
                   className={errors.parent_phone ? 'border-destructive' : ''}
                 />
                 {errors.parent_phone && <p className="text-xs text-destructive mt-1">{errors.parent_phone}</p>}
-              </div>
-
-              <div>
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={formData.parent_email}
-                  onChange={(e) => setFormData({ ...formData, parent_email: e.target.value })}
-                  className={errors.parent_email ? 'border-destructive' : ''}
-                />
-                {errors.parent_email && <p className="text-xs text-destructive mt-1">{errors.parent_email}</p>}
               </div>
 
               <div className="col-span-2">

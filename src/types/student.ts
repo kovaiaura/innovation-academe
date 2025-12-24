@@ -29,7 +29,6 @@ export interface Student {
   status: 'active' | 'inactive' | 'transferred' | 'graduated';
   parent_name: string;
   parent_phone: string;
-  parent_email: string;
   address: string;
   avatar?: string;
   institution_id: string;
