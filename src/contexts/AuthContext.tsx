@@ -65,6 +65,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Primary role: prefer system_admin for CEO, otherwise use first role
         const role: UserRole = roles.includes('system_admin') ? 'system_admin' : roles[0];
         
+        // Fetch tenant info if user has institution_id and it's not already in localStorage
+        let tenantSlug: string | undefined;
+        if (profileData.institution_id) {
+          const existingTenant = localStorage.getItem('tenant');
+          if (existingTenant) {
+            try {
+              const parsed = JSON.parse(existingTenant);
+              tenantSlug = parsed.slug;
+            } catch {}
+          }
+          
+          if (!tenantSlug) {
+            const { data: institutionData } = await supabase
+              .from('institutions')
+              .select('id, name, slug')
+              .eq('id', profileData.institution_id)
+              .maybeSingle();
+            
+            if (institutionData) {
+              tenantSlug = institutionData.slug;
+              localStorage.setItem('tenant', JSON.stringify({
+                id: institutionData.id,
+                name: institutionData.name,
+                slug: institutionData.slug,
+              }));
+            }
+          }
+        }
+        
         const userData: User = {
           id: userId,
           email: profileData.email,
@@ -76,6 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           position_name: profileData.position_name || undefined,
           is_ceo: profileData.is_ceo || false,
           institution_id: profileData.institution_id || undefined,
+          tenant_id: profileData.institution_id || undefined, // Add tenant_id for sidebar routing
           class_id: profileData.class_id || undefined,
           created_at: profileData.created_at || '',
           hourly_rate: profileData.hourly_rate || undefined,

@@ -105,6 +105,7 @@ import PerformanceRatings from "./pages/system-admin/PerformanceRatings";
 import SystemAdminSettings from "./pages/system-admin/Settings";
 import OfficerSettings from "./pages/officer/Settings";
 import TeacherSettings from "./pages/teacher/Settings";
+import { TimetableRedirect } from "./components/TimetableRedirect";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -129,6 +130,9 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
+            
+            {/* Smart redirect for /timetable - redirects to role-specific timetable */}
+            <Route path="/timetable" element={<TimetableRedirect />} />
             
             {/* Super Admin Routes - Technical Platform Oversight */}
             <Route
