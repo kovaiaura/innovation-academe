@@ -47,8 +47,8 @@ export interface CreateOfficerData {
   employee_id?: string;
   employment_type: string;
   annual_salary: number;
+  hourly_rate?: number;
   overtime_rate_multiplier?: number;
-  annual_leave_allowance?: number;
   sick_leave_allowance?: number;
   casual_leave_allowance?: number;
 }

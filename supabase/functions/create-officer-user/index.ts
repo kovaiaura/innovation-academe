@@ -14,10 +14,11 @@ interface CreateOfficerRequest {
   employee_id?: string;
   employment_type: string;
   annual_salary: number;
+  hourly_rate?: number;
   overtime_rate_multiplier?: number;
-  annual_leave_allowance?: number;
   sick_leave_allowance?: number;
   casual_leave_allowance?: number;
+  institution_id?: string;
 }
 
 serve(async (req) => {
@@ -48,6 +49,11 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Calculate annual leave as sum of sick + casual
+    const sickLeave = requestData.sick_leave_allowance || 10;
+    const casualLeave = requestData.casual_leave_allowance || 12;
+    const annualLeave = sickLeave + casualLeave;
 
     // Create the auth user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -91,6 +97,21 @@ serve(async (req) => {
 
     console.log(`[CreateOfficerUser] Assigned officer role to user: ${userId}`);
 
+    // Update profiles table with institution_id if provided
+    if (requestData.institution_id) {
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .update({ institution_id: requestData.institution_id })
+        .eq('id', userId);
+
+      if (profileError) {
+        console.log(`[CreateOfficerUser] Profile update warning: ${profileError.message}`);
+        // Don't fail the request, just log the warning
+      } else {
+        console.log(`[CreateOfficerUser] Updated profile with institution_id: ${requestData.institution_id}`);
+      }
+    }
+
     // Create officer record
     const { data: officerData, error: officerError } = await supabaseAdmin
       .from('officers')
@@ -102,10 +123,11 @@ serve(async (req) => {
         employee_id: requestData.employee_id || null,
         employment_type: requestData.employment_type || 'full_time',
         annual_salary: requestData.annual_salary || 0,
+        hourly_rate: requestData.hourly_rate || null,
         overtime_rate_multiplier: requestData.overtime_rate_multiplier || 1.5,
-        annual_leave_allowance: requestData.annual_leave_allowance || 15,
-        sick_leave_allowance: requestData.sick_leave_allowance || 10,
-        casual_leave_allowance: requestData.casual_leave_allowance || 12
+        annual_leave_allowance: annualLeave,
+        sick_leave_allowance: sickLeave,
+        casual_leave_allowance: casualLeave
       })
       .select()
       .single();

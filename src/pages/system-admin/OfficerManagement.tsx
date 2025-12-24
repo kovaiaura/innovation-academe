@@ -29,12 +29,15 @@ export default function OfficerManagement() {
     employment_type: 'full_time',
     annual_salary: '',
     // Payroll Configuration
+    hourly_rate: '',
     overtime_rate_multiplier: '1.5',
     // Leave Balance Configuration
-    annual_leave_allowance: '15',
     sick_leave_allowance: '10',
     casual_leave_allowance: '12',
   });
+
+  // Auto-calculate annual leave from sick + casual
+  const calculatedAnnualLeave = Number(formData.sick_leave_allowance || 0) + Number(formData.casual_leave_allowance || 0);
 
   const handleAddOfficer = async () => {
     // Validation
@@ -57,8 +60,8 @@ export default function OfficerManagement() {
         employee_id: formData.employee_id,
         employment_type: formData.employment_type,
         annual_salary: Number(formData.annual_salary),
+        hourly_rate: formData.hourly_rate ? Number(formData.hourly_rate) : undefined,
         overtime_rate_multiplier: Number(formData.overtime_rate_multiplier),
-        annual_leave_allowance: Number(formData.annual_leave_allowance),
         sick_leave_allowance: Number(formData.sick_leave_allowance),
         casual_leave_allowance: Number(formData.casual_leave_allowance),
       });
@@ -74,8 +77,8 @@ export default function OfficerManagement() {
         employee_id: '',
         employment_type: 'full_time',
         annual_salary: '',
+        hourly_rate: '',
         overtime_rate_multiplier: '1.5',
-        annual_leave_allowance: '15',
         sick_leave_allowance: '10',
         casual_leave_allowance: '12',
       });
@@ -213,17 +216,30 @@ export default function OfficerManagement() {
                       Payroll Configuration
                     </h3>
                     
-                    <div>
-                      <Label htmlFor="overtime_multiplier">Overtime Rate Multiplier</Label>
-                      <Input
-                        id="overtime_multiplier"
-                        type="number"
-                        step="0.1"
-                        value={formData.overtime_rate_multiplier}
-                        onChange={(e) => setFormData({ ...formData, overtime_rate_multiplier: e.target.value })}
-                        placeholder="1.5"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">e.g., 1.5 = 1.5x hourly rate</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="hourly_rate">Overtime Hourly Charges (₹/hr)</Label>
+                        <Input
+                          id="hourly_rate"
+                          type="number"
+                          value={formData.hourly_rate}
+                          onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
+                          placeholder="500"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Rate per overtime hour</p>
+                      </div>
+                      <div>
+                        <Label htmlFor="overtime_multiplier">Overtime Rate Multiplier</Label>
+                        <Input
+                          id="overtime_multiplier"
+                          type="number"
+                          step="0.1"
+                          value={formData.overtime_rate_multiplier}
+                          onChange={(e) => setFormData({ ...formData, overtime_rate_multiplier: e.target.value })}
+                          placeholder="1.5"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">e.g., 1.5 = 1.5x hourly rate</p>
+                      </div>
                     </div>
                   </div>
 
@@ -231,21 +247,10 @@ export default function OfficerManagement() {
                   <div className="border-t pt-4 mt-4">
                     <h3 className="font-semibold mb-3 flex items-center gap-2">
                       <Calendar className="h-4 w-4" />
-                      Annual Leave Allowance
+                      Leave Allowance
                     </h3>
                     
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <Label htmlFor="annual_leave">Annual Leave</Label>
-                        <Input
-                          id="annual_leave"
-                          type="number"
-                          value={formData.annual_leave_allowance}
-                          onChange={(e) => setFormData({ ...formData, annual_leave_allowance: e.target.value })}
-                          placeholder="15"
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">days/year</p>
-                      </div>
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label htmlFor="sick_leave">Sick Leave</Label>
                         <Input
@@ -267,6 +272,14 @@ export default function OfficerManagement() {
                           placeholder="12"
                         />
                         <p className="text-xs text-muted-foreground mt-1">days/year</p>
+                      </div>
+                    </div>
+                    
+                    {/* Calculated Annual Leave Display */}
+                    <div className="mt-3 p-3 bg-muted rounded-md">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Annual Leave (Sick + Casual)</span>
+                        <span className="font-semibold">{calculatedAnnualLeave} days/year</span>
                       </div>
                     </div>
                   </div>
