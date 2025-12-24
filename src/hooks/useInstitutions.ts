@@ -345,41 +345,86 @@ export function useInstitutions() {
       console.log('[Institutions] Updating institution:', id, updates);
       
       // Verify authentication
-      const authCheck = await verifyAuthAndRole('super_admin');
+      const authCheck = await verifyAuthAndRole('system_admin');
       if (!authCheck.isValid) {
         throw new Error(authCheck.error);
       }
 
-      // Map updates to DB format
+      // Fetch current institution data to merge with updates
+      const { data: current, error: fetchError } = await supabase
+        .from('institutions')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (fetchError) {
+        console.error('[Institutions] Fetch for update failed:', fetchError);
+        throw new Error(`Failed to fetch institution: ${fetchError.message}`);
+      }
+
+      const currentAddress = (current?.address || {}) as Record<string, any>;
+      const currentContact = (current?.contact_info || {}) as Record<string, any>;
+      const currentSettings = (current?.settings || {}) as Record<string, any>;
+
+      // Build the database update object
       const dbUpdates: Record<string, any> = {};
       
-      if (updates.status) dbUpdates.status = updates.status;
-      if (updates.name) dbUpdates.name = updates.name;
+      // Direct DB columns
+      if (updates.name !== undefined) dbUpdates.name = updates.name;
+      if (updates.code !== undefined) dbUpdates.code = updates.code; // Make code editable
+      if (updates.type !== undefined) dbUpdates.type = updates.type;
+      if (updates.status !== undefined) dbUpdates.status = updates.status;
+      if (updates.subscription_status !== undefined) dbUpdates.status = updates.subscription_status;
+      if (updates.max_users !== undefined) dbUpdates.max_users = updates.max_users;
+      if (updates.current_users !== undefined) dbUpdates.current_users = updates.current_users;
+      if (updates.license_type !== undefined) dbUpdates.license_type = updates.license_type;
+      if (updates.license_expiry !== undefined) dbUpdates.license_expiry = updates.license_expiry || null;
+      if (updates.contract_value !== undefined) dbUpdates.contract_value = updates.contract_value;
+      if (updates.contract_expiry_date !== undefined) dbUpdates.contract_expiry_date = updates.contract_expiry_date || null;
       
-      // Handle settings updates
-      if (updates.license_expiry || updates.current_users || updates.subscription_status) {
-        const { data: current, error: fetchError } = await supabase
-          .from('institutions')
-          .select('settings')
-          .eq('id', id)
-          .single();
-        
-        if (fetchError) {
-          console.error('[Institutions] Fetch for update failed:', fetchError);
-          throw new Error(`Failed to fetch institution: ${fetchError.message}`);
-        }
-        
-        const currentSettings = (current?.settings || {}) as Record<string, any>;
+      // Update address JSONB (location, gps_location)
+      if (updates.location !== undefined || updates.gps_location !== undefined) {
+        dbUpdates.address = {
+          ...currentAddress,
+          ...(updates.location !== undefined && { location: updates.location }),
+          ...(updates.gps_location !== undefined && { gps_location: updates.gps_location }),
+        };
+      }
+      
+      // Update contact_info JSONB
+      if (updates.contact_email !== undefined || updates.contact_phone !== undefined || 
+          updates.admin_name !== undefined || updates.admin_email !== undefined) {
+        dbUpdates.contact_info = {
+          ...currentContact,
+          ...(updates.contact_email !== undefined && { email: updates.contact_email }),
+          ...(updates.contact_phone !== undefined && { phone: updates.contact_phone }),
+          ...(updates.admin_name !== undefined && { admin_name: updates.admin_name }),
+          ...(updates.admin_email !== undefined && { admin_email: updates.admin_email }),
+        };
+      }
+      
+      // Update settings JSONB
+      const settingsUpdates: Record<string, any> = {};
+      if (updates.established_year !== undefined) settingsUpdates.established_year = updates.established_year;
+      if (updates.total_faculty !== undefined) settingsUpdates.total_faculty = updates.total_faculty;
+      if (updates.total_students !== undefined) settingsUpdates.total_students = updates.total_students;
+      if (updates.attendance_radius_meters !== undefined) settingsUpdates.attendance_radius_meters = updates.attendance_radius_meters;
+      if (updates.normal_working_hours !== undefined) settingsUpdates.normal_working_hours = updates.normal_working_hours;
+      if (updates.check_in_time !== undefined) settingsUpdates.check_in_time = updates.check_in_time;
+      if (updates.check_out_time !== undefined) settingsUpdates.check_out_time = updates.check_out_time;
+      if (updates.subscription_plan !== undefined) settingsUpdates.subscription_plan = updates.subscription_plan;
+      if (updates.student_id_prefix !== undefined) settingsUpdates.student_id_prefix = updates.student_id_prefix;
+      if (updates.student_id_suffix !== undefined) settingsUpdates.student_id_suffix = updates.student_id_suffix;
+      if (updates.pricing_model !== undefined) settingsUpdates.pricing_model = updates.pricing_model;
+      
+      if (Object.keys(settingsUpdates).length > 0) {
         dbUpdates.settings = {
           ...currentSettings,
-          ...(updates.license_expiry && { license_expiry: updates.license_expiry }),
-          ...(updates.current_users !== undefined && { current_users: updates.current_users }),
+          ...settingsUpdates,
         };
-        
-        if (updates.subscription_status) {
-          dbUpdates.status = updates.subscription_status;
-        }
       }
+
+      console.log('[Institutions] DB updates prepared:', dbUpdates);
       
       const { error } = await supabase
         .from('institutions')
