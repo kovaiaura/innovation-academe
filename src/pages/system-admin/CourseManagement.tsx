@@ -13,7 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { BookOpen, Plus, Upload, FileText, Search, Filter, Edit, Trash2, BarChart3, Users, TrendingUp, Award, Eye, Layers, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { uploadCourseThumbnail, getContentSignedUrl } from '@/services/courseStorage.service';
+import { uploadCourseThumbnail } from '@/services/courseStorage.service';
+import { StorageImage } from '@/components/course/StorageImage';
 import { CoursePreviewDialog } from '@/components/course/CoursePreviewDialog';
 import { EditCourseDialog } from '@/components/course/EditCourseDialog';
 import { useCourses, useCreateCourse, useDeleteCourse, DbCourse } from '@/hooks/useCourses';
@@ -263,8 +264,8 @@ export default function CourseManagement() {
                         onClick={() => navigate(`/system-admin/courses/${course.id}`)}
                       >
                         <div className="relative aspect-video overflow-hidden bg-muted">
-                          <img
-                            src={course.thumbnail_url || '/placeholder.svg'}
+                          <StorageImage
+                            filePath={course.thumbnail_url}
                             alt={course.title}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
