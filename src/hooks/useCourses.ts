@@ -28,6 +28,7 @@ export interface DbCourseModule {
   title: string;
   description: string | null;
   display_order: number;
+  certificate_template_id: string | null;
   created_at: string;
 }
 
@@ -259,7 +260,8 @@ export function useCreateModule() {
           course_id: courseId,
           title: moduleData.title!,
           description: moduleData.description,
-          display_order: nextOrder
+          display_order: nextOrder,
+          certificate_template_id: (moduleData as any).certificate_template_id || null
         })
         .select()
         .single();

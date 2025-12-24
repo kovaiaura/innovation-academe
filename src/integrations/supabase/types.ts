@@ -227,6 +227,7 @@ export type Database = {
       }
       course_modules: {
         Row: {
+          certificate_template_id: string | null
           course_id: string
           created_at: string
           description: string | null
@@ -235,6 +236,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          certificate_template_id?: string | null
           course_id: string
           created_at?: string
           description?: string | null
@@ -243,6 +245,7 @@ export type Database = {
           title: string
         }
         Update: {
+          certificate_template_id?: string | null
           course_id?: string
           created_at?: string
           description?: string | null

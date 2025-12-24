@@ -10,6 +10,41 @@ export interface UploadResult {
 }
 
 /**
+ * Upload a course thumbnail to storage
+ */
+export async function uploadCourseThumbnail(
+  file: File,
+  courseId: string
+): Promise<UploadResult> {
+  const timestamp = Date.now();
+  const ext = file.name.split('.').pop() || 'jpg';
+  const filePath = `${courseId}/thumbnails/${timestamp}.${ext}`;
+
+  const { data, error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: true
+    });
+
+  if (error) {
+    throw new Error(`Failed to upload thumbnail: ${error.message}`);
+  }
+
+  // Get signed URL for the thumbnail
+  const { data: signedUrlData } = await supabase.storage
+    .from(BUCKET_NAME)
+    .createSignedUrl(data.path, 3600 * 24 * 7); // 7 days for thumbnails
+
+  return {
+    path: data.path,
+    publicUrl: null,
+    signedUrl: signedUrlData?.signedUrl || null,
+    fileSizeMb: file.size / (1024 * 1024)
+  };
+}
+
+/**
  * Upload a file to the course-content storage bucket
  */
 export async function uploadCourseContent(
