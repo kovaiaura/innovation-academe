@@ -64,6 +64,7 @@ import Attendance from "./pages/management/Attendance";
 import ManagementReports from "./pages/management/Reports";
 import ManagementTimetable from "./pages/management/Timetable";
 import ManagementEvents from "./pages/management/Events";
+import ManagementCourseDetail from "./pages/management/CourseDetail";
 import SystemAdminCourseManagement from "./pages/system-admin/CourseManagement";
 import SystemAdminCourseDetail from "./pages/system-admin/CourseDetail";
 import SystemAdminAssessmentManagement from "./pages/system-admin/AssessmentManagement";
@@ -702,6 +703,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['management']}>
                   <ManagementEvents />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/management/courses/:courseId"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <ManagementCourseDetail />
                 </ProtectedRoute>
               }
             />
