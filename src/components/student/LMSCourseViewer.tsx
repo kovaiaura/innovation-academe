@@ -19,6 +19,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { getContentSignedUrl } from '@/services/courseStorage.service';
+import { PDFViewer } from '@/components/content-viewer/PDFViewer';
 
 interface ContentItem {
   id: string;
@@ -120,6 +121,13 @@ export function LMSCourseViewer({ course, modules, viewOnly = false, backPath }:
 
       if (selectedContent.type === 'youtube') {
         setContentUrl(selectedContent.youtube_url || null);
+        setIsLoadingContent(false);
+        return;
+      }
+
+      // PDFs are rendered via our in-app PDFViewer (downloads via SDK), so no signed URL needed.
+      if (selectedContent.type === 'pdf' && selectedContent.file_path && !selectedContent.file_path.startsWith('http')) {
+        setContentUrl(null);
         setIsLoadingContent(false);
         return;
       }
@@ -266,17 +274,23 @@ export function LMSCourseViewer({ course, modules, viewOnly = false, backPath }:
             </div>
           );
         }
-        return contentUrl ? (
+
+        // Storage path: render via PDF.js (works across browsers; no iframe).
+        if (!selectedContent.file_path.startsWith('http')) {
+          return (
+            <div className="h-full">
+              <PDFViewer filePath={selectedContent.file_path} title={selectedContent.title} />
+            </div>
+          );
+        }
+
+        // External URL: fall back to iframe.
+        return (
           <iframe
-            src={contentUrl}
-            className="w-full h-full rounded-lg bg-white"
+            src={selectedContent.file_path}
+            className="w-full h-full rounded-lg bg-card"
             title={selectedContent.title}
           />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
-            <Loader2 className="h-8 w-8 animate-spin" />
-            <p>Loading PDF...</p>
-          </div>
         );
 
       case 'ppt':
@@ -289,12 +303,18 @@ export function LMSCourseViewer({ course, modules, viewOnly = false, backPath }:
             </div>
           );
         }
+
         return contentUrl ? (
-          <iframe
-            src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(contentUrl)}`}
-            className="w-full h-full rounded-lg"
-            title={selectedContent.title}
-          />
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
+            <FileText className="h-16 w-16" />
+            <p className="text-lg font-medium">Open Presentation</p>
+            <Button asChild>
+              <a href={contentUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Open in new tab
+              </a>
+            </Button>
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
             <Loader2 className="h-8 w-8 animate-spin" />
