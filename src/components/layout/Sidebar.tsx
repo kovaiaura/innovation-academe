@@ -188,11 +188,18 @@ export function Sidebar() {
     window.location.href = '/login';
   };
 
+  // Get all user roles for multi-role filtering
+  const userRoles = user?.roles || (user ? [user.role] : []);
+  
   const visibleMenuItems = menuItems.filter((item) => {
-    if (!user || !item.roles.includes(user.role)) return false;
+    if (!user) return false;
     
-    // If system_admin role, check position permissions
-    if (user.role === 'system_admin') {
+    // Check if user has ANY of the item's allowed roles
+    const hasMatchingRole = item.roles.some(r => userRoles.includes(r));
+    if (!hasMatchingRole) return false;
+    
+    // If item requires system_admin role and user has it, check position permissions
+    if (item.roles.includes('system_admin') && userRoles.includes('system_admin')) {
       // CEO-only items
       if (item.ceoOnly && !isCEO(user)) return false;
       
@@ -203,22 +210,25 @@ export function Sidebar() {
     return true;
   });
 
-  // Get base path for role-based routing
-  const getFullPath = (path: string) => {
+  // Get base path for role-based routing (supports multi-role)
+  const getFullPath = (path: string, itemRole?: UserRole) => {
     if (!user) return path;
     
+    // Determine which role context to use for this menu item
+    const roleForPath = itemRole || user.role;
+    
     // Super admin routes
-    if (user.role === 'super_admin') {
+    if (roleForPath === 'super_admin' && userRoles.includes('super_admin')) {
       return `/super-admin${path}`;
     }
 
     // System admin routes
-    if (user.role === 'system_admin') {
+    if (roleForPath === 'system_admin' && userRoles.includes('system_admin')) {
       return `/system-admin${path}`;
     }
 
     // Teacher routes (with tenant path)
-    if (user.role === 'teacher' && user.tenant_id) {
+    if (roleForPath === 'teacher' && user.tenant_id) {
       const tenantStr = localStorage.getItem('tenant');
       const tenant = tenantStr ? JSON.parse(tenantStr) : null;
       const tenantSlug = tenant?.slug || 'default';
@@ -226,7 +236,7 @@ export function Sidebar() {
     }
 
     // Officer routes (with tenant path)
-    if (user.role === 'officer' && user.tenant_id) {
+    if (roleForPath === 'officer' && user.tenant_id) {
       const tenantStr = localStorage.getItem('tenant');
       const tenant = tenantStr ? JSON.parse(tenantStr) : null;
       const tenantSlug = tenant?.slug || 'default';
@@ -234,7 +244,7 @@ export function Sidebar() {
     }
 
     // Management routes (with tenant path) - merged institution admin
-    if (user.role === 'management' && user.tenant_id) {
+    if (roleForPath === 'management' && user.tenant_id) {
       const tenantStr = localStorage.getItem('tenant');
       const tenant = tenantStr ? JSON.parse(tenantStr) : null;
       const tenantSlug = tenant?.slug || 'default';
@@ -242,7 +252,7 @@ export function Sidebar() {
     }
     
     // Student routes (with tenant path)
-    if (user.role === 'student' && user.tenant_id) {
+    if (roleForPath === 'student' && user.tenant_id) {
       // Get tenant slug from localStorage
       const tenantStr = localStorage.getItem('tenant');
       const tenant = tenantStr ? JSON.parse(tenantStr) : null;
@@ -285,7 +295,10 @@ export function Sidebar() {
       <ScrollArea className="flex-1 px-2 py-4">
         <div className="space-y-1">
           {visibleMenuItems.map((item) => {
-            const fullPath = getFullPath(item.path);
+            // Determine the appropriate role for this item's path
+            // For multi-role users, use the matching role from the item's roles
+            const itemRole = item.roles.find(r => userRoles.includes(r));
+            const fullPath = getFullPath(item.path, itemRole);
             const isActive = location.pathname.includes(item.path);
             const showBadge = 
               (item.label === 'Manager Approvals' && managerLeaveCount > 0) ||
@@ -297,7 +310,7 @@ export function Sidebar() {
               item.label === 'CEO Approvals' ? ceoLeaveCount : 0;
             
             return (
-              <Link key={item.path} to={fullPath}>
+              <Link key={`${item.path}-${itemRole}`} to={fullPath}>
                 <Button
                   variant="ghost"
                   className={cn(
@@ -326,9 +339,9 @@ export function Sidebar() {
 
       {/* User Section */}
       <div className="border-t border-meta-dark-lighter">
-        {user?.role === 'officer' && officerProfile ? (
+        {userRoles.includes('officer') && officerProfile ? (
           <OfficerSidebarProfile officer={officerProfile} collapsed={collapsed} />
-        ) : user?.role === 'teacher' && teacherProfile ? (
+        ) : userRoles.includes('teacher') && teacherProfile ? (
           <TeacherSidebarProfile teacher={teacherProfile} collapsed={collapsed} />
         ) : (
           // Default user section for other roles
@@ -337,9 +350,13 @@ export function Sidebar() {
               <div className="mb-3 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">{user.name}</p>
-                  <p className="text-xs text-gray-400">{user.role.replace('_', ' ')}</p>
+                  <p className="text-xs text-gray-400">
+                    {user.roles && user.roles.length > 1 
+                      ? user.roles.map(r => r.replace('_', ' ')).join(', ')
+                      : user.role.replace('_', ' ')}
+                  </p>
                 </div>
-                {['system_admin', 'officer', 'student'].includes(user.role) && (
+                {['system_admin', 'officer', 'student'].some(r => userRoles.includes(r as UserRole)) && (
                   <NotificationBell 
                     userId={user.id} 
                     userRole={user.role as 'officer' | 'student' | 'system_admin'} 

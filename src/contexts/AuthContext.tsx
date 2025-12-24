@@ -47,12 +47,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchAndSetUser = async (userId: string) => {
     try {
-      // Fetch user role
-      const { data: roleData } = await supabase
+      // Fetch ALL user roles (for multi-role support)
+      const { data: rolesData } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
+        .eq('user_id', userId);
 
       // Fetch user profile
       const { data: profileData } = await supabase
@@ -62,12 +61,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .maybeSingle();
 
       if (profileData) {
+        const roles: UserRole[] = rolesData?.map(r => r.role as UserRole) || ['student'];
+        // Primary role: prefer system_admin for CEO, otherwise use first role
+        const role: UserRole = roles.includes('system_admin') ? 'system_admin' : roles[0];
+        
         const userData: User = {
           id: userId,
           email: profileData.email,
           name: profileData.name,
           avatar: profileData.avatar || undefined,
-          role: (roleData?.role as UserRole) || 'student',
+          role,
+          roles, // Include all roles
           position_id: profileData.position_id || undefined,
           position_name: profileData.position_name || undefined,
           is_ceo: profileData.is_ceo || false,

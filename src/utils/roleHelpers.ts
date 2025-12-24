@@ -1,4 +1,4 @@
-import { UserRole } from '@/types';
+import { User, UserRole } from '@/types';
 
 export const getRoleBasePath = (role: UserRole, tenantSlug?: string): string => {
   const basePaths: Record<UserRole, string> = {
@@ -15,4 +15,19 @@ export const getRoleBasePath = (role: UserRole, tenantSlug?: string): string => 
 
 export const getRoleDashboardPath = (role: UserRole, tenantSlug?: string): string => {
   return `${getRoleBasePath(role, tenantSlug)}/dashboard`;
+};
+
+// Get dashboard path for multi-role user (prioritizes system_admin for CEO)
+export const getMultiRoleDashboardPath = (user: User, tenantSlug?: string): string => {
+  const roles = user.roles || [user.role];
+  
+  // Priority: system_admin > super_admin > others
+  if (roles.includes('system_admin')) {
+    return getRoleDashboardPath('system_admin', tenantSlug);
+  }
+  if (roles.includes('super_admin')) {
+    return getRoleDashboardPath('super_admin', tenantSlug);
+  }
+  
+  return getRoleDashboardPath(user.role, tenantSlug);
 };
