@@ -34,10 +34,16 @@ import DocumentCard from '@/components/officer/DocumentCard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getLeaveBalance, initializeLeaveBalance } from '@/data/mockLeaveData';
-import { LeaveBalance } from '@/types/attendance';
-import { useOfficer, useUpdateOfficer, type Officer } from '@/hooks/useOfficers';
+import { Officer } from '@/hooks/useOfficers';
+import { useOfficer, useUpdateOfficer } from '@/hooks/useOfficers';
 import { supabase } from '@/integrations/supabase/client';
+
+// Leave balance type for officer
+interface OfficerLeaveBalance {
+  sick_leave: number;
+  casual_leave: number;
+  annual_leave: number;
+}
 
 // Mock institutions for assignment
 const mockInstitutions = [
@@ -123,6 +129,15 @@ function mapOfficerToDetails(officer: Officer): OfficerDetails {
   };
 }
 
+// Get leave balance from officer database fields
+function getOfficerLeaveBalance(officer: Officer): OfficerLeaveBalance {
+  return {
+    sick_leave: officer.sick_leave_allowance ?? 10,
+    casual_leave: officer.casual_leave_allowance ?? 12,
+    annual_leave: officer.annual_leave_allowance ?? 22,
+  };
+}
+
 export default function OfficerDetail() {
   const { officerId } = useParams<{ officerId: string }>();
   const navigate = useNavigate();
@@ -141,7 +156,7 @@ export default function OfficerDetail() {
   const [isAssignInstitutionOpen, setIsAssignInstitutionOpen] = useState(false);
   const [selectedDocumentType, setSelectedDocumentType] = useState<string>('');
   const [selectedInstitution, setSelectedInstitution] = useState<string>('');
-  const [leaveBalance, setLeaveBalance] = useState<LeaveBalance | null>(null);
+  const [leaveBalance, setLeaveBalance] = useState<OfficerLeaveBalance | null>(null);
 
   // Fetch documents from database
   useEffect(() => {
@@ -179,10 +194,8 @@ export default function OfficerDetail() {
       setOfficer(mapOfficerToDetails(officerData));
       setActivityLog(mockActivityLog);
       
-      // Fetch leave balance
-      const currentYear = new Date().getFullYear().toString();
-      const leaveData = getLeaveBalance(officerId || '', currentYear);
-      setLeaveBalance(leaveData);
+      // Get leave balance from database fields
+      setLeaveBalance(getOfficerLeaveBalance(officerData));
     }
   }, [officerData, officerId]);
 
@@ -194,13 +207,13 @@ export default function OfficerDetail() {
     }
   }, [error, navigate]);
 
-  const handleProfileUpdate = async (updatedData: Partial<OfficerDetails> & { casual_leave?: number; sick_leave?: number; earned_leave?: number }) => {
+  const handleProfileUpdate = async (updatedData: Partial<OfficerDetails> & { casual_leave?: number; sick_leave?: number }) => {
     if (!officerId || !officerData) return;
     
     try {
       toast.loading('Updating profile...', { id: 'update' });
       
-      const { casual_leave, sick_leave, earned_leave, ...officerDetailsData } = updatedData;
+      const { casual_leave, sick_leave, ...officerDetailsData } = updatedData;
       
       // Map OfficerDetails fields back to database Officer fields
       const updatePayload: Partial<Officer> = {};
@@ -226,25 +239,27 @@ export default function OfficerDetail() {
       if (officerDetailsData.statutory_info) updatePayload.statutory_info = officerDetailsData.statutory_info;
       if (officerDetailsData.salary_structure) updatePayload.salary_structure = officerDetailsData.salary_structure;
       
+      // Map leave fields to database columns
+      if (sick_leave !== undefined) updatePayload.sick_leave_allowance = sick_leave;
+      if (casual_leave !== undefined) updatePayload.casual_leave_allowance = casual_leave;
+      
+      // Auto-calculate annual leave as sick + casual
+      const newSickLeave = sick_leave ?? leaveBalance?.sick_leave ?? 10;
+      const newCasualLeave = casual_leave ?? leaveBalance?.casual_leave ?? 12;
+      updatePayload.annual_leave_allowance = newSickLeave + newCasualLeave;
+      
       // Update in database
       await updateOfficer.mutateAsync({ id: officerId, data: updatePayload });
       
       // Update local state
       setOfficer(prev => prev ? { ...prev, ...officerDetailsData } : null);
       
-      // Update leave balance if leave fields are present
-      if (casual_leave !== undefined || sick_leave !== undefined || earned_leave !== undefined) {
-        const currentYear = new Date().getFullYear().toString();
-        const updatedLeaveBalance: LeaveBalance = {
-          officer_id: officerId,
-          year: currentYear,
-          casual_leave: casual_leave ?? leaveBalance?.casual_leave ?? 12,
-          sick_leave: sick_leave ?? leaveBalance?.sick_leave ?? 12,
-          earned_leave: earned_leave ?? leaveBalance?.earned_leave ?? 15,
-        };
-        initializeLeaveBalance(updatedLeaveBalance);
-        setLeaveBalance(updatedLeaveBalance);
-      }
+      // Update leave balance in local state
+      setLeaveBalance({
+        sick_leave: newSickLeave,
+        casual_leave: newCasualLeave,
+        annual_leave: newSickLeave + newCasualLeave,
+      });
       
       setIsEditProfileOpen(false);
       toast.success('Profile updated successfully', { id: 'update' });
