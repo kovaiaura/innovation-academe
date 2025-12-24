@@ -73,6 +73,11 @@ export function AddContentDialog({
         );
         filePath = uploadResult.path;
         fileSizeMb = uploadResult.fileSizeMb;
+        
+        // CRITICAL VALIDATION: Ensure file_path is set after upload
+        if (!filePath) {
+          throw new Error('File upload succeeded but storage path was not returned. Please try again.');
+        }
       }
 
       const contentData: {
@@ -87,7 +92,11 @@ export function AddContentDialog({
         type: contentType,
       };
 
-      if (filePath) {
+      // For PDF/PPT, file_path is required
+      if (['pdf', 'ppt'].includes(contentType)) {
+        if (!filePath) {
+          throw new Error('File path is required for PDF/PPT content');
+        }
         contentData.file_path = filePath;
         contentData.file_size_mb = fileSizeMb;
       }
