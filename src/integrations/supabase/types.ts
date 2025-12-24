@@ -14,6 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
+      class_module_assignments: {
+        Row: {
+          class_assignment_id: string
+          created_at: string | null
+          id: string
+          is_unlocked: boolean | null
+          module_id: string
+          unlock_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          class_assignment_id: string
+          created_at?: string | null
+          id?: string
+          is_unlocked?: boolean | null
+          module_id: string
+          unlock_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          class_assignment_id?: string
+          created_at?: string | null
+          id?: string
+          is_unlocked?: boolean | null
+          module_id?: string
+          unlock_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_module_assignments_class_assignment_id_fkey"
+            columns: ["class_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "course_class_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_module_assignments_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      class_session_assignments: {
+        Row: {
+          class_module_assignment_id: string
+          created_at: string | null
+          id: string
+          is_unlocked: boolean | null
+          session_id: string
+          unlock_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          class_module_assignment_id: string
+          created_at?: string | null
+          id?: string
+          is_unlocked?: boolean | null
+          session_id: string
+          unlock_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          class_module_assignment_id?: string
+          created_at?: string | null
+          id?: string
+          is_unlocked?: boolean | null
+          session_id?: string
+          unlock_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_session_assignments_class_module_assignment_id_fkey"
+            columns: ["class_module_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "class_module_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_session_assignments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "course_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes: {
         Row: {
           academic_year: string | null
@@ -814,6 +904,55 @@ export type Database = {
             columns: ["institution_id"]
             isOneToOne: false
             referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_content_completions: {
+        Row: {
+          class_assignment_id: string
+          completed_at: string | null
+          content_id: string
+          id: string
+          student_id: string
+          watch_percentage: number | null
+        }
+        Insert: {
+          class_assignment_id: string
+          completed_at?: string | null
+          content_id: string
+          id?: string
+          student_id: string
+          watch_percentage?: number | null
+        }
+        Update: {
+          class_assignment_id?: string
+          completed_at?: string | null
+          content_id?: string
+          id?: string
+          student_id?: string
+          watch_percentage?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_content_completions_class_assignment_id_fkey"
+            columns: ["class_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "course_class_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_content_completions_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "course_content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_content_completions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
