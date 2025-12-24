@@ -12,20 +12,17 @@ import { Loader2 } from 'lucide-react';
 import loginBg from '@/assets/login-background.svg';
 import logoImage from '@/assets/logo.png';
 import { ForgotPasswordDialog } from '@/components/auth/ForgotPasswordDialog';
-import { ForcePasswordChangeDialog } from '@/components/auth/ForcePasswordChangeDialog';
 import { passwordService } from '@/services/password.service';
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
-  const [showForcePasswordChange, setShowForcePasswordChange] = useState(false);
-  const [pendingLoginData, setPendingLoginData] = useState<any>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const {
-    login
-  } = useAuth();
+  const { login } = useAuth();
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -35,47 +32,37 @@ export default function Login() {
         password
       });
       if (response.success) {
-        // Check if user must change password (temporary password)
-        // For demo: institutions without credentials configured require password change
-        const mustChangePassword = response.user.role === 'management' && !response.user.password_changed;
+        // Direct login - no forced password change
+        login(response.user, response.token);
+        toast.success(`Welcome back, ${response.user.name}!`);
+
+        // Get tenant slug for path-based routing
+        const tenantSlug = response.tenant?.slug;
         
-        if (mustChangePassword) {
-          setPendingLoginData({ user: response.user, token: response.token, tenant: response.tenant });
-          setShowForcePasswordChange(true);
-          toast.info('Password change required for security');
-        } else {
-          // Normal login flow
-          login(response.user, response.token);
-          toast.success(`Welcome back, ${response.user.name}!`);
-
-          // Get tenant slug for path-based routing
-          const tenantSlug = response.tenant?.slug;
-          
-          // Validate tenant slug for tenant-level roles
-          const tenantRoles = ['management', 'officer', 'teacher', 'student'];
-          if (tenantRoles.includes(response.user.role) && !tenantSlug) {
-            console.error('[Login] User has tenant role but no institution assigned');
-            toast.error('Your account is not associated with any institution. Please contact your administrator.');
-            await authService.logout();
-            setIsLoading(false);
-            return;
-          }
-
-          // Redirect based on role (uses multi-role path for CEO)
-          const dashboardPath = getMultiRoleDashboardPath(response.user, tenantSlug);
-          
-          // Don't use location.state.from if it contains 'undefined' or invalid paths
-          const fromPath = location.state?.from?.pathname;
-          const isValidFromPath = fromPath && 
-            !fromPath.includes('undefined') && 
-            !fromPath.includes('/login') &&
-            fromPath !== '/';
-          
-          const redirectPath = isValidFromPath ? fromPath : dashboardPath;
-          console.log('[Login] Redirecting to:', redirectPath);
-          
-          navigate(redirectPath, { replace: true });
+        // Validate tenant slug for tenant-level roles
+        const tenantRoles = ['management', 'officer', 'teacher', 'student'];
+        if (tenantRoles.includes(response.user.role) && !tenantSlug) {
+          console.error('[Login] User has tenant role but no institution assigned');
+          toast.error('Your account is not associated with any institution. Please contact your administrator.');
+          await authService.logout();
+          setIsLoading(false);
+          return;
         }
+
+        // Redirect based on role (uses multi-role path for CEO)
+        const dashboardPath = getMultiRoleDashboardPath(response.user, tenantSlug);
+        
+        // Don't use location.state.from if it contains 'undefined' or invalid paths
+        const fromPath = location.state?.from?.pathname;
+        const isValidFromPath = fromPath && 
+          !fromPath.includes('undefined') && 
+          !fromPath.includes('/login') &&
+          fromPath !== '/';
+        
+        const redirectPath = isValidFromPath ? fromPath : dashboardPath;
+        console.log('[Login] Redirecting to:', redirectPath);
+        
+        navigate(redirectPath, { replace: true });
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Invalid credentials';
@@ -85,30 +72,8 @@ export default function Login() {
     }
   };
 
-  const handlePasswordChanged = async (newPassword: string) => {
-    if (pendingLoginData) {
-      // Set password without requiring current password (first login scenario)
-      await passwordService.setUserPassword(pendingLoginData.user.id, newPassword);
-      
-      // Complete login
-      login(pendingLoginData.user, pendingLoginData.token);
-      toast.success(`Welcome, ${pendingLoginData.user.name}!`);
-      
-      // Get tenant slug for path-based routing
-      const tenantSlug = pendingLoginData.tenant?.slug;
-      
-      // Redirect based on role (uses multi-role path for CEO)
-      const dashboardPath = getMultiRoleDashboardPath(pendingLoginData.user, tenantSlug);
-      const from = location.state?.from?.pathname || dashboardPath;
-      navigate(from, {
-        replace: true
-      });
-      
-      setShowForcePasswordChange(false);
-      setPendingLoginData(null);
-    }
-  };
-  return <div 
+  return (
+    <div 
       className="flex min-h-screen items-center justify-center p-4 relative"
       style={{
         backgroundImage: `linear-gradient(rgba(5, 28, 45, 0.85), rgba(5, 28, 45, 0.95)), url(${loginBg})`,
@@ -126,13 +91,20 @@ export default function Login() {
           <CardDescription>
             Enter your credentials to access your account
           </CardDescription>
-          
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required disabled={isLoading} />
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="you@example.com" 
+                value={email} 
+                onChange={e => setEmail(e.target.value)} 
+                required 
+                disabled={isLoading} 
+              />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -147,13 +119,25 @@ export default function Login() {
                   Forgot Password?
                 </Button>
               </div>
-              <Input id="password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required disabled={isLoading} />
+              <Input 
+                id="password" 
+                type="password" 
+                placeholder="••••••••" 
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+                required 
+                disabled={isLoading} 
+              />
             </div>
             <Button type="submit" className="w-full bg-meta-dark hover:bg-meta-dark-lighter" disabled={isLoading}>
-              {isLoading ? <>
+              {isLoading ? (
+                <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Signing in...
-                </> : 'Sign In'}
+                </>
+              ) : (
+                'Sign In'
+              )}
             </Button>
           </form>
         </CardContent>
@@ -166,12 +150,6 @@ export default function Login() {
           await passwordService.requestPasswordReset(email);
         }}
       />
-
-      {showForcePasswordChange && (
-        <ForcePasswordChangeDialog
-          open={showForcePasswordChange}
-          onPasswordChanged={handlePasswordChanged}
-        />
-      )}
-    </div>;
+    </div>
+  );
 }
