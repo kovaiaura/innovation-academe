@@ -1,164 +1,258 @@
 import { User } from '@/types';
 import { SystemAdminFeature } from '@/types/permissions';
-import { 
-  loadMetaStaff, 
-  addMetaStaffUser, 
-  updateMetaStaffUser, 
-  deleteMetaStaffUser,
-  updateMetaStaffPassword,
-  generateTemporaryPassword,
-  MetaStaffUser
-} from '@/data/mockMetaStaffData';
-import { getPositionById, updatePositionInStore } from '@/data/mockPositions';
+import { supabase } from '@/integrations/supabase/client';
+import { positionService, clearPositionsCache } from './position.service';
+
+// Generate a temporary password
+const generateTemporaryPassword = (): string => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  const specialChars = '@#$%&*!';
+  let password = '';
+  
+  // Generate 8 random alphanumeric characters
+  for (let i = 0; i < 8; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  
+  // Add 1-2 special characters
+  password += specialChars.charAt(Math.floor(Math.random() * specialChars.length));
+  
+  return password;
+};
 
 export const metaStaffService = {
+  // Get all meta staff (system_admin users)
   getMetaStaff: async (): Promise<User[]> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const staff = loadMetaStaff();
-    return staff
-      .filter(u => u.role === 'system_admin')
-      .map(({ password, ...user }) => user as User);
+    // Get all users with system_admin role
+    const { data: roleUsers, error: roleError } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .eq('role', 'system_admin');
+
+    if (roleError) throw roleError;
+    if (!roleUsers || roleUsers.length === 0) return [];
+
+    const userIds = roleUsers.map(r => r.user_id);
+
+    // Get profiles for these users
+    const { data: profiles, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .in('id', userIds);
+
+    if (profileError) throw profileError;
+
+    return (profiles || []).map(p => ({
+      id: p.id,
+      email: p.email,
+      name: p.name,
+      avatar: p.avatar || undefined,
+      role: 'system_admin' as const,
+      roles: ['system_admin'] as const,
+      position_id: p.position_id || undefined,
+      position_name: p.position_name || undefined,
+      is_ceo: p.is_ceo || false,
+      institution_id: p.institution_id || undefined,
+      created_at: p.created_at || '',
+      hourly_rate: p.hourly_rate || undefined,
+      overtime_rate_multiplier: p.overtime_rate_multiplier || undefined,
+      normal_working_hours: p.normal_working_hours || undefined,
+      password_changed: p.password_changed || false,
+      must_change_password: p.must_change_password || false,
+    }));
   },
 
+  // Create a new meta staff user
   createMetaStaff: async (data: {
     name: string;
     email: string;
     position_id: string;
     custom_password?: string;
-    // Leave allowances
     casual_leave?: number;
     sick_leave?: number;
     earned_leave?: number;
   }): Promise<{ user: User; password: string }> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
     // Get position details
-    const position = getPositionById(data.position_id);
+    const position = await positionService.getPositionById(data.position_id);
     if (!position) throw new Error('Position not found');
-    
-    // Use custom password if provided, otherwise generate random
+
+    // Generate password
     const tempPassword = data.custom_password || generateTemporaryPassword();
-    
-    const newUser: MetaStaffUser = {
-      id: `meta-${Date.now()}`,
+
+    // Call Edge Function to create user
+    const { data: result, error } = await supabase.functions.invoke('admin-user-management', {
+      body: {
+        action: 'create_user',
+        email: data.email,
+        password: tempPassword,
+        name: data.name,
+        position_id: data.position_id,
+        position_name: position.position_name,
+        is_ceo: position.is_ceo_position || false
+      }
+    });
+
+    if (error) {
+      console.error('[metaStaffService] Create error:', error);
+      throw new Error(error.message || 'Failed to create user');
+    }
+
+    if (result.error) {
+      throw new Error(result.error);
+    }
+
+    const user: User = {
+      id: result.user.id,
       email: data.email,
       name: data.name,
       role: 'system_admin',
+      roles: ['system_admin'],
       position_id: data.position_id,
       position_name: position.position_name,
       is_ceo: position.is_ceo_position || false,
-      password: tempPassword,
-      must_change_password: true,
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.name}`,
       created_at: new Date().toISOString(),
-      hourly_rate: 300, // Default hourly rate
-      overtime_rate_multiplier: 1.5,
-      normal_working_hours: 8,
+      must_change_password: true,
+      password_changed: false
     };
-    
-    // Add to localStorage
-    addMetaStaffUser(newUser);
-    
-    // Initialize leave balance for new meta staff
-    const { initializeLeaveBalance } = await import('@/data/mockLeaveData');
-    initializeLeaveBalance({
-      officer_id: newUser.id,
-      casual_leave: data.casual_leave ?? 12,
-      sick_leave: data.sick_leave ?? 10,
-      earned_leave: data.earned_leave ?? 15,
-      year: new Date().getFullYear().toString(),
-    });
-    
-    // Return user without password field and the password separately
-    const { password, ...userWithoutPassword } = newUser;
-    return { user: userWithoutPassword as User, password: tempPassword };
+
+    return { user, password: tempPassword };
   },
 
+  // Update user position
   updatePosition: async (userId: string, position_id: string): Promise<void> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const position = getPositionById(position_id);
+    const position = await positionService.getPositionById(position_id);
     if (!position) throw new Error('Position not found');
-    
-    updateMetaStaffUser(userId, {
-      position_id: position_id,
-      position_name: position.position_name,
+
+    const { error } = await supabase.functions.invoke('admin-user-management', {
+      body: {
+        action: 'update_user',
+        user_id: userId,
+        updates: {
+          position_id: position_id,
+          position_name: position.position_name,
+          is_ceo: position.is_ceo_position || false
+        }
+      }
     });
+
+    if (error) throw error;
   },
 
+  // Delete meta staff user
   deleteMetaStaff: async (userId: string): Promise<void> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    deleteMetaStaffUser(userId);
+    const { data, error } = await supabase.functions.invoke('admin-user-management', {
+      body: {
+        action: 'delete_user',
+        user_id: userId
+      }
+    });
+
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
   },
 
+  // Get position permissions
   getPositionPermissions: async (position_id: string): Promise<SystemAdminFeature[]> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    const position = getPositionById(position_id);
-    return position?.visible_features || [];
+    return positionService.getPositionFeatures(position_id);
   },
 
+  // Update position permissions
   updatePositionPermissions: async (
     position_id: string,
     features: SystemAdminFeature[]
   ): Promise<void> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const position = getPositionById(position_id);
-    if (position) {
-      updatePositionInStore(position_id, {
-        ...position,
-        visible_features: features
-      });
-    }
+    await positionService.updatePosition(position_id, { visible_features: features });
+    clearPositionsCache();
   },
 
+  // Reset user password
   resetPassword: async (userId: string): Promise<string> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    // Generate new random password
     const newPassword = generateTemporaryPassword();
-    
-    // Update password in localStorage
-    updateMetaStaffPassword(userId, newPassword, true);
-    
+
+    const { data, error } = await supabase.functions.invoke('admin-user-management', {
+      body: {
+        action: 'reset_password',
+        user_id: userId,
+        new_password: newPassword
+      }
+    });
+
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+
     return newPassword;
   },
 
+  // Set specific password
   setPassword: async (userId: string, password: string): Promise<void> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    // Update password in localStorage
-    updateMetaStaffPassword(userId, password, true);
+    const { data, error } = await supabase.functions.invoke('admin-user-management', {
+      body: {
+        action: 'reset_password',
+        user_id: userId,
+        new_password: password
+      }
+    });
+
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
   },
 
-  // Get a single meta staff user by ID
+  // Get single meta staff by ID
   getMetaStaffById: async (userId: string): Promise<User | null> => {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    const { getMetaStaffById } = await import('@/data/mockMetaStaffData');
-    const user = getMetaStaffById(userId);
-    
-    if (!user) return null;
-    
-    const { password, ...userWithoutPassword } = user;
-    return userWithoutPassword as User;
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!profile) return null;
+
+    // Verify they are system_admin
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId);
+
+    const isSystemAdmin = roles?.some(r => r.role === 'system_admin');
+    if (!isSystemAdmin) return null;
+
+    return {
+      id: profile.id,
+      email: profile.email,
+      name: profile.name,
+      avatar: profile.avatar || undefined,
+      role: 'system_admin',
+      roles: ['system_admin'],
+      position_id: profile.position_id || undefined,
+      position_name: profile.position_name || undefined,
+      is_ceo: profile.is_ceo || false,
+      institution_id: profile.institution_id || undefined,
+      created_at: profile.created_at || '',
+      hourly_rate: profile.hourly_rate || undefined,
+      overtime_rate_multiplier: profile.overtime_rate_multiplier || undefined,
+      normal_working_hours: profile.normal_working_hours || undefined,
+      password_changed: profile.password_changed || false,
+      must_change_password: profile.must_change_password || false,
+    };
   },
 
-  // Update meta staff user details
+  // Update meta staff details
   updateMetaStaff: async (userId: string, updates: Partial<User>): Promise<void> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    updateMetaStaffUser(userId, updates);
+    const { error } = await supabase.functions.invoke('admin-user-management', {
+      body: {
+        action: 'update_user',
+        user_id: userId,
+        updates: {
+          name: updates.name,
+          position_id: updates.position_id,
+          position_name: updates.position_name,
+          is_ceo: updates.is_ceo
+        }
+      }
+    });
+
+    if (error) throw error;
   },
 };
