@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Bell, CheckCheck, Calendar, CheckCircle, XCircle, Ban } from 'lucide-react';
+import { Bell, CheckCheck, Calendar, CheckCircle, XCircle, Ban, Clock, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
-import { useNotifications } from '@/hooks/useNotifications';
+import { useNotifications, NotificationRecipientRole } from '@/hooks/useNotifications';
 import { NotificationType } from '@/types/notification';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 
 interface NotificationBellProps {
   userId: string;
-  userRole: 'officer' | 'student' | 'system_admin';
+  userRole: NotificationRecipientRole;
 }
 
 const getNotificationIcon = (type: NotificationType) => {
@@ -26,11 +26,16 @@ const getNotificationIcon = (type: NotificationType) => {
     case 'leave_application_submitted':
       return <Calendar className="h-4 w-4 text-blue-500" />;
     case 'leave_application_approved':
+    case 'leave_final_approved':
       return <CheckCircle className="h-4 w-4 text-green-500" />;
     case 'leave_application_rejected':
       return <XCircle className="h-4 w-4 text-red-500" />;
     case 'leave_application_cancelled':
       return <Ban className="h-4 w-4 text-orange-500" />;
+    case 'leave_pending_approval':
+      return <Clock className="h-4 w-4 text-amber-500" />;
+    case 'officer_on_leave':
+      return <Users className="h-4 w-4 text-purple-500" />;
     default:
       return <Bell className="h-4 w-4 text-gray-500" />;
   }

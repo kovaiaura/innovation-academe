@@ -11,12 +11,15 @@ export type NotificationType =
   | 'leave_application_submitted'
   | 'leave_application_cancelled'
   | 'leave_application_approved'
-  | 'leave_application_rejected';
+  | 'leave_application_rejected'
+  | 'leave_pending_approval'
+  | 'leave_final_approved'
+  | 'officer_on_leave';
 
 export interface Notification {
   id: string;
   recipient_id: string;
-  recipient_role: 'officer' | 'student' | 'system_admin';
+  recipient_role: 'officer' | 'student' | 'system_admin' | 'management';
   type: NotificationType;
   title: string;
   message: string;
@@ -34,6 +37,10 @@ export interface Notification {
     start_date?: string;
     end_date?: string;
     total_days?: number;
+    applicant_name?: string;
+    approver_position?: string;
+    institution_id?: string;
+    institution_name?: string;
     [key: string]: any;
   };
   read: boolean;

@@ -14,6 +14,7 @@ import {
   SubstituteAssignment
 } from '@/types/leave';
 import { format, parseISO, eachDayOfInterval, isWeekend } from 'date-fns';
+import { leaveNotificationService } from './leaveNotification.service';
 
 // Helper to safely parse JSON fields
 const parseApprovalChain = (data: unknown): ApprovalChainItem[] => {
@@ -222,7 +223,8 @@ export const leaveApplicationService = {
       .single();
 
     if (error) throw error;
-    return {
+    
+    const result: LeaveApplication = {
       ...data,
       leave_type: data.leave_type as LeaveType,
       status: data.status as LeaveStatus,
@@ -230,6 +232,15 @@ export const leaveApplicationService = {
       approval_chain: parseApprovalChain(data.approval_chain),
       substitute_assignments: parseSubstituteAssignments(data.substitute_assignments)
     };
+
+    // Send notification to first approver
+    try {
+      await leaveNotificationService.notifyApproverOnSubmission(result);
+    } catch (notifError) {
+      console.error('Failed to send submission notification:', notifError);
+    }
+
+    return result;
   },
 
   getMyApplications: async (): Promise<LeaveApplication[]> => {
@@ -326,7 +337,7 @@ export const leaveApplicationService = {
     const { data, error } = await supabase.from('leave_applications').update(updateData).eq('id', id).select().single();
     if (error) throw error;
 
-    return {
+    const result: LeaveApplication = {
       ...data,
       leave_type: data.leave_type as LeaveType,
       status: data.status as LeaveStatus,
@@ -334,6 +345,24 @@ export const leaveApplicationService = {
       approval_chain: parseApprovalChain(data.approval_chain),
       substitute_assignments: parseSubstituteAssignments(data.substitute_assignments)
     };
+
+    // Send notifications
+    try {
+      // Notify applicant
+      await leaveNotificationService.notifyApplicantOnApproval(result, profile?.name || 'Approver', isFinalApproval);
+      
+      if (isFinalApproval) {
+        // Notify management when leave is finally approved
+        await leaveNotificationService.notifyManagementOnOfficerLeave(result);
+      } else {
+        // Notify next approver
+        await leaveNotificationService.notifyNextApprover(result, currentLevel);
+      }
+    } catch (notifError) {
+      console.error('Failed to send approval notification:', notifError);
+    }
+
+    return result;
   },
 
   rejectApplication: async (id: string, reason: string): Promise<LeaveApplication> => {
@@ -369,7 +398,8 @@ export const leaveApplicationService = {
       .single();
 
     if (error) throw error;
-    return {
+
+    const result: LeaveApplication = {
       ...data,
       leave_type: data.leave_type as LeaveType,
       status: data.status as LeaveStatus,
@@ -377,6 +407,15 @@ export const leaveApplicationService = {
       approval_chain: parseApprovalChain(data.approval_chain),
       substitute_assignments: parseSubstituteAssignments(data.substitute_assignments)
     };
+
+    // Notify applicant of rejection
+    try {
+      await leaveNotificationService.notifyApplicantOnRejection(result, profile?.name || 'Approver', reason);
+    } catch (notifError) {
+      console.error('Failed to send rejection notification:', notifError);
+    }
+
+    return result;
   },
 
   cancelApplication: async (id: string): Promise<void> => {

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Notification, NotificationType } from '@/types/notification';
 
-export function useNotifications(userId: string, userRole: 'officer' | 'student' | 'system_admin') {
+export type NotificationRecipientRole = 'officer' | 'student' | 'system_admin' | 'management';
+
+export function useNotifications(userId: string, userRole: NotificationRecipientRole) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const loadNotifications = () => {
@@ -56,7 +58,7 @@ export function useNotifications(userId: string, userRole: 'officer' | 'student'
 
 export function createNotification(
   recipientId: string,
-  recipientRole: 'officer' | 'student' | 'system_admin',
+  recipientRole: NotificationRecipientRole,
   type: NotificationType,
   title: string,
   message: string,
