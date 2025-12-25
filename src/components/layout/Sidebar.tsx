@@ -97,7 +97,7 @@ const menuItems: MenuItem[] = [
   { label: 'Leave Management', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-management', roles: ['officer'] },
   { label: 'Events & Activities', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['officer'] },
   { label: 'Ask Metova', icon: <MessageSquare className="h-5 w-5" />, path: '/ask-metova', roles: ['officer'] },
-  { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['officer'] },
+  // { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['officer'] }, // Temporarily hidden
   // Student menu items
   { label: 'My Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['student'] },
   { label: 'Assessments', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['student'] },
@@ -108,7 +108,7 @@ const menuItems: MenuItem[] = [
   { label: 'Certificates', icon: <Award className="h-5 w-5" />, path: '/certificates', roles: ['student'] },
   { label: 'Gamification', icon: <BarChart className="h-5 w-5" />, path: '/gamification', roles: ['student'] },
   { label: 'Resume', icon: <FileText className="h-5 w-5" />, path: '/resume', roles: ['student'] },
-  { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['student'] },
+  // { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['student'] }, // Temporarily hidden
   { label: 'Ask Metova', icon: <MessageSquare className="h-5 w-5" />, path: '/ask-metova', roles: ['student'] },
   { label: 'Feedback/Survey', icon: <MessageCircle className="h-5 w-5" />, path: '/feedback', roles: ['student'] },
   // System Admin - Configuration
@@ -123,7 +123,7 @@ const menuItems: MenuItem[] = [
   { label: 'Events & Activities', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['management'] },
   { label: 'Reports', icon: <FileText className="h-5 w-5" />, path: '/reports', roles: ['management'] },
   { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['management'] },
-  { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['management'] },
+  // { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['management'] }, // Temporarily hidden
   { label: 'Attendance', icon: <Clock className="h-5 w-5" />, path: '/attendance', roles: ['management'] },
 ];
 
