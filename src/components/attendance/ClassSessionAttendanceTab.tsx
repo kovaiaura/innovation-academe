@@ -189,9 +189,14 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
           </CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-16" /> : (
-              <div className="text-2xl font-bold text-blue-600">
-                {stats.averageAttendance.toFixed(1)}%
-              </div>
+              <>
+                <div className="text-2xl font-bold text-blue-600">
+                  {stats.completedSessions > 0 ? `${stats.averageAttendance.toFixed(1)}%` : 'N/A'}
+                </div>
+                {stats.completedSessions === 0 && (
+                  <p className="text-xs text-muted-foreground">Awaiting sessions</p>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
