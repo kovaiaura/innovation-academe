@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -10,8 +10,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { InstitutionClass } from '@/types/institution';
 import { useCourses, useCourseById } from '@/hooks/useCourses';
-import { useAssignCourseToClass, UnlockMode } from '@/hooks/useClassCourseAssignments';
-import { BookOpen, Check, ChevronRight, Lock, Unlock, Loader2, Link2 } from 'lucide-react';
+import { useAssignCourseToClass, useClassCourseAssignments, UnlockMode } from '@/hooks/useClassCourseAssignments';
+import { BookOpen, Check, ChevronRight, Lock, Unlock, Loader2, Link2, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -22,6 +22,7 @@ interface ModuleConfig {
   isSelected: boolean;
   isUnlocked: boolean;
   unlockMode: UnlockMode;
+  isAlreadyAssigned: boolean;
   sessions: SessionConfig[];
 }
 
@@ -32,6 +33,7 @@ interface SessionConfig {
   isSelected: boolean;
   isUnlocked: boolean;
   unlockMode: UnlockMode;
+  isAlreadyAssigned: boolean;
 }
 
 interface AssignCourseToClassDialogProps {
@@ -54,30 +56,56 @@ export function AssignCourseToClassDialog({
 
   const { data: courses = [], isLoading: isLoadingCourses } = useCourses();
   const { data: selectedCourse, isLoading: isLoadingCourse } = useCourseById(selectedCourseId);
+  const { data: existingAssignments = [] } = useClassCourseAssignments(classData.id);
   const assignCourse = useAssignCourseToClass();
+
+  // Build sets of already assigned module/session IDs for the selected course
+  const existingAssignmentData = useMemo(() => {
+    if (!selectedCourseId) return { moduleIds: new Set<string>(), sessionIds: new Set<string>() };
+    
+    const courseAssignment = existingAssignments.find(a => a.course_id === selectedCourseId);
+    if (!courseAssignment) return { moduleIds: new Set<string>(), sessionIds: new Set<string>() };
+
+    const moduleIds = new Set<string>();
+    const sessionIds = new Set<string>();
+
+    courseAssignment.module_assignments?.forEach(ma => {
+      moduleIds.add(ma.module_id);
+      ma.session_assignments?.forEach(sa => {
+        sessionIds.add(sa.session_id);
+      });
+    });
+
+    return { moduleIds, sessionIds };
+  }, [selectedCourseId, existingAssignments]);
 
   // Initialize module configs when course is selected
   useEffect(() => {
     if (selectedCourse?.modules) {
-      const configs: ModuleConfig[] = selectedCourse.modules.map((module, index) => ({
-        moduleId: module.id,
-        title: module.title,
-        displayOrder: module.display_order,
-        isSelected: true,
-        isUnlocked: index === 0, // First module unlocked by default
-        unlockMode: index === 0 ? 'manual' : globalUnlockMode,
-        sessions: (module.sessions || []).map((session, sIndex) => ({
-          sessionId: session.id,
-          title: session.title,
-          displayOrder: session.display_order,
+      const configs: ModuleConfig[] = selectedCourse.modules.map((module, index) => {
+        const isModuleAssigned = existingAssignmentData.moduleIds.has(module.id);
+        return {
+          moduleId: module.id,
+          title: module.title,
+          displayOrder: module.display_order,
           isSelected: true,
-          isUnlocked: sIndex === 0, // First session unlocked by default
-          unlockMode: sIndex === 0 ? 'manual' : globalUnlockMode,
-        })),
-      }));
+          isUnlocked: index === 0, // First module unlocked by default
+          unlockMode: index === 0 ? 'manual' : globalUnlockMode,
+          isAlreadyAssigned: isModuleAssigned,
+          sessions: (module.sessions || []).map((session, sIndex) => ({
+            sessionId: session.id,
+            title: session.title,
+            displayOrder: session.display_order,
+            isSelected: true,
+            isUnlocked: sIndex === 0, // First session unlocked by default
+            unlockMode: sIndex === 0 ? 'manual' : globalUnlockMode,
+            isAlreadyAssigned: existingAssignmentData.sessionIds.has(session.id),
+          })),
+        };
+      });
       setModuleConfigs(configs);
     }
-  }, [selectedCourse, globalUnlockMode]);
+  }, [selectedCourse, globalUnlockMode, existingAssignmentData]);
 
   const handleCourseSelect = (courseId: string) => {
     setSelectedCourseId(courseId);
@@ -345,9 +373,19 @@ export function AssignCourseToClassDialog({
                 </Card>
 
                 <div className="flex justify-between items-center">
-                  <p className="text-sm text-muted-foreground">
-                    {selectedModules.length} of {moduleConfigs.length} levels selected
-                  </p>
+                  <div className="flex gap-4 text-sm text-muted-foreground">
+                    <span>{selectedModules.length} of {moduleConfigs.length} levels selected</span>
+                    {moduleConfigs.some(m => m.isAlreadyAssigned) && (
+                      <span className="text-green-600 dark:text-green-400">
+                        • {moduleConfigs.filter(m => m.isAlreadyAssigned).length} already assigned
+                      </span>
+                    )}
+                    {moduleConfigs.some(m => !m.isAlreadyAssigned) && (
+                      <span className="text-blue-600 dark:text-blue-400">
+                        • {moduleConfigs.filter(m => !m.isAlreadyAssigned).length} new
+                      </span>
+                    )}
+                  </div>
                   <div className="flex gap-2">
                     <Button 
                       variant="outline" 
@@ -383,8 +421,14 @@ export function AssignCourseToClassDialog({
                                 checked={module.isSelected}
                                 onCheckedChange={() => handleModuleToggle(module.moduleId)}
                               />
-                              <div>
+                              <div className="flex items-center gap-2">
                                 <p className="font-medium">Level {moduleIndex + 1}: {module.title}</p>
+                                {module.isAlreadyAssigned && (
+                                  <Badge variant="secondary" className="text-xs gap-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    Already Assigned
+                                  </Badge>
+                                )}
                               </div>
                             </div>
                             {module.isSelected && (
@@ -450,6 +494,12 @@ export function AssignCourseToClassDialog({
                                     <span className="text-sm">
                                       Session {sessionIndex + 1}: {session.title}
                                     </span>
+                                    {session.isAlreadyAssigned && (
+                                      <Badge variant="secondary" className="text-xs gap-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                        <CheckCircle2 className="h-3 w-3" />
+                                        Assigned
+                                      </Badge>
+                                    )}
                                   </div>
                                   {session.isSelected && (
                                     <div className="flex items-center gap-2">
