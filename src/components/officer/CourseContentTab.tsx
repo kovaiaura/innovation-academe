@@ -22,6 +22,74 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { CoursePreviewDialog } from '@/components/course/CoursePreviewDialog';
 import { CourseWithStructure, DbCourse } from '@/hooks/useCourses';
+import { useThumbnailUrl } from '@/hooks/useThumbnailUrl';
+
+// Course card with thumbnail loading
+function CourseCard({ course, onPreview }: { course: DbCourse; onPreview: (course: DbCourse) => void }) {
+  const { url: thumbnailUrl, isLoading: thumbnailLoading } = useThumbnailUrl(course.thumbnail_url);
+
+  return (
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+      {/* Course Thumbnail */}
+      <div className="relative h-40 bg-gradient-to-br from-primary/20 via-primary/10 to-background overflow-hidden">
+        {thumbnailUrl ? (
+          <img 
+            src={thumbnailUrl} 
+            alt={course.title}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            {thumbnailLoading ? (
+              <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+            ) : (
+              <BookOpen className="h-16 w-16 text-primary/30" />
+            )}
+          </div>
+        )}
+        <div className="absolute top-3 right-3">
+          <Badge variant="secondary" className="capitalize">
+            {course.category.replace(/-/g, ' ')}
+          </Badge>
+        </div>
+        <div className="absolute bottom-3 left-3">
+          <Badge variant={course.difficulty === 'beginner' ? 'default' : 'outline'}>
+            {course.difficulty}
+          </Badge>
+        </div>
+      </div>
+
+      <CardHeader className="pb-3">
+        <CardTitle className="line-clamp-1">{course.title}</CardTitle>
+        <CardDescription className="line-clamp-2">
+          {course.course_code} • {course.description || 'No description available'}
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {/* Stats */}
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          {course.duration_weeks && (
+            <div className="flex items-center gap-1">
+              <Clock className="h-4 w-4" />
+              <span>{course.duration_weeks} weeks</span>
+            </div>
+          )}
+        </div>
+
+        {/* Action Button */}
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => onPreview(course)}
+        >
+          <Eye className="h-4 w-4 mr-2" />
+          Preview Course
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function CourseContentTab() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -165,53 +233,7 @@ export function CourseContentTab() {
       {/* Course Cards Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredCourses.map((course) => (
-          <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-            {/* Course Thumbnail */}
-            <div className="relative h-40 bg-gradient-to-br from-primary/20 via-primary/10 to-background overflow-hidden">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <BookOpen className="h-16 w-16 text-primary/30" />
-              </div>
-              <div className="absolute top-3 right-3">
-                <Badge variant="secondary" className="capitalize">
-                  {course.category.replace(/-/g, ' ')}
-                </Badge>
-              </div>
-              <div className="absolute bottom-3 left-3">
-                <Badge variant={course.difficulty === 'beginner' ? 'default' : 'outline'}>
-                  {course.difficulty}
-                </Badge>
-              </div>
-            </div>
-
-            <CardHeader className="pb-3">
-              <CardTitle className="line-clamp-1">{course.title}</CardTitle>
-              <CardDescription className="line-clamp-2">
-                {course.course_code} • {course.description || 'No description available'}
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-              {/* Stats */}
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                {course.duration_weeks && (
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    <span>{course.duration_weeks} weeks</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Action Button */}
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => handlePreviewCourse(course)}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Preview Course
-              </Button>
-            </CardContent>
-          </Card>
+          <CourseCard key={course.id} course={course} onPreview={handlePreviewCourse} />
         ))}
       </div>
 

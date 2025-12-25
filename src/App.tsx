@@ -71,6 +71,7 @@ import SystemAdminAssessmentManagement from "./pages/system-admin/AssessmentMana
 import SystemAdminAssignmentManagement from "./pages/system-admin/AssignmentManagement";
 import OfficerCourseManagement from "./pages/officer/CourseManagement";
 import OfficerCourseContentViewer from "./pages/officer/CourseContentViewer";
+import OfficerTeachingSession from "./pages/officer/TeachingSession";
 import OfficerProfile from "./pages/officer/Profile";
 import OfficerLeaveManagement from "./pages/officer/LeaveManagement";
 import OfficerAssessmentManagement from "./pages/officer/AssessmentManagement";
@@ -555,6 +556,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['officer']}>
                   <OfficerCourseContentViewer />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/officer/teaching/:courseId"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <OfficerTeachingSession />
                 </ProtectedRoute>
               }
             />
