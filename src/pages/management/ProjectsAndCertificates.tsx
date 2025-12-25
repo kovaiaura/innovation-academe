@@ -6,31 +6,48 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Eye, FileDown, Award, Lock } from "lucide-react";
-import { getProjectsByInstitution, getShowcaseProjects, Project } from "@/data/mockProjectData";
+import { Eye, FileDown, Award, Lock, Trash2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useInstitutionProjects, useDeleteProject, ProjectWithRelations } from "@/hooks/useProjects";
 import { ProjectDetailsDialog } from "@/components/project/ProjectDetailsDialog";
-import { getInstitutionBySlug } from "@/data/mockInstitutionData";
-import { useLocation } from "react-router-dom";
+import { SDGGoalBadges } from "@/components/project/SDGGoalSelector";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
+
+const STATUS_CONFIG = {
+  yet_to_start: { label: 'Yet to Start', variant: 'secondary' as const },
+  ongoing: { label: 'Ongoing', variant: 'default' as const },
+  completed: { label: 'Completed', variant: 'outline' as const },
+};
 
 interface ProjectRegistryTabProps {
-  institutionId: string;
+  projects: ProjectWithRelations[];
+  isLoading: boolean;
+  isCeo: boolean;
+  onDelete: (projectId: string) => void;
 }
 
-const ProjectRegistryTab = ({ institutionId }: ProjectRegistryTabProps) => {
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+const ProjectRegistryTab = ({ projects, isLoading, isCeo, onDelete }: ProjectRegistryTabProps) => {
+  const [selectedProject, setSelectedProject] = useState<ProjectWithRelations | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
-  const projects = getProjectsByInstitution(institutionId);
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-      'proposal': 'outline',
-      'approved': 'default',
-      'in_progress': 'default',
-      'completed': 'secondary',
-      'rejected': 'destructive',
-    };
-    return variants[status] || 'outline';
-  };
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <Card key={i}>
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-full" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-20 w-full" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -47,40 +64,62 @@ const ProjectRegistryTab = ({ institutionId }: ProjectRegistryTabProps) => {
             </CardContent>
           </Card>
         ) : (
-          projects.map((project) => (
-            <Card key={project.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <CardTitle className="text-lg">{project.title}</CardTitle>
-                      <Badge variant={getStatusBadge(project.status)}>
-                        {project.status.replace('_', ' ')}
-                      </Badge>
-                      {project.is_showcase && (
-                        <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
-                          ⭐ Showcase
+          projects.map((project) => {
+            const statusInfo = STATUS_CONFIG[project.status] || STATUS_CONFIG.yet_to_start;
+            
+            return (
+              <Card key={project.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <CardTitle className="text-lg">{project.title}</CardTitle>
+                        <Badge variant={statusInfo.variant}>
+                          {statusInfo.label}
                         </Badge>
+                        {project.is_showcase && (
+                          <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+                            ⭐ Showcase
+                          </Badge>
+                        )}
+                        {project.is_published && (
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                            Published
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">{project.description}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setSelectedProject(project);
+                          setIsDetailsDialogOpen(true);
+                        }}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Details
+                      </Button>
+                      {isCeo && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            if (confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
+                              onDelete(project.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground">{project.description}</p>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      setSelectedProject(project);
-                      setIsDetailsDialogOpen(true);
-                    }}
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    View Details
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Progress */}
-                {project.status !== 'proposal' && project.status !== 'rejected' && (
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Progress */}
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Progress</span>
@@ -88,67 +127,97 @@ const ProjectRegistryTab = ({ institutionId }: ProjectRegistryTabProps) => {
                     </div>
                     <Progress value={project.progress} />
                   </div>
-                )}
 
-                {/* Details Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Team Members</p>
-                    <p className="text-sm font-medium">{project.team_members.length} students</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Category</p>
-                    <p className="text-sm font-medium">{project.category}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Officer</p>
-                    <p className="text-sm font-medium">{project.created_by_officer_name}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Start Date</p>
-                    <p className="text-sm font-medium">
-                      {new Date(project.start_date).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-
-                {/* SDG Goals */}
-                {project.sdg_goals && project.sdg_goals.length > 0 && (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-2">UN SDG Goals</p>
-                    <div className="flex flex-wrap gap-2">
-                      {project.sdg_goals.map((goal) => (
-                        <Badge key={goal} variant="outline" className="text-xs">
-                          {goal}
-                        </Badge>
-                      ))}
+                  {/* Details Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Team Members</p>
+                      <p className="text-sm font-medium">{project.project_members?.length || 0} students</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Category</p>
+                      <p className="text-sm font-medium">{project.category}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Officer</p>
+                      <p className="text-sm font-medium">{project.created_by_officer_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Start Date</p>
+                      <p className="text-sm font-medium">
+                        {project.start_date 
+                          ? format(new Date(project.start_date), 'MMM dd, yyyy')
+                          : 'Not set'}
+                      </p>
                     </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          ))
+
+                  {/* SDG Goals */}
+                  {project.sdg_goals && (project.sdg_goals as number[]).length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-2">UN SDG Goals</p>
+                      <SDGGoalBadges goals={project.sdg_goals as number[]} maxDisplay={6} />
+                    </div>
+                  )}
+
+                  {/* Achievements */}
+                  {project.project_achievements && project.project_achievements.length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-2">Achievements</p>
+                      <div className="flex flex-wrap gap-2">
+                        {project.project_achievements.map((achievement) => (
+                          <Badge key={achievement.id} variant="outline" className="text-xs">
+                            <Award className="h-3 w-3 mr-1" />
+                            {achievement.title}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })
         )}
       </div>
       
-      {/* Project Details Dialog */}
       <ProjectDetailsDialog
         open={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
         project={selectedProject}
+        canDelete={isCeo}
+        onDelete={onDelete}
       />
     </div>
   );
 };
 
 interface ProjectGalleryTabProps {
-  institutionId: string;
+  projects: ProjectWithRelations[];
+  isLoading: boolean;
 }
 
-function ProjectGalleryTab({ institutionId }: ProjectGalleryTabProps) {
-  const showcaseProjects = getShowcaseProjects(institutionId);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+function ProjectGalleryTab({ projects, isLoading }: ProjectGalleryTabProps) {
+  const showcaseProjects = projects.filter(p => p.is_showcase);
+  const [selectedProject, setSelectedProject] = useState<ProjectWithRelations | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-48" />
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-2 gap-6">
+            {[1, 2].map((i) => (
+              <Skeleton key={i} className="h-64 w-full" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <>
@@ -162,7 +231,7 @@ function ProjectGalleryTab({ institutionId }: ProjectGalleryTabProps) {
                 Read Only
               </Badge>
             </div>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" disabled={showcaseProjects.length === 0}>
               <FileDown className="h-4 w-4 mr-2" />
               Export Showcase
             </Button>
@@ -182,7 +251,7 @@ function ProjectGalleryTab({ institutionId }: ProjectGalleryTabProps) {
                 <Card key={project.id} className="overflow-hidden">
                   <div className="aspect-video bg-muted relative">
                     <img 
-                      src={project.showcase_image || '/placeholder.svg'} 
+                      src={project.showcase_image_url || '/placeholder.svg'} 
                       alt={project.title}
                       className="w-full h-full object-cover"
                     />
@@ -195,7 +264,7 @@ function ProjectGalleryTab({ institutionId }: ProjectGalleryTabProps) {
                     <div className="space-y-4">
                       <div>
                         <h3 className="font-semibold text-lg mb-1">{project.title}</h3>
-                        <p className="text-sm text-muted-foreground">{project.description}</p>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4 text-sm">
@@ -205,34 +274,25 @@ function ProjectGalleryTab({ institutionId }: ProjectGalleryTabProps) {
                         </div>
                         <div>
                           <p className="text-muted-foreground">Team Size</p>
-                          <p className="font-medium">{project.team_members.length} members</p>
+                          <p className="font-medium">{project.project_members?.length || 0} members</p>
                         </div>
                       </div>
 
-                      {project.achievements && project.achievements.length > 0 && (
+                      {project.project_achievements && project.project_achievements.length > 0 && (
                         <div>
                           <p className="text-sm font-medium mb-2">Achievements</p>
-                          <ul className="text-sm space-y-1">
-                            {project.achievements.map((achievement, index) => (
-                              <li key={index} className="text-muted-foreground flex items-start gap-2">
-                                <span className="text-green-500 mt-1">✓</span>
-                                <span>{achievement}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {project.awards && project.awards.length > 0 && (
-                        <div>
-                          <p className="text-sm font-medium mb-2">Awards</p>
                           <div className="flex flex-wrap gap-2">
-                            {project.awards.map((award, index) => (
-                              <Badge key={index} variant="outline" className="text-xs">
+                            {project.project_achievements.slice(0, 3).map((achievement) => (
+                              <Badge key={achievement.id} variant="outline" className="text-xs">
                                 <Award className="h-3 w-3 mr-1" />
-                                {award}
+                                {achievement.title}
                               </Badge>
                             ))}
+                            {project.project_achievements.length > 3 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{project.project_achievements.length - 3} more
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       )}
@@ -267,36 +327,29 @@ function ProjectGalleryTab({ institutionId }: ProjectGalleryTabProps) {
 }
 
 export default function ProjectsAndCertificates() {
-  // Extract institution from URL
-  const location = useLocation();
-  const institutionSlug = location.pathname.split('/')[2];
-  const institution = getInstitutionBySlug(institutionSlug);
+  const { user } = useAuth();
+  const institutionId = user?.institution_id || null;
+  // Check is_ceo from user object if available
+  const isCeo = (user as any)?.is_ceo === true;
 
-  if (!institution) {
-    return (
-      <Layout>
-        <div className="py-12 text-center">
-          <p className="text-muted-foreground">Institution not found</p>
-        </div>
-      </Layout>
-    );
-  }
+  const { data: projects = [], isLoading } = useInstitutionProjects(institutionId);
+  const deleteProject = useDeleteProject();
+
+  const handleDeleteProject = async (projectId: string) => {
+    await deleteProject.mutateAsync(projectId);
+  };
 
   return (
     <Layout>
       <div className="space-y-8">
-        <InstitutionHeader 
-          institutionName={institution.name}
-          establishedYear={institution.established_year}
-          location={institution.location}
-          totalStudents={institution.total_students}
-          academicYear={institution.academic_year}
-          userRole="Management Portal"
-          assignedOfficers={institution.assigned_officers.map(o => o.officer_name)}
-        />
         <div>
           <h1 className="text-3xl font-bold">Projects & Certificates</h1>
           <p className="text-muted-foreground">View innovation projects and certificates managed by officers</p>
+          {isCeo && (
+            <Badge variant="outline" className="mt-2 bg-purple-50 text-purple-700">
+              CEO Access - You can delete projects
+            </Badge>
+          )}
         </div>
 
         <Tabs defaultValue="registry" className="space-y-6">
@@ -306,11 +359,16 @@ export default function ProjectsAndCertificates() {
           </TabsList>
 
           <TabsContent value="registry">
-            <ProjectRegistryTab institutionId={institution.id} />
+            <ProjectRegistryTab 
+              projects={projects} 
+              isLoading={isLoading} 
+              isCeo={isCeo}
+              onDelete={handleDeleteProject}
+            />
           </TabsContent>
 
           <TabsContent value="gallery">
-            <ProjectGalleryTab institutionId={institution.id} />
+            <ProjectGalleryTab projects={projects} isLoading={isLoading} />
           </TabsContent>
         </Tabs>
       </div>

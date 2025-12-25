@@ -1,219 +1,353 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Project } from "@/data/mockProjectData";
-import { Calendar, Users, Target, TrendingUp } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Calendar, Users, Target, TrendingUp, Award, ExternalLink, Trash2, FileText, Clock } from "lucide-react";
+import { SDGGoalBadges, SDG_GOALS } from "./SDGGoalSelector";
+import { format } from "date-fns";
+
+// Support both old Project type and new ProjectWithRelations
+interface BaseProject {
+  id: string;
+  title: string;
+  description?: string | null;
+  status: string;
+  category: string;
+  progress: number;
+  is_showcase?: boolean;
+  created_by_officer_name: string;
+  start_date?: string | null;
+  target_completion_date?: string | null;
+  actual_completion_date?: string | null;
+  sdg_goals?: number[] | any[];
+  remarks?: string | null;
+  is_published?: boolean;
+}
+
+interface ProjectMember {
+  id: string;
+  student_id?: string;
+  role: string;
+  student?: {
+    id: string;
+    student_name: string;
+    class_id?: string | null;
+  } | null;
+  // Old format support
+  name?: string;
+  class?: string;
+  section?: string;
+}
+
+interface ProjectAchievement {
+  id: string;
+  title: string;
+  type: string;
+  event_name?: string | null;
+  event_date?: string | null;
+  certificate_url?: string | null;
+  created_at: string;
+}
+
+interface ProjectProgressUpdate {
+  id?: string;
+  notes: string;
+  progress_percentage?: number | null;
+  updated_by_officer_name?: string;
+  created_at?: string;
+  // Old format support
+  date?: string;
+  updated_by?: string;
+}
+
+interface ProjectWithRelations extends BaseProject {
+  project_members?: ProjectMember[];
+  project_achievements?: ProjectAchievement[];
+  project_progress_updates?: ProjectProgressUpdate[];
+  // Old format support
+  team_members?: ProjectMember[];
+  progress_updates?: ProjectProgressUpdate[];
+  achievements?: string[];
+  awards?: string[];
+  completion_date?: string;
+  class?: string;
+}
 
 interface ProjectDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  project: Project | null;
+  project: ProjectWithRelations | null;
+  canDelete?: boolean;
+  onDelete?: (projectId: string) => void;
 }
 
-const sdgNames: Record<number, string> = {
-  1: 'No Poverty',
-  2: 'Zero Hunger',
-  3: 'Good Health',
-  4: 'Quality Education',
-  6: 'Clean Water',
-  7: 'Affordable Energy',
-  8: 'Economic Growth',
-  9: 'Industry Innovation',
-  11: 'Sustainable Cities',
-  12: 'Responsible Consumption',
-  13: 'Climate Action',
+const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  yet_to_start: { label: 'Yet to Start', className: 'bg-slate-500/10 text-slate-500 border-slate-500/20' },
+  ongoing: { label: 'Ongoing', className: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+  completed: { label: 'Completed', className: 'bg-green-500/10 text-green-500 border-green-500/20' },
+  in_progress: { label: 'In Progress', className: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+  approved: { label: 'Approved', className: 'bg-purple-500/10 text-purple-500 border-purple-500/20' },
+  proposal: { label: 'Proposal', className: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' },
+  rejected: { label: 'Rejected', className: 'bg-red-500/10 text-red-500 border-red-500/20' },
 };
 
 export function ProjectDetailsDialog({
   open,
   onOpenChange,
-  project
+  project,
+  canDelete = false,
+  onDelete,
 }: ProjectDetailsDialogProps) {
   if (!project) return null;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'bg-green-500/10 text-green-500 border-green-500/20';
-      case 'in_progress': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-      case 'approved': return 'bg-purple-500/10 text-purple-500 border-purple-500/20';
-      case 'proposal': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
-      case 'rejected': return 'bg-red-500/10 text-red-500 border-red-500/20';
-      default: return 'bg-muted text-muted-foreground';
-    }
-  };
+  const statusConfig = STATUS_CONFIG[project.status] || { label: project.status, className: 'bg-muted text-muted-foreground' };
+  
+  // Support both new and old data formats
+  const members = project.project_members || project.team_members || [];
+  const achievements = project.project_achievements || [];
+  const progressUpdates = project.project_progress_updates || project.progress_updates || [];
+  const sdgGoals = (project.sdg_goals || []) as number[];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle className="text-2xl">{project.title}</DialogTitle>
-          <div className="flex items-center gap-2 mt-2">
-            <Badge className={getStatusColor(project.status)}>
-              {project.status.replace('_', ' ').toUpperCase()}
-            </Badge>
-            <Badge variant="outline">{project.category}</Badge>
-            {project.is_showcase && (
-              <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
-                ⭐ Showcase
-              </Badge>
-            )}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <DialogTitle className="text-xl">{project.title}</DialogTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Created by {project.created_by_officer_name}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge className={statusConfig.className}>{statusConfig.label}</Badge>
+              {project.is_published && <Badge variant="outline" className="bg-green-50 text-green-700">Published</Badge>}
+              {project.is_showcase && <Badge className="bg-yellow-500/10 text-yellow-600">⭐ Showcase</Badge>}
+            </div>
           </div>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Description */}
-          <div>
-            <h3 className="font-semibold mb-2">Description</h3>
-            <p className="text-muted-foreground">{project.description}</p>
-          </div>
-
-          <Separator />
-
-          {/* Key Information */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-start gap-3">
-              <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
-              <div>
-                <div className="text-sm font-medium">Start Date</div>
-                <div className="text-sm text-muted-foreground">
-                  {new Date(project.start_date).toLocaleDateString()}
-                </div>
+        <ScrollArea className="max-h-[60vh] pr-4">
+          <div className="space-y-6">
+            {/* Progress */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Progress</span>
+                <span className="font-medium">{project.progress}%</span>
               </div>
+              <Progress value={project.progress} className="h-2" />
             </div>
 
-            {project.completion_date && (
-              <div className="flex items-start gap-3">
-                <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <div className="text-sm font-medium">Completion Date</div>
-                  <div className="text-sm text-muted-foreground">
-                    {new Date(project.completion_date).toLocaleDateString()}
-                  </div>
-                </div>
+            {/* Description */}
+            {project.description && (
+              <div>
+                <h4 className="text-sm font-medium mb-2">Description</h4>
+                <p className="text-sm text-muted-foreground">{project.description}</p>
               </div>
             )}
 
-            <div className="flex items-start gap-3">
-              <TrendingUp className="h-5 w-5 text-muted-foreground mt-0.5" />
-              <div>
-                <div className="text-sm font-medium">Progress</div>
-                <div className="text-sm text-muted-foreground">{project.progress}%</div>
+            {/* Details Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-2 text-sm">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Category:</span>
+                <span>{project.category}</span>
               </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Team Information */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Users className="h-5 w-5 text-muted-foreground" />
-              <h3 className="font-semibold">Team Members</h3>
-            </div>
-            <div className="space-y-2">
-              {project.team_members.map((member) => (
-                <div key={member.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm font-medium">{member.name}</span>
-                    <span className="text-xs text-muted-foreground">{member.class} - Section {member.section}</span>
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    {member.role === 'leader' ? 'Team Leader' : 'Member'}
-                  </Badge>
+              {project.start_date && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Start:</span>
+                  <span>{format(new Date(project.start_date), 'MMM dd, yyyy')}</span>
                 </div>
-              ))}
+              )}
+              {project.target_completion_date && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Target:</span>
+                  <span>{format(new Date(project.target_completion_date), 'MMM dd, yyyy')}</span>
+                </div>
+              )}
             </div>
-          </div>
 
-          {/* Mentor */}
-          <div>
-            <h3 className="font-semibold mb-2">Innovation Officer</h3>
-            <p className="text-sm text-muted-foreground">{project.created_by_officer_name}</p>
-          </div>
-
-          {/* Class */}
-          <div>
-            <h3 className="font-semibold mb-2">Class</h3>
-            <p className="text-sm text-muted-foreground">{project.class}</p>
-          </div>
-
-          {/* SDG Goals */}
-          {project.sdg_goals.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Target className="h-5 w-5 text-muted-foreground" />
-                <h3 className="font-semibold">SDG Goals</h3>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {project.sdg_goals.map((goal) => (
-                  <Badge key={goal} variant="outline">
-                    SDG {goal}: {sdgNames[goal]}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Progress Updates */}
-          {project.progress_updates.length > 0 && (
-            <>
-              <Separator />
+            {/* SDG Goals */}
+            {sdgGoals.length > 0 && (
               <div>
-                <h3 className="font-semibold mb-3">Progress Timeline</h3>
-                <div className="space-y-3">
-                  {project.progress_updates.map((update, index) => (
-                    <div key={index} className="border-l-2 border-primary pl-4 pb-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium">
-                          {new Date(update.date).toLocaleDateString()}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          by {update.updated_by}
-                        </span>
+                <h4 className="text-sm font-medium mb-2">SDG Goals</h4>
+                <SDGGoalBadges goals={sdgGoals} maxDisplay={10} />
+              </div>
+            )}
+
+            {/* Remarks */}
+            {project.remarks && (
+              <div>
+                <h4 className="text-sm font-medium mb-2">Remarks</h4>
+                <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                  {project.remarks}
+                </p>
+              </div>
+            )}
+
+            <Separator />
+
+            {/* Team Members */}
+            <div>
+              <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Team Members ({members.length})
+              </h4>
+              {members.length > 0 ? (
+                <div className="space-y-2">
+                  {members.map((member, idx) => {
+                    const memberName = member.student?.student_name || member.name || 'Unknown Student';
+                    return (
+                      <div key={member.id || idx} className="flex items-center justify-between text-sm p-2 bg-muted/30 rounded-md">
+                        <span>{memberName}</span>
+                        <Badge variant={member.role === 'leader' ? 'default' : 'secondary'} className="text-xs">
+                          {member.role}
+                        </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground">{update.notes}</p>
-                      {update.files && update.files.length > 0 && (
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          Attachments: {update.files.join(', ')}
-                        </div>
-                      )}
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No team members assigned</p>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Achievements - New format */}
+            {achievements.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <Award className="h-4 w-4" />
+                  Achievements & Awards ({achievements.length})
+                </h4>
+                <div className="space-y-2">
+                  {achievements.map((achievement) => (
+                    <div key={achievement.id} className="flex items-center justify-between text-sm p-3 border rounded-md">
+                      <div>
+                        <p className="font-medium">{achievement.title}</p>
+                        <p className="text-muted-foreground text-xs">
+                          {achievement.event_name}
+                          {achievement.event_date && ` • ${format(new Date(achievement.event_date), 'MMM dd, yyyy')}`}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs capitalize">
+                          {achievement.type}
+                        </Badge>
+                        {achievement.certificate_url && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => window.open(achievement.certificate_url!, '_blank')}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
-            </>
-          )}
+            )}
 
-          {/* Achievements & Awards */}
-          {(project.achievements || project.awards) && (
-            <>
-              <Separator />
-              <div className="space-y-4">
-                {project.achievements && project.achievements.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold mb-2">Achievements</h3>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                      {project.achievements.map((achievement, index) => (
-                        <li key={index}>{achievement}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {project.awards && project.awards.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold mb-2">Awards</h3>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                      {project.awards.map((award, index) => (
-                        <li key={index}>{award}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+            {/* Achievements - Old format */}
+            {project.achievements && project.achievements.length > 0 && !achievements.length && (
+              <div>
+                <h4 className="text-sm font-medium mb-2">Achievements</h4>
+                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                  {project.achievements.map((achievement, index) => (
+                    <li key={index}>{achievement}</li>
+                  ))}
+                </ul>
               </div>
-            </>
-          )}
-        </div>
+            )}
+
+            {/* Awards - Old format */}
+            {project.awards && project.awards.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium mb-2">Awards</h4>
+                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                  {project.awards.map((award, index) => (
+                    <li key={index}>{award}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <Separator />
+
+            {/* Progress Updates */}
+            <div>
+              <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Progress Updates ({progressUpdates.length})
+              </h4>
+              {progressUpdates.length > 0 ? (
+                <div className="space-y-3">
+                  {[...progressUpdates]
+                    .sort((a, b) => {
+                      const dateA = a.created_at || a.date || '';
+                      const dateB = b.created_at || b.date || '';
+                      return new Date(dateB).getTime() - new Date(dateA).getTime();
+                    })
+                    .slice(0, 5)
+                    .map((update, idx) => {
+                      const updateDate = update.created_at || update.date;
+                      const updatedBy = update.updated_by_officer_name || update.updated_by || 'Unknown';
+                      return (
+                        <div key={update.id || idx} className="text-sm p-3 border rounded-md">
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="font-medium">{updatedBy}</span>
+                            {updateDate && (
+                              <span className="text-xs text-muted-foreground">
+                                {format(new Date(updateDate), 'MMM dd, yyyy HH:mm')}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-muted-foreground">{update.notes}</p>
+                          {update.progress_percentage !== null && update.progress_percentage !== undefined && (
+                            <Badge variant="secondary" className="mt-2 text-xs">
+                              Progress: {update.progress_percentage}%
+                            </Badge>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No progress updates yet</p>
+              )}
+            </div>
+
+            {/* Delete Button for CEO */}
+            {canDelete && onDelete && (
+              <>
+                <Separator />
+                <div className="pt-2">
+                  <Button
+                    variant="destructive"
+                    className="w-full"
+                    onClick={() => {
+                      if (confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
+                        onDelete(project.id);
+                        onOpenChange(false);
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Project
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
