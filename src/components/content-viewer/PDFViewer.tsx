@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Loader2, AlertCircle, RefreshCw, Maximize2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Loader2, AlertCircle, RefreshCw, Maximize2, Maximize, Minimize } from 'lucide-react';
 import { downloadCourseContent } from '@/services/courseStorage.service';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -30,6 +30,9 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
   const [containerWidth, setContainerWidth] = useState<number>(0);
   const [pageWidth, setPageWidth] = useState<number>(0);
   const [initialFitDone, setInitialFitDone] = useState<boolean>(false);
+  
+  // Fullscreen state
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   // Track container width with ResizeObserver
   useEffect(() => {
@@ -123,6 +126,29 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
     }
   }, [pageWidth, containerWidth]);
 
+  // Fullscreen toggle
+  const toggleFullscreen = useCallback(() => {
+    if (!containerRef.current) return;
+
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch((err) => {
+        console.error('Error attempting to enable fullscreen:', err);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  }, []);
+
+  // Sync fullscreen state with document
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
   const goToPrevPage = () => setPageNumber((prev) => Math.max(prev - 1, 1));
   const goToNextPage = () => setPageNumber((prev) => Math.min(prev + 1, numPages));
   const zoomIn = () => setScale((prev) => Math.min(prev + 0.25, 2.5));
@@ -158,7 +184,7 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
   return (
     <div 
       ref={containerRef}
-      className="flex flex-col items-center select-none w-full" 
+      className={`flex flex-col items-center select-none w-full ${isFullscreen ? 'bg-background h-screen p-4' : ''}`}
       onContextMenu={handleContextMenu} 
       style={{ userSelect: 'none' }}
     >
@@ -200,11 +226,26 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
           <Maximize2 className="h-4 w-4" />
           <span className="hidden sm:inline text-xs">Fit</span>
         </Button>
+
+        <div className="h-4 w-px bg-border hidden sm:block" />
+
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={toggleFullscreen}
+          title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+        >
+          {isFullscreen ? (
+            <Minimize className="h-4 w-4" />
+          ) : (
+            <Maximize className="h-4 w-4" />
+          )}
+        </Button>
       </div>
 
       {/* PDF Document - responsive container */}
       <div 
-        className="relative overflow-auto max-h-[70vh] w-full border rounded-lg bg-muted/50 p-4 sm:p-6" 
+        className={`relative overflow-auto w-full border rounded-lg bg-muted/50 p-4 sm:p-6 ${isFullscreen ? 'flex-1' : 'max-h-[70vh]'}`}
         aria-label={`${title} PDF viewer`}
       >
         {objectUrl && (

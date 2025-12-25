@@ -15,8 +15,12 @@ import {
   Youtube,
   Presentation,
   BookOpen,
+  ExternalLink,
 } from 'lucide-react';
 import { CourseWithStructure, DbCourseModule, DbCourseSession, DbCourseContent } from '@/hooks/useCourses';
+import { PDFViewer } from '@/components/content-viewer/PDFViewer';
+import { FullscreenWrapper } from '@/components/content-viewer/FullscreenWrapper';
+import { getContentSignedUrl } from '@/services/courseStorage.service';
 
 interface CoursePreviewDialogProps {
   open: boolean;
@@ -256,8 +260,10 @@ export function CoursePreviewDialog({ open, onOpenChange, course }: CoursePrevie
                     </div>
                     <h2 className="text-2xl font-bold">{currentContent.title}</h2>
                     <Badge variant="secondary">{currentContent.type.toUpperCase()}</Badge>
-                    {currentContent.youtube_url && (
-                      <div className="mt-4 aspect-video w-full max-w-3xl mx-auto">
+                    
+                    {/* YouTube Content */}
+                    {currentContent.type === 'youtube' && currentContent.youtube_url && (
+                      <FullscreenWrapper className="mt-4 aspect-video w-full max-w-3xl mx-auto">
                         <iframe
                           width="100%"
                           height="100%"
@@ -267,10 +273,51 @@ export function CoursePreviewDialog({ open, onOpenChange, course }: CoursePrevie
                           allowFullScreen
                           className="rounded-lg"
                         />
+                      </FullscreenWrapper>
+                    )}
+                    
+                    {/* PDF Content */}
+                    {currentContent.type === 'pdf' && currentContent.file_path && (
+                      <div className="mt-4 w-full max-w-4xl mx-auto h-[50vh]">
+                        <PDFViewer filePath={currentContent.file_path} title={currentContent.title} />
                       </div>
                     )}
-                    {currentContent.file_path && (
-                      <p className="text-muted-foreground">
+                    
+                    {/* PPT Content */}
+                    {currentContent.type === 'ppt' && currentContent.file_path && (
+                      <div className="mt-4">
+                        <p className="text-muted-foreground mb-4">
+                          PowerPoint presentations can be downloaded or opened externally.
+                        </p>
+                        <Button 
+                          onClick={async () => {
+                            const url = await getContentSignedUrl(currentContent.file_path!, 3600);
+                            if (url) window.open(url, '_blank');
+                          }}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Open Presentation
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {/* Video Content */}
+                    {currentContent.type === 'video' && currentContent.file_path && (
+                      <FullscreenWrapper className="mt-4 aspect-video w-full max-w-3xl mx-auto">
+                        <video
+                          controls
+                          className="w-full h-full rounded-lg bg-black"
+                          src={currentContent.file_path}
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                      </FullscreenWrapper>
+                    )}
+                    
+                    {/* Other content types - show file path */}
+                    {currentContent.file_path && 
+                     !['pdf', 'ppt', 'youtube', 'video'].includes(currentContent.type) && (
+                      <p className="text-muted-foreground mt-4">
                         File: {currentContent.file_path}
                       </p>
                     )}
