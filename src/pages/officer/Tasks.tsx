@@ -10,13 +10,14 @@ import { TaskDetailDialog } from '@/components/task/TaskDetailDialog';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { CourseContentTab } from '@/components/officer/CourseContentTab';
-import { AssignmentsAndQuizzesTab } from '@/components/officer/AssignmentsAndQuizzesTab';
 import { ClassSelector } from '@/components/officer/ClassSelector';
 import { ClassCourseLauncher } from '@/components/officer/ClassCourseLauncher';
 import { ClassStudentsList } from '@/components/officer/ClassStudentsList';
 import { ClassTeachingReport } from '@/components/officer/ClassTeachingReport';
 import { loadTasks, updateTask, getTasksByAssignee, getTaskStats } from '@/data/mockTaskData';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 export default function OfficerTasks() {
@@ -38,7 +39,25 @@ export default function OfficerTasks() {
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const officerId = 'off-001'; // In real app, get from auth context
+  // Get officer ID from the officers table based on user_id
+  const { data: officerData } = useQuery({
+    queryKey: ['officer-profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('officers')
+        .select('id, assigned_institutions')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  const officerId = officerData?.id;
+  const institutionId = officerData?.assigned_institutions?.[0];
 
   // Load user's tasks for Task Allotment tab
   useEffect(() => {
@@ -165,7 +184,7 @@ export default function OfficerTasks() {
                 {!selectedClassId ? (
                   <ClassSelector
                     officerId={officerId}
-                    institutionId="1"
+                    institutionId={institutionId}
                     onClassSelect={(classId, className) => {
                       setSelectedClassId(classId);
                       setSelectedClassName(className);
@@ -224,22 +243,9 @@ export default function OfficerTasks() {
                 )}
               </TabsContent>
 
-              {/* Course Content Sub-tab */}
+              {/* Course Content Sub-tab - View-only mode */}
               <TabsContent value="content" className="space-y-6">
-                <Tabs defaultValue="course-content" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="course-content">Course Content</TabsTrigger>
-                    <TabsTrigger value="assignments-quizzes">Assessments</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="course-content" className="space-y-6">
-                    <CourseContentTab />
-                  </TabsContent>
-
-                  <TabsContent value="assignments-quizzes" className="space-y-6">
-                    <AssignmentsAndQuizzesTab />
-                  </TabsContent>
-                </Tabs>
+                <CourseContentTab />
               </TabsContent>
             </Tabs>
           </TabsContent>

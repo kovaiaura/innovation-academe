@@ -2,12 +2,9 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Users, BookOpen, Clock } from 'lucide-react';
-import { mockInstitutionClasses } from '@/data/mockClassData';
-import { mockClassCourseProgress } from '@/data/mockClassTeachingProgress';
-import { getStudentsByClass } from '@/data/mockClassStudents';
-import { getTeachingStatusColor, getTeachingStatusText } from '@/utils/classTeachingHelpers';
-import { format } from 'date-fns';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Users, BookOpen, Calendar, MapPin, Loader2 } from 'lucide-react';
+import { useOfficerClasses } from '@/hooks/useOfficerClasses';
 
 interface ClassSelectorProps {
   officerId: string;
@@ -18,21 +15,34 @@ interface ClassSelectorProps {
 
 export function ClassSelector({ 
   officerId, 
-  institutionId = '1', 
+  institutionId, 
   onClassSelect, 
   selectedClassId 
 }: ClassSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Get classes for the institution
-  const institutionClasses = mockInstitutionClasses.filter(
-    c => c.institution_id === institutionId && c.status === 'active'
+  const [classFilter, setClassFilter] = useState<'all' | 'today'>('all');
+  
+  const { classes, todayClasses, todayDay, isLoading, hasClasses, hasTodayClasses } = useOfficerClasses(
+    officerId,
+    institutionId
   );
+
+  // Get classes based on filter
+  const displayClasses = classFilter === 'today' ? todayClasses : classes;
 
   // Filter by search query
-  const filteredClasses = institutionClasses.filter(c =>
-    c.class_name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredClasses = displayClasses.filter(c =>
+    c.class_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.subjects.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -45,33 +55,68 @@ export function ClassSelector({
         </div>
       </div>
 
+      {/* Filter Tabs */}
+      <Tabs value={classFilter} onValueChange={(v) => setClassFilter(v as 'all' | 'today')}>
+        <TabsList>
+          <TabsTrigger value="all" className="gap-2">
+            <BookOpen className="h-4 w-4" />
+            All Classes ({classes.length})
+          </TabsTrigger>
+          <TabsTrigger value="today" className="gap-2">
+            <Calendar className="h-4 w-4" />
+            Today's Classes ({todayClasses.length})
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {/* Search */}
       <Input
-        placeholder="Search classes..."
+        placeholder="Search classes or subjects..."
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         className="max-w-md"
       />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredClasses.map((classItem) => {
-          // Get progress data for this class
-          const classProgress = mockClassCourseProgress.filter(
-            p => p.class_id === classItem.id && p.officer_id === officerId
-          );
-          
-          const studentCount = getStudentsByClass(classItem.id).length;
-
-          const inProgressCourses = classProgress.filter(p => p.status === 'in_progress');
-          const lastSession = classProgress
-            .filter(p => p.last_session_date)
-            .sort((a, b) => 
-              new Date(b.last_session_date!).getTime() - new Date(a.last_session_date!).getTime()
-            )[0];
-
-          const hasProgress = classProgress.length > 0 && classProgress.some(p => p.total_sessions > 0);
-          const status = hasProgress ? 'in_progress' : 'not_started';
-
-          return (
+      {/* Classes Grid */}
+      {!hasClasses ? (
+        <Card className="p-12">
+          <div className="text-center space-y-4">
+            <div className="flex justify-center">
+              <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center">
+                <BookOpen className="h-10 w-10 text-muted-foreground" />
+              </div>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-2">No Classes Assigned</h3>
+              <p className="text-sm text-muted-foreground">
+                You don't have any classes assigned in the timetable yet.
+              </p>
+            </div>
+          </div>
+        </Card>
+      ) : classFilter === 'today' && !hasTodayClasses ? (
+        <Card className="p-12">
+          <div className="text-center space-y-4">
+            <div className="flex justify-center">
+              <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center">
+                <Calendar className="h-10 w-10 text-muted-foreground" />
+              </div>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-2">No Classes Today</h3>
+              <p className="text-sm text-muted-foreground">
+                You don't have any classes scheduled for {todayDay}.
+              </p>
+            </div>
+          </div>
+        </Card>
+      ) : filteredClasses.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">No classes found matching your search</p>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredClasses.map((classItem) => (
             <Card
               key={classItem.id}
               className={`cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] ${
@@ -83,65 +128,69 @@ export function ClassSelector({
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <CardTitle className="text-lg">{classItem.class_name}</CardTitle>
-                    <CardDescription>{classItem.room_number}</CardDescription>
+                    {classItem.room_number && (
+                      <CardDescription className="flex items-center gap-1 mt-1">
+                        <MapPin className="h-3 w-3" />
+                        {classItem.room_number}
+                      </CardDescription>
+                    )}
                   </div>
-                  <Badge variant={getTeachingStatusColor(status) as any}>
-                    {getTeachingStatusText(status)}
-                  </Badge>
+                  {classItem.days.includes(todayDay) && (
+                    <Badge variant="default" className="bg-green-500/20 text-green-700 border-green-500/30">
+                      Today
+                    </Badge>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Users className="h-4 w-4" />
-                    <span>{studentCount} Students</span>
+                    <span>{classItem.student_count} Students</span>
                   </div>
                   
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <BookOpen className="h-4 w-4" />
                     <span>
-                      {classProgress.length} {classProgress.length === 1 ? 'Course' : 'Courses'} Assigned
+                      {classItem.subjects.length} {classItem.subjects.length === 1 ? 'Subject' : 'Subjects'}
                     </span>
                   </div>
 
-                  {lastSession?.last_session_date && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      <span>
-                        Last taught: {format(new Date(lastSession.last_session_date), 'MMM dd, yyyy')}
-                      </span>
+                  {classItem.subjects.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-2">
+                      {classItem.subjects.slice(0, 3).map((subject, idx) => (
+                        <Badge key={idx} variant="secondary" className="text-xs">
+                          {subject}
+                        </Badge>
+                      ))}
+                      {classItem.subjects.length > 3 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{classItem.subjects.length - 3} more
+                        </Badge>
+                      )}
                     </div>
                   )}
 
-                  {inProgressCourses.length > 0 && (
+                  {classItem.days.length > 0 && (
                     <div className="pt-2 border-t">
-                      <p className="text-xs font-medium text-muted-foreground mb-1">
-                        Courses in progress:
-                      </p>
-                      <div className="space-y-1">
-                        {inProgressCourses.slice(0, 2).map(course => (
-                          <p key={course.course_id} className="text-xs">
-                            • {course.course_code} - {course.completion_percentage}%
-                          </p>
+                      <p className="text-xs text-muted-foreground mb-1">Scheduled days:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {classItem.days.map((day, idx) => (
+                          <Badge 
+                            key={idx} 
+                            variant={day === todayDay ? "default" : "outline"} 
+                            className="text-xs"
+                          >
+                            {day.slice(0, 3)}
+                          </Badge>
                         ))}
-                        {inProgressCourses.length > 2 && (
-                          <p className="text-xs text-muted-foreground">
-                            +{inProgressCourses.length - 2} more
-                          </p>
-                        )}
                       </div>
                     </div>
                   )}
                 </div>
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
-
-      {filteredClasses.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No classes found</p>
+          ))}
         </div>
       )}
     </div>
