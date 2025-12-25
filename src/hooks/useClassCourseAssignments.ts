@@ -341,11 +341,25 @@ export function useToggleSessionUnlock() {
 }
 
 // Fetch student courses (for student view - only unlocked modules/sessions)
-export function useStudentCourses(studentId?: string, classId?: string) {
+// Note: userId parameter is the auth user ID, we need to convert to students.id for completions
+export function useStudentCourses(userId?: string, classId?: string) {
   return useQuery({
-    queryKey: ['student-courses', studentId, classId],
+    queryKey: ['student-courses', userId, classId],
     queryFn: async () => {
       if (!classId) return [];
+
+      // First, get the student record ID from the auth user ID
+      let studentRecordId: string | null = null;
+      if (userId) {
+        const { data: studentRecord, error: studentError } = await supabase
+          .from('students')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (studentError) throw studentError;
+        studentRecordId = studentRecord?.id || null;
+      }
 
       // Get course class assignments for this class
       const { data: assignments, error: assignmentError } = await supabase
@@ -438,13 +452,13 @@ export function useStudentCourses(studentId?: string, classId?: string) {
         contentItems = content || [];
       }
 
-      // Get student completions if studentId is provided
+      // Get student completions using students.id (not auth user ID)
       let completions: any[] = [];
-      if (studentId && assignmentIds.length > 0) {
+      if (studentRecordId && assignmentIds.length > 0) {
         const { data: studentCompletions, error: completionError } = await supabase
           .from('student_content_completions')
           .select('*')
-          .eq('student_id', studentId)
+          .eq('student_id', studentRecordId)
           .in('class_assignment_id', assignmentIds);
 
         if (completionError) throw completionError;
