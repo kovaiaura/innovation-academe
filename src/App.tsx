@@ -54,7 +54,7 @@ import TeacherAttendance from "./pages/teacher/Attendance";
 import TeacherSchedule from "./pages/teacher/Schedule";
 import TeacherMaterials from "./pages/teacher/Materials";
 import ManagementDashboard from "./pages/management/Dashboard";
-import ManagementTeachers from "./pages/management/Teachers";
+// import ManagementTeachers from "./pages/management/Teachers"; // Temporarily removed
 import ManagementOfficers from "./pages/management/Officers";
 import CoursesAndSessions from "./pages/management/CoursesAndSessions";
 import InventoryAndPurchase from "./pages/management/InventoryAndPurchase";
@@ -65,6 +65,9 @@ import ManagementReports from "./pages/management/Reports";
 import ManagementTimetable from "./pages/management/Timetable";
 import ManagementEvents from "./pages/management/Events";
 import ManagementCourseDetail from "./pages/management/CourseDetail";
+import ManagementProfile from "./pages/management/Profile";
+import StudentProfile from "./pages/student/Profile";
+import TeacherProfile from "./pages/teacher/Profile";
 import SystemAdminCourseManagement from "./pages/system-admin/CourseManagement";
 import SystemAdminCourseDetail from "./pages/system-admin/CourseDetail";
 import SystemAdminAssessmentManagement from "./pages/system-admin/AssessmentManagement";
@@ -500,6 +503,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/tenant/:tenantId/teacher/profile"
+              element={
+                <ProtectedRoute allowedRoles={['teacher']}>
+                  <TeacherProfile />
+                </ProtectedRoute>
+              }
+            />
 
 
             {/* Officer Routes (path-based multi-tenancy) */}
@@ -635,7 +646,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            {/* People Management Routes */}
+            {/* Temporarily removed - Management Teachers
             <Route
               path="/tenant/:tenantId/management/teachers"
               element={
@@ -644,6 +655,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            */}
             <Route
               path="/tenant/:tenantId/management/students"
               element={
@@ -732,6 +744,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['management']}>
                   <ManagementTimetable />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/management/profile"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <ManagementProfile />
                 </ProtectedRoute>
               }
             />
@@ -851,6 +871,14 @@ const App = () => (
               }
             />
             */}
+            <Route
+              path="/tenant/:tenantId/student/profile"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentProfile />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/tenant/:tenantId/student/ask-metova"
               element={
