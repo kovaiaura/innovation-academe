@@ -1,115 +1,77 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Eye, Upload, Award, Edit } from "lucide-react";
-import { toast } from "sonner";
+import { Plus, Eye, Upload, Award, Users, Globe, ToggleLeft, ToggleRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  getProjectsByInstitution, 
-  updateProject,
-  addProject,
-  addProgressUpdate,
-  Project 
-} from "@/data/mockProjectData";
+import { useInstitutionProjects, useUpdateProject, ProjectWithRelations } from "@/hooks/useProjects";
 import { CreateProjectDialog } from "@/components/project/CreateProjectDialog";
-import { ProgressUpdateDialog } from "@/components/project/ProgressUpdateDialog";
+import { AddProgressDialog } from "@/components/project/AddProgressDialog";
 import { ProjectDetailsDialog } from "@/components/project/ProjectDetailsDialog";
-import { MarkAsShowcaseDialog } from "@/components/project/MarkAsShowcaseDialog";
+import { AddAchievementDialog } from "@/components/project/AddAchievementDialog";
+import { ManageTeamDialog } from "@/components/project/ManageTeamDialog";
+import { SDGGoalBadges } from "@/components/project/SDGGoalSelector";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useOfficerByUserId } from "@/hooks/useOfficerProfile";
+
+const STATUS_CONFIG = {
+  yet_to_start: { label: 'Yet to Start', className: 'bg-slate-500/10 text-slate-500 border-slate-500/20' },
+  ongoing: { label: 'Ongoing', className: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+  completed: { label: 'Completed', className: 'bg-green-500/10 text-green-500 border-green-500/20' },
+};
 
 export default function OfficerProjects() {
   const { user } = useAuth();
+  const { data: officerProfile } = useOfficerByUserId(user?.id);
   
-  // Get institution and officer details from auth context
-  const institutionId = user?.institution_id || 'inst-msd-001';
-  const officerId = user?.id || '';
-  const officerName = user?.name || '';
+  const institutionId = user?.institution_id || null;
+  const officerId = officerProfile?.id || '';
+  const officerName = officerProfile?.full_name || user?.name || '';
 
-  const [projects, setProjects] = useState<Project[]>([]);
+  const { data: projects = [], isLoading } = useInstitutionProjects(institutionId);
+  const updateProject = useUpdateProject();
 
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  
-  // Load projects on mount and when institutionId changes
-  useEffect(() => {
-    setProjects(getProjectsByInstitution(institutionId));
-  }, [institutionId]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isProgressDialogOpen, setIsProgressDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
-  const [isShowcaseDialogOpen, setIsShowcaseDialogOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isAchievementDialogOpen, setIsAchievementDialogOpen] = useState(false);
+  const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<ProjectWithRelations | null>(null);
 
   const filteredProjects = projects.filter(project => 
     filterStatus === "all" || project.status === filterStatus
   );
 
-  const handleCreateProject = (newProject: Omit<Project, 'id'>) => {
-    const project: Project = {
-      ...newProject,
-      id: `proj-${Date.now()}`
-    };
-    addProject(institutionId, project);
-    setProjects(getProjectsByInstitution(institutionId));
-    toast.success("Project created successfully");
-  };
-
-  const handleProgressUpdate = (notes: string, progress: number) => {
-    if (!selectedProject) return;
-
-    const update = {
-      date: new Date().toISOString().split('T')[0],
-      notes,
-      updated_by: officerName
-    };
-
-    addProgressUpdate(institutionId, selectedProject.id, update);
-    updateProject(institutionId, selectedProject.id, { progress });
-    setProjects(getProjectsByInstitution(institutionId));
-    toast.success("Progress updated successfully");
-  };
-
-  const handleMarkAsShowcase = (achievements: string[], awards: string[]) => {
-    if (!selectedProject) return;
-
-    updateProject(institutionId, selectedProject.id, {
-      is_showcase: true,
-      achievements,
-      awards
+  const handleTogglePublish = async (project: ProjectWithRelations) => {
+    await updateProject.mutateAsync({
+      id: project.id,
+      is_published: !project.is_published,
     });
-    setProjects(getProjectsByInstitution(institutionId));
   };
 
-  const handleApprove = (projectId: string) => {
-    updateProject(institutionId, projectId, { 
-      status: 'approved'
+  const handleToggleShowcase = async (project: ProjectWithRelations) => {
+    await updateProject.mutateAsync({
+      id: project.id,
+      is_showcase: !project.is_showcase,
     });
-    setProjects(getProjectsByInstitution(institutionId));
-    toast.success("Project approved successfully");
   };
 
-  const handleReject = (projectId: string) => {
-    updateProject(institutionId, projectId, { status: 'rejected' });
-    setProjects(getProjectsByInstitution(institutionId));
-    toast.error("Project rejected");
+  const handleStatusChange = async (project: ProjectWithRelations, newStatus: 'yet_to_start' | 'ongoing' | 'completed') => {
+    const updates: any = { id: project.id, status: newStatus };
+    if (newStatus === 'completed') {
+      updates.progress = 100;
+      updates.actual_completion_date = new Date().toISOString().split('T')[0];
+    }
+    await updateProject.mutateAsync(updates);
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, { className: string; label: string }> = {
-      'proposal': { className: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', label: 'Pending Review' },
-      'approved': { className: 'bg-purple-500/10 text-purple-500 border-purple-500/20', label: 'Approved' },
-      'in_progress': { className: 'bg-blue-500/10 text-blue-500 border-blue-500/20', label: 'In Progress' },
-      'completed': { className: 'bg-green-500/10 text-green-500 border-green-500/20', label: 'Completed' },
-      'rejected': { className: 'bg-red-500/10 text-red-500 border-red-500/20', label: 'Rejected' }
-    };
-    return variants[status] || { className: '', label: status };
-  };
-
-  const activeProjects = projects.filter(p => p.status === 'in_progress');
-  const completedProjects = projects.filter(p => p.status === 'completed');
-  const pendingProposals = projects.filter(p => p.status === 'proposal');
+  const yetToStartCount = projects.filter(p => p.status === 'yet_to_start').length;
+  const ongoingCount = projects.filter(p => p.status === 'ongoing').length;
+  const completedCount = projects.filter(p => p.status === 'completed').length;
 
   return (
     <Layout>
@@ -126,26 +88,26 @@ export default function OfficerProjects() {
         <div className="grid md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
+              <CardTitle className="text-sm font-medium">Yet to Start</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeProjects.length}</div>
+              <div className="text-2xl font-bold">{yetToStartCount}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Completed Projects</CardTitle>
+              <CardTitle className="text-sm font-medium">Ongoing</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{completedProjects.length}</div>
+              <div className="text-2xl font-bold">{ongoingCount}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
+              <CardTitle className="text-sm font-medium">Completed</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{pendingProposals.length}</div>
+              <div className="text-2xl font-bold">{completedCount}</div>
             </CardContent>
           </Card>
         </div>
@@ -158,48 +120,79 @@ export default function OfficerProjects() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Projects</SelectItem>
-              <SelectItem value="proposal">Pending Review</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="yet_to_start">Yet to Start</SelectItem>
+              <SelectItem value="ongoing">Ongoing</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
             </SelectContent>
           </Select>
 
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Button onClick={() => setIsCreateDialogOpen(true)} disabled={!officerId}>
             <Plus className="h-4 w-4 mr-2" />
             Create New Project
           </Button>
         </div>
 
         {/* Projects List */}
-        <div className="grid gap-4">
-          {filteredProjects.map((project) => {
-            const statusInfo = getStatusBadge(project.status);
-            
-            return (
-              <Card key={project.id}>
+        {isLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i}>
                 <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="flex items-center gap-2">
-                        {project.title}
-                        {project.is_showcase && (
-                          <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
-                            ⭐ Showcase
-                          </Badge>
-                        )}
-                      </CardTitle>
-                      <CardDescription>{project.description}</CardDescription>
-                    </div>
-                    <Badge className={statusInfo.className}>
-                      {statusInfo.label}
-                    </Badge>
-                  </div>
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-4 w-full" />
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Progress Bar */}
-                  {project.status !== 'proposal' && project.status !== 'rejected' && (
+                <CardContent>
+                  <Skeleton className="h-20 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {filteredProjects.map((project) => {
+              const statusInfo = STATUS_CONFIG[project.status] || STATUS_CONFIG.yet_to_start;
+              
+              return (
+                <Card key={project.id}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <CardTitle className="flex items-center gap-2 flex-wrap">
+                          {project.title}
+                          {project.is_showcase && (
+                            <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+                              ⭐ Showcase
+                            </Badge>
+                          )}
+                          {project.is_published && (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 text-xs">
+                              Published
+                            </Badge>
+                          )}
+                        </CardTitle>
+                        <CardDescription>{project.description}</CardDescription>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={project.status}
+                          onValueChange={(value: 'yet_to_start' | 'ongoing' | 'completed') => 
+                            handleStatusChange(project, value)
+                          }
+                        >
+                          <SelectTrigger className="w-[140px] h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="yet_to_start">Yet to Start</SelectItem>
+                            <SelectItem value="ongoing">Ongoing</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Progress Bar */}
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Progress</span>
@@ -207,57 +200,69 @@ export default function OfficerProjects() {
                       </div>
                       <Progress value={project.progress} />
                     </div>
-                  )}
 
-                  {/* Project Info */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Category</span>
-                      <p className="font-medium">{project.category}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Team Size</span>
-                      <p className="font-medium">{project.team_members.length} students</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Class</span>
-                      <p className="font-medium">{project.class}</p>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedProject(project);
-                        setIsDetailsDialogOpen(true);
-                      }}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Details
-                    </Button>
-
-                    {project.status === 'proposal' && (
-                      <>
-                        <Button
-                          size="sm"
-                          onClick={() => handleApprove(project.id)}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleReject(project.id)}
-                        >
-                          Reject
-                        </Button>
-                      </>
+                    {/* SDG Goals */}
+                    {project.sdg_goals && (project.sdg_goals as number[]).length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-4 w-4 text-muted-foreground" />
+                        <SDGGoalBadges goals={project.sdg_goals as number[]} maxDisplay={4} />
+                      </div>
                     )}
 
-                    {(project.status === 'approved' || project.status === 'in_progress') && (
+                    {/* Project Info */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Category</span>
+                        <p className="font-medium">{project.category}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Team</span>
+                        <p className="font-medium">{project.project_members?.length || 0} students</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Achievements</span>
+                        <p className="font-medium">{project.project_achievements?.length || 0}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Created by</span>
+                        <p className="font-medium truncate">{project.created_by_officer_name}</p>
+                      </div>
+                    </div>
+
+                    {/* Remarks */}
+                    {project.remarks && (
+                      <div className="text-sm p-3 bg-muted/50 rounded-md">
+                        <span className="text-muted-foreground">Remarks: </span>
+                        {project.remarks}
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedProject(project);
+                          setIsDetailsDialogOpen(true);
+                        }}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Details
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedProject(project);
+                          setIsTeamDialogOpen(true);
+                        }}
+                      >
+                        <Users className="h-4 w-4 mr-2" />
+                        Manage Team
+                      </Button>
+
                       <Button
                         variant="outline"
                         size="sm"
@@ -267,69 +272,111 @@ export default function OfficerProjects() {
                         }}
                       >
                         <Upload className="h-4 w-4 mr-2" />
-                        Upload Progress
+                        Update Progress
                       </Button>
-                    )}
 
-                    {project.status === 'completed' && !project.is_showcase && (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => {
                           setSelectedProject(project);
-                          setIsShowcaseDialogOpen(true);
+                          setIsAchievementDialogOpen(true);
                         }}
                       >
                         <Award className="h-4 w-4 mr-2" />
-                        Mark as Showcase
+                        Add Achievement
                       </Button>
-                    )}
-                  </div>
+
+                      <Button
+                        variant={project.is_published ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleTogglePublish(project)}
+                      >
+                        {project.is_published ? (
+                          <ToggleRight className="h-4 w-4 mr-2" />
+                        ) : (
+                          <ToggleLeft className="h-4 w-4 mr-2" />
+                        )}
+                        {project.is_published ? 'Unpublish' : 'Publish'}
+                      </Button>
+
+                      {project.status === 'completed' && (
+                        <Button
+                          variant={project.is_showcase ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handleToggleShowcase(project)}
+                        >
+                          {project.is_showcase ? '★ Showcased' : '☆ Showcase'}
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+
+            {filteredProjects.length === 0 && (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-muted-foreground">
+                    {projects.length === 0 
+                      ? "No projects yet. Create your first project!" 
+                      : "No projects found for the selected filter"}
+                  </p>
                 </CardContent>
               </Card>
-            );
-          })}
-
-          {filteredProjects.length === 0 && (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-muted-foreground">No projects found for the selected filter</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Dialogs */}
-      <CreateProjectDialog
-        open={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
-        onCreateProject={handleCreateProject}
-        officerId={officerId}
-        officerName={officerName}
-        institutionId={institutionId}
-      />
+      {institutionId && officerId && (
+        <CreateProjectDialog
+          open={isCreateDialogOpen}
+          onOpenChange={setIsCreateDialogOpen}
+          institutionId={institutionId}
+          officerId={officerId}
+          officerName={officerName}
+        />
+      )}
 
-      <ProgressUpdateDialog
-        open={isProgressDialogOpen}
-        onOpenChange={setIsProgressDialogOpen}
-        projectTitle={selectedProject?.title || ""}
-        currentProgress={selectedProject?.progress || 0}
-        onSubmit={handleProgressUpdate}
-      />
+      {selectedProject && (
+        <>
+          <AddProgressDialog
+            open={isProgressDialogOpen}
+            onOpenChange={setIsProgressDialogOpen}
+            projectId={selectedProject.id}
+            projectTitle={selectedProject.title}
+            currentProgress={selectedProject.progress}
+            officerId={officerId}
+            officerName={officerName}
+          />
 
-      <ProjectDetailsDialog
-        open={isDetailsDialogOpen}
-        onOpenChange={setIsDetailsDialogOpen}
-        project={selectedProject}
-      />
+          <ProjectDetailsDialog
+            open={isDetailsDialogOpen}
+            onOpenChange={setIsDetailsDialogOpen}
+            project={selectedProject}
+          />
 
-      <MarkAsShowcaseDialog
-        open={isShowcaseDialogOpen}
-        onOpenChange={setIsShowcaseDialogOpen}
-        projectTitle={selectedProject?.title || ""}
-        onSubmit={handleMarkAsShowcase}
-      />
+          <AddAchievementDialog
+            open={isAchievementDialogOpen}
+            onOpenChange={setIsAchievementDialogOpen}
+            projectId={selectedProject.id}
+            officerId={officerId}
+          />
+
+          {institutionId && (
+            <ManageTeamDialog
+              open={isTeamDialogOpen}
+              onOpenChange={setIsTeamDialogOpen}
+              project={selectedProject}
+              institutionId={institutionId}
+              officerId={officerId}
+            />
+          )}
+        </>
+      )}
     </Layout>
   );
 }

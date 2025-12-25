@@ -1,498 +1,252 @@
-import { useState, useMemo } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
-import { Project } from "@/data/mockProjectData";
-import { getStudentsByInstitution } from "@/data/mockStudentData";
-import { Student } from "@/types/student";
-import { Badge } from "@/components/ui/badge";
-import { X, UserPlus } from "lucide-react";
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SDGGoalSelector } from './SDGGoalSelector';
+import { ProjectStudentSelector } from './ProjectStudentSelector';
+import { useCreateProject } from '@/hooks/useProjects';
+import { useAddProjectMembers } from '@/hooks/useProjectMembers';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface CreateProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateProject: (project: Omit<Project, 'id'>) => void;
+  institutionId: string;
   officerId: string;
   officerName: string;
-  institutionId: string;
 }
 
-const categories = [
-  'IoT',
-  'AI/ML',
-  'Blockchain',
-  'Renewable Energy',
-  'Healthcare',
-  'Education Technology',
-  'Robotics',
-  'Web Development',
-  'Mobile Apps',
-  'Other'
+const PROJECT_CATEGORIES = [
+  'IoT & Electronics',
+  'Software & Apps',
+  'Environment & Sustainability',
+  'Health & Medicine',
+  'Agriculture & Food',
+  'Education & Social',
+  'Robotics & Automation',
+  'AI & Machine Learning',
+  'General',
+  'Other',
 ];
-
-const sdgGoals = [
-  { value: 'SDG1', label: '1. No Poverty' },
-  { value: 'SDG2', label: '2. Zero Hunger' },
-  { value: 'SDG3', label: '3. Good Health' },
-  { value: 'SDG4', label: '4. Quality Education' },
-  { value: 'SDG6', label: '6. Clean Water' },
-  { value: 'SDG7', label: '7. Affordable Energy' },
-  { value: 'SDG8', label: '8. Economic Growth' },
-  { value: 'SDG9', label: '9. Industry Innovation' },
-  { value: 'SDG11', label: '11. Sustainable Cities' },
-  { value: 'SDG12', label: '12. Responsible Consumption' },
-  { value: 'SDG13', label: '13. Climate Action' },
-];
-
-interface TeamMember {
-  id: string;
-  name: string;
-  class: string;
-  section: string;
-}
 
 export function CreateProjectDialog({
   open,
   onOpenChange,
-  onCreateProject,
+  institutionId,
   officerId,
   officerName,
-  institutionId
 }: CreateProjectDialogProps) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
-  const [selectedSdgs, setSelectedSdgs] = useState<string[]>([]);
-  
-  // Team Leader State
-  const [leaderData, setLeaderData] = useState({
-    student: null as Student | null,
-    class: '',
-    section: ''
+  const [activeTab, setActiveTab] = useState('details');
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    category: 'General',
+    status: 'yet_to_start' as 'yet_to_start' | 'ongoing' | 'completed',
+    sdgGoals: [] as number[],
+    remarks: '',
+    startDate: '',
+    targetCompletionDate: '',
   });
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
 
-  // Team Members State
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [memberInput, setMemberInput] = useState({
-    class: '',
-    section: '',
-    student: null as Student | null
-  });
+  const createProject = useCreateProject();
+  const addMembers = useAddProjectMembers();
 
-  // Get all students for this institution
-  const allStudents = useMemo(() => 
-    getStudentsByInstitution(institutionId).filter(s => s.status === 'active'),
-    [institutionId]
-  );
+  const handleSubmit = async () => {
+    if (!formData.title.trim()) return;
 
-  // Get unique classes
-  const uniqueClasses = useMemo(() => {
-    const classes = new Set<string>();
-    allStudents.forEach(student => {
-      const classNum = student.class.replace('Class ', '');
-      classes.add(classNum);
-    });
-    return Array.from(classes).sort((a, b) => parseInt(a) - parseInt(b));
-  }, [allStudents]);
+    try {
+      const project = await createProject.mutateAsync({
+        institution_id: institutionId,
+        title: formData.title,
+        description: formData.description || undefined,
+        category: formData.category,
+        status: formData.status,
+        sdg_goals: formData.sdgGoals,
+        remarks: formData.remarks || undefined,
+        start_date: formData.startDate || undefined,
+        target_completion_date: formData.targetCompletionDate || undefined,
+        created_by_officer_id: officerId,
+        created_by_officer_name: officerName,
+      });
 
-  // Get sections for a specific class
-  const getSectionsForClass = (classNum: string) => {
-    if (!classNum) return [];
-    const sections = new Set<string>();
-    allStudents.forEach(student => {
-      const cls = student.class.replace('Class ', '');
-      if (cls === classNum) {
-        sections.add(student.section);
+      // Add selected students as members
+      if (selectedStudents.length > 0) {
+        await addMembers.mutateAsync(
+          selectedStudents.map((studentId, index) => ({
+            project_id: project.id,
+            student_id: studentId,
+            role: index === 0 ? 'leader' : 'member',
+            assigned_by_officer_id: officerId,
+          }))
+        );
       }
-    });
-    return Array.from(sections).sort();
-  };
 
-  // Get students for a specific class and section
-  const getStudentsForClassSection = (classNum: string, section: string) => {
-    if (!classNum || !section) return [];
-    return allStudents.filter(s => 
-      s.class === `Class ${classNum}` && 
-      s.section === section &&
-      s.status === 'active'
-    );
-  };
-
-  // Add team member with class/section info
-  const handleAddMember = () => {
-    if (!memberInput.student) {
-      toast.error("Please select a student");
-      return;
+      // Reset form and close
+      setFormData({
+        title: '',
+        description: '',
+        category: 'General',
+        status: 'yet_to_start',
+        sdgGoals: [],
+        remarks: '',
+        startDate: '',
+        targetCompletionDate: '',
+      });
+      setSelectedStudents([]);
+      setActiveTab('details');
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error creating project:', error);
     }
-    
-    // Check if already added
-    if (teamMembers.some(m => m.id === memberInput.student!.id)) {
-      toast.error("This student is already added");
-      return;
-    }
-    
-    // Check if same as leader
-    if (memberInput.student.id === leaderData.student?.id) {
-      toast.error("Team leader cannot be added as a member");
-      return;
-    }
-    
-    setTeamMembers([...teamMembers, {
-      id: memberInput.student.id,
-      name: memberInput.student.student_name,
-      class: `Class ${memberInput.class}`,
-      section: memberInput.section
-    }]);
-    
-    // Reset input
-    setMemberInput({ class: '', section: '', student: null });
-    toast.success("Team member added");
   };
 
-  // Remove team member
-  const handleRemoveMember = (memberId: string) => {
-    setTeamMembers(teamMembers.filter(m => m.id !== memberId));
-  };
-
-  const handleSubmit = () => {
-    if (!title || !description || !category || !leaderData.student) {
-      toast.error("Please fill in all required fields and select a team leader");
-      return;
-    }
-
-    const members = [
-      {
-        id: leaderData.student.id,
-        name: leaderData.student.student_name,
-        role: 'leader' as const,
-        class: `Class ${leaderData.class}`,
-        section: leaderData.section
-      },
-      ...teamMembers.map(member => ({
-        id: member.id,
-        name: member.name,
-        role: 'member' as const,
-        class: member.class,
-        section: member.section
-      }))
-    ];
-
-    const newProject: Omit<Project, 'id'> = {
-      title,
-      description,
-      category,
-      team_members: members,
-      created_by_officer_id: officerId,
-      created_by_officer_name: officerName,
-      institution_id: institutionId,
-      class: `Multi-Class Team`, // Generic label since team is multi-class
-      status: 'approved',
-      progress: 0,
-      start_date: new Date().toISOString().split('T')[0],
-      sdg_goals: selectedSdgs,
-      last_updated: new Date().toISOString().split('T')[0],
-      progress_updates: [],
-      is_showcase: false
-    };
-
-    onCreateProject(newProject);
-    handleClose();
-    toast.success("Project created successfully");
-  };
-
-  const handleClose = () => {
-    setTitle("");
-    setDescription("");
-    setCategory("");
-    setSelectedSdgs([]);
-    setLeaderData({ student: null, class: '', section: '' });
-    setTeamMembers([]);
-    setMemberInput({ class: '', section: '', student: null });
-    onOpenChange(false);
-  };
+  const isSubmitting = createProject.isPending || addMembers.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Innovation Project</DialogTitle>
-          <DialogDescription>
-            Add a new project and assign it to student teams from any class
-          </DialogDescription>
+          <DialogTitle>Create New Project</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          <div>
-            <Label htmlFor="title">Project Title *</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., IoT-Based Smart Home Automation"
-            />
-          </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="sdg">SDG Goals</TabsTrigger>
+            <TabsTrigger value="team">Team</TabsTrigger>
+          </TabsList>
 
-          <div>
-            <Label htmlFor="description">Description *</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe the project objectives and scope"
-              rows={3}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="category">Category *</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map(cat => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label>SDG Goals (Select applicable goals)</Label>
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              {sdgGoals.map(sdg => (
-                <div key={sdg.value} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id={`sdg-${sdg.value}`}
-                    checked={selectedSdgs.includes(sdg.value)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedSdgs([...selectedSdgs, sdg.value]);
-                      } else {
-                        setSelectedSdgs(selectedSdgs.filter(s => s !== sdg.value));
-                      }
-                    }}
-                    className="rounded border-input"
-                  />
-                  <label htmlFor={`sdg-${sdg.value}`} className="text-sm">
-                    {sdg.label}
-                  </label>
-                </div>
-              ))}
+          <TabsContent value="details" className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Project Title *</Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="Enter project title"
+              />
             </div>
-          </div>
 
-          {/* Team Leader Selection */}
-          <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-            <Label className="text-base font-semibold">Team Leader *</Label>
-            
-            {leaderData.student ? (
-              <div className="flex items-center justify-between p-3 border rounded-md bg-background">
-                <div>
-                  <div className="font-medium">{leaderData.student.student_name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    Class {leaderData.class} - Section {leaderData.section}
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setLeaderData({ student: null, class: '', section: '' })}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-4">
-                {/* Select Class */}
-                <div>
-                  <Label>Class</Label>
-                  <Select 
-                    value={leaderData.class} 
-                    onValueChange={(val) => setLeaderData({...leaderData, class: val, section: '', student: null})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select class" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {uniqueClasses.map(cls => (
-                        <SelectItem key={cls} value={cls}>Class {cls}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Select Section */}
-                <div>
-                  <Label>Section</Label>
-                  <Select 
-                    value={leaderData.section} 
-                    onValueChange={(val) => setLeaderData({...leaderData, section: val, student: null})}
-                    disabled={!leaderData.class}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select section" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getSectionsForClass(leaderData.class).map(sec => (
-                        <SelectItem key={sec} value={sec}>Section {sec}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Select Student */}
-                <div>
-                  <Label>Student</Label>
-                  <Select 
-                    value={leaderData.student?.id || ''} 
-                    onValueChange={(val) => {
-                      const student = getStudentsForClassSection(leaderData.class, leaderData.section).find(s => s.id === val);
-                      if (student) {
-                        setLeaderData({...leaderData, student});
-                      }
-                    }}
-                    disabled={!leaderData.class || !leaderData.section}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select student" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getStudentsForClassSection(leaderData.class, leaderData.section).map(student => (
-                        <SelectItem key={student.id} value={student.id}>
-                          {student.student_name} - {student.roll_number}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Team Members Selection */}
-          <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-            <div className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5" />
-              <Label className="text-base font-semibold">Team Members (Optional)</Label>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Describe the project objectives and scope"
+                rows={3}
+              />
             </div>
-            
-            {/* Add Member Form */}
-            <div className="grid grid-cols-4 gap-4 items-end">
-              {/* Select Class */}
-              <div>
-                <Label>Class</Label>
-                <Select 
-                  value={memberInput.class} 
-                  onValueChange={(val) => setMemberInput({...memberInput, class: val, section: '', student: null})}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select class" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {uniqueClasses.map(cls => (
-                      <SelectItem key={cls} value={cls}>Class {cls}</SelectItem>
+                    {PROJECT_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Select Section */}
-              <div>
-                <Label>Section</Label>
-                <Select 
-                  value={memberInput.section} 
-                  onValueChange={(val) => setMemberInput({...memberInput, section: val, student: null})}
-                  disabled={!memberInput.class}
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value: 'yet_to_start' | 'ongoing' | 'completed') => 
+                    setFormData(prev => ({ ...prev, status: value }))
+                  }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select section" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {getSectionsForClass(memberInput.class).map(sec => (
-                      <SelectItem key={sec} value={sec}>Section {sec}</SelectItem>
-                    ))}
+                    <SelectItem value="yet_to_start">Yet to Start</SelectItem>
+                    <SelectItem value="ongoing">Ongoing</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
-              {/* Select Student */}
-              <div>
-                <Label>Student</Label>
-                <Select 
-                  value={memberInput.student?.id || ''} 
-                  onValueChange={(val) => {
-                    const student = getStudentsForClassSection(memberInput.class, memberInput.section).find(s => s.id === val);
-                    if (student) {
-                      setMemberInput({...memberInput, student});
-                    }
-                  }}
-                  disabled={!memberInput.class || !memberInput.section}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select student" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getStudentsForClassSection(memberInput.class, memberInput.section)
-                      .filter(s => s.id !== leaderData.student?.id && !teamMembers.some(m => m.id === s.id))
-                      .map(student => (
-                        <SelectItem key={student.id} value={student.id}>
-                          {student.student_name} - {student.roll_number}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Add Button */}
-              <Button 
-                type="button" 
-                onClick={handleAddMember}
-                disabled={!memberInput.student}
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add
-              </Button>
             </div>
 
-            {/* Display Added Members */}
-            {teamMembers.length > 0 && (
-              <div className="space-y-2 mt-4">
-                <Label className="text-sm text-muted-foreground">Added Members ({teamMembers.length})</Label>
-                <div className="flex flex-wrap gap-2">
-                  {teamMembers.map((member) => (
-                    <Badge key={member.id} variant="secondary" className="gap-2 py-2 px-3">
-                      <div className="flex flex-col items-start">
-                        <span className="font-medium">{member.name}</span>
-                        <span className="text-xs text-muted-foreground">{member.class} - Section {member.section}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMember(member.id)}
-                        className="hover:text-destructive ml-2"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="startDate">Start Date</Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                />
               </div>
-            )}
-          </div>
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="targetDate">Target Completion</Label>
+                <Input
+                  id="targetDate"
+                  type="date"
+                  value={formData.targetCompletionDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, targetCompletionDate: e.target.value }))}
+                />
+              </div>
+            </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
+            <div className="space-y-2">
+              <Label htmlFor="remarks">Remarks</Label>
+              <Textarea
+                id="remarks"
+                value={formData.remarks}
+                onChange={(e) => setFormData(prev => ({ ...prev, remarks: e.target.value }))}
+                placeholder="Any additional notes or remarks"
+                rows={2}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="sdg" className="mt-4">
+            <div className="space-y-2">
+              <Label>Select SDG Goals (Optional)</Label>
+              <p className="text-sm text-muted-foreground">
+                Choose the Sustainable Development Goals related to this project
+              </p>
+              <SDGGoalSelector
+                selectedGoals={formData.sdgGoals}
+                onChange={(goals) => setFormData(prev => ({ ...prev, sdgGoals: goals }))}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="team" className="mt-4">
+            <div className="space-y-2">
+              <Label>Assign Students</Label>
+              <p className="text-sm text-muted-foreground">
+                Select students to add to this project. The first selected student will be assigned as team leader.
+              </p>
+              <ProjectStudentSelector
+                institutionId={institutionId}
+                selectedStudents={selectedStudents}
+                onChange={setSelectedStudents}
+              />
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        <DialogFooter className="mt-6">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit}>
-            Create Project
+          <Button onClick={handleSubmit} disabled={!formData.title.trim() || isSubmitting}>
+            {isSubmitting ? 'Creating...' : 'Create Project'}
           </Button>
         </DialogFooter>
       </DialogContent>
