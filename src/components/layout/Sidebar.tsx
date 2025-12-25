@@ -114,7 +114,7 @@ const menuItems: MenuItem[] = [
   // System Admin - Configuration
   { label: 'ID Configuration', icon: <Settings className="h-5 w-5" />, path: '/id-configuration', roles: ['system_admin'], feature: 'id_configuration' },
   // Management menu items (merged with institution admin functionality)
-  { label: 'Teachers', icon: <Users className="h-5 w-5" />, path: '/teachers', roles: ['management'] },
+  // { label: 'Teachers', icon: <Users className="h-5 w-5" />, path: '/teachers', roles: ['management'] }, // Temporarily removed
   { label: 'Students', icon: <GraduationCap className="h-5 w-5" />, path: '/students', roles: ['management'] },
   { label: 'Innovation Officers', icon: <UserCheck className="h-5 w-5" />, path: '/officers', roles: ['management'] },
   { label: 'Courses & Sessions', icon: <BookOpen className="h-5 w-5" />, path: '/courses-sessions', roles: ['management'] },
@@ -123,8 +123,12 @@ const menuItems: MenuItem[] = [
   { label: 'Events & Activities', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['management'] },
   { label: 'Reports', icon: <FileText className="h-5 w-5" />, path: '/reports', roles: ['management'] },
   { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['management'] },
-  // { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['management'] }, // Temporarily hidden
   { label: 'Attendance', icon: <Clock className="h-5 w-5" />, path: '/attendance', roles: ['management'] },
+  { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['management'] },
+  // Student My Profile
+  { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['student'] },
+  // Teacher My Profile
+  { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['teacher'] },
 ];
 
 export function Sidebar() {
