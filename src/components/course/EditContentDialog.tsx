@@ -110,7 +110,6 @@ export function EditContentDialog({ open, onOpenChange, onSave, content }: EditC
           <div className="text-sm text-muted-foreground">
             <p>Type: {content.type.toUpperCase()}</p>
             {content.file_size_mb && <p>Size: {content.file_size_mb.toFixed(1)} MB</p>}
-            <p>Views: {content.views_count}</p>
           </div>
           
           <DialogFooter>

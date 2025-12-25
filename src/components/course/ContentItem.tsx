@@ -41,7 +41,6 @@ export function ContentItem({ content, onEdit, onDelete }: ContentItemProps) {
             <div className="flex gap-4 text-sm text-muted-foreground mt-1">
               {content.duration_minutes && <span>⏱️ {content.duration_minutes} min</span>}
               {content.file_size_mb && <span>📦 {formatFileSize(content.file_size_mb)}</span>}
-              <span>👁️ {content.views_count} views</span>
             </div>
           </div>
         </div>

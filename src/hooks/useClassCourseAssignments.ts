@@ -166,7 +166,7 @@ export function useClassCourseAssignments(classId?: string) {
   });
 }
 
-// Assign course to class with modules and sessions
+// Assign course to class with modules and sessions (upsert logic - skips existing)
 export function useAssignCourseToClass() {
   const queryClient = useQueryClient();
 
@@ -193,54 +193,96 @@ export function useAssignCourseToClass() {
         }[];
       }[];
     }) => {
-      // Create course class assignment
-      const { data: assignment, error: assignmentError } = await supabase
+      // Check if course-class assignment already exists
+      const { data: existingAssignment } = await supabase
         .from('course_class_assignments')
-        .insert({
-          class_id: classId,
-          course_id: courseId,
-          institution_id: institutionId,
-        })
-        .select()
-        .single();
+        .select('id')
+        .eq('class_id', classId)
+        .eq('course_id', courseId)
+        .maybeSingle();
 
-      if (assignmentError) throw assignmentError;
+      let assignmentId: string;
 
-      // Create module assignments
-      for (const mod of modules) {
-        const { data: moduleAssignment, error: moduleError } = await supabase
-          .from('class_module_assignments')
+      if (existingAssignment) {
+        // Use existing assignment
+        assignmentId = existingAssignment.id;
+      } else {
+        // Create new course class assignment
+        const { data: newAssignment, error: assignmentError } = await supabase
+          .from('course_class_assignments')
           .insert({
-            class_assignment_id: assignment.id,
-            module_id: mod.moduleId,
-            is_unlocked: mod.isUnlocked,
-            unlock_order: mod.unlockOrder,
-            unlock_mode: mod.unlockMode,
+            class_id: classId,
+            course_id: courseId,
+            institution_id: institutionId,
           })
           .select()
           .single();
 
-        if (moduleError) throw moduleError;
+        if (assignmentError) throw assignmentError;
+        assignmentId = newAssignment.id;
+      }
 
-        // Create session assignments for this module
-        if (mod.sessions.length > 0) {
-          const sessionInserts = mod.sessions.map(sess => ({
-            class_module_assignment_id: moduleAssignment.id,
-            session_id: sess.sessionId,
-            is_unlocked: sess.isUnlocked,
-            unlock_order: sess.unlockOrder,
-            unlock_mode: sess.unlockMode,
-          }));
+      // Process module assignments
+      for (const mod of modules) {
+        // Check if module assignment already exists
+        const { data: existingModule } = await supabase
+          .from('class_module_assignments')
+          .select('id')
+          .eq('class_assignment_id', assignmentId)
+          .eq('module_id', mod.moduleId)
+          .maybeSingle();
 
-          const { error: sessionError } = await supabase
+        let moduleAssignmentId: string;
+
+        if (existingModule) {
+          // Skip - module already assigned, use existing ID
+          moduleAssignmentId = existingModule.id;
+        } else {
+          // Create new module assignment
+          const { data: newModule, error: moduleError } = await supabase
+            .from('class_module_assignments')
+            .insert({
+              class_assignment_id: assignmentId,
+              module_id: mod.moduleId,
+              is_unlocked: mod.isUnlocked,
+              unlock_order: mod.unlockOrder,
+              unlock_mode: mod.unlockMode,
+            })
+            .select()
+            .single();
+
+          if (moduleError) throw moduleError;
+          moduleAssignmentId = newModule.id;
+        }
+
+        // Process session assignments for this module
+        for (const sess of mod.sessions) {
+          // Check if session assignment already exists
+          const { data: existingSession } = await supabase
             .from('class_session_assignments')
-            .insert(sessionInserts);
+            .select('id')
+            .eq('class_module_assignment_id', moduleAssignmentId)
+            .eq('session_id', sess.sessionId)
+            .maybeSingle();
 
-          if (sessionError) throw sessionError;
+          if (!existingSession) {
+            // Only insert if doesn't exist
+            const { error: sessionError } = await supabase
+              .from('class_session_assignments')
+              .insert({
+                class_module_assignment_id: moduleAssignmentId,
+                session_id: sess.sessionId,
+                is_unlocked: sess.isUnlocked,
+                unlock_order: sess.unlockOrder,
+                unlock_mode: sess.unlockMode,
+              });
+
+            if (sessionError) throw sessionError;
+          }
         }
       }
 
-      return assignment;
+      return { id: assignmentId };
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['class-course-assignments', variables.classId] });
