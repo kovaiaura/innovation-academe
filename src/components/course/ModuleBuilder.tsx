@@ -153,7 +153,7 @@ export function ModuleBuilder({ modules, onChange }: ModuleBuilderProps) {
             </div>
             <div className="flex-1 space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold">Module {moduleIndex + 1}</h4>
+                <h4 className="text-sm font-semibold">Level {moduleIndex + 1}</h4>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -163,30 +163,30 @@ export function ModuleBuilder({ modules, onChange }: ModuleBuilderProps) {
                 </Button>
               </div>
 
-              <div className="space-y-3">
-                <div>
-                  <Label>Module Title</Label>
-                  <Input
-                    value={module.title}
-                    onChange={(e) => updateModule(module.id, "title", e.target.value)}
-                    placeholder="e.g., Introduction to AI"
-                  />
+                <div className="space-y-3">
+                  <div>
+                    <Label>Level Title</Label>
+                    <Input
+                      value={module.title}
+                      onChange={(e) => updateModule(module.id, "title", e.target.value)}
+                      placeholder="e.g., Introduction to AI"
+                    />
+                  </div>
+                  <div>
+                    <Label>Level Description</Label>
+                    <Textarea
+                      value={module.description}
+                      onChange={(e) => updateModule(module.id, "description", e.target.value)}
+                      placeholder="Brief description of this level"
+                      rows={2}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label>Module Description</Label>
-                  <Textarea
-                    value={module.description}
-                    onChange={(e) => updateModule(module.id, "description", e.target.value)}
-                    placeholder="Brief description of this module"
-                    rows={2}
-                  />
-                </div>
-              </div>
 
               {/* Content Items */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Module Content</Label>
+                  <Label className="text-sm font-medium">Level Content</Label>
                   <Button
                     variant="outline"
                     size="sm"
@@ -323,7 +323,7 @@ export function ModuleBuilder({ modules, onChange }: ModuleBuilderProps) {
 
       <Button onClick={addModule} variant="outline" className="w-full">
         <Plus className="h-4 w-4 mr-2" />
-        Add Module
+        Add Level
       </Button>
     </div>
   );

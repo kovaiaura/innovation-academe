@@ -90,7 +90,7 @@ export function LearningLogTimeline({ completions }: Props) {
                       </div>
                       
                       <p className="text-sm text-muted-foreground mb-2">
-                        Module: {completion.module_title}
+                        Level: {completion.module_title}
                       </p>
 
                       <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">

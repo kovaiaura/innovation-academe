@@ -361,7 +361,7 @@ export default function SystemAdminCourseDetail() {
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Modules</CardTitle>
+              <CardTitle className="text-sm font-medium">Levels</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -433,22 +433,22 @@ export default function SystemAdminCourseDetail() {
           <TabsContent value="curriculum" className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-bold">Course Modules</h2>
+                <h2 className="text-2xl font-bold">Course Levels</h2>
                 <p className="text-muted-foreground">Manage course content and structure</p>
               </div>
               <Button onClick={() => setIsAddModuleOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add Module
+                Add Level
               </Button>
             </div>
 
             {modules.length === 0 ? (
               <Card>
                 <CardContent className="text-center py-16">
-                  <div className="text-muted-foreground mb-4">No modules yet</div>
+                  <div className="text-muted-foreground mb-4">No levels yet</div>
                   <Button onClick={() => setIsAddModuleOpen(true)}>
                     <Plus className="mr-2 h-4 w-4" />
-                    Add First Module
+                    Add First Level
                   </Button>
                 </CardContent>
               </Card>
@@ -459,7 +459,7 @@ export default function SystemAdminCourseDetail() {
                     <AccordionTrigger className="hover:no-underline">
                       <div className="flex items-center justify-between w-full pr-4">
                         <div className="flex items-center gap-3">
-                          <Badge variant="outline">Module {module.display_order + 1}</Badge>
+                          <Badge variant="outline">Level {module.display_order + 1}</Badge>
                           <h3 className="font-semibold text-lg">{module.title}</h3>
                         </div>
                         <div className="flex gap-2">
@@ -543,7 +543,7 @@ export default function SystemAdminCourseDetail() {
                         )}
                         <Button variant="outline" onClick={() => handleAddSession(module)}>
                           <Plus className="mr-2 h-4 w-4" />
-                          Add Session to Module
+                          Add Session to Level
                         </Button>
                       </div>
                     </AccordionContent>
@@ -602,7 +602,7 @@ export default function SystemAdminCourseDetail() {
         <AlertDialog open={isDeleteModuleOpen} onOpenChange={setIsDeleteModuleOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Module</AlertDialogTitle>
+              <AlertDialogTitle>Delete Level</AlertDialogTitle>
               <AlertDialogDescription>
                 Are you sure you want to delete "{selectedModule?.title}"? All sessions and content will be deleted.
               </AlertDialogDescription>

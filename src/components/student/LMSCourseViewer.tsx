@@ -403,7 +403,7 @@ export function LMSCourseViewer({ course, modules, viewOnly = false, backPath }:
                       "flex-1 font-medium text-sm break-words whitespace-normal",
                       isModuleLocked && "text-muted-foreground"
                     )}>
-                      {module?.title || 'Module'}
+                      {module?.title || 'Level'}
                     </span>
                     {!isModuleLocked && (
                       <ChevronRight 
