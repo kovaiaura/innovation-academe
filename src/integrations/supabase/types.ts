@@ -663,6 +663,8 @@ export type Database = {
       institution_timetable_assignments: {
         Row: {
           academic_year: string
+          backup_officer_id: string | null
+          backup_officer_name: string | null
           class_id: string
           class_name: string
           created_at: string
@@ -671,6 +673,8 @@ export type Database = {
           institution_id: string
           period_id: string
           room: string | null
+          secondary_officer_id: string | null
+          secondary_officer_name: string | null
           subject: string
           teacher_id: string | null
           teacher_name: string | null
@@ -678,6 +682,8 @@ export type Database = {
         }
         Insert: {
           academic_year?: string
+          backup_officer_id?: string | null
+          backup_officer_name?: string | null
           class_id: string
           class_name: string
           created_at?: string
@@ -686,6 +692,8 @@ export type Database = {
           institution_id: string
           period_id: string
           room?: string | null
+          secondary_officer_id?: string | null
+          secondary_officer_name?: string | null
           subject: string
           teacher_id?: string | null
           teacher_name?: string | null
@@ -693,6 +701,8 @@ export type Database = {
         }
         Update: {
           academic_year?: string
+          backup_officer_id?: string | null
+          backup_officer_name?: string | null
           class_id?: string
           class_name?: string
           created_at?: string
@@ -701,6 +711,8 @@ export type Database = {
           institution_id?: string
           period_id?: string
           room?: string | null
+          secondary_officer_id?: string | null
+          secondary_officer_name?: string | null
           subject?: string
           teacher_id?: string | null
           teacher_name?: string | null
@@ -879,6 +891,90 @@ export type Database = {
             columns: ["officer_id"]
             isOneToOne: false
             referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      officer_class_access_grants: {
+        Row: {
+          access_type: string
+          class_id: string
+          created_at: string | null
+          granting_officer_id: string
+          id: string
+          institution_id: string
+          is_active: boolean | null
+          reason: string | null
+          receiving_officer_id: string
+          timetable_assignment_id: string | null
+          updated_at: string | null
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          access_type?: string
+          class_id: string
+          created_at?: string | null
+          granting_officer_id: string
+          id?: string
+          institution_id: string
+          is_active?: boolean | null
+          reason?: string | null
+          receiving_officer_id: string
+          timetable_assignment_id?: string | null
+          updated_at?: string | null
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Update: {
+          access_type?: string
+          class_id?: string
+          created_at?: string | null
+          granting_officer_id?: string
+          id?: string
+          institution_id?: string
+          is_active?: boolean | null
+          reason?: string | null
+          receiving_officer_id?: string
+          timetable_assignment_id?: string | null
+          updated_at?: string | null
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_class"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_granting_officer"
+            columns: ["granting_officer_id"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_institution"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_receiving_officer"
+            columns: ["receiving_officer_id"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_timetable_assignment"
+            columns: ["timetable_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "institution_timetable_assignments"
             referencedColumns: ["id"]
           },
         ]

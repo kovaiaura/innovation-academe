@@ -25,6 +25,10 @@ export interface TimetableAssignment {
   subject: string;
   teacher_id?: string;
   teacher_name?: string;
+  secondary_officer_id?: string;
+  secondary_officer_name?: string;
+  backup_officer_id?: string;
+  backup_officer_name?: string;
   room?: string;
   created_at: string;
   updated_at: string;
@@ -155,6 +159,10 @@ export function useInstitutionTimetable(institutionId?: string, academicYear: st
             subject: a.subject,
             teacher_id: a.teacher_id,
             teacher_name: a.teacher_name,
+            secondary_officer_id: a.secondary_officer_id,
+            secondary_officer_name: a.secondary_officer_name,
+            backup_officer_id: a.backup_officer_id,
+            backup_officer_name: a.backup_officer_name,
             room: a.room,
           })))
           .select();
