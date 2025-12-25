@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '@/types';
+import { SystemAdminFeature, ALL_SYSTEM_ADMIN_FEATURES } from '@/types/permissions';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
@@ -110,6 +111,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
         
+        // Fetch allowed features based on position
+        let allowedFeatures: SystemAdminFeature[] = [];
+        
+        // Super admins get all features
+        if (roles.includes('super_admin')) {
+          allowedFeatures = ALL_SYSTEM_ADMIN_FEATURES;
+        } 
+        // CEOs get all features
+        else if (profileData.is_ceo === true) {
+          allowedFeatures = ALL_SYSTEM_ADMIN_FEATURES;
+        }
+        // System admins get features based on their position
+        else if (roles.includes('system_admin') && profileData.position_id) {
+          const { data: positionData } = await supabase
+            .from('positions')
+            .select('visible_features, is_ceo_position')
+            .eq('id', profileData.position_id)
+            .maybeSingle();
+          
+          if (positionData) {
+            // CEO position also gets all features
+            if (positionData.is_ceo_position) {
+              allowedFeatures = ALL_SYSTEM_ADMIN_FEATURES;
+            } else {
+              allowedFeatures = (positionData.visible_features as SystemAdminFeature[]) || [];
+            }
+          }
+        }
+        
         const userData: User = {
           id: userId,
           email: profileData.email,
@@ -120,6 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           position_id: profileData.position_id || undefined,
           position_name: profileData.position_name || undefined,
           is_ceo: profileData.is_ceo || false,
+          allowed_features: allowedFeatures, // Include allowed features
           institution_id: institutionId || undefined,
           tenant_id: institutionId || undefined, // Add tenant_id for sidebar routing
           class_id: profileData.class_id || undefined,

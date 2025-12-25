@@ -1137,6 +1137,42 @@ export type Database = {
         }
         Relationships: []
       }
+      positions: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          display_name: string
+          id: string
+          is_ceo_position: boolean
+          position_name: string
+          updated_at: string | null
+          visible_features: Json
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          display_name: string
+          id?: string
+          is_ceo_position?: boolean
+          position_name: string
+          updated_at?: string | null
+          visible_features?: Json
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_ceo_position?: boolean
+          position_name?: string
+          updated_at?: string | null
+          visible_features?: Json
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar: string | null
