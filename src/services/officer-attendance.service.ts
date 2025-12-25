@@ -67,11 +67,12 @@ export interface InstitutionGPSSettings {
 
 /**
  * Get institution GPS settings for attendance validation
+ * Reads GPS from address.gps_location (primary) or settings.gps_location (fallback)
  */
 export const getInstitutionGPSSettings = async (institutionId: string): Promise<InstitutionGPSSettings | null> => {
   const { data, error } = await supabase
     .from('institutions')
-    .select('id, name, settings')
+    .select('id, name, settings, address')
     .eq('id', institutionId)
     .single();
 
@@ -81,13 +82,23 @@ export const getInstitutionGPSSettings = async (institutionId: string): Promise<
   }
 
   const settings = data.settings as Record<string, unknown> || {};
-  const gpsLocation = settings.gps_location as { latitude: number; longitude: number } | undefined;
+  const address = data.address as Record<string, unknown> || {};
+  
+  // Try to get GPS from address first (set during institution creation), then fallback to settings
+  const addressGps = address.gps_location as { latitude: number; longitude: number } | undefined;
+  const settingsGps = settings.gps_location as { latitude: number; longitude: number } | undefined;
+  const gpsLocation = addressGps || settingsGps || null;
+  
+  // Get attendance radius from address first, then settings
+  const addressRadius = address.attendance_radius_meters as number | undefined;
+  const settingsRadius = settings.attendance_radius_meters as number | undefined;
+  const attendanceRadius = addressRadius || settingsRadius || 1500;
 
   return {
     id: data.id,
     name: data.name,
-    gps_location: gpsLocation || null,
-    attendance_radius_meters: (settings.attendance_radius_meters as number) || 1500,
+    gps_location: gpsLocation,
+    attendance_radius_meters: attendanceRadius,
     check_in_time: (settings.check_in_time as string) || '09:00',
     check_out_time: (settings.check_out_time as string) || '17:00',
     normal_working_hours: (settings.normal_working_hours as number) || 8,
