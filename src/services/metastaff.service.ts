@@ -3,6 +3,15 @@ import { SystemAdminFeature } from '@/types/permissions';
 import { supabase } from '@/integrations/supabase/client';
 import { positionService, clearPositionsCache } from './position.service';
 
+// Helper to get current auth token
+const getAuthToken = async (): Promise<string> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error('Not authenticated. Please log in again.');
+  }
+  return session.access_token;
+};
+
 // Generate a temporary password
 const generateTemporaryPassword = (): string => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
@@ -79,7 +88,8 @@ export const metaStaffService = {
     // Generate password
     const tempPassword = data.custom_password || generateTemporaryPassword();
 
-    // Call Edge Function to create user
+    // Call Edge Function to create user with explicit auth token
+    const token = await getAuthToken();
     const { data: result, error } = await supabase.functions.invoke('admin-user-management', {
       body: {
         action: 'create_user',
@@ -89,6 +99,9 @@ export const metaStaffService = {
         position_id: data.position_id,
         position_name: position.position_name,
         is_ceo: position.is_ceo_position || false
+      },
+      headers: {
+        Authorization: `Bearer ${token}`
       }
     });
 
@@ -97,7 +110,7 @@ export const metaStaffService = {
       throw new Error(error.message || 'Failed to create user');
     }
 
-    if (result.error) {
+    if (result?.error) {
       throw new Error(result.error);
     }
 
@@ -124,7 +137,8 @@ export const metaStaffService = {
     const position = await positionService.getPositionById(position_id);
     if (!position) throw new Error('Position not found');
 
-    const { error } = await supabase.functions.invoke('admin-user-management', {
+    const token = await getAuthToken();
+    const { data, error } = await supabase.functions.invoke('admin-user-management', {
       body: {
         action: 'update_user',
         user_id: userId,
@@ -133,18 +147,26 @@ export const metaStaffService = {
           position_name: position.position_name,
           is_ceo: position.is_ceo_position || false
         }
+      },
+      headers: {
+        Authorization: `Bearer ${token}`
       }
     });
 
     if (error) throw error;
+    if (data?.error) throw new Error(data.error);
   },
 
   // Delete meta staff user
   deleteMetaStaff: async (userId: string): Promise<void> => {
+    const token = await getAuthToken();
     const { data, error } = await supabase.functions.invoke('admin-user-management', {
       body: {
         action: 'delete_user',
         user_id: userId
+      },
+      headers: {
+        Authorization: `Bearer ${token}`
       }
     });
 
@@ -170,11 +192,15 @@ export const metaStaffService = {
   resetPassword: async (userId: string): Promise<string> => {
     const newPassword = generateTemporaryPassword();
 
+    const token = await getAuthToken();
     const { data, error } = await supabase.functions.invoke('admin-user-management', {
       body: {
         action: 'reset_password',
         user_id: userId,
         new_password: newPassword
+      },
+      headers: {
+        Authorization: `Bearer ${token}`
       }
     });
 
@@ -186,11 +212,15 @@ export const metaStaffService = {
 
   // Set specific password
   setPassword: async (userId: string, password: string): Promise<void> => {
+    const token = await getAuthToken();
     const { data, error } = await supabase.functions.invoke('admin-user-management', {
       body: {
         action: 'reset_password',
         user_id: userId,
         new_password: password
+      },
+      headers: {
+        Authorization: `Bearer ${token}`
       }
     });
 
@@ -240,7 +270,8 @@ export const metaStaffService = {
 
   // Update meta staff details
   updateMetaStaff: async (userId: string, updates: Partial<User>): Promise<void> => {
-    const { error } = await supabase.functions.invoke('admin-user-management', {
+    const token = await getAuthToken();
+    const { data, error } = await supabase.functions.invoke('admin-user-management', {
       body: {
         action: 'update_user',
         user_id: userId,
@@ -250,9 +281,13 @@ export const metaStaffService = {
           position_name: updates.position_name,
           is_ceo: updates.is_ceo
         }
+      },
+      headers: {
+        Authorization: `Bearer ${token}`
       }
     });
 
     if (error) throw error;
+    if (data?.error) throw new Error(data.error);
   },
 };
