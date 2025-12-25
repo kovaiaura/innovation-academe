@@ -35,6 +35,29 @@ export type SystemAdminFeature =
   | 'survey_feedback'
   | 'performance_ratings';
 
+export const ALL_SYSTEM_ADMIN_FEATURES: SystemAdminFeature[] = [
+  'institution_management',
+  'course_management',
+  'assessment_management',
+  'assignment_management',
+  'event_management',
+  'officer_management',
+  'project_management',
+  'inventory_management',
+  'attendance_payroll',
+  'leave_approvals',
+  'institutional_calendar',
+  'reports_analytics',
+  'sdg_management',
+  'task_management',
+  'task_allotment',
+  'credential_management',
+  'gamification',
+  'id_configuration',
+  'survey_feedback',
+  'performance_ratings',
+];
+
 export interface PositionPermissions {
   position_id: string;
   position_name: string;

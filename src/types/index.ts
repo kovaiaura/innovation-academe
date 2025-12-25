@@ -7,6 +7,8 @@ export type UserRole =
   | 'teacher'
   | 'student';
 
+import { SystemAdminFeature } from './permissions';
+
 // User Interface
 export interface User {
   id: string;
@@ -18,6 +20,7 @@ export interface User {
   position_id?: string; // Dynamic position reference
   position_name?: string; // Display name for position
   is_ceo?: boolean; // True for CEO position
+  allowed_features?: SystemAdminFeature[]; // Features this user can access based on position
   tenant_id?: string; // null for super_admin
   institution_id?: string;
   class_id?: string; // Student's class ID
