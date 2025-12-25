@@ -4,27 +4,27 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, UserCheck, Calendar, BookOpen, Mail, Phone, Briefcase, Loader2, Users } from "lucide-react";
+import { Search, UserCheck, Calendar, Mail, Phone, Briefcase, Loader2, Users } from "lucide-react";
 import { useState, useMemo } from "react";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { OfficerDetailsDialog } from "@/components/officer/OfficerDetailsDialog";
-import { OfficerScheduleDialog } from "@/components/officer/OfficerScheduleDialog";
-import { OfficerTimetableSlot } from "@/types/officer";
-import { toast } from "sonner";
 import { useCurrentUserInstitutionDetails } from "@/hooks/useCurrentUserInstitution";
 import { useOfficersByInstitution } from "@/hooks/useInstitutionOfficers";
 import { useOfficer } from "@/hooks/useOfficers";
+import { useOfficerTeachingHours } from "@/hooks/useOfficerTeachingHours";
+import { useStudents } from "@/hooks/useStudents";
 import { OfficerDetails } from "@/services/systemadmin.service";
 
 const Officers = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOfficerId, setSelectedOfficerId] = useState<string | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
 
   const { institution, institutionId, isLoading: isLoadingInstitution } = useCurrentUserInstitutionDetails();
   const { officers, isLoading: isLoadingOfficers } = useOfficersByInstitution(institutionId || undefined);
   const { data: selectedOfficerDetails } = useOfficer(selectedOfficerId || '');
+  const { data: teachingHoursMap = {} } = useOfficerTeachingHours(institutionId || undefined);
+  const { students } = useStudents(institutionId || undefined);
 
   const filteredOfficers = useMemo(() => {
     if (!searchQuery) return officers;
@@ -38,6 +38,7 @@ const Officers = () => {
 
   const totalOfficers = officers.length;
   const activeOfficers = officers.filter(o => o.status === 'active').length;
+  const totalStudents = students.length;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -51,15 +52,6 @@ const Officers = () => {
   const handleViewDetails = (officerId: string) => {
     setSelectedOfficerId(officerId);
     setDetailsDialogOpen(true);
-  };
-
-  const handleViewSchedule = (officerId: string) => {
-    setSelectedOfficerId(officerId);
-    setScheduleDialogOpen(true);
-  };
-
-  const handleScheduleSave = (officerId: string, slots: OfficerTimetableSlot[]) => {
-    toast.success(`Schedule updated: ${slots.length} hours/week`);
   };
 
   const isLoading = isLoadingInstitution || isLoadingOfficers;
@@ -116,9 +108,7 @@ const Officers = () => {
             institutionName={institution.name}
             establishedYear={institutionSettings.established_year || new Date().getFullYear()}
             location={institutionAddress.location || ''}
-            totalStudents={institutionSettings.total_students || 0}
-            totalFaculty={institutionSettings.total_faculty || 0}
-            totalDepartments={institutionSettings.total_departments || 0}
+            totalStudents={totalStudents}
             academicYear={institutionSettings.academic_year || '2024-25'}
             userRole="Management Portal"
             assignedOfficers={officers.map(o => o.officer_name)}
@@ -213,16 +203,13 @@ const Officers = () => {
                               <div className="flex items-center gap-1 text-muted-foreground"><Mail className="h-4 w-4" /><span>{officer.email}</span></div>
                               {officer.phone && <div className="flex items-center gap-1 text-muted-foreground"><Phone className="h-4 w-4" /><span>{officer.phone}</span></div>}
                             </div>
-                            <div className="flex items-center gap-6 text-sm">
-                              <div className="flex items-center gap-2"><BookOpen className="h-4 w-4 text-blue-500" /><span className="text-muted-foreground">{officer.total_courses || 0} Courses</span></div>
-                              <div className="flex items-center gap-2"><Calendar className="h-4 w-4 text-green-500" /><span className="text-muted-foreground">{officer.total_teaching_hours || 0}h Teaching</span></div>
+                            <div className="flex items-center gap-2 text-sm">
+                              <Calendar className="h-4 w-4 text-green-500" />
+                              <span className="text-muted-foreground">{teachingHoursMap[officer.officer_id] || 0}h Teaching</span>
                             </div>
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => handleViewDetails(officer.officer_id)}>View Details</Button>
-                          <Button variant="outline" size="sm" onClick={() => handleViewSchedule(officer.officer_id)}>View Schedule</Button>
-                        </div>
+                        <Button variant="outline" size="sm" onClick={() => handleViewDetails(officer.officer_id)}>View Details</Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -234,7 +221,6 @@ const Officers = () => {
       </div>
 
       <OfficerDetailsDialog officer={transformedOfficer} open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen} viewerRole="management" />
-      <OfficerScheduleDialog officer={transformedOfficer} open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen} onSave={handleScheduleSave} />
     </Layout>
   );
 };

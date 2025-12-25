@@ -1,15 +1,13 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Building2, MapPin, Calendar, Users, GraduationCap, BookOpen, UserCheck } from "lucide-react";
+import { Building2, MapPin, Calendar, Users, UserCheck } from "lucide-react";
 
 interface InstitutionHeaderProps {
   institutionName?: string;
   establishedYear?: string;
   location?: string;
   totalStudents?: number;
-  totalFaculty?: number;
-  totalDepartments?: number;
   academicYear?: string;
   userRole?: string;
   assignedOfficers?: string[];
@@ -19,9 +17,7 @@ export const InstitutionHeader = ({
   institutionName = "Springfield Technical College",
   establishedYear = "1995",
   location = "Delhi, India",
-  totalStudents = 2845,
-  totalFaculty = 186,
-  totalDepartments = 5,
+  totalStudents = 0,
   academicYear = "2024-25 (Semester 2)",
   userRole = "Management Portal",
   assignedOfficers
@@ -57,16 +53,6 @@ export const InstitutionHeader = ({
                   <Users className="h-4 w-4 text-blue-500" />
                   <span className="font-semibold">{totalStudents.toLocaleString()}</span>
                   <span className="text-muted-foreground">Students</span>
-                </div>
-                <div className="flex items-center gap-2 bg-background/50 px-3 py-1.5 rounded-md border">
-                  <GraduationCap className="h-4 w-4 text-green-500" />
-                  <span className="font-semibold">{totalFaculty}</span>
-                  <span className="text-muted-foreground">Faculty</span>
-                </div>
-                <div className="flex items-center gap-2 bg-background/50 px-3 py-1.5 rounded-md border">
-                  <BookOpen className="h-4 w-4 text-purple-500" />
-                  <span className="font-semibold">{totalDepartments}</span>
-                  <span className="text-muted-foreground">Departments</span>
                 </div>
                 <div className="flex items-center gap-2 bg-background/50 px-3 py-1.5 rounded-md border">
                   <Calendar className="h-4 w-4 text-orange-500" />
