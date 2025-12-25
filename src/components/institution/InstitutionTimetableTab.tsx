@@ -535,12 +535,15 @@ export const InstitutionTimetableTab = ({
 
             <div className="space-y-2">
               <Label>Secondary Officer (Optional)</Label>
-              <Select value={selectedSecondaryOfficer} onValueChange={setSelectedSecondaryOfficer}>
+              <Select
+                value={selectedSecondaryOfficer || 'none'}
+                onValueChange={(v) => setSelectedSecondaryOfficer(v === 'none' ? '' : v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select secondary officer" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {assignedOfficers
                     .filter(o => o.status === 'active' && o.officer_id !== selectedOfficer)
                     .map(officer => (
@@ -555,12 +558,15 @@ export const InstitutionTimetableTab = ({
 
             <div className="space-y-2">
               <Label>Backup Officer (Optional)</Label>
-              <Select value={selectedBackupOfficer} onValueChange={setSelectedBackupOfficer}>
+              <Select
+                value={selectedBackupOfficer || 'none'}
+                onValueChange={(v) => setSelectedBackupOfficer(v === 'none' ? '' : v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select backup officer" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {assignedOfficers
                     .filter(o => o.status === 'active' && o.officer_id !== selectedOfficer && o.officer_id !== selectedSecondaryOfficer)
                     .map(officer => (
