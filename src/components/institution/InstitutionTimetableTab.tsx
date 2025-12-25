@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Edit, Trash2, Clock, Save, Calendar as CalendarIcon, Settings, User } from 'lucide-react';
+import { Plus, Edit, Trash2, Clock, Save, Calendar as CalendarIcon, Settings, User, Users } from 'lucide-react';
 import { PeriodConfig, InstitutionTimetableAssignment, OfficerAssignment } from '@/types/institution';
 import { InstitutionClass } from '@/types/student';
 import { toast } from 'sonner';
@@ -47,6 +47,8 @@ export const InstitutionTimetableTab = ({
   // Assignment form state
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedOfficer, setSelectedOfficer] = useState('');
+  const [selectedSecondaryOfficer, setSelectedSecondaryOfficer] = useState('');
+  const [selectedBackupOfficer, setSelectedBackupOfficer] = useState('');
 
   // Period form state
   const [periodLabel, setPeriodLabel] = useState('');
@@ -141,9 +143,13 @@ export const InstitutionTimetableTab = ({
     if (existing) {
       setSelectedClass(existing.class_id);
       setSelectedOfficer(existing.teacher_id || '');
+      setSelectedSecondaryOfficer(existing.secondary_officer_id || '');
+      setSelectedBackupOfficer(existing.backup_officer_id || '');
     } else {
       setSelectedClass('');
       setSelectedOfficer('');
+      setSelectedSecondaryOfficer('');
+      setSelectedBackupOfficer('');
     }
     
     setIsAssignmentDialogOpen(true);
@@ -151,12 +157,15 @@ export const InstitutionTimetableTab = ({
 
   const handleSaveAssignment = () => {
     if (!selectedCell || !selectedClass || !selectedOfficer) {
-      toast.error('Please select a class and an officer');
+      toast.error('Please select a class and a primary officer');
       return;
     }
 
     const selectedClassData = classes.find(c => c.id === selectedClass);
     const selectedOfficerData = assignedOfficers.find(o => o.officer_id === selectedOfficer);
+    const secondaryOfficerData = selectedSecondaryOfficer ? assignedOfficers.find(o => o.officer_id === selectedSecondaryOfficer) : null;
+    const backupOfficerData = selectedBackupOfficer ? assignedOfficers.find(o => o.officer_id === selectedBackupOfficer) : null;
+    
     if (!selectedClassData || !selectedOfficerData) return;
 
     const existingIndex = timetableData.findIndex(
@@ -174,6 +183,10 @@ export const InstitutionTimetableTab = ({
       subject: selectedOfficerData.officer_name, // Use officer name as subject for compatibility
       teacher_id: selectedOfficer,
       teacher_name: selectedOfficerData.officer_name,
+      secondary_officer_id: selectedSecondaryOfficer || undefined,
+      secondary_officer_name: secondaryOfficerData?.officer_name,
+      backup_officer_id: selectedBackupOfficer || undefined,
+      backup_officer_name: backupOfficerData?.officer_name,
       created_at: existingIndex >= 0 ? timetableData[existingIndex].created_at : new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -315,6 +328,12 @@ export const InstitutionTimetableTab = ({
                                   <User className="h-3 w-3" />
                                   {assignment.teacher_name || 'Unassigned'}
                                 </div>
+                                {(assignment.secondary_officer_name || assignment.backup_officer_name) && (
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Users className="h-3 w-3" />
+                                    {[assignment.secondary_officer_name, assignment.backup_officer_name].filter(Boolean).length}+ officers
+                                  </div>
+                                )}
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -488,10 +507,10 @@ export const InstitutionTimetableTab = ({
             </div>
 
             <div className="space-y-2">
-              <Label>Assign Officer</Label>
+              <Label>Primary Officer *</Label>
               <Select value={selectedOfficer} onValueChange={setSelectedOfficer}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select officer" />
+                  <SelectValue placeholder="Select primary officer" />
                 </SelectTrigger>
                 <SelectContent>
                   {assignedOfficers.length === 0 ? (
@@ -512,6 +531,46 @@ export const InstitutionTimetableTab = ({
                   Please assign officers to this institution first in the "Innovation Officers" tab.
                 </p>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Secondary Officer (Optional)</Label>
+              <Select value={selectedSecondaryOfficer} onValueChange={setSelectedSecondaryOfficer}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select secondary officer" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {assignedOfficers
+                    .filter(o => o.status === 'active' && o.officer_id !== selectedOfficer)
+                    .map(officer => (
+                      <SelectItem key={officer.officer_id} value={officer.officer_id}>
+                        {officer.officer_name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Co-instructor or alternate teacher</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Backup Officer (Optional)</Label>
+              <Select value={selectedBackupOfficer} onValueChange={setSelectedBackupOfficer}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select backup officer" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {assignedOfficers
+                    .filter(o => o.status === 'active' && o.officer_id !== selectedOfficer && o.officer_id !== selectedSecondaryOfficer)
+                    .map(officer => (
+                      <SelectItem key={officer.officer_id} value={officer.officer_id}>
+                        {officer.officer_name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Replacement when primary/secondary unavailable</p>
             </div>
 
             <div className="flex gap-2 pt-4">

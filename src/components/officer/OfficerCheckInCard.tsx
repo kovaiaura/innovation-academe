@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, MapPin, Loader2, AlertCircle, CheckCircle2, XCircle, Building2 } from 'lucide-react';
+import { Clock, MapPin, Loader2, AlertCircle, CheckCircle2, XCircle, Building2, Map } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCurrentLocation } from '@/utils/locationHelpers';
 import { toast } from 'sonner';
@@ -18,6 +18,8 @@ import {
   useCheckOut,
   useInstitutionGPSSettings,
 } from '@/hooks/useOfficerAttendance';
+import { LocationMapPreview } from './LocationMapPreview';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface OfficerCheckInCardProps {
   officerId: string;
@@ -29,6 +31,8 @@ export function OfficerCheckInCard({ officerId, institutionId, onStatusChange }:
   const { user } = useAuth();
   const [hoursWorked, setHoursWorked] = useState(0);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   // Fetch today's attendance
   const { data: todayAttendance, isLoading: isLoadingAttendance } = useOfficerTodayAttendance(
@@ -299,6 +303,31 @@ export function OfficerCheckInCard({ officerId, institutionId, onStatusChange }:
               </span>
             )}
           </div>
+        )}
+
+        {/* Visual Map */}
+        {institutionSettings?.gps_location && (
+          <Collapsible open={showMap} onOpenChange={setShowMap}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" size="sm" className="w-full">
+                <Map className="h-4 w-4 mr-2" />
+                {showMap ? 'Hide Location Map' : 'View Location Map'}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3">
+              <LocationMapPreview
+                institutionLatitude={institutionSettings.gps_location.latitude}
+                institutionLongitude={institutionSettings.gps_location.longitude}
+                institutionName={institutionSettings.name}
+                allowedRadius={institutionSettings.attendance_radius_meters}
+                officerLatitude={todayAttendance?.check_in_latitude ?? currentLocation?.latitude}
+                officerLongitude={todayAttendance?.check_in_longitude ?? currentLocation?.longitude}
+                officerDistance={todayAttendance?.check_in_distance_meters ?? undefined}
+                isValidated={todayAttendance?.check_in_validated ?? undefined}
+                showOfficerLocation={!!(todayAttendance?.check_in_latitude || currentLocation)}
+              />
+            </CollapsibleContent>
+          </Collapsible>
         )}
 
         {/* Action Buttons */}

@@ -28,6 +28,10 @@ export interface InstitutionTimetableAssignment {
   subject: string;
   teacher_id?: string;
   teacher_name?: string;
+  secondary_officer_id?: string;
+  secondary_officer_name?: string;
+  backup_officer_id?: string;
+  backup_officer_name?: string;
   room?: string;
   created_at: string;
   updated_at: string;
