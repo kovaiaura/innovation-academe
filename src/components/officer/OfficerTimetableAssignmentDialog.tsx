@@ -93,8 +93,8 @@ export function OfficerTimetableAssignmentDialog({
       subject: '',
       room: '',
       type: 'workshop',
-      batch: '',
-      course_id: '',
+      batch: 'none',
+      course_id: 'none',
       current_module_id: '',
     });
   };
@@ -111,8 +111,8 @@ export function OfficerTimetableAssignmentDialog({
         subject: existing.subject,
         room: existing.room,
         type: existing.type,
-        batch: existing.batch || '',
-        course_id: existing.course_id || '',
+        batch: existing.batch || 'none',
+        course_id: existing.course_id || 'none',
         current_module_id: existing.current_module_id || '',
       });
     } else {
@@ -142,8 +142,8 @@ export function OfficerTimetableAssignmentDialog({
       subject: formData.subject,
       room: formData.room,
       type: formData.type,
-      batch: formData.batch || undefined,
-      course_id: formData.course_id || undefined,
+      batch: formData.batch === 'none' ? undefined : formData.batch || undefined,
+      course_id: formData.course_id === 'none' ? undefined : formData.course_id || undefined,
       current_module_id: formData.current_module_id || undefined,
     };
 
@@ -346,7 +346,7 @@ export function OfficerTimetableAssignmentDialog({
                       <SelectValue placeholder="No batch" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No Batch</SelectItem>
+                      <SelectItem value="none">No Batch</SelectItem>
                       <SelectItem value="Batch A">Batch A</SelectItem>
                       <SelectItem value="Batch B">Batch B</SelectItem>
                       <SelectItem value="Batch C">Batch C</SelectItem>
@@ -360,7 +360,7 @@ export function OfficerTimetableAssignmentDialog({
                       <SelectValue placeholder="Select course" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No Course</SelectItem>
+                      <SelectItem value="none">No Course</SelectItem>
                       {mockCourses.slice(0, 5).map(course => (
                         <SelectItem key={course.id} value={course.id}>
                           {course.title}
