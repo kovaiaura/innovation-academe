@@ -14,6 +14,7 @@ import { CustomPosition, SystemAdminFeature } from '@/types/permissions';
 import { User } from '@/types';
 import { CreatePositionDialog } from '@/components/position/CreatePositionDialog';
 import { EditPositionDialog } from '@/components/position/EditPositionDialog';
+import { ApprovalHierarchyConfig } from '@/components/position/ApprovalHierarchyConfig';
 import { PositionCard } from '@/components/position/PositionCard';
 import {
   Dialog,
@@ -343,77 +344,82 @@ export default function PositionManagement() {
 
         {/* Selected Position Details */}
         {selectedPosition && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    {selectedPosition.is_ceo_position && <Crown className="h-5 w-5 text-yellow-600" />}
-                    {selectedPosition.display_name}
-                  </CardTitle>
-                  <CardDescription>{selectedPosition.description}</CardDescription>
+          <>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      {selectedPosition.is_ceo_position && <Crown className="h-5 w-5 text-yellow-600" />}
+                      {selectedPosition.display_name}
+                    </CardTitle>
+                    <CardDescription>{selectedPosition.description}</CardDescription>
+                  </div>
+                  <Button onClick={() => setIsAddUserDialogOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add User
+                  </Button>
                 </div>
-                <Button onClick={() => setIsAddUserDialogOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add User
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Assigned Users</span>
-                  <Badge>{positionUsers.length}</Badge>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Visible Menus</span>
-                  <Badge>{selectedPosition.visible_features.length}</Badge>
-                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Assigned Users</span>
+                    <Badge>{positionUsers.length}</Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Visible Menus</span>
+                    <Badge>{selectedPosition.visible_features.length}</Badge>
+                  </div>
 
-                <div className="space-y-2 pt-4 border-t">
-                  <h4 className="font-medium text-sm">Assigned Users</h4>
-                  {positionUsers.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">No users assigned</p>
-                  ) : (
-                    positionUsers.map((metaUser) => (
-                      <div
-                        key={metaUser.id}
-                        className="flex items-center justify-between p-3 border rounded-lg"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                            <Users className="h-5 w-5 text-primary" />
+                  <div className="space-y-2 pt-4 border-t">
+                    <h4 className="font-medium text-sm">Assigned Users</h4>
+                    {positionUsers.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">No users assigned</p>
+                    ) : (
+                      positionUsers.map((metaUser) => (
+                        <div
+                          key={metaUser.id}
+                          className="flex items-center justify-between p-3 border rounded-lg"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                              <Users className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{metaUser.name}</p>
+                              <p className="text-sm text-muted-foreground">{metaUser.email}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium">{metaUser.name}</p>
-                            <p className="text-sm text-muted-foreground">{metaUser.email}</p>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleResetPassword(metaUser.id, metaUser.name, metaUser.email)}
+                              title="Reset Password"
+                            >
+                              <Key className="h-4 w-4 text-primary" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteUser(metaUser.id)}
+                              title="Remove User"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleResetPassword(metaUser.id, metaUser.name, metaUser.email)}
-                            title="Reset Password"
-                          >
-                            <Key className="h-4 w-4 text-primary" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteUser(metaUser.id)}
-                            title="Remove User"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  )}
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            {/* Approval Hierarchy Config */}
+            <ApprovalHierarchyConfig position={selectedPosition} />
+          </>
         )}
       </div>
 

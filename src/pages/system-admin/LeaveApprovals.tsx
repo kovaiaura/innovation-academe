@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,219 +21,159 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LeaveApplication } from "@/types/attendance";
-import {
-  getAllLeaveApplications,
-  approveLeaveApplication,
-  rejectLeaveApplication,
-  updateTimetableSlotStatus,
-  addSubstituteSlot,
-} from "@/data/mockLeaveData";
-import { format } from "date-fns";
-import { Check, X, Eye, Search, Filter, Users } from "lucide-react";
-import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
-import { LeaveActionDialog } from "@/components/system-admin/LeaveActionDialog";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
-import { LeaveApprovalTimeline } from "@/components/officer/LeaveApprovalTimeline";
-import { useNotifications } from "@/hooks/useNotifications";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { leaveApplicationService } from "@/services/leave.service";
+import { LeaveApplication, LEAVE_TYPE_LABELS, LEAVE_STATUS_LABELS, LeaveStatus, LeaveType } from "@/types/leave";
+import { format, parseISO } from "date-fns";
+import { Check, X, Eye, Search, Filter, RefreshCw, Clock, CheckCircle, XCircle } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function LeaveApprovals() {
   const { user } = useAuth();
-  const { notifications, markAsRead } = useNotifications(user?.id || 'system_admin_001', 'system_admin');
-  const [applications, setApplications] = useState<LeaveApplication[]>([]);
-  const [filteredApplications, setFilteredApplications] = useState<LeaveApplication[]>([]);
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [leaveTypeFilter, setLeaveTypeFilter] = useState<string>("all");
   const [selectedApplication, setSelectedApplication] = useState<LeaveApplication | null>(null);
-  const [actionMode, setActionMode] = useState<"approve" | "reject" | null>(null);
-  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
+  const [actionMode, setActionMode] = useState<"approve" | "reject" | "view" | null>(null);
+  const [comments, setComments] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("");
 
-  useEffect(() => {
-    loadApplications();
+  const { data: applications = [], isLoading, refetch } = useQuery({
+    queryKey: ['leave-applications-all'],
+    queryFn: () => leaveApplicationService.getAllApplications()
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: ({ id, comments }: { id: string; comments?: string }) => 
+      leaveApplicationService.approveApplication(id, comments),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leave-applications-all'] });
+      toast.success('Leave application approved');
+      handleCloseDialog();
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    }
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => 
+      leaveApplicationService.rejectApplication(id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leave-applications-all'] });
+      toast.success('Leave application rejected');
+      handleCloseDialog();
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    }
+  });
+
+  const filteredApplications = applications.filter(app => {
+    const matchesSearch = searchTerm === "" || 
+      app.applicant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      app.institution_name?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Mark leave-related notifications as read when visiting this page
-    notifications
-      .filter(n => !n.read && n.type === 'leave_application_submitted')
-      .forEach(n => markAsRead(n.id));
-  }, []);
+    const matchesStatus = statusFilter === "all" || app.status === statusFilter;
+    const matchesType = leaveTypeFilter === "all" || app.leave_type === leaveTypeFilter;
+    
+    return matchesSearch && matchesStatus && matchesType;
+  });
 
-  useEffect(() => {
-    filterApplications();
-  }, [applications, searchTerm, statusFilter, leaveTypeFilter]);
+  const pendingApplications = filteredApplications.filter(app => app.status === "pending");
+  const historyApplications = filteredApplications.filter(app => app.status !== "pending");
 
-  const loadApplications = () => {
-    const allApps = getAllLeaveApplications();
-    setApplications(allApps);
-  };
-
-  const filterApplications = () => {
-    let filtered = [...applications];
-
-    // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (app) =>
-          app.officer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          app.institution_name?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Filter by status
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((app) => app.status === statusFilter);
-    }
-
-    // Filter by leave type
-    if (leaveTypeFilter !== "all") {
-      filtered = filtered.filter((app) => app.leave_type === leaveTypeFilter);
-    }
-
-    setFilteredApplications(filtered);
-  };
-
-  const handleApprove = (application: LeaveApplication) => {
-    setSelectedApplication(application);
+  const handleApprove = (app: LeaveApplication) => {
+    setSelectedApplication(app);
     setActionMode("approve");
+    setComments("");
   };
 
-  const handleReject = (application: LeaveApplication) => {
-    setSelectedApplication(application);
+  const handleReject = (app: LeaveApplication) => {
+    setSelectedApplication(app);
     setActionMode("reject");
+    setRejectionReason("");
   };
 
-  const handleViewDetails = (application: LeaveApplication) => {
-    setSelectedApplication(application);
-    setViewDetailsOpen(true);
+  const handleViewDetails = (app: LeaveApplication) => {
+    setSelectedApplication(app);
+    setActionMode("view");
   };
 
-  const handleConfirmAction = (comments?: string, rejectionReason?: string) => {
-    if (!selectedApplication || !user) return;
+  const handleCloseDialog = () => {
+    setSelectedApplication(null);
+    setActionMode(null);
+    setComments("");
+    setRejectionReason("");
+  };
 
-    try {
-      if (actionMode === "approve") {
-        // Get current balance and deduct leave
-        const currentYear = new Date().getFullYear().toString();
-        const { getLeaveBalance, initializeLeaveBalance } = require('@/data/mockLeaveData');
-        const balance = getLeaveBalance(selectedApplication.officer_id, currentYear);
+  const handleConfirmAction = () => {
+    if (!selectedApplication) return;
 
-        // Deduct based on leave type
-        const updatedBalance = { ...balance };
-        switch (selectedApplication.leave_type) {
-          case 'casual':
-            updatedBalance.casual_leave -= selectedApplication.total_days;
-            break;
-          case 'sick':
-            updatedBalance.sick_leave -= selectedApplication.total_days;
-            break;
-          case 'earned':
-            updatedBalance.earned_leave -= selectedApplication.total_days;
-            break;
-        }
-
-        // Save updated balance
-        initializeLeaveBalance(updatedBalance);
-
-        approveLeaveApplication(selectedApplication.id, user.name, comments);
-        
-        // Update timetables and notify substitutes
-        if (selectedApplication.substitute_assignments) {
-          selectedApplication.substitute_assignments.forEach(assignment => {
-            // Mark original officer's slot as ON_LEAVE
-            updateTimetableSlotStatus(
-              assignment.original_officer_id,
-              assignment.slot_id,
-              'on_leave',
-              selectedApplication.id
-            );
-            
-            // Add substitute slot to substitute officer's timetable
-            addSubstituteSlot(
-              assignment.substitute_officer_id,
-              assignment,
-              selectedApplication
-            );
-          });
-
-          // Send notifications to substitutes
-          const uniqueSubstitutes = [...new Set(
-            selectedApplication.substitute_assignments.map(a => a.substitute_officer_id)
-          )];
-          
-          const { createNotification } = require('@/hooks/useNotifications');
-          uniqueSubstitutes.forEach(subId => {
-            const assignments = selectedApplication.substitute_assignments?.filter(
-              a => a.substitute_officer_id === subId
-            ) || [];
-            
-            createNotification(
-              subId,
-              'officer',
-              'substitute_assignment',
-              'New Substitute Assignment',
-              `You have been assigned to substitute for ${selectedApplication.officer_name} (${assignments.length} class${assignments.length > 1 ? 'es' : ''})`,
-              '/officer/schedule',
-              {
-                leave_application_id: selectedApplication.id,
-                original_officer_id: selectedApplication.officer_id,
-                class_count: assignments.length
-              }
-            );
-          });
-        }
-        
-        toast.success(`Leave approved. ${selectedApplication.total_days} ${selectedApplication.leave_type} days deducted from balance.`);
-      } else if (actionMode === "reject") {
-        rejectLeaveApplication(selectedApplication.id, user.name, rejectionReason!);
-        toast.success("Leave application rejected");
+    if (actionMode === "approve") {
+      approveMutation.mutate({ id: selectedApplication.id, comments });
+    } else if (actionMode === "reject") {
+      if (!rejectionReason.trim()) {
+        toast.error('Please provide a rejection reason');
+        return;
       }
-
-      loadApplications();
-      setActionMode(null);
-      setSelectedApplication(null);
-    } catch (error) {
-      toast.error("Failed to process leave application");
+      rejectMutation.mutate({ id: selectedApplication.id, reason: rejectionReason });
     }
   };
 
-  const pendingApplications = applications.filter((app) => app.status === "pending");
-  const historyApplications = applications.filter((app) => app.status !== "pending");
-
-  const leaveTypeLabels = {
-    sick: "Sick Leave",
-    casual: "Casual Leave",
-    earned: "Earned Leave",
-  };
-
-  const getStatusBadge = (status: LeaveApplication["status"]) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  const getStatusBadge = (status: LeaveStatus) => {
+    const variants: Record<LeaveStatus, "default" | "secondary" | "destructive" | "outline"> = {
       pending: "secondary",
       approved: "default",
       rejected: "destructive",
       cancelled: "outline",
     };
     
+    const icons = {
+      pending: <Clock className="h-3 w-3 mr-1" />,
+      approved: <CheckCircle className="h-3 w-3 mr-1" />,
+      rejected: <XCircle className="h-3 w-3 mr-1" />,
+      cancelled: <X className="h-3 w-3 mr-1" />,
+    };
+    
     return (
-      <Badge variant={variants[status]}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+      <Badge variant={variants[status]} className="flex items-center w-fit">
+        {icons[status]}
+        {LEAVE_STATUS_LABELS[status]}
       </Badge>
     );
+  };
+
+  const stats = {
+    pending: applications.filter(a => a.status === 'pending').length,
+    approved: applications.filter(a => a.status === 'approved').length,
+    rejected: applications.filter(a => a.status === 'rejected').length,
   };
 
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Leave Approvals</h1>
-          <p className="text-muted-foreground">
-            Review and manage leave applications from officers
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Leave Approvals</h1>
+            <p className="text-muted-foreground">
+              Review and manage leave applications
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
         </div>
 
         {/* Stats */}
@@ -242,29 +183,23 @@ export default function LeaveApprovals() {
               <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">
-                {pendingApplications.length}
-              </div>
+              <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Approved This Month</CardTitle>
+              <CardTitle className="text-sm font-medium">Approved</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {historyApplications.filter((app) => app.status === "approved").length}
-              </div>
+              <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Rejected This Month</CardTitle>
+              <CardTitle className="text-sm font-medium">Rejected</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {historyApplications.filter((app) => app.status === "rejected").length}
-              </div>
+              <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
             </CardContent>
           </Card>
         </div>
@@ -282,7 +217,7 @@ export default function LeaveApprovals() {
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by officer or institution..."
+                  placeholder="Search by name or institution..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
@@ -307,7 +242,6 @@ export default function LeaveApprovals() {
                   <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="sick">Sick Leave</SelectItem>
                   <SelectItem value="casual">Casual Leave</SelectItem>
-                  <SelectItem value="earned">Earned Leave</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -327,64 +261,53 @@ export default function LeaveApprovals() {
 
           <TabsContent value="pending">
             <Card>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Officer</TableHead>
-                    <TableHead>Institution</TableHead>
-                    <TableHead>Date Range</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Days</TableHead>
-                    <TableHead>Applied On</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredApplications.filter((app) => app.status === "pending").length === 0 ? (
+              {isLoading ? (
+                <div className="text-center py-8 text-muted-foreground">Loading...</div>
+              ) : (
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                        No pending applications found
-                      </TableCell>
+                      <TableHead>Applicant</TableHead>
+                      <TableHead>Institution</TableHead>
+                      <TableHead>Date Range</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Days</TableHead>
+                      <TableHead>Applied On</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ) : (
-                    filteredApplications
-                      .filter((app) => app.status === "pending")
-                      .map((app) => (
+                  </TableHeader>
+                  <TableBody>
+                    {pendingApplications.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          No pending applications
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      pendingApplications.map((app) => (
                         <TableRow key={app.id}>
-                          <TableCell className="font-medium">{app.officer_name}</TableCell>
-                          <TableCell>{app.institution_name || "N/A"}</TableCell>
+                          <TableCell className="font-medium">{app.applicant_name}</TableCell>
+                          <TableCell>{app.institution_name || "-"}</TableCell>
                           <TableCell>
-                            {format(new Date(app.start_date), "PP")} - {format(new Date(app.end_date), "PP")}
+                            {format(parseISO(app.start_date), "PP")} - {format(parseISO(app.end_date), "PP")}
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline">{leaveTypeLabels[app.leave_type]}</Badge>
+                            <Badge variant="outline">{LEAVE_TYPE_LABELS[app.leave_type]}</Badge>
                           </TableCell>
                           <TableCell>{app.total_days}</TableCell>
-                          <TableCell>{format(new Date(app.applied_at), "PP")}</TableCell>
+                          <TableCell>{format(parseISO(app.applied_at), "PP")}</TableCell>
                           <TableCell>{getStatusBadge(app.status)}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleViewDetails(app)}
-                              >
+                              <Button size="sm" variant="ghost" onClick={() => handleViewDetails(app)}>
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={() => handleApprove(app)}
-                              >
+                              <Button size="sm" variant="default" onClick={() => handleApprove(app)}>
                                 <Check className="h-4 w-4 mr-1" />
                                 Approve
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleReject(app)}
-                              >
+                              <Button size="sm" variant="destructive" onClick={() => handleReject(app)}>
                                 <X className="h-4 w-4 mr-1" />
                                 Reject
                               </Button>
@@ -392,9 +315,10 @@ export default function LeaveApprovals() {
                           </TableCell>
                         </TableRow>
                       ))
-                  )}
-                </TableBody>
-              </Table>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
             </Card>
           </TabsContent>
 
@@ -403,7 +327,7 @@ export default function LeaveApprovals() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Officer</TableHead>
+                    <TableHead>Applicant</TableHead>
                     <TableHead>Institution</TableHead>
                     <TableHead>Date Range</TableHead>
                     <TableHead>Type</TableHead>
@@ -415,40 +339,34 @@ export default function LeaveApprovals() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredApplications.filter((app) => app.status !== "pending").length === 0 ? (
+                  {historyApplications.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                         No history found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredApplications
-                      .filter((app) => app.status !== "pending")
-                      .map((app) => (
-                        <TableRow key={app.id}>
-                          <TableCell className="font-medium">{app.officer_name}</TableCell>
-                          <TableCell>{app.institution_name || "N/A"}</TableCell>
-                          <TableCell>
-                            {format(new Date(app.start_date), "PP")} - {format(new Date(app.end_date), "PP")}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{leaveTypeLabels[app.leave_type]}</Badge>
-                          </TableCell>
-                          <TableCell>{app.total_days}</TableCell>
-                          <TableCell>{format(new Date(app.applied_at), "PP")}</TableCell>
-                          <TableCell>{getStatusBadge(app.status)}</TableCell>
-                          <TableCell>{app.reviewed_by || "N/A"}</TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleViewDetails(app)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                    historyApplications.map((app) => (
+                      <TableRow key={app.id}>
+                        <TableCell className="font-medium">{app.applicant_name}</TableCell>
+                        <TableCell>{app.institution_name || "-"}</TableCell>
+                        <TableCell>
+                          {format(parseISO(app.start_date), "PP")} - {format(parseISO(app.end_date), "PP")}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{LEAVE_TYPE_LABELS[app.leave_type]}</Badge>
+                        </TableCell>
+                        <TableCell>{app.total_days}</TableCell>
+                        <TableCell>{format(parseISO(app.applied_at), "PP")}</TableCell>
+                        <TableCell>{getStatusBadge(app.status)}</TableCell>
+                        <TableCell>{app.final_approved_by_name || app.rejected_by_name || "-"}</TableCell>
+                        <TableCell className="text-right">
+                          <Button size="sm" variant="ghost" onClick={() => handleViewDetails(app)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
                   )}
                 </TableBody>
               </Table>
@@ -458,96 +376,132 @@ export default function LeaveApprovals() {
       </div>
 
       {/* Action Dialog */}
-      <LeaveActionDialog
-        application={selectedApplication}
-        mode={actionMode}
-        open={!!actionMode}
-        onOpenChange={(open) => {
-          if (!open) {
-            setActionMode(null);
-            setSelectedApplication(null);
-          }
-        }}
-        onConfirm={handleConfirmAction}
-      />
-
-      {/* View Details Dialog */}
-      <Dialog open={viewDetailsOpen} onOpenChange={setViewDetailsOpen}>
-        <DialogContent className="max-w-2xl">
+      <Dialog open={actionMode !== null} onOpenChange={() => handleCloseDialog()}>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Leave Application Details</DialogTitle>
+            <DialogTitle>
+              {actionMode === "approve" && "Approve Leave Application"}
+              {actionMode === "reject" && "Reject Leave Application"}
+              {actionMode === "view" && "Leave Application Details"}
+            </DialogTitle>
           </DialogHeader>
+          
           {selectedApplication && (
-            <div className="space-y-6">
+            <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Officer</p>
-                  <p className="font-medium">{selectedApplication.officer_name}</p>
+                  <Label className="text-muted-foreground text-sm">Applicant</Label>
+                  <p className="font-medium">{selectedApplication.applicant_name}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Institution</p>
-                  <p className="font-medium">{selectedApplication.institution_name || "N/A"}</p>
+                  <Label className="text-muted-foreground text-sm">Position</Label>
+                  <p className="font-medium">{selectedApplication.position_name || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Leave Type</p>
-                  <Badge variant="outline">{leaveTypeLabels[selectedApplication.leave_type]}</Badge>
+                  <Label className="text-muted-foreground text-sm">Leave Type</Label>
+                  <p className="font-medium">{LEAVE_TYPE_LABELS[selectedApplication.leave_type]}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Days</p>
-                  <p className="font-medium">{selectedApplication.total_days} days</p>
+                  <Label className="text-muted-foreground text-sm">Total Days</Label>
+                  <p className="font-medium">{selectedApplication.total_days}</p>
                 </div>
-                <div className="col-span-2">
-                  <p className="text-sm text-muted-foreground">Date Range</p>
-                  <p className="font-medium">
-                    {format(new Date(selectedApplication.start_date), "PPP")} - {format(new Date(selectedApplication.end_date), "PPP")}
-                  </p>
+                <div>
+                  <Label className="text-muted-foreground text-sm">From</Label>
+                  <p className="font-medium">{format(parseISO(selectedApplication.start_date), "PPP")}</p>
                 </div>
-                <div className="col-span-2">
-                  <p className="text-sm text-muted-foreground">Reason</p>
-                  <p className="mt-1">{selectedApplication.reason}</p>
+                <div>
+                  <Label className="text-muted-foreground text-sm">To</Label>
+                  <p className="font-medium">{format(parseISO(selectedApplication.end_date), "PPP")}</p>
                 </div>
               </div>
+              
+              <div>
+                <Label className="text-muted-foreground text-sm">Reason</Label>
+                <p className="font-medium">{selectedApplication.reason}</p>
+              </div>
 
-              {/* Show substitute assignments */}
-              {selectedApplication.substitute_assignments && selectedApplication.substitute_assignments.length > 0 && (
-                <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Substitute Assignments ({selectedApplication.substitute_assignments.length} classes)
-                  </h4>
-                  <div className="space-y-2">
-                    {selectedApplication.substitute_assignments.map((assignment, idx) => {
-                      const slot = selectedApplication.affected_slots?.find(s => s.slot_id === assignment.slot_id);
-                      return (
-                        <div key={idx} className="text-sm p-3 bg-white dark:bg-background rounded border">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-medium">{slot?.subject}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {slot?.day}, {assignment.date} • {slot?.start_time}-{slot?.end_time}
-                              </p>
-                              <p className="text-xs text-muted-foreground">{slot?.class} • {slot?.room}</p>
-                            </div>
-                            <div className="text-right">
-                              <Badge className="bg-purple-100 text-purple-800">
-                                {assignment.substitute_officer_name}
-                              </Badge>
-                              <p className="text-xs text-muted-foreground mt-1">{assignment.hours}h</p>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+              {selectedApplication.is_lop && (
+                <div className="p-3 bg-yellow-500/10 rounded-lg">
+                  <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                    ⚠️ This leave includes {selectedApplication.lop_days} LOP (Loss of Pay) days
+                  </p>
+                </div>
+              )}
+
+              {/* Approval Chain */}
+              {selectedApplication.approval_chain.length > 0 && (
+                <div>
+                  <Label className="text-muted-foreground text-sm">Approval Chain</Label>
+                  <div className="mt-2 space-y-2">
+                    {selectedApplication.approval_chain.map((step, index) => (
+                      <div key={index} className="flex items-center gap-2 text-sm">
+                        <Badge variant={
+                          step.status === 'approved' ? 'default' :
+                          step.status === 'rejected' ? 'destructive' :
+                          'secondary'
+                        }>
+                          {step.order}
+                        </Badge>
+                        <span>Level {step.order}</span>
+                        {step.approved_by_name && (
+                          <span className="text-muted-foreground">({step.approved_by_name})</span>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
 
-              <div>
-                <h4 className="font-semibold mb-4">Approval Timeline</h4>
-                <LeaveApprovalTimeline application={selectedApplication} />
-              </div>
+              {actionMode === "approve" && (
+                <div className="space-y-2">
+                  <Label>Comments (Optional)</Label>
+                  <Textarea
+                    value={comments}
+                    onChange={(e) => setComments(e.target.value)}
+                    placeholder="Add any comments..."
+                    rows={3}
+                  />
+                </div>
+              )}
+
+              {actionMode === "reject" && (
+                <div className="space-y-2">
+                  <Label>Rejection Reason *</Label>
+                  <Textarea
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="Please provide a reason for rejection..."
+                    rows={3}
+                  />
+                </div>
+              )}
             </div>
           )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseDialog}>
+              {actionMode === "view" ? "Close" : "Cancel"}
+            </Button>
+            {actionMode === "approve" && (
+              <Button 
+                onClick={handleConfirmAction}
+                disabled={approveMutation.isPending}
+              >
+                <Check className="h-4 w-4 mr-1" />
+                Approve
+              </Button>
+            )}
+            {actionMode === "reject" && (
+              <Button 
+                variant="destructive"
+                onClick={handleConfirmAction}
+                disabled={rejectMutation.isPending}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Reject
+              </Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </Layout>
