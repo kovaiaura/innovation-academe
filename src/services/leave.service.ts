@@ -1,0 +1,433 @@
+import { supabase } from '@/integrations/supabase/client';
+import { 
+  LeaveApplication, 
+  LeaveBalance, 
+  CalculatedLeaveBalance,
+  LeaveApprovalHierarchy,
+  CreateLeaveApplicationInput,
+  ApprovalHierarchyInput,
+  ApprovalChainItem,
+  LeaveType,
+  LeaveStatus,
+  UserType,
+  MAX_LEAVES_PER_MONTH,
+  SubstituteAssignment
+} from '@/types/leave';
+import { format, parseISO, eachDayOfInterval, isWeekend } from 'date-fns';
+
+// Helper to safely parse JSON fields
+const parseApprovalChain = (data: unknown): ApprovalChainItem[] => {
+  if (Array.isArray(data)) return data as ApprovalChainItem[];
+  return [];
+};
+
+const parseSubstituteAssignments = (data: unknown): SubstituteAssignment[] => {
+  if (Array.isArray(data)) return data as SubstituteAssignment[];
+  return [];
+};
+
+// =============================================
+// LEAVE BALANCE SERVICE
+// =============================================
+
+export const leaveBalanceService = {
+  getBalance: async (userId: string, year: number, month: number): Promise<CalculatedLeaveBalance | null> => {
+    const { data, error } = await supabase.rpc('get_leave_balance', {
+      p_user_id: userId,
+      p_year: year,
+      p_month: month
+    });
+
+    if (error) throw error;
+    return data?.[0] || null;
+  },
+
+  getYearlyBalances: async (userId: string, year: number): Promise<LeaveBalance[]> => {
+    const { data, error } = await supabase
+      .from('leave_balances')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('year', year)
+      .order('month', { ascending: true });
+
+    if (error) throw error;
+    return (data || []).map(b => ({
+      ...b,
+      user_type: b.user_type as UserType
+    }));
+  },
+
+  initializeBalance: async (userId: string, userType: UserType, officerId: string | null, year: number, month: number): Promise<string> => {
+    const { data, error } = await supabase.rpc('initialize_leave_balance', {
+      p_user_id: userId,
+      p_user_type: userType,
+      p_officer_id: officerId,
+      p_year: year,
+      p_month: month
+    });
+
+    if (error) throw error;
+    return data;
+  },
+
+  getAllBalances: async (year: number, month: number): Promise<LeaveBalance[]> => {
+    const { data, error } = await supabase
+      .from('leave_balances')
+      .select('*')
+      .eq('year', year)
+      .eq('month', month);
+
+    if (error) throw error;
+    return (data || []).map(b => ({
+      ...b,
+      user_type: b.user_type as UserType
+    }));
+  }
+};
+
+// =============================================
+// LEAVE APPLICATION SERVICE
+// =============================================
+
+export const leaveApplicationService = {
+  calculateWorkingDays: (startDate: string, endDate: string): number => {
+    const start = parseISO(startDate);
+    const end = parseISO(endDate);
+    const days = eachDayOfInterval({ start, end });
+    return days.filter(day => !isWeekend(day)).length;
+  },
+
+  getApprovalChain: async (applicantType: UserType, applicantPositionId?: string | null): Promise<LeaveApprovalHierarchy[]> => {
+    let query = supabase
+      .from('leave_approval_hierarchy')
+      .select('*')
+      .eq('applicant_type', applicantType)
+      .order('approval_order', { ascending: true });
+
+    if (applicantType === 'staff' && applicantPositionId) {
+      query = query.eq('applicant_position_id', applicantPositionId);
+    } else if (applicantType === 'officer') {
+      query = query.is('applicant_position_id', null);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []).map(h => ({
+      ...h,
+      applicant_type: h.applicant_type as UserType
+    }));
+  },
+
+  applyLeave: async (input: CreateLeaveApplicationInput): Promise<LeaveApplication> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) throw profileError;
+
+    // Check if user is an officer
+    const { data: officer } = await supabase
+      .from('officers')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    const isOfficer = !!officer;
+    const applicantType: UserType = isOfficer ? 'officer' : 'staff';
+    const totalDays = leaveApplicationService.calculateWorkingDays(input.start_date, input.end_date);
+
+    // Get approval chain
+    const hierarchyChain = await leaveApplicationService.getApprovalChain(
+      applicantType, 
+      applicantType === 'staff' ? profile.position_id : null
+    );
+
+    const approvalChain: ApprovalChainItem[] = [];
+    for (const h of hierarchyChain) {
+      const { data: position } = await supabase
+        .from('positions')
+        .select('position_name, display_name')
+        .eq('id', h.approver_position_id)
+        .single();
+
+      approvalChain.push({
+        position_id: h.approver_position_id,
+        position_name: position?.display_name || position?.position_name || 'Unknown',
+        order: h.approval_order,
+        status: 'pending'
+      });
+    }
+
+    // Calculate balance and LOP
+    const startMonth = parseInt(format(parseISO(input.start_date), 'M'));
+    const startYear = parseInt(format(parseISO(input.start_date), 'yyyy'));
+    const balance = await leaveBalanceService.getBalance(user.id, startYear, startMonth);
+    
+    let paidDays = totalDays;
+    let lopDays = 0;
+    let isLop = false;
+
+    if (balance) {
+      const available = Math.min(balance.balance_remaining, MAX_LEAVES_PER_MONTH - balance.total_used);
+      if (totalDays > available) {
+        paidDays = Math.max(available, 0);
+        lopDays = totalDays - paidDays;
+        isLop = lopDays > 0;
+      }
+    }
+
+    let institutionId = profile.institution_id;
+    let institutionName: string | null = null;
+
+    if (isOfficer && officer?.assigned_institutions?.[0]) {
+      institutionId = officer.assigned_institutions[0];
+      const { data: inst } = await supabase
+        .from('institutions')
+        .select('name')
+        .eq('id', institutionId)
+        .single();
+      institutionName = inst?.name || null;
+    }
+
+    const { data, error } = await supabase
+      .from('leave_applications')
+      .insert({
+        applicant_id: user.id,
+        applicant_name: profile.name,
+        applicant_type: applicantType,
+        officer_id: officer?.id || null,
+        institution_id: institutionId,
+        institution_name: institutionName,
+        position_id: profile.position_id,
+        position_name: profile.position_name,
+        start_date: input.start_date,
+        end_date: input.end_date,
+        leave_type: input.leave_type,
+        reason: input.reason,
+        total_days: totalDays,
+        is_lop: isLop,
+        lop_days: lopDays,
+        paid_days: paidDays,
+        approval_chain: approvalChain as unknown as Record<string, unknown>[],
+        substitute_assignments: (input.substitute_assignments || []) as unknown as Record<string, unknown>[]
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return {
+      ...data,
+      leave_type: data.leave_type as LeaveType,
+      status: data.status as LeaveStatus,
+      applicant_type: data.applicant_type as UserType,
+      approval_chain: parseApprovalChain(data.approval_chain),
+      substitute_assignments: parseSubstituteAssignments(data.substitute_assignments)
+    };
+  },
+
+  getMyApplications: async (): Promise<LeaveApplication[]> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from('leave_applications')
+      .select('*')
+      .eq('applicant_id', user.id)
+      .order('applied_at', { ascending: false });
+
+    if (error) throw error;
+    return (data || []).map(app => ({
+      ...app,
+      leave_type: app.leave_type as LeaveType,
+      status: app.status as LeaveStatus,
+      applicant_type: app.applicant_type as UserType,
+      approval_chain: parseApprovalChain(app.approval_chain),
+      substitute_assignments: parseSubstituteAssignments(app.substitute_assignments)
+    }));
+  },
+
+  getPendingApplications: async (): Promise<LeaveApplication[]> => {
+    const { data, error } = await supabase
+      .from('leave_applications')
+      .select('*')
+      .eq('status', 'pending')
+      .order('applied_at', { ascending: true });
+
+    if (error) throw error;
+    return (data || []).map(app => ({
+      ...app,
+      leave_type: app.leave_type as LeaveType,
+      status: app.status as LeaveStatus,
+      applicant_type: app.applicant_type as UserType,
+      approval_chain: parseApprovalChain(app.approval_chain),
+      substitute_assignments: parseSubstituteAssignments(app.substitute_assignments)
+    }));
+  },
+
+  getAllApplications: async (filters?: { status?: LeaveStatus; year?: number; applicantType?: UserType }): Promise<LeaveApplication[]> => {
+    let query = supabase.from('leave_applications').select('*').order('applied_at', { ascending: false });
+
+    if (filters?.status) query = query.eq('status', filters.status);
+    if (filters?.year) query = query.gte('start_date', `${filters.year}-01-01`).lte('start_date', `${filters.year}-12-31`);
+    if (filters?.applicantType) query = query.eq('applicant_type', filters.applicantType);
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []).map(app => ({
+      ...app,
+      leave_type: app.leave_type as LeaveType,
+      status: app.status as LeaveStatus,
+      applicant_type: app.applicant_type as UserType,
+      approval_chain: parseApprovalChain(app.approval_chain),
+      substitute_assignments: parseSubstituteAssignments(app.substitute_assignments)
+    }));
+  },
+
+  approveApplication: async (id: string, comments?: string): Promise<LeaveApplication> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data: profile } = await supabase.from('profiles').select('name, position_id').eq('id', user.id).single();
+    const { data: app, error: appError } = await supabase.from('leave_applications').select('*').eq('id', id).single();
+    if (appError) throw appError;
+
+    const approvalChain = parseApprovalChain(app.approval_chain);
+    const currentLevel = app.current_approval_level;
+
+    const updatedChain = approvalChain.map(a => {
+      if (a.order === currentLevel) {
+        return { ...a, status: 'approved' as const, approved_by: user.id, approved_by_name: profile?.name || 'Unknown', approved_at: new Date().toISOString(), comments };
+      }
+      return a;
+    });
+
+    const nextLevel = approvalChain.find(a => a.order === currentLevel + 1);
+    const isFinalApproval = !nextLevel;
+
+    const updateData: Record<string, unknown> = {
+      approval_chain: updatedChain as unknown as Record<string, unknown>[],
+      current_approval_level: isFinalApproval ? currentLevel : currentLevel + 1
+    };
+
+    if (isFinalApproval) {
+      updateData.status = 'approved';
+      updateData.final_approved_by = user.id;
+      updateData.final_approved_by_name = profile?.name;
+      updateData.final_approved_at = new Date().toISOString();
+    }
+
+    const { data, error } = await supabase.from('leave_applications').update(updateData).eq('id', id).select().single();
+    if (error) throw error;
+
+    return {
+      ...data,
+      leave_type: data.leave_type as LeaveType,
+      status: data.status as LeaveStatus,
+      applicant_type: data.applicant_type as UserType,
+      approval_chain: parseApprovalChain(data.approval_chain),
+      substitute_assignments: parseSubstituteAssignments(data.substitute_assignments)
+    };
+  },
+
+  rejectApplication: async (id: string, reason: string): Promise<LeaveApplication> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data: profile } = await supabase.from('profiles').select('name').eq('id', user.id).single();
+    const { data: app, error: appError } = await supabase.from('leave_applications').select('*').eq('id', id).single();
+    if (appError) throw appError;
+
+    const approvalChain = parseApprovalChain(app.approval_chain);
+    const currentLevel = app.current_approval_level;
+
+    const updatedChain = approvalChain.map(a => {
+      if (a.order === currentLevel) {
+        return { ...a, status: 'rejected' as const, approved_by: user.id, approved_by_name: profile?.name || 'Unknown', approved_at: new Date().toISOString(), comments: reason };
+      }
+      return a;
+    });
+
+    const { data, error } = await supabase
+      .from('leave_applications')
+      .update({
+        status: 'rejected',
+        approval_chain: updatedChain as unknown as Record<string, unknown>[],
+        rejection_reason: reason,
+        rejected_by: user.id,
+        rejected_by_name: profile?.name,
+        rejected_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return {
+      ...data,
+      leave_type: data.leave_type as LeaveType,
+      status: data.status as LeaveStatus,
+      applicant_type: data.applicant_type as UserType,
+      approval_chain: parseApprovalChain(data.approval_chain),
+      substitute_assignments: parseSubstituteAssignments(data.substitute_assignments)
+    };
+  },
+
+  cancelApplication: async (id: string): Promise<void> => {
+    const { error } = await supabase.from('leave_applications').update({ status: 'cancelled' }).eq('id', id);
+    if (error) throw error;
+  }
+};
+
+// =============================================
+// LEAVE APPROVAL HIERARCHY SERVICE
+// =============================================
+
+export const approvalHierarchyService = {
+  getAll: async (): Promise<LeaveApprovalHierarchy[]> => {
+    const { data, error } = await supabase.from('leave_approval_hierarchy').select('*').order('applicant_type').order('approval_order');
+    if (error) throw error;
+    return (data || []).map(h => ({ ...h, applicant_type: h.applicant_type as UserType }));
+  },
+
+  create: async (input: ApprovalHierarchyInput): Promise<LeaveApprovalHierarchy> => {
+    const { data, error } = await supabase.from('leave_approval_hierarchy').insert(input).select().single();
+    if (error) throw error;
+    return { ...data, applicant_type: data.applicant_type as UserType };
+  },
+
+  update: async (id: string, input: Partial<ApprovalHierarchyInput>): Promise<LeaveApprovalHierarchy> => {
+    const { data, error } = await supabase.from('leave_approval_hierarchy').update(input).eq('id', id).select().single();
+    if (error) throw error;
+    return { ...data, applicant_type: data.applicant_type as UserType };
+  },
+
+  delete: async (id: string): Promise<void> => {
+    const { error } = await supabase.from('leave_approval_hierarchy').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  setHierarchy: async (applicantType: UserType, positionId: string | null, approvers: { positionId: string; order: number; isFinal: boolean }[]): Promise<void> => {
+    let deleteQuery = supabase.from('leave_approval_hierarchy').delete().eq('applicant_type', applicantType);
+    if (applicantType === 'staff' && positionId) deleteQuery = deleteQuery.eq('applicant_position_id', positionId);
+    else if (applicantType === 'officer') deleteQuery = deleteQuery.is('applicant_position_id', null);
+    await deleteQuery;
+
+    if (approvers.length > 0) {
+      const { error } = await supabase.from('leave_approval_hierarchy').insert(
+        approvers.map(a => ({
+          applicant_type: applicantType,
+          applicant_position_id: applicantType === 'staff' ? positionId : null,
+          approver_position_id: a.positionId,
+          approval_order: a.order,
+          is_final_approver: a.isFinal
+        }))
+      );
+      if (error) throw error;
+    }
+  }
+};
