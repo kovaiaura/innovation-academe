@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { getContentSignedUrl } from '@/services/courseStorage.service';
 import { PDFViewer } from '@/components/content-viewer/PDFViewer';
+import { FullscreenWrapper } from '@/components/content-viewer/FullscreenWrapper';
 
 interface ContentItem {
   id: string;
@@ -236,13 +237,15 @@ export function LMSCourseViewer({ course, modules, viewOnly = false, backPath }:
       case 'youtube':
         const youtubeId = extractYouTubeId(contentUrl);
         return youtubeId ? (
-          <iframe
-            src={`https://www.youtube.com/embed/${youtubeId}?rel=0`}
-            className="w-full h-full rounded-lg"
-            allowFullScreen
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            title={selectedContent.title}
-          />
+          <FullscreenWrapper className="w-full h-full">
+            <iframe
+              src={`https://www.youtube.com/embed/${youtubeId}?rel=0`}
+              className="w-full h-full rounded-lg"
+              allowFullScreen
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              title={selectedContent.title}
+            />
+          </FullscreenWrapper>
         ) : (
           <div className="flex items-center justify-center h-full text-destructive">
             Invalid YouTube URL
@@ -251,13 +254,15 @@ export function LMSCourseViewer({ course, modules, viewOnly = false, backPath }:
 
       case 'video':
         return contentUrl ? (
-          <video
-            controls
-            className="w-full h-full rounded-lg bg-black"
-            src={contentUrl}
-          >
-            Your browser does not support the video tag.
-          </video>
+          <FullscreenWrapper className="w-full h-full">
+            <video
+              controls
+              className="w-full h-full rounded-lg bg-black"
+              src={contentUrl}
+            >
+              Your browser does not support the video tag.
+            </video>
+          </FullscreenWrapper>
         ) : (
           <div className="flex items-center justify-center h-full text-destructive">
             Video not available

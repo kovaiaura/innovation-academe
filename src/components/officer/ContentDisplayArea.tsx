@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import type { CourseContent, CourseModule } from '@/types/course';
+import { FullscreenWrapper } from '@/components/content-viewer/FullscreenWrapper';
 
 interface ContentDisplayAreaProps {
   content: CourseContent | undefined;
@@ -136,30 +137,30 @@ export function ContentDisplayArea({
 
       case 'video':
         return (
-          <div className="w-full aspect-video bg-black rounded-lg">
+          <FullscreenWrapper className="w-full aspect-video">
             <video
               ref={videoRef}
               src={content.file_url}
               controls
-              className="w-full h-full rounded-lg"
+              className="w-full h-full rounded-lg bg-black"
             >
               Your browser does not support video playback.
             </video>
-          </div>
+          </FullscreenWrapper>
         );
 
       case 'youtube':
         const videoId = extractYouTubeId(content.youtube_url || '');
         return (
-          <div className="w-full aspect-video bg-black rounded-lg">
+          <FullscreenWrapper className="w-full aspect-video">
             <iframe
               src={`https://www.youtube.com/embed/${videoId}`}
-              className="w-full h-full rounded-lg"
+              className="w-full h-full rounded-lg bg-black"
               title={content.title}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
             />
-          </div>
+          </FullscreenWrapper>
         );
 
       case 'ppt':

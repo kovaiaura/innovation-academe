@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { PDFViewer } from '@/components/content-viewer/PDFViewer';
+import { FullscreenWrapper } from '@/components/content-viewer/FullscreenWrapper';
 import { ExternalLink } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
@@ -99,25 +100,29 @@ export function ContentViewerDialog({
       case 'video':
         if (!contentUrl) return <p className="text-destructive">Video URL not available</p>;
         return (
-          <video
-            ref={videoRef}
-            controls
-            className="w-full rounded-lg"
-            src={contentUrl}
-          >
-            Your browser does not support the video tag.
-          </video>
+          <FullscreenWrapper className="w-full aspect-video">
+            <video
+              ref={videoRef}
+              controls
+              className="w-full h-full rounded-lg"
+              src={contentUrl}
+            >
+              Your browser does not support the video tag.
+            </video>
+          </FullscreenWrapper>
         );
       
       case 'youtube':
         const youtubeId = extractYouTubeId(contentUrl);
         return youtubeId ? (
-          <iframe
-            src={`https://www.youtube.com/embed/${youtubeId}`}
-            className="w-full aspect-video rounded-lg"
-            allowFullScreen
-            title={content.title}
-          />
+          <FullscreenWrapper className="w-full aspect-video">
+            <iframe
+              src={`https://www.youtube.com/embed/${youtubeId}`}
+              className="w-full h-full rounded-lg"
+              allowFullScreen
+              title={content.title}
+            />
+          </FullscreenWrapper>
         ) : (
           <p className="text-destructive">Invalid YouTube URL</p>
         );
