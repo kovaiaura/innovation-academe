@@ -31,6 +31,8 @@ interface SessionData {
   is_unlocked: boolean;
   content: ContentItem[];
   isCompleted?: boolean;
+  completedStudents?: number;
+  totalStudents?: number;
 }
 
 interface ModuleData {
@@ -201,12 +203,22 @@ export function TeachingCourseSidebar({
                             ) : (
                               <PlayCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
                             )}
-                            <span className={cn(
-                              "flex-1 text-sm break-words whitespace-normal",
-                              isSessionLocked && "text-muted-foreground"
-                            )}>
-                              {session.title}
-                            </span>
+                            <div className="flex-1 min-w-0">
+                              <span className={cn(
+                                "text-sm break-words whitespace-normal block",
+                                isSessionLocked && "text-muted-foreground"
+                              )}>
+                                {session.title}
+                              </span>
+                              {!isSessionLocked && session.totalStudents !== undefined && session.totalStudents > 0 && (
+                                <span className={cn(
+                                  "text-xs",
+                                  session.isCompleted ? "text-green-600" : "text-muted-foreground"
+                                )}>
+                                  {session.completedStudents}/{session.totalStudents} students
+                                </span>
+                              )}
+                            </div>
                             {!isSessionLocked && session.content.length > 0 && (
                               <ChevronRight
                                 className={cn(

@@ -451,29 +451,59 @@ export function useStudentCourses(studentId?: string, classId?: string) {
         completions = studentCompletions || [];
       }
 
-      // Combine the data
-      return assignments.map(assignment => ({
-        ...assignment,
-        course: assignment.courses,
-        modules: (moduleAssignments || [])
+      // Combine the data with session-level completion status
+      return assignments.map(assignment => {
+        const courseModules = (moduleAssignments || [])
           .filter(ma => ma.class_assignment_id === assignment.id)
-          .map(ma => ({
-            ...ma,
-            module: ma.course_modules,
-            sessions: sessionAssignments
+          .map(ma => {
+            const moduleSessions = sessionAssignments
               .filter(sa => sa.class_module_assignment_id === ma.id)
-              .map(sa => ({
-                ...sa,
-                session: sa.course_sessions,
-                content: contentItems
+              .map(sa => {
+                const sessionContentItems = contentItems
                   .filter(c => c.session_id === sa.session_id)
                   .map(c => ({
                     ...c,
                     isCompleted: completions.some(comp => comp.content_id === c.id),
-                  })),
-              })),
-          })),
-      }));
+                  }));
+
+                // Session is completed if ALL content in it is completed
+                const isSessionCompleted = sessionContentItems.length > 0 
+                  && sessionContentItems.every(c => c.isCompleted);
+
+                return {
+                  ...sa,
+                  session: sa.course_sessions,
+                  content: sessionContentItems,
+                  isSessionCompleted,
+                };
+              });
+
+            // Module is completed if ALL sessions in it are completed
+            const isModuleCompleted = moduleSessions.length > 0 
+              && moduleSessions.filter(s => s.is_unlocked).every(s => s.isSessionCompleted);
+
+            return {
+              ...ma,
+              module: ma.course_modules,
+              sessions: moduleSessions,
+              isModuleCompleted,
+            };
+          });
+
+        // Calculate course progress
+        const totalSessions = courseModules.flatMap(m => m.sessions).length;
+        const completedSessions = courseModules.flatMap(m => m.sessions).filter(s => s.isSessionCompleted).length;
+        const progressPercentage = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+
+        return {
+          ...assignment,
+          course: assignment.courses,
+          modules: courseModules,
+          completedSessions,
+          totalSessions,
+          progressPercentage,
+        };
+      });
     },
     enabled: !!classId,
   });

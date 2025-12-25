@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Menu, Loader2, BookOpen } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { Progress } from '@/components/ui/progress';
+import { ArrowLeft, Menu, Loader2, BookOpen, TrendingUp } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { TeachingCourseSidebar } from '@/components/officer/TeachingCourseSidebar';
 import { TeachingStudentPanel } from '@/components/officer/TeachingStudentPanel';
@@ -11,6 +12,7 @@ import { LMSCourseViewer } from '@/components/student/LMSCourseViewer';
 import { getContentSignedUrl } from '@/services/courseStorage.service';
 import { PDFViewer } from '@/components/content-viewer/PDFViewer';
 import { FullscreenWrapper } from '@/components/content-viewer/FullscreenWrapper';
+import { useSessionCompletionStatus } from '@/hooks/useSessionCompletionStatus';
 
 interface ContentItem {
   id: string;
@@ -24,6 +26,7 @@ interface ContentItem {
 export default function TeachingSession() {
   const { tenantId, courseId } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   
   const classId = searchParams.get('class_id') || '';
@@ -129,45 +132,66 @@ export default function TeachingSession() {
     enabled: !!courseId
   });
 
-  // Build structured module data
-  const structuredModules = moduleAssignments?.map(ma => {
-    const moduleSessions = sessionAssignments?.filter(
-      sa => sa.class_module_assignment_id === ma.id
-    ) || [];
+  // Get all session IDs for completion status query
+  const allSessionIds = useMemo(() => {
+    return sessionAssignments?.map(sa => sa.session_id) || [];
+  }, [sessionAssignments]);
 
-    const sessions = moduleSessions.map(sa => {
-      const sessionContent = allContent?.filter(
-        c => c.session_id === sa.session_id
+  // Fetch session completion status
+  const { data: completionStatus, refetch: refetchCompletions } = useSessionCompletionStatus(
+    classId,
+    classAssignmentId,
+    allSessionIds
+  );
+
+  // Build structured module data with completion status
+  const structuredModules = useMemo(() => {
+    return moduleAssignments?.map(ma => {
+      const moduleSessions = sessionAssignments?.filter(
+        sa => sa.class_module_assignment_id === ma.id
       ) || [];
 
-      return {
-        id: sa.session_id,
-        assignmentId: sa.id,
-        title: sa.course_sessions?.title || 'Session',
-        description: sa.course_sessions?.description,
-        is_unlocked: sa.is_unlocked || false,
-        content: sessionContent.map(c => ({
-          id: c.id,
-          title: c.title,
-          type: c.type,
-          youtube_url: c.youtube_url,
-          file_path: c.file_path,
-          duration_minutes: c.duration_minutes
-        })),
-        isCompleted: false // Will be updated from completions
-      };
-    });
+      const sessions = moduleSessions.map(sa => {
+        const sessionContent = allContent?.filter(
+          c => c.session_id === sa.session_id
+        ) || [];
 
-    return {
-      id: ma.module_id,
-      assignmentId: ma.id,
-      title: ma.course_modules?.title || 'Module',
-      description: ma.course_modules?.description,
-      is_unlocked: ma.is_unlocked || false,
-      sessions,
-      completedSessionCount: 0
-    };
-  }) || [];
+        const completionInfo = completionStatus?.sessionStatuses.get(sa.session_id);
+
+        return {
+          id: sa.session_id,
+          assignmentId: sa.id,
+          title: sa.course_sessions?.title || 'Session',
+          description: sa.course_sessions?.description,
+          is_unlocked: sa.is_unlocked || false,
+          content: sessionContent.map(c => ({
+            id: c.id,
+            title: c.title,
+            type: c.type,
+            youtube_url: c.youtube_url,
+            file_path: c.file_path,
+            duration_minutes: c.duration_minutes
+          })),
+          isCompleted: completionInfo?.isFullyCompleted || false,
+          completedStudents: completionInfo?.completedStudents || 0,
+          totalStudents: completionInfo?.totalStudents || 0
+        };
+      });
+
+      // Count completed sessions in this module
+      const completedSessionCount = sessions.filter(s => s.isCompleted).length;
+
+      return {
+        id: ma.module_id,
+        assignmentId: ma.id,
+        title: ma.course_modules?.title || 'Module',
+        description: ma.course_modules?.description,
+        is_unlocked: ma.is_unlocked || false,
+        sessions,
+        completedSessionCount
+      };
+    }) || [];
+  }, [moduleAssignments, sessionAssignments, allContent, completionStatus]);
 
   // Auto-select first available session
   useEffect(() => {
@@ -420,12 +444,28 @@ export default function TeachingSession() {
               </div>
             </div>
 
-            {currentSession && (
-              <div className="text-right">
-                <p className="text-sm font-medium">{currentModule?.title}</p>
-                <p className="text-xs text-muted-foreground">{currentSession.title}</p>
-              </div>
-            )}
+            <div className="flex items-center gap-4">
+              {/* Class Progress */}
+              {completionStatus && completionStatus.totalStudents > 0 && (
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Class Progress</p>
+                    <div className="flex items-center gap-2">
+                      <Progress value={completionStatus.progressPercentage} className="w-20 h-2" />
+                      <span className="text-sm font-medium">{completionStatus.progressPercentage}%</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {currentSession && (
+                <div className="text-right border-l pl-4">
+                  <p className="text-sm font-medium">{currentModule?.title}</p>
+                  <p className="text-xs text-muted-foreground">{currentSession.title}</p>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -442,6 +482,7 @@ export default function TeachingSession() {
             classAssignmentId={classAssignmentId}
             onCompletionMarked={() => {
               // Refetch to update completion status
+              refetchCompletions();
             }}
           />
         </div>

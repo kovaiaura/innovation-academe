@@ -2,7 +2,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BookOpen, PlayCircle, Loader2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { BookOpen, PlayCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import { useStudentCourses } from '@/hooks/useClassCourseAssignments';
 import { useAuth } from '@/contexts/AuthContext';
 import { StorageImage } from '@/components/course/StorageImage';
@@ -74,16 +76,34 @@ export default function Courses() {
                 <CardContent className="space-y-4">
                   <p className="text-sm text-muted-foreground line-clamp-2">{course.description}</p>
                   
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <BookOpen className="h-4 w-4" />
-                      <span>{unlockedModules} Modules Available</span>
+                  {/* Progress Section */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className="font-medium">
+                        {(item as any).completedSessions || 0}/{(item as any).totalSessions || 0} Sessions
+                      </span>
+                    </div>
+                    <Progress value={(item as any).progressPercentage || 0} className="h-2" />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <BookOpen className="h-4 w-4" />
+                        <span>{unlockedModules} Modules</span>
+                      </div>
+                      {((item as any).progressPercentage || 0) === 100 ? (
+                        <Badge variant="default" className="bg-green-500">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Completed
+                        </Badge>
+                      ) : ((item as any).progressPercentage || 0) > 0 ? (
+                        <Badge variant="secondary">{(item as any).progressPercentage}% Complete</Badge>
+                      ) : null}
                     </div>
                   </div>
 
                   <Button className="w-full" onClick={(e) => { e.stopPropagation(); handleViewCourse(course.id); }}>
                     <PlayCircle className="mr-2 h-4 w-4" />
-                    Start Learning
+                    {((item as any).progressPercentage || 0) > 0 ? 'Continue Learning' : 'Start Learning'}
                   </Button>
                 </CardContent>
               </Card>
