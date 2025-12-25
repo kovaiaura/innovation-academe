@@ -688,6 +688,96 @@ export type Database = {
         }
         Relationships: []
       }
+      officer_attendance: {
+        Row: {
+          check_in_address: string | null
+          check_in_distance_meters: number | null
+          check_in_latitude: number | null
+          check_in_longitude: number | null
+          check_in_time: string | null
+          check_in_validated: boolean | null
+          check_out_address: string | null
+          check_out_distance_meters: number | null
+          check_out_latitude: number | null
+          check_out_longitude: number | null
+          check_out_time: string | null
+          check_out_validated: boolean | null
+          created_at: string | null
+          date: string
+          id: string
+          institution_id: string
+          notes: string | null
+          officer_id: string
+          overtime_hours: number | null
+          status: string | null
+          total_hours_worked: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          check_in_address?: string | null
+          check_in_distance_meters?: number | null
+          check_in_latitude?: number | null
+          check_in_longitude?: number | null
+          check_in_time?: string | null
+          check_in_validated?: boolean | null
+          check_out_address?: string | null
+          check_out_distance_meters?: number | null
+          check_out_latitude?: number | null
+          check_out_longitude?: number | null
+          check_out_time?: string | null
+          check_out_validated?: boolean | null
+          created_at?: string | null
+          date?: string
+          id?: string
+          institution_id: string
+          notes?: string | null
+          officer_id: string
+          overtime_hours?: number | null
+          status?: string | null
+          total_hours_worked?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          check_in_address?: string | null
+          check_in_distance_meters?: number | null
+          check_in_latitude?: number | null
+          check_in_longitude?: number | null
+          check_in_time?: string | null
+          check_in_validated?: boolean | null
+          check_out_address?: string | null
+          check_out_distance_meters?: number | null
+          check_out_latitude?: number | null
+          check_out_longitude?: number | null
+          check_out_time?: string | null
+          check_out_validated?: boolean | null
+          created_at?: string | null
+          date?: string
+          id?: string
+          institution_id?: string
+          notes?: string | null
+          officer_id?: string
+          overtime_hours?: number | null
+          status?: string | null
+          total_hours_worked?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "officer_attendance_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "officer_attendance_officer_id_fkey"
+            columns: ["officer_id"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       officer_documents: {
         Row: {
           created_at: string | null

@@ -41,13 +41,14 @@ import {
 import type { LeaveApplication } from '@/types/attendance';
 import { getRoleBasePath } from '@/utils/roleHelpers';
 import { mockEventApplications } from '@/data/mockEventsData';
-import { getCurrentLocation, isWithinInstitution } from '@/utils/locationHelpers';
+import { getCurrentLocation, calculateDistance } from '@/utils/locationHelpers';
 import type { LocationData } from '@/utils/locationHelpers';
 import { Loader2, MapPin } from 'lucide-react';
 import { SalaryTrackerCard } from '@/components/officer/SalaryTrackerCard';
 import { useInstitutionData } from '@/contexts/InstitutionDataContext';
+import { OfficerCheckInCard } from '@/components/officer/OfficerCheckInCard';
+import { useOfficerTodayAttendance } from '@/hooks/useOfficerAttendance';
 import { recordOfficerCheckIn, recordOfficerCheckOut, getTodayAttendance } from '@/data/mockOfficerAttendance';
-import { calculateDistance } from '@/utils/locationHelpers';
 
 // Helper functions
 const getDayName = (date: Date) => {
