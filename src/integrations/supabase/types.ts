@@ -110,6 +110,111 @@ export type Database = {
           },
         ]
       }
+      class_session_attendance: {
+        Row: {
+          attendance_records: Json | null
+          class_id: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string | null
+          date: string
+          id: string
+          institution_id: string
+          is_session_completed: boolean | null
+          notes: string | null
+          officer_id: string | null
+          period_label: string | null
+          period_time: string | null
+          students_absent: number
+          students_late: number
+          students_present: number
+          subject: string | null
+          timetable_assignment_id: string
+          total_students: number
+          updated_at: string | null
+        }
+        Insert: {
+          attendance_records?: Json | null
+          class_id: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string | null
+          date: string
+          id?: string
+          institution_id: string
+          is_session_completed?: boolean | null
+          notes?: string | null
+          officer_id?: string | null
+          period_label?: string | null
+          period_time?: string | null
+          students_absent?: number
+          students_late?: number
+          students_present?: number
+          subject?: string | null
+          timetable_assignment_id: string
+          total_students?: number
+          updated_at?: string | null
+        }
+        Update: {
+          attendance_records?: Json | null
+          class_id?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string | null
+          date?: string
+          id?: string
+          institution_id?: string
+          is_session_completed?: boolean | null
+          notes?: string | null
+          officer_id?: string | null
+          period_label?: string | null
+          period_time?: string | null
+          students_absent?: number
+          students_late?: number
+          students_present?: number
+          subject?: string | null
+          timetable_assignment_id?: string
+          total_students?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_session_attendance_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_session_attendance_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_session_attendance_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_session_attendance_officer_id_fkey"
+            columns: ["officer_id"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_session_attendance_timetable_assignment_id_fkey"
+            columns: ["timetable_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "institution_timetable_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes: {
         Row: {
           academic_year: string | null

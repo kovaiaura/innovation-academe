@@ -41,14 +41,11 @@ import {
 import type { LeaveApplication } from '@/types/attendance';
 import { getRoleBasePath } from '@/utils/roleHelpers';
 import { mockEventApplications } from '@/data/mockEventsData';
-import { getCurrentLocation, calculateDistance } from '@/utils/locationHelpers';
-import type { LocationData } from '@/utils/locationHelpers';
-import { Loader2, MapPin } from 'lucide-react';
 import { SalaryTrackerCard } from '@/components/officer/SalaryTrackerCard';
 import { useInstitutionData } from '@/contexts/InstitutionDataContext';
 import { OfficerCheckInCard } from '@/components/officer/OfficerCheckInCard';
+import { useOfficerByUserId } from '@/hooks/useOfficerProfile';
 import { useOfficerTodayAttendance } from '@/hooks/useOfficerAttendance';
-import { recordOfficerCheckIn, recordOfficerCheckOut, getTodayAttendance } from '@/data/mockOfficerAttendance';
 
 // Helper functions
 const getDayName = (date: Date) => {
@@ -116,19 +113,15 @@ export default function OfficerDashboard() {
   const todayKey = format(new Date(), 'yyyy-MM-dd');
   const { institutions } = useInstitutionData();
   
-  // Attendance state
-  const [checkInTime, setCheckInTime] = useState<string | null>(null);
-  const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
-  const [isCheckedIn, setIsCheckedIn] = useState(false);
-  const [isCheckedOut, setIsCheckedOut] = useState(false);
-  const [hoursWorked, setHoursWorked] = useState<number>(0);
-  const [elapsedTime, setElapsedTime] = useState<string>('0h 0m');
+  // Get officer profile from Supabase
+  const { data: officerProfile, isLoading: isLoadingOfficer } = useOfficerByUserId(user?.id);
+  const primaryInstitutionId = officerProfile?.assigned_institutions?.[0] || '';
   
-  // GPS location state
-  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
-  const [checkInLocation, setCheckInLocation] = useState<LocationData | null>(null);
-  const [checkOutLocation, setCheckOutLocation] = useState<LocationData | null>(null);
-  const [locationValidated, setLocationValidated] = useState<boolean | null>(null);
+  // Get attendance status for check-in card state
+  const { data: todayAttendance } = useOfficerTodayAttendance(
+    officerProfile?.id || '',
+    primaryInstitutionId
+  );
 
   // Leave state
   const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>([]);
@@ -146,24 +139,13 @@ export default function OfficerDashboard() {
   // Substitute assignments state
   const [substituteAssignments, setSubstituteAssignments] = useState<any[]>([]);
   
-  const officerProfile = user?.id ? getOfficerById(user.id) : null;
+  const mockOfficerProfile = user?.id ? getOfficerById(user.id) : null;
   const officerTimetable = getOfficerTimetableData(user?.id || '');
   const todaySlots = getTodaySchedule(officerTimetable?.slots || []);
   const upcomingSlots = getUpcomingSlots(officerTimetable?.slots || [], 3);
 
-  // Load attendance and leave data on mount
+  // Load leave data on mount
   useEffect(() => {
-    // Load attendance from localStorage
-    const stored = localStorage.getItem(`attendance-${todayKey}`);
-    if (stored) {
-      const data = JSON.parse(stored);
-      setCheckInTime(data.checkInTime);
-      setCheckOutTime(data.checkOutTime);
-      setIsCheckedIn(data.isCheckedIn);
-      setIsCheckedOut(data.isCheckedOut);
-      setHoursWorked(data.hoursWorked);
-    }
-
     // Load leave data
     if (user?.id) {
       const applications = getLeaveApplicationsByOfficer(user.id);
@@ -235,221 +217,6 @@ export default function OfficerDashboard() {
     setLast7Days(days);
   }, [user?.id, todayKey]);
 
-  // Save attendance to localStorage whenever state changes
-  useEffect(() => {
-    if (isCheckedIn || isCheckedOut) {
-      localStorage.setItem(`attendance-${todayKey}`, JSON.stringify({
-        checkInTime,
-        checkOutTime,
-        isCheckedIn,
-        isCheckedOut,
-        hoursWorked,
-      }));
-    }
-  }, [checkInTime, checkOutTime, isCheckedIn, isCheckedOut, hoursWorked, todayKey]);
-
-  // Live timer for elapsed time
-  useEffect(() => {
-    if (isCheckedIn && !isCheckedOut && checkInTime) {
-      const interval = setInterval(() => {
-        try {
-          const checkIn = parse(checkInTime, 'hh:mm a', new Date());
-          const now = new Date();
-          const minutes = differenceInMinutes(now, checkIn);
-          const hours = Math.floor(minutes / 60);
-          const mins = minutes % 60;
-          setElapsedTime(`${hours}h ${mins}m`);
-        } catch (error) {
-          console.error('Error calculating elapsed time:', error);
-        }
-      }, 60000);
-      
-      try {
-        const checkIn = parse(checkInTime, 'hh:mm a', new Date());
-        const now = new Date();
-        const minutes = differenceInMinutes(now, checkIn);
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
-        setElapsedTime(`${hours}h ${mins}m`);
-      } catch (error) {
-        console.error('Error calculating elapsed time:', error);
-      }
-      
-      return () => clearInterval(interval);
-    }
-  }, [isCheckedIn, isCheckedOut, checkInTime]);
-
-  const handleCheckIn = async () => {
-    if (isOnLeaveToday) {
-      toast.error('You cannot check in while on approved leave');
-      return;
-    }
-    
-    setIsLoadingLocation(true);
-    
-    try {
-      // Step 1: Get officer's assigned institution
-      const institution = institutions.find(i => 
-        officerProfile?.assigned_institutions.includes(i.name)
-      );
-      
-      if (!institution || !institution.gps_location) {
-        toast.error('Institution GPS coordinates not configured');
-        setIsLoadingLocation(false);
-        return;
-      }
-      
-      // Step 2: Get GPS location
-      const location = await getCurrentLocation();
-      
-      // Step 3: Calculate distance and validate
-      const distance = calculateDistance(
-        location.latitude,
-        location.longitude,
-        institution.gps_location.latitude,
-        institution.gps_location.longitude
-      );
-      
-      const radius = institution.attendance_radius_meters || 1500; // Default 1.5km
-      const isValid = distance <= radius;
-      
-      // Step 4: Record check-in with localStorage
-      const currentTime = format(new Date(), 'hh:mm a');
-      
-      recordOfficerCheckIn({
-        officer_id: user?.id || '',
-        officer_name: user?.name || '',
-        institution_id: institution.id,
-        institution_name: institution.name,
-        date: todayKey,
-        check_in_time: currentTime,
-        check_in_location: location,
-        check_in_validated: isValid,
-        check_in_distance_meters: Math.round(distance),
-      });
-      
-      setCheckInTime(currentTime);
-      setIsCheckedIn(true);
-      setCheckInLocation(location);
-      setLocationValidated(isValid);
-      
-      // Step 5: Show feedback based on validation
-      if (isValid) {
-        toast.success(`✓ Checked in at ${currentTime}`, {
-          description: `Location verified - ${Math.round(distance)}m from institution`
-        });
-      } else {
-        toast.warning(`⚠ Checked in at ${currentTime}`, {
-          description: `Location not verified - ${Math.round(distance)}m from institution (Radius: ${radius}m). Admin will review.`
-        });
-      }
-      
-    } catch (error) {
-      // Handle GPS errors (permission denied, timeout, etc.)
-      const errorMessage = error instanceof Error ? error.message : 'Unable to get location';
-      
-      toast.error(`Location Error: ${errorMessage}`, {
-        description: 'Check-in recorded without location verification'
-      });
-      
-      // Still allow check-in but mark as unverified
-      const currentTime = format(new Date(), 'hh:mm a');
-      setCheckInTime(currentTime);
-      setIsCheckedIn(true);
-      setLocationValidated(false);
-    } finally {
-      setIsLoadingLocation(false);
-    }
-  };
-
-  const handleCheckOut = async () => {
-    if (isOnLeaveToday) {
-      toast.error('You cannot check out while on approved leave');
-      return;
-    }
-    if (!checkInTime) return;
-    
-    setIsLoadingLocation(true);
-    
-    try {
-      // Step 1: Get officer's assigned institution
-      const institution = institutions.find(i => 
-        officerProfile?.assigned_institutions.includes(i.name)
-      );
-      
-      if (!institution || !institution.gps_location) {
-        toast.error('Institution GPS coordinates not configured');
-        setIsLoadingLocation(false);
-        return;
-      }
-      
-      // Step 2: Get GPS location
-      const location = await getCurrentLocation();
-      
-      // Step 3: Calculate distance
-      const distance = calculateDistance(
-        location.latitude,
-        location.longitude,
-        institution.gps_location.latitude,
-        institution.gps_location.longitude
-      );
-      
-      const radius = institution.attendance_radius_meters || 1500;
-      const isValid = distance <= radius;
-      
-      // Step 4: Calculate hours worked
-      const currentTime = format(new Date(), 'hh:mm a');
-      const checkIn = parse(checkInTime, 'hh:mm a', new Date());
-      const checkOut = parse(currentTime, 'hh:mm a', new Date());
-      const minutes = differenceInMinutes(checkOut, checkIn);
-      const hours = Math.round((minutes / 60) * 100) / 100;
-      
-      // Calculate overtime
-      const normalHours = institution.normal_working_hours || 8;
-      const overtime = Math.max(0, hours - normalHours);
-      
-      // Step 5: Record check-out with localStorage
-      recordOfficerCheckOut(user?.id || '', todayKey, {
-        check_out_time: currentTime,
-        check_out_location: location,
-        check_out_validated: isValid,
-        check_out_distance_meters: Math.round(distance),
-        total_hours_worked: hours,
-        overtime_hours: overtime,
-      });
-      
-      setCheckOutTime(currentTime);
-      setIsCheckedOut(true);
-      setCheckOutLocation(location);
-      setHoursWorked(hours);
-      
-      toast.success(`✓ Checked out at ${currentTime}`, {
-        description: `Total hours: ${hours.toFixed(2)}h | Overtime: ${overtime.toFixed(2)}h`
-      });
-      
-    } catch (error) {
-      // Handle GPS errors
-      const errorMessage = error instanceof Error ? error.message : 'Unable to get location';
-      
-      // Still allow check-out but without location
-      const currentTime = format(new Date(), 'hh:mm a');
-      setCheckOutTime(currentTime);
-      setIsCheckedOut(true);
-      
-      const checkIn = parse(checkInTime, 'hh:mm a', new Date());
-      const checkOut = parse(currentTime, 'hh:mm a', new Date());
-      const minutes = differenceInMinutes(checkOut, checkIn);
-      const hours = Math.round((minutes / 60) * 100) / 100;
-      setHoursWorked(hours);
-      
-      toast.warning(`Checked out without location verification`, {
-        description: errorMessage
-      });
-    } finally {
-      setIsLoadingLocation(false);
-    }
-  };
-
   const stats = [
     {
       title: 'Upcoming Sessions',
@@ -490,6 +257,20 @@ export default function OfficerDashboard() {
     { id: '2', title: 'Eco-Friendly App', team: 'Team Beta', status: 'Pending Review' },
     { id: '3', title: 'Healthcare Chatbot', team: 'Team Gamma', status: 'Pending Review' },
   ];
+
+  // Derive check-in state from Supabase attendance
+  const isCheckedIn = todayAttendance?.status === 'checked_in';
+  const checkInTime = todayAttendance?.check_in_time 
+    ? format(new Date(todayAttendance.check_in_time), 'hh:mm a') 
+    : null;
+  const checkInLocation = todayAttendance?.check_in_latitude 
+    ? { 
+        latitude: todayAttendance.check_in_latitude, 
+        longitude: todayAttendance.check_in_longitude || 0,
+        timestamp: todayAttendance.check_in_time || new Date().toISOString()
+      }
+    : null;
+  const locationValidated = todayAttendance?.check_in_validated ?? null;
 
   return (
     <Layout>
@@ -537,212 +318,26 @@ export default function OfficerDashboard() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Daily Attendance Card with Leave Integration */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Daily Attendance</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {isOnLeaveToday && todayLeaveDetails ? (
-                  <div className="p-6 bg-blue-500/10 border border-blue-500/20 rounded-lg space-y-3">
-                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                      <AlertCircle className="h-5 w-5" />
-                      <span className="font-semibold text-lg">On Leave</span>
-                    </div>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground">Type:</span>
-                        <Badge variant="outline" className="capitalize">
-                          {todayLeaveDetails.leave_type} Leave
-                        </Badge>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-muted-foreground">Reason:</span>
-                        <span className="font-medium">{todayLeaveDetails.reason}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground">Status:</span>
-                        <Badge
-                          variant={
-                            todayLeaveDetails.status === 'approved'
-                              ? 'default'
-                              : todayLeaveDetails.status === 'pending'
-                              ? 'secondary'
-                              : 'destructive'
-                          }
-                          className="capitalize"
-                        >
-                          {todayLeaveDetails.status}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="pt-2 text-xs text-muted-foreground">
-                      Check-in and check-out are disabled for leave days
-                    </div>
-                  </div>
-                ) : !isCheckedIn ? (
-                  <>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Mark your attendance for {format(new Date(), 'MMMM dd, yyyy')}
-                    </p>
-                    <Button 
-                      onClick={handleCheckIn} 
-                      className="w-full" 
-                      disabled={isOnLeaveToday || isLoadingLocation}
-                    >
-                      {isLoadingLocation ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Verifying Location...
-                        </>
-                      ) : (
-                        <>
-                          <Check className="mr-2 h-4 w-4" />
-                          Check In
-                        </>
-                      )}
-                    </Button>
-                    {isLoadingLocation && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3 animate-pulse">
-                        <MapPin className="h-4 w-4" />
-                        <span>Getting your location...</span>
-                      </div>
-                    )}
-                  </>
-                ) : !isCheckedOut ? (
-                  <div className="space-y-4">
-                    <div className="bg-blue-500/10 p-4 rounded-lg border border-blue-500/20">
-                      <div className="flex items-center justify-center gap-2 mb-2">
-                        <Timer className="h-6 w-6 text-blue-500 animate-pulse" />
-                        <p className="font-semibold text-blue-700 text-lg">Working</p>
-                      </div>
-                      <p className="text-sm text-blue-600 mb-1">Checked in at {checkInTime}</p>
-                      
-                      {/* GPS Location Badge */}
-                      {checkInLocation && (
-                        <div className="mt-3 p-2 bg-background/50 rounded-lg">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                              <span className="text-xs text-muted-foreground truncate">
-                                {checkInLocation.latitude.toFixed(6)}, {checkInLocation.longitude.toFixed(6)}
-                              </span>
-                            </div>
-                            {locationValidated === true && (
-                              <Badge className="bg-green-100 text-green-800 text-xs flex-shrink-0">✓ Verified</Badge>
-                            )}
-                            {locationValidated === false && (
-                              <Badge className="bg-amber-100 text-amber-800 text-xs flex-shrink-0">⚠ Review</Badge>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="flex items-center justify-center gap-2 mt-3 pt-3 border-t border-blue-500/20">
-                        <Clock className="h-4 w-4 text-blue-500" />
-                        <p className="text-sm font-medium text-blue-700">
-                          Time elapsed: {elapsedTime}
-                        </p>
-                      </div>
-                    </div>
-                    <Button 
-                      onClick={handleCheckOut} 
-                      className="w-full" 
-                      variant="outline"
-                      disabled={isOnLeaveToday || isLoadingLocation}
-                    >
-                      {isLoadingLocation ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Verifying Location...
-                        </>
-                      ) : (
-                        <>
-                          <LogOut className="mr-2 h-4 w-4" />
-                          Check Out
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/20">
-                    <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                    <p className="font-semibold text-green-700 text-lg mb-3">Attendance Complete</p>
-                    <div className="text-sm text-green-600 space-y-2">
-                      <p>Check-in: {checkInTime}</p>
-                      <p>Check-out: {checkOutTime}</p>
-                      
-                      {/* Show GPS verification status */}
-                      {(checkInLocation || checkOutLocation) && (
-                        <div className="pt-2 mt-2 border-t border-green-500/20">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs">Location Status:</span>
-                            {locationValidated === true ? (
-                              <Badge className="bg-green-100 text-green-800 text-xs">✓ Verified</Badge>
-                            ) : (
-                              <Badge className="bg-amber-100 text-amber-800 text-xs">⚠ Pending Review</Badge>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="pt-2 mt-2 border-t border-green-500/20">
-                        <p className="font-semibold text-base">Hours Worked: {hoursWorked.toFixed(2)}h</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Last 7 Days Attendance History with Leave Support */}
-                <div className="pt-4 border-t">
-                  <p className="text-sm font-medium mb-3">Last 7 Days</p>
-                  <div className="grid grid-cols-7 gap-2">
-                    {last7Days.map((day, i) => (
-                      <div
-                        key={i}
-                        className="flex flex-col items-center"
-                        title={
-                          day.status === 'present'
-                            ? 'Present'
-                            : day.status === 'leave'
-                            ? `${day.leaveType} Leave`
-                            : day.status === 'absent'
-                            ? 'Absent'
-                            : day.status === 'weekend'
-                            ? 'Weekend'
-                            : 'Not marked'
-                        }
-                      >
-                        <span className="text-xs text-muted-foreground mb-1">{day.day}</span>
-                        <div
-                          className={`w-8 h-8 rounded flex items-center justify-center text-xs ${
-                            day.status === 'present'
-                              ? 'bg-green-500/20 text-green-700'
-                              : day.status === 'leave'
-                              ? 'bg-blue-500/20 text-blue-700'
-                              : day.status === 'absent'
-                              ? 'bg-red-500/20 text-red-700'
-                              : 'bg-muted text-muted-foreground'
-                          }`}
-                        >
-                          {day.status === 'present' ? (
-                            <Check className="h-3 w-3" />
-                          ) : day.status === 'leave' ? (
-                            '🏖️'
-                          ) : day.status === 'absent' ? (
-                            <X className="h-3 w-3" />
-                          ) : (
-                            '-'
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+          {/* GPS-based Check-in Card from Supabase */}
+          {officerProfile && primaryInstitutionId ? (
+            <OfficerCheckInCard 
+              officerId={officerProfile.id} 
+              institutionId={primaryInstitutionId}
+            />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Daily Attendance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-muted-foreground">
+                  <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No institution assigned</p>
+                  <p className="text-xs">Contact management to assign you to an institution</p>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* My Schedule */}
           <Card>
