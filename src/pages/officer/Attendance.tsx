@@ -32,6 +32,7 @@ import {
   useMarkSessionCompleted,
   AttendanceRecord 
 } from "@/hooks/useClassSessionAttendance";
+import { useReceivedAccessGrants } from "@/hooks/useOfficerClassAccess";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface ClassSession {
@@ -46,6 +47,7 @@ interface ClassSession {
   endTime: string;
   subject: string;
   periodLabel: string;
+  accessType?: 'primary' | 'secondary' | 'backup' | 'delegated';
 }
 
 interface StudentRecord {
@@ -80,13 +82,19 @@ const Attendance = () => {
   const saveAttendanceMutation = useSaveClassAttendance();
   const markCompletedMutation = useMarkSessionCompleted();
 
-  // Load officer's timetable assignments from Supabase
+  // Get delegated access grants for today
+  const { data: accessGrants } = useReceivedAccessGrants(officerProfile?.id);
+
+  // Load officer's timetable assignments from Supabase (including delegated classes)
   useEffect(() => {
     const loadTimetable = async () => {
       if (!officerProfile?.id || !primaryInstitutionId) return;
       
       const dayOfWeek = new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long' });
+      const today = new Date().toISOString().split('T')[0];
+      const isToday = selectedDate === today;
       
+      // Fetch assignments where officer is primary, secondary, or backup
       const { data, error } = await supabase
         .from('institution_timetable_assignments')
         .select(`
@@ -97,28 +105,86 @@ const Attendance = () => {
             end_time
           )
         `)
-        .eq('teacher_id', officerProfile.id)
         .eq('institution_id', primaryInstitutionId)
-        .eq('day', dayOfWeek);
+        .eq('day', dayOfWeek)
+        .or(`teacher_id.eq.${officerProfile.id},secondary_officer_id.eq.${officerProfile.id},backup_officer_id.eq.${officerProfile.id}`);
       
       if (error) {
         console.error('Error loading timetable:', error);
         return;
       }
       
-      const sessions: ClassSession[] = (data || []).map(slot => ({
-        id: slot.id,
-        timetable_assignment_id: slot.id,
-        title: `${slot.subject} - ${slot.class_name}`,
-        className: slot.class_name,
-        classId: slot.class_id,
-        section: 'A', // Default section
-        date: selectedDate,
-        startTime: (slot.institution_periods as any)?.start_time || '',
-        endTime: (slot.institution_periods as any)?.end_time || '',
-        subject: slot.subject,
-        periodLabel: (slot.institution_periods as any)?.label || '',
-      }));
+      const sessions: ClassSession[] = (data || []).map(slot => {
+        let accessType: ClassSession['accessType'] = 'primary';
+        if (slot.teacher_id === officerProfile.id) {
+          accessType = 'primary';
+        } else if (slot.secondary_officer_id === officerProfile.id) {
+          accessType = 'secondary';
+        } else if (slot.backup_officer_id === officerProfile.id) {
+          accessType = 'backup';
+        }
+        
+        return {
+          id: slot.id,
+          timetable_assignment_id: slot.id,
+          title: `${slot.subject} - ${slot.class_name}`,
+          className: slot.class_name,
+          classId: slot.class_id,
+          section: 'A',
+          date: selectedDate,
+          startTime: (slot.institution_periods as any)?.start_time || '',
+          endTime: (slot.institution_periods as any)?.end_time || '',
+          subject: slot.subject,
+          periodLabel: (slot.institution_periods as any)?.label || '',
+          accessType,
+        };
+      });
+      
+      // Add delegated classes (only for today)
+      if (isToday && accessGrants && accessGrants.length > 0) {
+        for (const grant of accessGrants) {
+          // Fetch timetable assignments for delegated class
+          const { data: delegatedAssignments } = await supabase
+            .from('institution_timetable_assignments')
+            .select(`
+              *,
+              institution_periods!inner (
+                label,
+                start_time,
+                end_time
+              )
+            `)
+            .eq('class_id', grant.class_id)
+            .eq('institution_id', primaryInstitutionId)
+            .eq('day', dayOfWeek);
+          
+          if (delegatedAssignments) {
+            for (const slot of delegatedAssignments) {
+              // Check if this slot is already in sessions
+              const exists = sessions.find(s => s.id === slot.id);
+              if (!exists) {
+                sessions.push({
+                  id: slot.id,
+                  timetable_assignment_id: slot.id,
+                  title: `${slot.subject} - ${slot.class_name}`,
+                  className: slot.class_name,
+                  classId: slot.class_id,
+                  section: 'A',
+                  date: selectedDate,
+                  startTime: (slot.institution_periods as any)?.start_time || '',
+                  endTime: (slot.institution_periods as any)?.end_time || '',
+                  subject: slot.subject,
+                  periodLabel: (slot.institution_periods as any)?.label || '',
+                  accessType: 'delegated',
+                });
+              }
+            }
+          }
+        }
+      }
+      
+      // Sort by start time
+      sessions.sort((a, b) => a.startTime.localeCompare(b.startTime));
       
       setAvailableSessions(sessions);
       if (sessions.length > 0 && !selectedSession) {
@@ -127,7 +193,7 @@ const Attendance = () => {
     };
     
     loadTimetable();
-  }, [officerProfile?.id, primaryInstitutionId, selectedDate]);
+  }, [officerProfile?.id, primaryInstitutionId, selectedDate, accessGrants]);
 
   // Load students when session is selected
   useEffect(() => {
@@ -400,10 +466,21 @@ const Attendance = () => {
                   <SelectContent>
                     {availableSessions.map((session) => (
                       <SelectItem key={session.id} value={session.id}>
-                        {session.className} - {session.subject} ({session.startTime} - {session.endTime})
-                        {savedAttendance?.find(a => a.timetable_assignment_id === session.id)?.is_session_completed && (
-                          <span className="ml-2 text-green-600">✓ Completed</span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <span>{session.className} - {session.subject} ({session.startTime} - {session.endTime})</span>
+                          {session.accessType === 'delegated' && (
+                            <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded">Delegated</span>
+                          )}
+                          {session.accessType === 'secondary' && (
+                            <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded">Secondary</span>
+                          )}
+                          {session.accessType === 'backup' && (
+                            <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-1.5 py-0.5 rounded">Backup</span>
+                          )}
+                          {savedAttendance?.find(a => a.timetable_assignment_id === session.id)?.is_session_completed && (
+                            <span className="text-xs text-green-600">✓ Completed</span>
+                          )}
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>

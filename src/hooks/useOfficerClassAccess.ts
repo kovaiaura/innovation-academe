@@ -20,6 +20,10 @@ export interface OfficerClassAccessGrant {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // Joined fields
+  granting_officer?: { full_name: string };
+  receiving_officer?: { full_name: string };
+  class?: { class_name: string };
 }
 
 export interface CreateAccessGrantInput {
@@ -62,7 +66,11 @@ export function useReceivedAccessGrants(officerId?: string) {
       
       const { data, error } = await supabase
         .from('officer_class_access_grants')
-        .select('*')
+        .select(`
+          *,
+          granting_officer:officers!fk_granting_officer(full_name),
+          class:classes!fk_class(class_name)
+        `)
         .eq('receiving_officer_id', officerId)
         .eq('is_active', true)
         .lte('valid_from', today)

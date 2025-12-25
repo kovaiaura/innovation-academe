@@ -44,6 +44,7 @@ import { mockEventApplications } from '@/data/mockEventsData';
 import { SalaryTrackerCard } from '@/components/officer/SalaryTrackerCard';
 import { useInstitutionData } from '@/contexts/InstitutionDataContext';
 import { OfficerCheckInCard } from '@/components/officer/OfficerCheckInCard';
+import { DelegatedClassesCard } from '@/components/officer/DelegatedClassesCard';
 import { useOfficerByUserId } from '@/hooks/useOfficerProfile';
 import { useOfficerTodayAttendance } from '@/hooks/useOfficerAttendance';
 
@@ -337,6 +338,14 @@ export default function OfficerDashboard() {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* Delegated Classes Today - Only shows if there are delegated classes */}
+          {officerProfile && primaryInstitutionId && (
+            <DelegatedClassesCard 
+              officerId={officerProfile.id} 
+              institutionId={primaryInstitutionId}
+            />
           )}
 
           {/* My Schedule */}
