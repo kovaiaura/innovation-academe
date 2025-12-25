@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, BookOpen, Calendar, MapPin, Loader2 } from 'lucide-react';
+import { Users, BookOpen, Calendar, MapPin, Loader2, Play } from 'lucide-react';
 import { useOfficerClasses } from '@/hooks/useOfficerClasses';
 
 interface ClassSelectorProps {
@@ -187,6 +188,18 @@ export function ClassSelector({
                       </div>
                     </div>
                   )}
+
+                  {/* Start Teaching Button */}
+                  <Button 
+                    className="w-full mt-4" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onClassSelect(classItem.id, classItem.class_name);
+                    }}
+                  >
+                    <Play className="h-4 w-4 mr-2" />
+                    Start Teaching
+                  </Button>
                 </div>
               </CardContent>
             </Card>
