@@ -2,10 +2,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { PlayCircle, RotateCcw, CheckCircle, BookOpen, Lock, Loader2 } from 'lucide-react';
+import { PlayCircle, CheckCircle, BookOpen, Lock, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { ThumbnailImage } from '@/components/officer/ThumbnailImage';
 
 interface ClassCourseLauncherProps {
   classId: string;
@@ -111,23 +111,8 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
   const isLoading = loadingAssignments || loadingModules || loadingSessions;
 
   const handleLaunchCourse = (courseId: string, classAssignmentId: string) => {
-    // Get allowed module IDs for this class (only unlocked modules)
-    const assignmentModules = moduleAssignments?.filter(
-      m => m.class_assignment_id === classAssignmentId
-    ) || [];
-    
-    const allowedModuleIds = assignmentModules
-      .filter(m => m.is_unlocked)
-      .map(m => m.module_id);
-
-    // Build navigation URL with class context AND allowed modules
-    let url = `/tenant/${tenantId}/officer/courses/${courseId}/viewer?class_id=${classId}&class_name=${encodeURIComponent(className)}`;
-    
-    // Pass allowed modules as comma-separated list
-    if (allowedModuleIds.length > 0) {
-      url += `&allowed_modules=${allowedModuleIds.join(',')}`;
-    }
-
+    // Navigate to the teaching session page with class context
+    const url = `/tenant/${tenantId}/officer/teaching/${courseId}?class_id=${classId}&class_name=${encodeURIComponent(className)}&assignment_id=${classAssignmentId}`;
     navigate(url);
   };
 
@@ -189,17 +174,12 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
             <Card key={assignment.id}>
               <CardHeader>
                 <div className="flex items-start gap-4">
-                  {course.thumbnail_url ? (
-                    <img
-                      src={course.thumbnail_url}
-                      alt={course.title}
-                      className="w-20 h-20 rounded-lg object-cover"
-                    />
-                  ) : (
-                    <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center">
-                      <BookOpen className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                  )}
+                  <ThumbnailImage 
+                    thumbnailPath={course.thumbnail_url}
+                    alt={course.title}
+                    className="w-20 h-20 rounded-lg object-cover"
+                    fallbackClassName="w-20 h-20 rounded-lg bg-muted flex items-center justify-center"
+                  />
                   <div className="flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <div>
