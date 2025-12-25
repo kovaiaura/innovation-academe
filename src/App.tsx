@@ -607,6 +607,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            {/* Temporarily hidden - Officer Settings
             <Route
               path="/tenant/:tenantId/officer/settings"
               element={
@@ -615,6 +616,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            */}
             <Route
               path="/tenant/:tenantId/officer/timetable"
               element={
@@ -691,6 +693,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            {/* Temporarily hidden - Management Settings
             <Route
               path="/tenant/:tenantId/management/settings"
               element={
@@ -699,6 +702,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            */}
             <Route
               path="/tenant/:tenantId/management/attendance"
               element={
@@ -837,6 +841,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            {/* Temporarily hidden - Student Settings
             <Route
               path="/tenant/:tenantId/student/settings"
               element={
@@ -845,6 +850,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            */}
             <Route
               path="/tenant/:tenantId/student/ask-metova"
               element={
