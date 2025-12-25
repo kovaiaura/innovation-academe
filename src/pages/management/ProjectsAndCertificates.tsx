@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { Layout } from "@/components/layout/Layout";
-import { InstitutionHeader } from "@/components/management/InstitutionHeader";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Eye, FileDown, Award, Lock, Trash2 } from "lucide-react";
+import { Eye, Award, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInstitutionProjects, useDeleteProject, ProjectWithRelations } from "@/hooks/useProjects";
 import { ProjectDetailsDialog } from "@/components/project/ProjectDetailsDialog";
@@ -51,11 +49,6 @@ const ProjectRegistryTab = ({ projects, isLoading, isCeo, onDelete }: ProjectReg
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Project Registry</h2>
-        <p className="text-muted-foreground">All innovation projects at this institution</p>
-      </div>
-
       <div className="grid gap-4">
         {projects.length === 0 ? (
           <Card>
@@ -192,144 +185,9 @@ const ProjectRegistryTab = ({ projects, isLoading, isCeo, onDelete }: ProjectReg
   );
 };
 
-interface ProjectGalleryTabProps {
-  projects: ProjectWithRelations[];
-  isLoading: boolean;
-}
-
-function ProjectGalleryTab({ projects, isLoading }: ProjectGalleryTabProps) {
-  const showcaseProjects = projects.filter(p => p.is_showcase);
-  const [selectedProject, setSelectedProject] = useState<ProjectWithRelations | null>(null);
-  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-48" />
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-2 gap-6">
-            {[1, 2].map((i) => (
-              <Skeleton key={i} className="h-64 w-full" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CardTitle>Project Gallery</CardTitle>
-              <Badge variant="outline" className="text-xs">
-                <Lock className="h-3 w-3 mr-1" />
-                Read Only
-              </Badge>
-            </div>
-            <Button variant="outline" size="sm" disabled={showcaseProjects.length === 0}>
-              <FileDown className="h-4 w-4 mr-2" />
-              Export Showcase
-            </Button>
-          </div>
-          <CardDescription>
-            Award-winning and showcase projects (Managed by innovation officers)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {showcaseProjects.length === 0 ? (
-            <div className="py-12 text-center">
-              <p className="text-muted-foreground">No showcase projects available for this institution</p>
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 gap-6">
-              {showcaseProjects.map((project) => (
-                <Card key={project.id} className="overflow-hidden">
-                  <div className="aspect-video bg-muted relative">
-                    <img 
-                      src={project.showcase_image_url || '/placeholder.svg'} 
-                      alt={project.title}
-                      className="w-full h-full object-cover"
-                    />
-                    <Badge className="absolute top-4 right-4 bg-yellow-500 text-white">
-                      <Award className="h-3 w-3 mr-1" />
-                      Showcase
-                    </Badge>
-                  </div>
-                  <CardContent className="p-6">
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="font-semibold text-lg mb-1">{project.title}</h3>
-                        <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">Category</p>
-                          <p className="font-medium">{project.category}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Team Size</p>
-                          <p className="font-medium">{project.project_members?.length || 0} members</p>
-                        </div>
-                      </div>
-
-                      {project.project_achievements && project.project_achievements.length > 0 && (
-                        <div>
-                          <p className="text-sm font-medium mb-2">Achievements</p>
-                          <div className="flex flex-wrap gap-2">
-                            {project.project_achievements.slice(0, 3).map((achievement) => (
-                              <Badge key={achievement.id} variant="outline" className="text-xs">
-                                <Award className="h-3 w-3 mr-1" />
-                                {achievement.title}
-                              </Badge>
-                            ))}
-                            {project.project_achievements.length > 3 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{project.project_achievements.length - 3} more
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      <Button 
-                        variant="outline" 
-                        className="w-full"
-                        onClick={() => {
-                          setSelectedProject(project);
-                          setIsDetailsDialogOpen(true);
-                        }}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Full Details
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <ProjectDetailsDialog
-        open={isDetailsDialogOpen}
-        onOpenChange={setIsDetailsDialogOpen}
-        project={selectedProject}
-      />
-    </>
-  );
-}
-
 export default function ProjectsAndCertificates() {
   const { user } = useAuth();
   const institutionId = user?.institution_id || null;
-  // Check is_ceo from user object if available
   const isCeo = (user as any)?.is_ceo === true;
 
   const { data: projects = [], isLoading } = useInstitutionProjects(institutionId);
@@ -343,8 +201,8 @@ export default function ProjectsAndCertificates() {
     <Layout>
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold">Projects & Certificates</h1>
-          <p className="text-muted-foreground">View innovation projects and certificates managed by officers</p>
+          <h1 className="text-3xl font-bold">Projects & Awards</h1>
+          <p className="text-muted-foreground">View innovation projects and awards managed by officers</p>
           {isCeo && (
             <Badge variant="outline" className="mt-2 bg-purple-50 text-purple-700">
               CEO Access - You can delete projects
@@ -352,25 +210,12 @@ export default function ProjectsAndCertificates() {
           )}
         </div>
 
-        <Tabs defaultValue="registry" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="registry">Project Registry</TabsTrigger>
-            <TabsTrigger value="gallery">Project Gallery</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="registry">
-            <ProjectRegistryTab 
-              projects={projects} 
-              isLoading={isLoading} 
-              isCeo={isCeo}
-              onDelete={handleDeleteProject}
-            />
-          </TabsContent>
-
-          <TabsContent value="gallery">
-            <ProjectGalleryTab projects={projects} isLoading={isLoading} />
-          </TabsContent>
-        </Tabs>
+        <ProjectRegistryTab 
+          projects={projects} 
+          isLoading={isLoading} 
+          isCeo={isCeo}
+          onDelete={handleDeleteProject}
+        />
       </div>
     </Layout>
   );
