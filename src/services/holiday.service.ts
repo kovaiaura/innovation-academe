@@ -192,3 +192,15 @@ export const institutionHolidayService = {
     return (data?.length || 0) > 0;
   }
 };
+
+// Unified holiday service for easy import
+export const holidayService = {
+  getCompanyHolidays: companyHolidayService.getByYear,
+  createCompanyHoliday: companyHolidayService.create,
+  updateCompanyHoliday: companyHolidayService.update,
+  deleteCompanyHoliday: companyHolidayService.delete,
+  getInstitutionHolidays: institutionHolidayService.getByYear,
+  createInstitutionHoliday: institutionHolidayService.create,
+  updateInstitutionHoliday: institutionHolidayService.update,
+  deleteInstitutionHoliday: institutionHolidayService.delete
+};

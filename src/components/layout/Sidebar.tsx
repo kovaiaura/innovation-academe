@@ -58,9 +58,11 @@ const menuItems: MenuItem[] = [
   { label: 'Attendance and Payroll', icon: <Clock className="h-5 w-5" />, path: '/officer-attendance', roles: ['system_admin'], feature: 'attendance_payroll' },
   // Hierarchical Leave Management
   { label: 'Leave Management', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-management', roles: ['system_admin'] },
-  { label: 'Manager Approvals', icon: <CalendarCheck className="h-5 w-5" />, path: '/manager-leave-approvals', roles: ['system_admin'] },
-  { label: 'AGM Approvals', icon: <CalendarCheck className="h-5 w-5" />, path: '/agm-leave-approvals', roles: ['system_admin'] },
-  { label: 'CEO Approvals', icon: <CalendarCheck className="h-5 w-5" />, path: '/ceo-leave-approvals', roles: ['system_admin'], ceoOnly: true },
+  { label: 'Leave Approvals', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-approvals', roles: ['system_admin'], feature: 'leave_approvals' },
+  { label: 'Leave Tracking', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-tracking', roles: ['system_admin'], feature: 'leave_approvals' },
+  { label: 'Company Holidays', icon: <Calendar className="h-5 w-5" />, path: '/company-holidays', roles: ['system_admin'] },
+  { label: 'Apply Leave', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave/apply', roles: ['system_admin'] },
+  { label: 'My Leave Status', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave/status', roles: ['system_admin'] },
   { label: 'Institutional Calendar', icon: <Calendar className="h-5 w-5" />, path: '/institutional-calendar', roles: ['system_admin'], feature: 'institutional_calendar' },
   // Position Management (CEO only)
   { label: 'Position Management', icon: <Shield className="h-5 w-5" />, path: '/position-management', roles: ['system_admin'], ceoOnly: true },

@@ -13,6 +13,7 @@ import { InstitutionClassesTab } from '@/components/institution/InstitutionClass
 import { InstitutionOfficersTab } from '@/components/institution/InstitutionOfficersTab';
 import { InstitutionAnalyticsTab } from '@/components/institution/InstitutionAnalyticsTab';
 import { InstitutionTimetableTab } from '@/components/institution/InstitutionTimetableTab';
+import { InstituteHolidayCalendar } from '@/components/institution/InstituteHolidayCalendar';
 import { InstitutionClass } from '@/types/student';
 import { getInstitutionAnalytics } from '@/data/mockInstitutionAnalytics';
 import { toast } from 'sonner';
@@ -253,10 +254,11 @@ export default function InstitutionDetail() {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="classes">Classes</TabsTrigger>
-            <TabsTrigger value="officers">Innovation Officers</TabsTrigger>
+            <TabsTrigger value="officers">Officers</TabsTrigger>
+            <TabsTrigger value="holidays">Holidays</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="timetable">Timetable</TabsTrigger>
           </TabsList>
@@ -473,6 +475,14 @@ export default function InstitutionDetail() {
               availableOfficers={availableOfficers}
               onAssignOfficer={handleAssignOfficer}
               onRemoveOfficer={handleRemoveOfficer}
+            />
+          </TabsContent>
+
+          {/* Holidays Tab */}
+          <TabsContent value="holidays" className="space-y-6">
+            <InstituteHolidayCalendar
+              institutionId={institutionId!}
+              institutionName={institution.name}
             />
           </TabsContent>
 
