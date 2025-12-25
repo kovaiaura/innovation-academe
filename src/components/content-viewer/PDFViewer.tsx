@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Loader2, AlertCircle, RefreshCw, Maximize2, Maximize, Minimize } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Loader2, AlertCircle, RefreshCw, Maximize, Minimize } from 'lucide-react';
 import { downloadCourseContent } from '@/services/courseStorage.service';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -116,15 +116,6 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
     }
   }, [containerWidth, initialFitDone]);
 
-  // Fit to width button handler
-  const fitToWidth = useCallback(() => {
-    if (pageWidth > 0 && containerWidth > 0) {
-      const padding = 48;
-      const availableWidth = containerWidth - padding;
-      const fitScale = Math.min(availableWidth / pageWidth, 2.0);
-      setScale(Math.max(fitScale, 0.5));
-    }
-  }, [pageWidth, containerWidth]);
 
   // Fullscreen toggle
   const toggleFullscreen = useCallback(() => {
@@ -213,19 +204,6 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
             <ZoomIn className="h-4 w-4" />
           </Button>
         </div>
-
-        <div className="h-4 w-px bg-border hidden sm:block" />
-
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={fitToWidth}
-          title="Fit to Width"
-          className="gap-1"
-        >
-          <Maximize2 className="h-4 w-4" />
-          <span className="hidden sm:inline text-xs">Fit</span>
-        </Button>
 
         <div className="h-4 w-px bg-border hidden sm:block" />
 
