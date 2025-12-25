@@ -1205,6 +1205,238 @@ export type Database = {
           },
         ]
       }
+      project_achievements: {
+        Row: {
+          added_by_officer_id: string | null
+          certificate_url: string | null
+          created_at: string | null
+          description: string | null
+          event_date: string | null
+          event_name: string | null
+          id: string
+          project_id: string
+          title: string
+          type: string
+        }
+        Insert: {
+          added_by_officer_id?: string | null
+          certificate_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          event_date?: string | null
+          event_name?: string | null
+          id?: string
+          project_id: string
+          title: string
+          type?: string
+        }
+        Update: {
+          added_by_officer_id?: string | null
+          certificate_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          event_date?: string | null
+          event_name?: string | null
+          id?: string
+          project_id?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_achievements_added_by_officer_id_fkey"
+            columns: ["added_by_officer_id"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_achievements_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_members: {
+        Row: {
+          assigned_at: string | null
+          assigned_by_officer_id: string | null
+          id: string
+          project_id: string
+          role: string
+          student_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by_officer_id?: string | null
+          id?: string
+          project_id: string
+          role?: string
+          student_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by_officer_id?: string | null
+          id?: string
+          project_id?: string
+          role?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_members_assigned_by_officer_id_fkey"
+            columns: ["assigned_by_officer_id"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_members_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_progress_updates: {
+        Row: {
+          attachment_urls: Json | null
+          created_at: string | null
+          id: string
+          notes: string
+          progress_percentage: number | null
+          project_id: string
+          updated_by_officer_id: string | null
+          updated_by_officer_name: string
+        }
+        Insert: {
+          attachment_urls?: Json | null
+          created_at?: string | null
+          id?: string
+          notes: string
+          progress_percentage?: number | null
+          project_id: string
+          updated_by_officer_id?: string | null
+          updated_by_officer_name: string
+        }
+        Update: {
+          attachment_urls?: Json | null
+          created_at?: string | null
+          id?: string
+          notes?: string
+          progress_percentage?: number | null
+          project_id?: string
+          updated_by_officer_id?: string | null
+          updated_by_officer_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_progress_updates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_progress_updates_updated_by_officer_id_fkey"
+            columns: ["updated_by_officer_id"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          actual_completion_date: string | null
+          category: string
+          created_at: string | null
+          created_by_officer_id: string
+          created_by_officer_name: string
+          description: string | null
+          id: string
+          institution_id: string
+          is_published: boolean | null
+          is_showcase: boolean | null
+          progress: number | null
+          remarks: string | null
+          sdg_goals: Json | null
+          showcase_image_url: string | null
+          start_date: string | null
+          status: string
+          target_completion_date: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          actual_completion_date?: string | null
+          category?: string
+          created_at?: string | null
+          created_by_officer_id: string
+          created_by_officer_name: string
+          description?: string | null
+          id?: string
+          institution_id: string
+          is_published?: boolean | null
+          is_showcase?: boolean | null
+          progress?: number | null
+          remarks?: string | null
+          sdg_goals?: Json | null
+          showcase_image_url?: string | null
+          start_date?: string | null
+          status?: string
+          target_completion_date?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          actual_completion_date?: string | null
+          category?: string
+          created_at?: string | null
+          created_by_officer_id?: string
+          created_by_officer_name?: string
+          description?: string | null
+          id?: string
+          institution_id?: string
+          is_published?: boolean | null
+          is_showcase?: boolean | null
+          progress?: number | null
+          remarks?: string | null
+          sdg_goals?: Json | null
+          showcase_image_url?: string | null
+          start_date?: string | null
+          status?: string
+          target_completion_date?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_created_by_officer_id_fkey"
+            columns: ["created_by_officer_id"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_content_completions: {
         Row: {
           class_assignment_id: string
