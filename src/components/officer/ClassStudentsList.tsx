@@ -4,9 +4,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Search, Download, Users } from 'lucide-react';
-import { getStudentsByClass } from '@/data/mockClassStudents';
-import { mockStudentAttendance } from '@/data/mockStudentAttendance';
+import { Search, Download, Users, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ClassStudentsListProps {
   classId: string;
@@ -16,19 +16,58 @@ interface ClassStudentsListProps {
 export function ClassStudentsList({ classId, className }: ClassStudentsListProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Get students for this class
-  const classStudents = getStudentsByClass(classId);
+  // Fetch students for this class from Supabase
+  const { data: students, isLoading } = useQuery({
+    queryKey: ['class-students', classId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('class_id', classId)
+        .order('roll_number', { ascending: true });
+      
+      if (error) throw error;
+      return data || [];
+    }
+  });
 
   // Filter by search
-  const filteredStudents = classStudents.filter(student =>
+  const filteredStudents = (students || []).filter(student =>
     student.student_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (student.roll_number || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleExport = () => {
-    // Export to CSV logic
-    console.log('Exporting student list...');
+    if (!filteredStudents.length) return;
+    
+    // Create CSV content
+    const headers = ['Roll No.', 'Name', 'Email', 'Status'];
+    const rows = filteredStudents.map(s => [
+      s.roll_number || '',
+      s.student_name,
+      s.email || '',
+      s.status || 'active'
+    ]);
+    
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+    
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${className}_students.csv`;
+    link.click();
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -36,10 +75,10 @@ export function ClassStudentsList({ classId, className }: ClassStudentsListProps
         <div>
           <h2 className="text-2xl font-bold">Students in {className}</h2>
           <p className="text-muted-foreground mt-1">
-            {classStudents.length} students enrolled
+            {students?.length || 0} students enrolled
           </p>
         </div>
-        <Button variant="outline" onClick={handleExport}>
+        <Button variant="outline" onClick={handleExport} disabled={!filteredStudents.length}>
           <Download className="h-4 w-4 mr-2" />
           Export List
         </Button>
@@ -78,38 +117,24 @@ export function ClassStudentsList({ classId, className }: ClassStudentsListProps
                   <TableHead>Roll No.</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Attendance</TableHead>
+                  <TableHead>Gender</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredStudents.map((student) => {
-                  // Calculate attendance percentage from student attendance records
-                  const studentAttendanceRecord = mockStudentAttendance.find(
-                    a => a.student_id === student.id
-                  );
-                  const attendancePercent = studentAttendanceRecord?.attendance_percentage || 0;
-
-                  return (
-                    <TableRow key={student.id}>
-                      <TableCell className="font-medium">{student.roll_number}</TableCell>
-                      <TableCell>{student.student_name}</TableCell>
-                      <TableCell className="text-muted-foreground">{student.email}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className={attendancePercent >= 75 ? 'text-green-600' : 'text-orange-600'}>
-                            {Math.round(attendancePercent)}%
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={student.status === 'active' ? 'default' : 'secondary'}>
-                          {student.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {filteredStudents.map((student) => (
+                  <TableRow key={student.id}>
+                    <TableCell className="font-medium">{student.roll_number || '-'}</TableCell>
+                    <TableCell>{student.student_name}</TableCell>
+                    <TableCell className="text-muted-foreground">{student.email || '-'}</TableCell>
+                    <TableCell className="capitalize">{student.gender || '-'}</TableCell>
+                    <TableCell>
+                      <Badge variant={student.status === 'active' ? 'default' : 'secondary'}>
+                        {student.status || 'active'}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           )}
