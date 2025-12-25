@@ -2,10 +2,9 @@
  * Dialog for officers to grant class access to other officers
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,41 +12,111 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Loader2, UserPlus } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useCreateAccessGrant } from '@/hooks/useOfficerClassAccess';
 import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface GrantClassAccessDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   grantingOfficerId: string;
-  classId: string;
-  className: string;
   institutionId: string;
+  // Option 1: Provide classId and className directly
+  classId?: string;
+  className?: string;
   timetableAssignmentId?: string;
-  availableOfficers: Array<{
+  availableOfficers?: Array<{
     id: string;
     name: string;
     email: string;
   }>;
+  // Option 2: Provide preselected values (for self-delegation)
+  preselectedClassId?: string;
+  preselectedTimetableAssignmentId?: string;
+  defaultValidFrom?: string;
+  defaultValidUntil?: string;
 }
 
 export function GrantClassAccessDialog({
   open,
   onOpenChange,
   grantingOfficerId,
-  classId,
-  className,
   institutionId,
-  timetableAssignmentId,
-  availableOfficers,
+  classId: providedClassId,
+  className: providedClassName,
+  timetableAssignmentId: providedTimetableAssignmentId,
+  availableOfficers: providedOfficers,
+  preselectedClassId,
+  preselectedTimetableAssignmentId,
+  defaultValidFrom,
+  defaultValidUntil,
 }: GrantClassAccessDialogProps) {
+  // Use provided or preselected values
+  const effectiveClassId = providedClassId || preselectedClassId || '';
+  const effectiveTimetableAssignmentId = providedTimetableAssignmentId || preselectedTimetableAssignmentId;
+
   const [selectedOfficer, setSelectedOfficer] = useState('');
   const [accessType, setAccessType] = useState<'temporary' | 'permanent'>('temporary');
-  const [validFrom, setValidFrom] = useState<Date>(new Date());
-  const [validUntil, setValidUntil] = useState<Date | undefined>(undefined);
+  const [validFrom, setValidFrom] = useState<Date>(
+    defaultValidFrom ? parseISO(defaultValidFrom) : new Date()
+  );
+  const [validUntil, setValidUntil] = useState<Date | undefined>(
+    defaultValidUntil ? parseISO(defaultValidUntil) : undefined
+  );
   const [reason, setReason] = useState('');
+
+  // Reset form when dialog opens with new defaults
+  useEffect(() => {
+    if (open) {
+      setValidFrom(defaultValidFrom ? parseISO(defaultValidFrom) : new Date());
+      setValidUntil(defaultValidUntil ? parseISO(defaultValidUntil) : undefined);
+      setSelectedOfficer('');
+      setReason('');
+    }
+  }, [open, defaultValidFrom, defaultValidUntil]);
+
+  // Fetch class name if not provided
+  const { data: classData } = useQuery({
+    queryKey: ['class-name', effectiveClassId],
+    queryFn: async () => {
+      if (!effectiveClassId) return null;
+      const { data } = await supabase
+        .from('classes')
+        .select('class_name')
+        .eq('id', effectiveClassId)
+        .single();
+      return data;
+    },
+    enabled: !!effectiveClassId && !providedClassName,
+  });
+
+  const effectiveClassName = providedClassName || classData?.class_name || 'this class';
+
+  // Fetch available officers if not provided
+  const { data: fetchedOfficers = [] } = useQuery({
+    queryKey: ['institution-officers', institutionId],
+    queryFn: async () => {
+      if (!institutionId) return [];
+      const { data, error } = await supabase
+        .from('officers')
+        .select('id, full_name, email')
+        .contains('assigned_institutions', [institutionId])
+        .eq('status', 'active');
+      
+      if (error) throw error;
+      return (data || []).map(o => ({
+        id: o.id,
+        name: o.full_name,
+        email: o.email,
+      }));
+    },
+    enabled: !!institutionId && !providedOfficers,
+  });
+
+  const availableOfficers = providedOfficers || fetchedOfficers;
 
   const createGrantMutation = useCreateAccessGrant();
 
@@ -66,9 +135,9 @@ export function GrantClassAccessDialog({
       grantingOfficerId,
       grant: {
         receiving_officer_id: selectedOfficer,
-        class_id: classId,
+        class_id: effectiveClassId,
         institution_id: institutionId,
-        timetable_assignment_id: timetableAssignmentId,
+        timetable_assignment_id: effectiveTimetableAssignmentId,
         access_type: accessType,
         valid_from: format(validFrom, 'yyyy-MM-dd'),
         valid_until: validUntil ? format(validUntil, 'yyyy-MM-dd') : undefined,
@@ -97,7 +166,7 @@ export function GrantClassAccessDialog({
             Grant Class Access
           </DialogTitle>
           <DialogDescription>
-            Allow another officer to take attendance for <span className="font-medium">{className}</span>
+            Allow another officer to take attendance for <span className="font-medium">{effectiveClassName}</span>
           </DialogDescription>
         </DialogHeader>
 

@@ -45,6 +45,7 @@ import { SalaryTrackerCard } from '@/components/officer/SalaryTrackerCard';
 import { useInstitutionData } from '@/contexts/InstitutionDataContext';
 import { OfficerCheckInCard } from '@/components/officer/OfficerCheckInCard';
 import { DelegatedClassesCard } from '@/components/officer/DelegatedClassesCard';
+import { UpcomingClassesCard } from '@/components/officer/UpcomingClassesCard';
 import { useOfficerByUserId } from '@/hooks/useOfficerProfile';
 import { useOfficerTodayAttendance } from '@/hooks/useOfficerAttendance';
 
@@ -343,6 +344,14 @@ export default function OfficerDashboard() {
           {/* Delegated Classes Today - Only shows if there are delegated classes */}
           {officerProfile && primaryInstitutionId && (
             <DelegatedClassesCard 
+              officerId={officerProfile.id} 
+              institutionId={primaryInstitutionId}
+            />
+          )}
+
+          {/* Upcoming Classes with Transfer Option */}
+          {officerProfile && primaryInstitutionId && (
+            <UpcomingClassesCard 
               officerId={officerProfile.id} 
               institutionId={primaryInstitutionId}
             />
