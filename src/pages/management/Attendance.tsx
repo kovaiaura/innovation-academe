@@ -3,21 +3,41 @@ import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, GraduationCap, CalendarCheck } from "lucide-react";
 import { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { OfficerAttendanceTab } from "@/components/attendance/OfficerAttendanceTab";
 import { StudentAttendanceTab } from "@/components/attendance/StudentAttendanceTab";
 import { ClassSessionAttendanceTab } from "@/components/attendance/ClassSessionAttendanceTab";
-import { useInstitutions } from "@/hooks/useInstitutions";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { transformDbToApp } from "@/hooks/useInstitutions";
 
 const Attendance = () => {
   const [activeTab, setActiveTab] = useState<'officers' | 'class-sessions' | 'students'>('officers');
   
-  // Extract institution slug from URL and find institution from database
-  const location = useLocation();
-  const institutionSlug = location.pathname.split('/')[2];
+  // Get tenant slug from URL params
+  const { tenantId } = useParams<{ tenantId: string }>();
   
-  const { institutions = [], isLoading } = useInstitutions();
-  const institution = institutions.find(i => i.slug === institutionSlug);
+  // Fetch institution directly by slug
+  const { data: institution, isLoading } = useQuery({
+    queryKey: ['institution-by-slug', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return null;
+      
+      const { data, error } = await supabase
+        .from('institutions')
+        .select('*')
+        .eq('slug', tenantId)
+        .single();
+      
+      if (error) {
+        console.error('[Attendance] Failed to fetch institution:', error);
+        return null;
+      }
+      
+      return transformDbToApp(data);
+    },
+    enabled: !!tenantId,
+  });
   
   if (isLoading) {
     return (
@@ -28,23 +48,31 @@ const Attendance = () => {
       </Layout>
     );
   }
+
+  if (!institution) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64 text-muted-foreground">
+          Institution not found
+        </div>
+      </Layout>
+    );
+  }
   
   return (
     <Layout>
       <div className="space-y-6">
-        {institution && (
-          <InstitutionHeader 
-            institutionName={institution.name}
-            establishedYear={institution.established_year}
-            location={institution.location}
-            totalStudents={institution.total_students}
-            totalFaculty={institution.total_faculty}
-            totalDepartments={0}
-            academicYear="2024-25"
-            userRole="Management Portal"
-            assignedOfficers={[]}
-          />
-        )}
+        <InstitutionHeader 
+          institutionName={institution.name}
+          establishedYear={institution.established_year}
+          location={institution.location}
+          totalStudents={institution.total_students}
+          totalFaculty={institution.total_faculty}
+          totalDepartments={0}
+          academicYear="2024-25"
+          userRole="Management Portal"
+          assignedOfficers={[]}
+        />
         
         <div>
           <h1 className="text-3xl font-bold">Attendance Management</h1>
@@ -68,15 +96,15 @@ const Attendance = () => {
           </TabsList>
           
           <TabsContent value="officers" className="mt-6">
-            <OfficerAttendanceTab institutionId={institution?.id} />
+            <OfficerAttendanceTab institutionId={institution.id} />
           </TabsContent>
           
           <TabsContent value="class-sessions" className="mt-6">
-            <ClassSessionAttendanceTab institutionId={institution?.id} />
+            <ClassSessionAttendanceTab institutionId={institution.id} />
           </TabsContent>
           
           <TabsContent value="students" className="mt-6">
-            <StudentAttendanceTab institutionId={institution?.id} />
+            <StudentAttendanceTab institutionId={institution.id} />
           </TabsContent>
         </Tabs>
       </div>
