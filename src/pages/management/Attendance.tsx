@@ -2,19 +2,20 @@ import { Layout } from "@/components/layout/Layout";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, GraduationCap, CalendarCheck, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { Users, GraduationCap, CalendarCheck, CheckCircle2, Clock, BarChart3 } from "lucide-react";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { OfficerAttendanceTab } from "@/components/attendance/OfficerAttendanceTab";
 import { StudentAttendanceTab } from "@/components/attendance/StudentAttendanceTab";
 import { ClassSessionAttendanceTab } from "@/components/attendance/ClassSessionAttendanceTab";
+import { AttendanceStatisticsCharts } from "@/components/attendance/AttendanceStatisticsCharts";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { transformDbToApp } from "@/hooks/useInstitutions";
 import { format, startOfDay, endOfDay } from "date-fns";
 
 const Attendance = () => {
-  const [activeTab, setActiveTab] = useState<'officers' | 'class-sessions' | 'students'>('officers');
+  const [activeTab, setActiveTab] = useState<'officers' | 'class-sessions' | 'students' | 'analytics'>('officers');
   
   // Get tenant slug from URL params
   const { tenantId } = useParams<{ tenantId: string }>();
@@ -190,7 +191,7 @@ const Attendance = () => {
         </div>
         
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-          <TabsList className="grid w-full grid-cols-3 max-w-3xl">
+          <TabsList className="grid w-full grid-cols-4 max-w-4xl">
             <TabsTrigger value="officers" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Innovation Officers
@@ -202,6 +203,10 @@ const Attendance = () => {
             <TabsTrigger value="students" className="flex items-center gap-2">
               <GraduationCap className="h-4 w-4" />
               Students
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Analytics
             </TabsTrigger>
           </TabsList>
           
@@ -215,6 +220,10 @@ const Attendance = () => {
           
           <TabsContent value="students" className="mt-6">
             <StudentAttendanceTab institutionId={institution.id} />
+          </TabsContent>
+          
+          <TabsContent value="analytics" className="mt-6">
+            <AttendanceStatisticsCharts institutionId={institution.id} />
           </TabsContent>
         </Tabs>
       </div>
