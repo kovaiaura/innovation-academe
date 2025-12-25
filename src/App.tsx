@@ -94,6 +94,10 @@ import ManagerLeaveApprovals from "./pages/system-admin/ManagerLeaveApprovals";
 import AGMLeaveApprovals from "./pages/system-admin/AGMLeaveApprovals";
 import CEOLeaveApprovals from "./pages/system-admin/CEOLeaveApprovals";
 import EventManagement from "./pages/system-admin/EventManagement";
+import CompanyHolidays from "./pages/system-admin/CompanyHolidays";
+import LeaveApply from "./pages/system-admin/LeaveApply";
+import LeaveStatus from "./pages/system-admin/LeaveStatus";
+import LeaveTracking from "./pages/system-admin/LeaveTracking";
 import Performance from "./pages/management/Performance";
 import SystemAdminPositionManagement from "./pages/system-admin/PositionManagement";
 import SystemAdminTaskManagement from "./pages/system-admin/TaskManagement";
@@ -283,6 +287,38 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <CEOLeaveApprovals />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/company-holidays"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <CompanyHolidays />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/leave/apply"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <LeaveApply />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/leave/status"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <LeaveStatus />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/leave-tracking"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="leave_approvals">
+                  <LeaveTracking />
                 </ProtectedRoute>
               }
             />
