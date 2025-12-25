@@ -84,6 +84,47 @@ export interface UpdateProjectInput {
   showcase_image_url?: string;
 }
 
+// Fetch ALL projects across all institutions (for CEO/Super Admin)
+export function useAllProjects() {
+  return useQuery({
+    queryKey: ['projects', 'all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          project_members(
+            id,
+            student_id,
+            role,
+            student:students(id, student_name, class_id)
+          ),
+          project_achievements(
+            id,
+            title,
+            type,
+            event_name,
+            event_date,
+            certificate_url,
+            created_at
+          ),
+          project_progress_updates(
+            id,
+            notes,
+            progress_percentage,
+            updated_by_officer_name,
+            created_at
+          ),
+          institution:institutions(id, name)
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data as unknown as (ProjectWithRelations & { institution: { id: string; name: string } })[];
+    },
+  });
+}
+
 // Fetch all projects for an institution (for officers/management)
 export function useInstitutionProjects(institutionId: string | null) {
   return useQuery({
