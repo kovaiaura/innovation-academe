@@ -291,7 +291,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
                           <Input
                             value={level.title}
                             onChange={(e) => handleUpdateModule(level.id, 'title', e.target.value)}
-                            placeholder="Module title"
+                            placeholder="Level title"
                           />
                         </div>
                         <div className="space-y-1">

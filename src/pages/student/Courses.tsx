@@ -88,7 +88,7 @@ export default function Courses() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <BookOpen className="h-4 w-4" />
-                        <span>{unlockedModules} Modules</span>
+                        <span>{unlockedModules} Levels</span>
                       </div>
                       {((item as any).progressPercentage || 0) === 100 ? (
                         <Badge variant="default" className="bg-green-500">

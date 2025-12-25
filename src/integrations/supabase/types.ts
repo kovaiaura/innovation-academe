@@ -1079,6 +1079,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_sequential_unlocks: {
+        Args: { p_class_module_assignment_id: string }
+        Returns: undefined
+      }
       get_next_id: {
         Args: { p_entity_type: string; p_institution_id: string }
         Returns: number

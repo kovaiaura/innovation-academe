@@ -198,7 +198,7 @@ export function AssignCourseToClassDialog({
   const handleNext = () => {
     const selectedModules = moduleConfigs.filter(m => m.isSelected);
     if (currentStep === 2 && selectedModules.length === 0) {
-      toast.error('Please select at least one module');
+      toast.error('Please select at least one level');
       return;
     }
     setCurrentStep(currentStep + 1);
@@ -270,7 +270,7 @@ export function AssignCourseToClassDialog({
           <DialogTitle>Assign Course to {classData.class_name} - Step {currentStep} of 3</DialogTitle>
           <DialogDescription>
             {currentStep === 1 && 'Select a course to assign'}
-            {currentStep === 2 && 'Choose modules and sessions with lock/unlock settings'}
+            {currentStep === 2 && 'Choose levels and sessions with lock/unlock settings'}
             {currentStep === 3 && 'Review and confirm'}
           </DialogDescription>
         </DialogHeader>
@@ -347,10 +347,10 @@ export function AssignCourseToClassDialog({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Link2 className="h-5 w-5 text-primary" />
-                        <div>
+                      <div>
                           <p className="font-medium text-sm">Unlock Mode</p>
                           <p className="text-xs text-muted-foreground">
-                            Choose how modules and sessions are unlocked
+                            Choose how levels and sessions are unlocked
                           </p>
                         </div>
                       </div>
@@ -366,7 +366,7 @@ export function AssignCourseToClassDialog({
                     </div>
                     {globalUnlockMode === 'sequential' && (
                       <p className="text-xs text-muted-foreground mt-2 pl-7">
-                        Next module/session unlocks automatically when previous one is completed
+                        Next level/session unlocks automatically when previous one is completed
                       </p>
                     )}
                   </CardContent>
@@ -566,7 +566,7 @@ export function AssignCourseToClassDialog({
                     <span className="font-medium">{classData.class_name}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Modules Selected:</span>
+                    <span className="text-sm text-muted-foreground">Levels Selected:</span>
                     <span className="font-medium">{selectedModules.length}</span>
                   </div>
                 </CardContent>
@@ -574,7 +574,7 @@ export function AssignCourseToClassDialog({
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Modules & Sessions</CardTitle>
+                  <CardTitle className="text-base">Levels & Sessions</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -583,7 +583,7 @@ export function AssignCourseToClassDialog({
                       return (
                         <div key={module.moduleId} className="p-3 border rounded">
                           <div className="flex items-center justify-between mb-2">
-                            <p className="font-medium text-sm">Module {index + 1}: {module.title}</p>
+                            <p className="font-medium text-sm">Level {index + 1}: {module.title}</p>
                             <Badge variant={module.isUnlocked ? "default" : "secondary"}>
                               {module.isUnlocked ? (
                                 <><Unlock className="h-3 w-3 mr-1" /> Unlocked</>

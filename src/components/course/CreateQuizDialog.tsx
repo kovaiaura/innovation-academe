@@ -18,7 +18,7 @@ import { Course, Quiz } from '@/types/course';
 
 const quizSchema = z.object({
   course_id: z.string().min(1, 'Course is required'),
-  module_id: z.string().min(1, 'Module is required'),
+  module_id: z.string().min(1, 'Level is required'),
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().min(1, 'Description is required'),
   attempts_allowed: z.number().min(1, 'At least 1 attempt is required'),
@@ -117,11 +117,11 @@ export function CreateQuizDialog({ open, onOpenChange, courses, modules, onSubmi
               name="module_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Module</FormLabel>
+                  <FormLabel>Level</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value} disabled={!selectedCourseId}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a module" />
+                        <SelectValue placeholder="Select a level" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>

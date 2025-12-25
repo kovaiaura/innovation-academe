@@ -343,7 +343,7 @@ export default function ClassDetail() {
                   }
                   return assignment;
                 }));
-                toast.success('Module unlocked successfully');
+                toast.success('Level unlocked successfully');
               }}
             />
           </TabsContent>
