@@ -1,15 +1,11 @@
-import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { PlayCircle, RotateCcw, CheckCircle, BookOpen, Clock, Lock } from 'lucide-react';
-import { mockClassCourseAssignments } from '@/data/mockClassCourseAssignments';
-import { mockCourses, mockModules } from '@/data/mockCourseData';
-import { mockClassCourseProgress } from '@/data/mockClassTeachingProgress';
-import { getTeachingStatusColor, getTeachingStatusText, formatTeachingDuration } from '@/utils/classTeachingHelpers';
-import { format } from 'date-fns';
+import { PlayCircle, RotateCcw, CheckCircle, BookOpen, Lock, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ClassCourseLauncherProps {
   classId: string;
@@ -21,24 +17,108 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
   const { tenantId } = useParams();
   const navigate = useNavigate();
 
-  // Get courses assigned to this class
-  const classAssignments = mockClassCourseAssignments.filter(
-    ca => ca.class_id === classId
-  );
+  // Fetch course class assignments for this class
+  const { data: classAssignments, isLoading: loadingAssignments } = useQuery({
+    queryKey: ['class-course-assignments', classId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('course_class_assignments')
+        .select(`
+          id,
+          course_id,
+          assigned_at,
+          courses (
+            id,
+            title,
+            course_code,
+            description,
+            thumbnail_url,
+            status,
+            difficulty
+          )
+        `)
+        .eq('class_id', classId);
+      
+      if (error) throw error;
+      return data || [];
+    }
+  });
 
-  const assignedCourseIds = classAssignments.map(ca => ca.course_id);
-  const assignedCourses = mockCourses.filter(c => assignedCourseIds.includes(c.id));
+  // Fetch module assignments for this class
+  const { data: moduleAssignments, isLoading: loadingModules } = useQuery({
+    queryKey: ['class-module-assignments', classId],
+    queryFn: async () => {
+      if (!classAssignments?.length) return [];
+      
+      const assignmentIds = classAssignments.map(ca => ca.id);
+      const { data, error } = await supabase
+        .from('class_module_assignments')
+        .select(`
+          id,
+          class_assignment_id,
+          module_id,
+          is_unlocked,
+          unlock_order,
+          course_modules (
+            id,
+            title,
+            description,
+            display_order,
+            course_id
+          )
+        `)
+        .in('class_assignment_id', assignmentIds)
+        .order('unlock_order', { ascending: true });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!classAssignments?.length
+  });
 
-  const handleLaunchCourse = (courseId: string, continueFrom?: boolean) => {
-    const assignment = classAssignments.find(ca => ca.course_id === courseId);
-    const progress = mockClassCourseProgress.find(
-      p => p.class_id === classId && p.course_id === courseId
-    );
+  // Fetch session assignments for this class
+  const { data: sessionAssignments, isLoading: loadingSessions } = useQuery({
+    queryKey: ['class-session-assignments', classId, moduleAssignments],
+    queryFn: async () => {
+      if (!moduleAssignments?.length) return [];
+      
+      const moduleAssignmentIds = moduleAssignments.map(ma => ma.id);
+      const { data, error } = await supabase
+        .from('class_session_assignments')
+        .select(`
+          id,
+          class_module_assignment_id,
+          session_id,
+          is_unlocked,
+          unlock_order,
+          course_sessions (
+            id,
+            title,
+            description,
+            display_order,
+            module_id
+          )
+        `)
+        .in('class_module_assignment_id', moduleAssignmentIds)
+        .order('unlock_order', { ascending: true });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!moduleAssignments?.length
+  });
 
+  const isLoading = loadingAssignments || loadingModules || loadingSessions;
+
+  const handleLaunchCourse = (courseId: string, classAssignmentId: string) => {
     // Get allowed module IDs for this class (only unlocked modules)
-    const allowedModuleIds = assignment?.assigned_modules
+    const assignmentModules = moduleAssignments?.filter(
+      m => m.class_assignment_id === classAssignmentId
+    ) || [];
+    
+    const allowedModuleIds = assignmentModules
       .filter(m => m.is_unlocked)
-      .map(m => m.module_id) || [];
+      .map(m => m.module_id);
 
     // Build navigation URL with class context AND allowed modules
     let url = `/tenant/${tenantId}/officer/courses/${courseId}/viewer?class_id=${classId}&class_name=${encodeURIComponent(className)}`;
@@ -47,13 +127,22 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
     if (allowedModuleIds.length > 0) {
       url += `&allowed_modules=${allowedModuleIds.join(',')}`;
     }
-    
-    if (continueFrom && progress?.current_module_id) {
-      url += `&module_id=${progress.current_module_id}&content_index=${progress.current_content_index || 0}`;
-    }
 
     navigate(url);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const assignedCourses = classAssignments?.map(ca => ({
+    assignment: ca,
+    course: ca.courses
+  })).filter(item => item.course) || [];
 
   return (
     <div className="space-y-6">
@@ -79,47 +168,46 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
       )}
 
       <div className="grid gap-6 md:grid-cols-2">
-        {assignedCourses.map((course) => {
-          const assignment = classAssignments.find(ca => ca.course_id === course.id);
-          const progress = mockClassCourseProgress.find(
-            p => p.class_id === classId && p.course_id === course.id
-          );
+        {assignedCourses.map(({ assignment, course }) => {
+          // Get modules assigned to this class for this course
+          const courseModules = moduleAssignments?.filter(
+            m => m.class_assignment_id === assignment.id
+          ) || [];
+          
+          const totalModules = courseModules.length;
+          const unlockedModules = courseModules.filter(m => m.is_unlocked);
+          const lockedModules = courseModules.filter(m => !m.is_unlocked);
 
-          // Get assigned modules for this class
-          const assignedModules = assignment?.assigned_modules || [];
-          const totalModules = assignedModules.length;
-          const unlockedModules = assignedModules.filter(m => m.is_unlocked);
-          const lockedModules = assignedModules.filter(m => !m.is_unlocked);
-          
-          // Calculate completion based on assigned modules only
-          const completedModules = progress?.completed_modules.filter(
-            moduleId => assignedModules.some(am => am.module_id === moduleId)
-          ).length || 0;
-          
-          const completionPercentage = totalModules > 0 
-            ? Math.round((completedModules / totalModules) * 100)
-            : 0;
-          
-          const status = progress?.status || 'not_started';
-          const canContinue = status === 'in_progress' && progress?.current_module_id;
+          // Get sessions for each module
+          const getModuleSessions = (moduleAssignmentId: string) => {
+            return sessionAssignments?.filter(
+              s => s.class_module_assignment_id === moduleAssignmentId
+            ) || [];
+          };
 
           return (
-            <Card key={course.id}>
+            <Card key={assignment.id}>
               <CardHeader>
                 <div className="flex items-start gap-4">
-                  <img
-                    src={course.thumbnail_url}
-                    alt={course.title}
-                    className="w-20 h-20 rounded-lg object-cover"
-                  />
+                  {course.thumbnail_url ? (
+                    <img
+                      src={course.thumbnail_url}
+                      alt={course.title}
+                      className="w-20 h-20 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center">
+                      <BookOpen className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                  )}
                   <div className="flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <CardTitle className="text-lg leading-tight">{course.title}</CardTitle>
                         <CardDescription className="mt-1">{course.course_code}</CardDescription>
                       </div>
-                      <Badge variant={getTeachingStatusColor(status) as any} className="shrink-0">
-                        {getTeachingStatusText(status)}
+                      <Badge variant="default" className="shrink-0">
+                        {course.status}
                       </Badge>
                     </div>
                   </div>
@@ -127,28 +215,11 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {/* Progress Bar */}
-                  <div>
-                    <div className="flex items-center justify-between text-sm mb-2">
-                      <span className="text-muted-foreground">Progress</span>
-                      <span className="font-medium">{completionPercentage}%</span>
-                    </div>
-                    <Progress value={completionPercentage} />
-                  </div>
-
                   {/* Module Progress */}
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm">
-                      <BookOpen className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">
-                        {completedModules}/{totalModules} modules completed
-                      </span>
-                    </div>
-                    
-                    {/* Module Availability Info */}
-                    <div className="flex items-center gap-2 text-sm">
                       <BookOpen className="h-4 w-4 text-primary" />
-                      <span className="text-primary font-medium">
+                      <span className="font-medium">
                         {unlockedModules.length} of {totalModules} modules available
                       </span>
                     </div>
@@ -158,73 +229,71 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
                       <div className="flex items-center gap-2 text-sm p-2 bg-amber-50 dark:bg-amber-950 rounded-md">
                         <Lock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                         <span className="text-amber-700 dark:text-amber-300">
-                          {lockedModules.length} {lockedModules.length === 1 ? 'module' : 'modules'} locked by admin
+                          {lockedModules.length} {lockedModules.length === 1 ? 'module' : 'modules'} locked
                         </span>
                       </div>
                     )}
                   </div>
 
-                  {/* Teaching Stats */}
-                  {progress && progress.total_sessions > 0 && (
-                    <>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">
-                          {progress.total_sessions} sessions • {progress.total_hours.toFixed(1)}h taught
-                        </span>
-                      </div>
+                  {/* Module & Session List */}
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {courseModules.map((moduleAssignment) => {
+                      const sessions = getModuleSessions(moduleAssignment.id);
+                      const unlockedSessions = sessions.filter(s => s.is_unlocked);
                       
-                      {progress.last_session_date && (
-                        <div className="text-sm text-muted-foreground">
-                          Last session: {format(new Date(progress.last_session_date), 'MMM dd, yyyy')}
-                        </div>
-                      )}
-
-                      {canContinue && progress.last_module_title && (
-                        <div className="p-3 bg-muted rounded-lg">
-                          <p className="text-sm font-medium">Continue from:</p>
-                          <p className="text-sm text-muted-foreground">{progress.last_module_title}</p>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-2 pt-2">
-                    {canContinue ? (
-                      <>
-                        <Button
-                          className="flex-1"
-                          onClick={() => handleLaunchCourse(course.id, true)}
+                      return (
+                        <div 
+                          key={moduleAssignment.id}
+                          className={`p-2 rounded-md border ${
+                            moduleAssignment.is_unlocked 
+                              ? 'bg-background border-border' 
+                              : 'bg-muted/50 border-muted'
+                          }`}
                         >
-                          <PlayCircle className="h-4 w-4 mr-2" />
-                          Continue Teaching
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => handleLaunchCourse(course.id, false)}
-                        >
-                          <RotateCcw className="h-4 w-4" />
-                        </Button>
-                      </>
-                    ) : status === 'completed' ? (
-                      <Button
-                        className="w-full"
-                        variant="outline"
-                        onClick={() => handleLaunchCourse(course.id, false)}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Review Course
-                      </Button>
-                    ) : (
-                      <Button
-                        className="w-full"
-                        onClick={() => handleLaunchCourse(course.id, false)}
-                      >
-                        <PlayCircle className="h-4 w-4 mr-2" />
-                        Start Teaching
-                      </Button>
-                    )}
+                          <div className="flex items-center gap-2">
+                            {moduleAssignment.is_unlocked ? (
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <Lock className="h-4 w-4 text-muted-foreground" />
+                            )}
+                            <span className={`text-sm font-medium ${
+                              !moduleAssignment.is_unlocked ? 'text-muted-foreground' : ''
+                            }`}>
+                              {moduleAssignment.course_modules?.title || 'Module'}
+                            </span>
+                          </div>
+                          {moduleAssignment.is_unlocked && sessions.length > 0 && (
+                            <div className="ml-6 mt-1 space-y-1">
+                              {sessions.map(session => (
+                                <div 
+                                  key={session.id}
+                                  className="flex items-center gap-2 text-xs text-muted-foreground"
+                                >
+                                  {session.is_unlocked ? (
+                                    <CheckCircle className="h-3 w-3 text-green-500" />
+                                  ) : (
+                                    <Lock className="h-3 w-3" />
+                                  )}
+                                  <span>{session.course_sessions?.title || 'Session'}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Action Button */}
+                  <div className="pt-2">
+                    <Button
+                      className="w-full"
+                      onClick={() => handleLaunchCourse(course.id, assignment.id)}
+                      disabled={unlockedModules.length === 0}
+                    >
+                      <PlayCircle className="h-4 w-4 mr-2" />
+                      Start Teaching
+                    </Button>
                   </div>
                 </div>
               </CardContent>
