@@ -445,15 +445,38 @@ export default function TeachingSession() {
             </div>
 
             <div className="flex items-center gap-4">
-              {/* Class Progress */}
-              {completionStatus && completionStatus.totalStudents > 0 && (
+              {/* Course Progress - Levels & Sessions */}
+              {structuredModules.length > 0 && (
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-primary" />
                   <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Class Progress</p>
+                    <p className="text-xs text-muted-foreground">Course Progress</p>
                     <div className="flex items-center gap-2">
-                      <Progress value={completionStatus.progressPercentage} className="w-20 h-2" />
-                      <span className="text-sm font-medium">{completionStatus.progressPercentage}%</span>
+                      {(() => {
+                        const totalLevels = structuredModules.filter(m => m.is_unlocked).length;
+                        const completedLevels = structuredModules.filter(
+                          m => m.is_unlocked && m.sessions.every(s => s.isCompleted)
+                        ).length;
+                        const totalSessions = structuredModules.reduce(
+                          (acc, m) => acc + m.sessions.filter(s => s.is_unlocked).length, 0
+                        );
+                        const completedSessions = structuredModules.reduce(
+                          (acc, m) => acc + m.sessions.filter(s => s.isCompleted).length, 0
+                        );
+                        const progressPercent = totalSessions > 0 
+                          ? Math.round((completedSessions / totalSessions) * 100) 
+                          : 0;
+                        
+                        return (
+                          <>
+                            <span className="text-xs text-muted-foreground">
+                              {completedLevels}/{totalLevels} Levels • {completedSessions}/{totalSessions} Sessions
+                            </span>
+                            <Progress value={progressPercent} className="w-20 h-2" />
+                            <span className="text-sm font-medium">{progressPercent}%</span>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
