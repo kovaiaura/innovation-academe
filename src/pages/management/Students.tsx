@@ -201,8 +201,6 @@ export default function Students() {
             establishedYear={institutionSettings.established_year || new Date().getFullYear()}
             location={institutionAddress.location || ''}
             totalStudents={totalStudents}
-            totalFaculty={institutionSettings.total_faculty || 0}
-            totalDepartments={uniqueClasses}
             academicYear={institutionSettings.academic_year || '2024-25'}
             userRole="Management Portal"
             assignedOfficers={[]}

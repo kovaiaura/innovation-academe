@@ -290,8 +290,6 @@ export default function ProjectsAndCertificates() {
           establishedYear={institution.established_year}
           location={institution.location}
           totalStudents={institution.total_students}
-          totalFaculty={institution.total_faculty}
-          totalDepartments={institution.total_departments}
           academicYear={institution.academic_year}
           userRole="Management Portal"
           assignedOfficers={institution.assigned_officers.map(o => o.officer_name)}

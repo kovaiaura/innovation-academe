@@ -115,8 +115,6 @@ const Attendance = () => {
           establishedYear={institution.established_year}
           location={institution.location}
           totalStudents={institution.total_students}
-          totalFaculty={institution.total_faculty}
-          totalDepartments={0}
           academicYear="2024-25"
           userRole="Management Portal"
           assignedOfficers={[]}
