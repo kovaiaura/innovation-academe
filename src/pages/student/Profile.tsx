@@ -1,7 +1,27 @@
 import { Layout } from '@/components/layout/Layout';
 import { MyProfilePage } from '@/components/profile/MyProfilePage';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserProfilePhoto, updateProfilePhoto } from '@/hooks/useUserProfilePhoto';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 export default function StudentProfile() {
+  const { user } = useAuth();
+  const { photoUrl, isLoading } = useUserProfilePhoto(user?.id);
+  const queryClient = useQueryClient();
+
+  const handlePhotoChange = async (url: string | null) => {
+    if (!user?.id) return;
+    
+    try {
+      await updateProfilePhoto(user.id, url);
+      queryClient.invalidateQueries({ queryKey: ['user-profile-photo', user.id] });
+      toast.success(url ? 'Profile photo updated' : 'Profile photo removed');
+    } catch (error) {
+      toast.error('Failed to update profile photo');
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -14,9 +34,8 @@ export default function StudentProfile() {
 
         <MyProfilePage
           photoLabel="Profile Photo"
-          onPhotoChange={(url) => {
-            console.log('Student profile photo updated:', url);
-          }}
+          currentPhotoUrl={isLoading ? undefined : photoUrl}
+          onPhotoChange={handlePhotoChange}
         />
       </div>
     </Layout>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SchoolTeacher } from '@/types/teacher';
@@ -9,9 +9,10 @@ import { TeacherDetailsDialog } from './TeacherDetailsDialog';
 interface TeacherSidebarProfileProps {
   teacher: SchoolTeacher;
   collapsed: boolean;
+  photoUrl?: string | null;
 }
 
-export function TeacherSidebarProfile({ teacher, collapsed }: TeacherSidebarProfileProps) {
+export function TeacherSidebarProfile({ teacher, collapsed, photoUrl }: TeacherSidebarProfileProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const getInitials = (name: string) => {
@@ -45,6 +46,9 @@ export function TeacherSidebarProfile({ teacher, collapsed }: TeacherSidebarProf
             className="h-10 w-10 mx-auto cursor-pointer hover:ring-2 hover:ring-meta-accent transition-all" 
             onClick={() => setDialogOpen(true)}
           >
+            {photoUrl ? (
+              <AvatarImage src={photoUrl} alt={teacher.name} />
+            ) : null}
             <AvatarFallback className="bg-meta-accent text-meta-dark font-semibold">
               {getInitials(teacher.name)}
             </AvatarFallback>
@@ -71,6 +75,9 @@ export function TeacherSidebarProfile({ teacher, collapsed }: TeacherSidebarProf
           {/* Header with Avatar and Name */}
           <div className="flex items-center gap-3">
             <Avatar className="h-12 w-12">
+              {photoUrl ? (
+                <AvatarImage src={photoUrl} alt={teacher.name} />
+              ) : null}
               <AvatarFallback className="bg-meta-accent text-meta-dark font-semibold">
                 {getInitials(teacher.name)}
               </AvatarFallback>

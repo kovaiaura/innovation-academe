@@ -25,6 +25,8 @@ import { getTeacherByEmail } from '@/data/mockTeacherData';
 import { SchoolTeacher } from '@/types/teacher';
 import { getPendingLeaveCount, getPendingLeaveCountByStage } from '@/data/mockLeaveData';
 import { NotificationBell } from './NotificationBell';
+import { SidebarProfileCard } from './SidebarProfileCard';
+import { useUserProfilePhoto } from '@/hooks/useUserProfilePhoto';
 
 interface MenuItem {
   label: string;
@@ -141,6 +143,9 @@ export function Sidebar() {
   const [managerLeaveCount, setManagerLeaveCount] = useState(0);
   const [agmLeaveCount, setAgmLeaveCount] = useState(0);
   const [ceoLeaveCount, setCeoLeaveCount] = useState(0);
+  
+  // Fetch profile photo for sidebar display
+  const { photoUrl } = useUserProfilePhoto(user?.id);
 
   useEffect(() => {
     // Fetch officer profile if user is an officer
@@ -347,30 +352,29 @@ export function Sidebar() {
         {userRoles.includes('officer') && officerProfile ? (
           <OfficerSidebarProfile officer={officerProfile} collapsed={collapsed} />
         ) : userRoles.includes('teacher') && teacherProfile ? (
-          <TeacherSidebarProfile teacher={teacherProfile} collapsed={collapsed} />
-        ) : (
-          // Default user section for other roles
-          <div className="p-4">
-            {!collapsed && user && (
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">{user.name}</p>
-                  <p className="text-xs text-gray-400">
-                    {user.roles && user.roles.length > 1 
-                      ? user.roles.map(r => r.replace('_', ' ')).join(', ')
-                      : user.role.replace('_', ' ')}
-                  </p>
-                </div>
-                {['system_admin', 'officer', 'student'].some(r => userRoles.includes(r as UserRole)) && (
-                  <NotificationBell 
-                    userId={user.id} 
-                    userRole={user.role as 'officer' | 'student' | 'system_admin'} 
-                  />
-                )}
+          <TeacherSidebarProfile teacher={teacherProfile} collapsed={collapsed} photoUrl={photoUrl} />
+        ) : user ? (
+          // Profile card for other roles (management, student, system_admin, super_admin)
+          <>
+            <SidebarProfileCard
+              userName={user.name || 'User'}
+              photoUrl={photoUrl}
+              subtitle={user.roles && user.roles.length > 1 
+                ? user.roles.map(r => r.replace('_', ' ')).join(', ')
+                : user.role?.replace('_', ' ')}
+              profilePath={getFullPath('/profile', user.role as UserRole)}
+              collapsed={collapsed}
+            />
+            {!collapsed && ['system_admin', 'officer', 'student'].some(r => userRoles.includes(r as UserRole)) && (
+              <div className="px-4 pb-2 flex justify-end">
+                <NotificationBell 
+                  userId={user.id} 
+                  userRole={user.role as 'officer' | 'student' | 'system_admin'} 
+                />
               </div>
             )}
-          </div>
-        )}
+          </>
+        ) : null}
         
         {/* Logout Button (always visible) */}
         <div className="px-4 pb-4">
