@@ -282,46 +282,74 @@ export function ProjectDetailsDialog({
 
             <Separator />
 
-            {/* Progress Updates */}
+            {/* Progress Updates - Timeline View */}
             <div>
               <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Progress Updates ({progressUpdates.length})
+                <TrendingUp className="h-4 w-4" />
+                Progress Timeline ({progressUpdates.length} updates)
               </h4>
               {progressUpdates.length > 0 ? (
-                <div className="space-y-3">
-                  {[...progressUpdates]
-                    .sort((a, b) => {
-                      const dateA = a.created_at || a.date || '';
-                      const dateB = b.created_at || b.date || '';
-                      return new Date(dateB).getTime() - new Date(dateA).getTime();
-                    })
-                    .slice(0, 5)
-                    .map((update, idx) => {
-                      const updateDate = update.created_at || update.date;
-                      const updatedBy = update.updated_by_officer_name || update.updated_by || 'Unknown';
-                      return (
-                        <div key={update.id || idx} className="text-sm p-3 border rounded-md">
-                          <div className="flex justify-between items-start mb-1">
-                            <span className="font-medium">{updatedBy}</span>
-                            {updateDate && (
-                              <span className="text-xs text-muted-foreground">
-                                {format(new Date(updateDate), 'MMM dd, yyyy HH:mm')}
-                              </span>
-                            )}
+                <div className="relative">
+                  {/* Timeline line */}
+                  <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-border" />
+                  
+                  <div className="space-y-4">
+                    {[...progressUpdates]
+                      .sort((a, b) => {
+                        const dateA = a.created_at || a.date || '';
+                        const dateB = b.created_at || b.date || '';
+                        return new Date(dateB).getTime() - new Date(dateA).getTime();
+                      })
+                      .map((update, idx) => {
+                        const updateDate = update.created_at || update.date;
+                        const updatedBy = update.updated_by_officer_name || update.updated_by || 'Unknown';
+                        return (
+                          <div key={update.id || idx} className="relative pl-8">
+                            {/* Timeline dot */}
+                            <div className="absolute left-1.5 top-2 h-3 w-3 rounded-full bg-primary border-2 border-background" />
+                            
+                            <div className="text-sm p-3 border rounded-lg bg-card hover:bg-accent/50 transition-colors">
+                              {/* Date header - prominent */}
+                              <div className="flex items-center gap-2 mb-2 pb-2 border-b">
+                                <Calendar className="h-4 w-4 text-primary" />
+                                {updateDate ? (
+                                  <div className="flex-1">
+                                    <span className="font-semibold text-primary">
+                                      {format(new Date(updateDate), 'EEEE, MMMM dd, yyyy')}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground ml-2">
+                                      at {format(new Date(updateDate), 'hh:mm a')}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground">Date not available</span>
+                                )}
+                                {update.progress_percentage !== null && update.progress_percentage !== undefined && (
+                                  <Badge variant="default" className="text-xs font-bold">
+                                    {update.progress_percentage}%
+                                  </Badge>
+                                )}
+                              </div>
+                              
+                              {/* Remark/Notes */}
+                              <div className="space-y-2">
+                                <p className="text-foreground leading-relaxed">{update.notes}</p>
+                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Users className="h-3 w-3" />
+                                  Updated by {updatedBy}
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                          <p className="text-muted-foreground">{update.notes}</p>
-                          {update.progress_percentage !== null && update.progress_percentage !== undefined && (
-                            <Badge variant="secondary" className="mt-2 text-xs">
-                              Progress: {update.progress_percentage}%
-                            </Badge>
-                          )}
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                  </div>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No progress updates yet</p>
+                <div className="text-center py-6 border rounded-lg bg-muted/30">
+                  <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No progress updates yet</p>
+                </div>
               )}
             </div>
 
