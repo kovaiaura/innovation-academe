@@ -41,6 +41,7 @@ interface Session {
   };
   content?: ContentItem[];
   is_unlocked?: boolean;
+  isSessionCompleted?: boolean;
 }
 
 interface Module {
@@ -52,6 +53,7 @@ interface Module {
   };
   sessions?: Session[];
   is_unlocked?: boolean;
+  isModuleCompleted?: boolean;
 }
 
 interface LMSCourseViewerProps {
@@ -392,6 +394,8 @@ export function LMSCourseViewer({ course, modules, viewOnly = false, backPath }:
                   >
                     {isModuleLocked ? (
                       <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    ) : moduleAssignment.isModuleCompleted ? (
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
                     ) : (
                       <BookOpen className="h-4 w-4 shrink-0 text-primary" />
                     )}
@@ -433,6 +437,8 @@ export function LMSCourseViewer({ course, modules, viewOnly = false, backPath }:
                             >
                               {isSessionLocked ? (
                                 <Lock className="h-3 w-3 shrink-0 text-muted-foreground" />
+                              ) : sessionAssignment.isSessionCompleted ? (
+                                <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
                               ) : (
                                 <PlayCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
                               )}
