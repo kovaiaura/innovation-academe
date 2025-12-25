@@ -172,7 +172,7 @@ export default function TeachingSession() {
             file_path: c.file_path,
             duration_minutes: c.duration_minutes
           })),
-          isCompleted: completionInfo?.isFullyCompleted || false,
+          isCompleted: completionInfo?.isConducted || false, // Show green tick when conducted
           completedStudents: completionInfo?.completedStudents || 0,
           totalStudents: completionInfo?.totalStudents || 0
         };

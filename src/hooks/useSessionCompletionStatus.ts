@@ -6,6 +6,7 @@ interface SessionCompletionStatus {
   totalStudents: number;
   completedStudents: number;
   isFullyCompleted: boolean;
+  isConducted: boolean; // At least 1 student marked = session was taught
 }
 
 interface ClassProgressResult {
@@ -107,6 +108,7 @@ export function useSessionCompletionStatus(
             totalStudents,
             completedStudents: totalStudents,
             isFullyCompleted: true,
+            isConducted: true,
           });
           totalCompletions += totalStudents;
           continue;
@@ -129,6 +131,7 @@ export function useSessionCompletionStatus(
           totalStudents,
           completedStudents,
           isFullyCompleted: completedStudents === totalStudents,
+          isConducted: completedStudents > 0,
         });
 
         totalCompletions += completedStudents;

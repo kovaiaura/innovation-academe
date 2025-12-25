@@ -130,7 +130,9 @@ export function TeachingCourseSidebar({
           {modules.map((module) => {
             const isModuleExpanded = expandedModules.has(module.id);
             const isModuleLocked = !module.is_unlocked;
-            const allSessionsCompleted = module.completedSessionCount === module.sessions.length && module.sessions.length > 0;
+            // Module is completed when all sessions are conducted (at least 1 student marked per session)
+            const allSessionsConducted = module.sessions.length > 0 && 
+              module.sessions.filter(s => s.is_unlocked).every(s => s.isCompleted);
 
             return (
               <div key={module.id} className="mb-2">
@@ -147,7 +149,7 @@ export function TeachingCourseSidebar({
                 >
                   {isModuleLocked ? (
                     <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  ) : allSessionsCompleted ? (
+                  ) : allSessionsConducted ? (
                     <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
                   ) : (
                     <BookOpen className="h-4 w-4 shrink-0 text-primary" />
