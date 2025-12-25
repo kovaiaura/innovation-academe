@@ -113,7 +113,7 @@ export function ClassCoursesTab({
               <div>
                 <CardTitle>Course Assignments</CardTitle>
                 <CardDescription>
-                  Manage courses and modules assigned to {classData.class_name}
+                  Manage courses and levels assigned to {classData.class_name}
                 </CardDescription>
               </div>
               <Button size="sm" onClick={() => setShowAssignDialog(true)}>
@@ -149,7 +149,7 @@ export function ClassCoursesTab({
                               </p>
                               <div className="flex items-center gap-4 text-sm">
                                 <span className="text-muted-foreground">
-                                  {totalModules} modules assigned
+                                  {totalModules} levels assigned
                                 </span>
                                 <span className="text-muted-foreground">•</span>
                                 <span className="text-muted-foreground">
@@ -177,7 +177,7 @@ export function ClassCoursesTab({
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-3">
-                        {/* Module List */}
+                        {/* Level List */}
                         {assignment.module_assignments?.map((moduleAssignment) => (
                           <Collapsible 
                             key={moduleAssignment.id}
@@ -285,7 +285,7 @@ export function ClassCoursesTab({
                         ))}
                         {(!assignment.module_assignments || assignment.module_assignments.length === 0) && (
                           <p className="text-sm text-muted-foreground text-center py-4">
-                            No modules assigned to this course
+                            No levels assigned to this course
                           </p>
                         )}
                       </CardContent>

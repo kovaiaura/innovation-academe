@@ -184,7 +184,7 @@ export default function TeachingSession() {
       return {
         id: ma.module_id,
         assignmentId: ma.id,
-        title: ma.course_modules?.title || 'Module',
+        title: ma.course_modules?.title || 'Level',
         description: ma.course_modules?.description,
         is_unlocked: ma.is_unlocked || false,
         sessions,

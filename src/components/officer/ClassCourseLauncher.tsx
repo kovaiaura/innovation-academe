@@ -239,7 +239,7 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
                             <span className={`text-sm font-medium ${
                               !moduleAssignment.is_unlocked ? 'text-muted-foreground' : ''
                             }`}>
-                              {moduleAssignment.course_modules?.title || 'Module'}
+                              {moduleAssignment.course_modules?.title || 'Level'}
                             </span>
                           </div>
                           {moduleAssignment.is_unlocked && sessions.length > 0 && (

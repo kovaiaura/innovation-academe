@@ -124,19 +124,19 @@ export function TeachingCourseSidebar({
         </Button>
       </div>
 
-      {/* Module/Session Tree */}
+      {/* Level/Session Tree */}
       <ScrollArea className="flex-1">
         <div className="p-2">
           {modules.map((module) => {
             const isModuleExpanded = expandedModules.has(module.id);
             const isModuleLocked = !module.is_unlocked;
-            // Module is completed when all sessions are conducted (at least 1 student marked per session)
+            // Level is completed when all sessions are conducted (at least 1 student marked per session)
             const allSessionsConducted = module.sessions.length > 0 && 
               module.sessions.filter(s => s.is_unlocked).every(s => s.isCompleted);
 
             return (
               <div key={module.id} className="mb-2">
-                {/* Module Header */}
+                {/* Level Header */}
                 <button
                   onClick={() => !isModuleLocked && toggleModule(module.id)}
                   disabled={isModuleLocked}
