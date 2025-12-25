@@ -209,7 +209,7 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
                       <div className="flex items-center gap-2 text-sm p-2 bg-amber-50 dark:bg-amber-950 rounded-md">
                         <Lock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                         <span className="text-amber-700 dark:text-amber-300">
-                          {lockedModules.length} {lockedModules.length === 1 ? 'module' : 'modules'} locked
+                          {lockedModules.length} {lockedModules.length === 1 ? 'level' : 'levels'} locked
                         </span>
                       </div>
                     )}

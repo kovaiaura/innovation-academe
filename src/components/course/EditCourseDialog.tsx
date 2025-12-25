@@ -187,7 +187,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
           <TabsList className="mx-4 grid grid-cols-4">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
-            <TabsTrigger value="levels">Modules ({levels.length})</TabsTrigger>
+            <TabsTrigger value="levels">Levels ({levels.length})</TabsTrigger>
             <TabsTrigger value="sessions">Sessions</TabsTrigger>
             <TabsTrigger value="content">Content</TabsTrigger>
           </TabsList>
@@ -274,7 +274,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
             {/* Levels Tab */}
             <TabsContent value="levels" className="p-4 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold">Course Modules</h3>
+                <h3 className="font-semibold">Course Levels</h3>
               </div>
 
               <div className="space-y-3">
@@ -283,7 +283,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
                     <div className="flex items-start gap-4">
                       <div className="flex items-center gap-2">
                         <Layers className="h-5 w-5 text-primary" />
-                        <span className="font-medium">Module {index + 1}</span>
+                        <span className="font-medium">Level {index + 1}</span>
                       </div>
                       <div className="flex-1 grid gap-3 md:grid-cols-2">
                         <div className="space-y-1">
@@ -321,7 +321,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
               <div className="grid grid-cols-3 gap-4 h-[500px]">
                 {/* Level Selection */}
                 <div className="border rounded-lg p-3 space-y-2">
-                  <h4 className="font-medium text-sm">Select Module</h4>
+                  <h4 className="font-medium text-sm">Select Level</h4>
                   {levels.map((level, index) => (
                     <Button
                       key={level.id}
@@ -333,7 +333,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
                       }}
                     >
                       <Layers className="h-4 w-4 mr-2" />
-                      Module {index + 1}: {level.title || 'Untitled'}
+                      Level {index + 1}: {level.title || 'Untitled'}
                     </Button>
                   ))}
                 </div>
@@ -342,7 +342,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
                 <div className="col-span-2 border rounded-lg p-3 space-y-2 overflow-y-auto">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-sm">
-                      Sessions in {selectedLevel?.title || 'Module'}
+                      Sessions in {selectedLevel?.title || 'Level'}
                     </h4>
                   </div>
                   {levelSessions.length === 0 ? (
@@ -390,7 +390,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
               <div className="grid grid-cols-4 gap-4 h-[500px]">
                 {/* Level Selection */}
                 <div className="border rounded-lg p-3 space-y-2 overflow-y-auto">
-                  <h4 className="font-medium text-sm">Modules</h4>
+                  <h4 className="font-medium text-sm">Levels</h4>
                   {levels.map((level, index) => (
                     <Button
                       key={level.id}
@@ -402,7 +402,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
                       }}
                     >
                       <Layers className="h-3 w-3 mr-1" />
-                      {level.title || `Module ${index + 1}`}
+                      {level.title || `Level ${index + 1}`}
                     </Button>
                   ))}
                 </div>

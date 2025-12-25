@@ -45,14 +45,14 @@ export function AddModuleDialog({ open, onOpenChange, onSave, module }: AddModul
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{module ? 'Edit Module' : 'Add New Module'}</DialogTitle>
+          <DialogTitle>{module ? 'Edit Level' : 'Add New Level'}</DialogTitle>
           <DialogDescription>
-            {module ? 'Update module information' : 'Create a new course module'}
+            {module ? 'Update level information' : 'Create a new course level'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="module-title">Module Title *</Label>
+            <Label htmlFor="module-title">Level Title *</Label>
             <Input
               id="module-title"
               placeholder="e.g., Introduction to AI"
@@ -65,7 +65,7 @@ export function AddModuleDialog({ open, onOpenChange, onSave, module }: AddModul
             <Label htmlFor="module-description">Description *</Label>
             <Textarea
               id="module-description"
-              placeholder="Describe what students will learn in this module"
+              placeholder="Describe what students will learn in this level"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
@@ -77,7 +77,7 @@ export function AddModuleDialog({ open, onOpenChange, onSave, module }: AddModul
               Cancel
             </Button>
             <Button type="submit">
-              {module ? 'Save Changes' : 'Add Module'}
+              {module ? 'Save Changes' : 'Add Level'}
             </Button>
           </DialogFooter>
         </form>

@@ -346,7 +346,7 @@ export function AssignCourseToClassDialog({
 
                 <div className="flex justify-between items-center">
                   <p className="text-sm text-muted-foreground">
-                    {selectedModules.length} of {moduleConfigs.length} modules selected
+                    {selectedModules.length} of {moduleConfigs.length} levels selected
                   </p>
                   <div className="flex gap-2">
                     <Button 
@@ -384,7 +384,7 @@ export function AssignCourseToClassDialog({
                                 onCheckedChange={() => handleModuleToggle(module.moduleId)}
                               />
                               <div>
-                                <p className="font-medium">Module {moduleIndex + 1}: {module.title}</p>
+                                <p className="font-medium">Level {moduleIndex + 1}: {module.title}</p>
                               </div>
                             </div>
                             {module.isSelected && (

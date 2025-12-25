@@ -252,7 +252,7 @@ export function useCreateModule() {
         .order('display_order', { ascending: false })
         .limit(1);
 
-      const nextOrder = existingModules?.[0]?.display_order ? existingModules[0].display_order + 1 : 0;
+      const nextOrder = existingModules?.[0]?.display_order !== undefined ? existingModules[0].display_order + 1 : 0;
 
       const { data, error } = await supabase
         .from('course_modules')
@@ -271,10 +271,10 @@ export function useCreateModule() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['course', variables.courseId] });
-      toast.success('Module added successfully');
+      toast.success('Level added successfully');
     },
     onError: (error: any) => {
-      toast.error(`Failed to add module: ${error.message}`);
+      toast.error(`Failed to add level: ${error.message}`);
     }
   });
 }
