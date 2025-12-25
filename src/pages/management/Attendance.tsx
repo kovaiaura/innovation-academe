@@ -1,22 +1,33 @@
 import { Layout } from "@/components/layout/Layout";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, GraduationCap, BookOpen, CalendarCheck } from "lucide-react";
+import { Users, GraduationCap, CalendarCheck } from "lucide-react";
 import { useState } from "react";
-import { getInstitutionBySlug } from "@/data/mockInstitutionData";
 import { useLocation } from "react-router-dom";
 import { OfficerAttendanceTab } from "@/components/attendance/OfficerAttendanceTab";
 import { StudentAttendanceTab } from "@/components/attendance/StudentAttendanceTab";
-import { TeacherAttendanceTab } from "@/components/attendance/TeacherAttendanceTab";
 import { ClassSessionAttendanceTab } from "@/components/attendance/ClassSessionAttendanceTab";
+import { useInstitutions } from "@/hooks/useInstitutions";
 
 const Attendance = () => {
-  const [activeTab, setActiveTab] = useState<'officers' | 'class-sessions' | 'students' | 'teachers'>('officers');
+  const [activeTab, setActiveTab] = useState<'officers' | 'class-sessions' | 'students'>('officers');
   
-  // Extract institution from URL
+  // Extract institution slug from URL and find institution from database
   const location = useLocation();
   const institutionSlug = location.pathname.split('/')[2];
-  const institution = getInstitutionBySlug(institutionSlug);
+  
+  const { institutions = [], isLoading } = useInstitutions();
+  const institution = institutions.find(i => i.slug === institutionSlug);
+  
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </Layout>
+    );
+  }
   
   return (
     <Layout>
@@ -28,20 +39,20 @@ const Attendance = () => {
             location={institution.location}
             totalStudents={institution.total_students}
             totalFaculty={institution.total_faculty}
-            totalDepartments={institution.total_departments}
-            academicYear={institution.academic_year}
+            totalDepartments={0}
+            academicYear="2024-25"
             userRole="Management Portal"
-            assignedOfficers={institution.assigned_officers.map(o => o.officer_name)}
+            assignedOfficers={[]}
           />
         )}
         
         <div>
           <h1 className="text-3xl font-bold">Attendance Management</h1>
-          <p className="text-muted-foreground">Track attendance for officers, class sessions, students, and teachers</p>
+          <p className="text-muted-foreground">Track attendance for officers, class sessions, and students</p>
         </div>
         
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-          <TabsList className="grid w-full grid-cols-4 max-w-4xl">
+          <TabsList className="grid w-full grid-cols-3 max-w-3xl">
             <TabsTrigger value="officers" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Innovation Officers
@@ -54,10 +65,6 @@ const Attendance = () => {
               <GraduationCap className="h-4 w-4" />
               Students
             </TabsTrigger>
-            <TabsTrigger value="teachers" className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4" />
-              Teachers
-            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="officers" className="mt-6">
@@ -69,11 +76,7 @@ const Attendance = () => {
           </TabsContent>
           
           <TabsContent value="students" className="mt-6">
-            <StudentAttendanceTab />
-          </TabsContent>
-          
-          <TabsContent value="teachers" className="mt-6">
-            <TeacherAttendanceTab />
+            <StudentAttendanceTab institutionId={institution?.id} />
           </TabsContent>
         </Tabs>
       </div>
