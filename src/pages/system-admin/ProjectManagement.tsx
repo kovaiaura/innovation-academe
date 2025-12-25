@@ -37,7 +37,16 @@ export default function ProjectManagement() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   // Fetch all projects from database
-  const { data: allProjects = [], isLoading } = useAllProjects();
+  const { data: allProjects = [], isLoading, error } = useAllProjects();
+  
+  // Debug: Log the data source
+  console.log('[ProjectManagement] Data from database:', { 
+    count: allProjects.length, 
+    isLoading, 
+    hasError: !!error,
+    error: error?.message,
+    projects: allProjects.map(p => ({ id: p.id, title: p.title, institution: p.institution?.name }))
+  });
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -203,15 +212,45 @@ export default function ProjectManagement() {
     );
   }
 
+  if (error) {
+    return (
+      <Layout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold">Project Management Dashboard</h1>
+            <p className="text-destructive mt-2">Error loading projects: {error.message}</p>
+          </div>
+          <Card>
+            <CardContent className="py-8 text-center">
+              <p className="text-muted-foreground">Failed to load project data from database.</p>
+              <Button 
+                variant="outline" 
+                className="mt-4"
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold">Project Management Dashboard</h1>
-          <p className="text-muted-foreground mt-2">
-            Comprehensive oversight of all innovation projects across institutions
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Project Management Dashboard</h1>
+            <p className="text-muted-foreground mt-2">
+              Comprehensive oversight of all innovation projects across institutions
+            </p>
+          </div>
+          <Badge variant="outline" className="text-xs">
+            Database: {allProjects.length} projects
+          </Badge>
         </div>
 
         {/* Statistics Cards */}
