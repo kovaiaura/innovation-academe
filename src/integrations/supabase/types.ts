@@ -268,6 +268,48 @@ export type Database = {
           },
         ]
       }
+      company_holidays: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          date: string
+          description: string | null
+          end_date: string | null
+          holiday_type: string
+          id: string
+          is_paid: boolean | null
+          name: string
+          updated_at: string | null
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          date: string
+          description?: string | null
+          end_date?: string | null
+          holiday_type?: string
+          id?: string
+          is_paid?: boolean | null
+          name: string
+          updated_at?: string | null
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          date?: string
+          description?: string | null
+          end_date?: string | null
+          holiday_type?: string
+          id?: string
+          is_paid?: boolean | null
+          name?: string
+          updated_at?: string | null
+          year?: number
+        }
+        Relationships: []
+      }
       course_class_assignments: {
         Row: {
           assigned_at: string
@@ -616,6 +658,59 @@ export type Database = {
           },
         ]
       }
+      institution_holidays: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          date: string
+          description: string | null
+          end_date: string | null
+          holiday_type: string
+          id: string
+          institution_id: string
+          is_paid: boolean | null
+          name: string
+          updated_at: string | null
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          date: string
+          description?: string | null
+          end_date?: string | null
+          holiday_type?: string
+          id?: string
+          institution_id: string
+          is_paid?: boolean | null
+          name: string
+          updated_at?: string | null
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          date?: string
+          description?: string | null
+          end_date?: string | null
+          holiday_type?: string
+          id?: string
+          institution_id?: string
+          is_paid?: boolean | null
+          name?: string
+          updated_at?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "institution_holidays_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       institution_periods: {
         Row: {
           created_at: string
@@ -804,6 +899,237 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      leave_applications: {
+        Row: {
+          applicant_id: string
+          applicant_name: string
+          applicant_type: string
+          applied_at: string | null
+          approval_chain: Json | null
+          current_approval_level: number | null
+          end_date: string
+          final_approved_at: string | null
+          final_approved_by: string | null
+          final_approved_by_name: string | null
+          id: string
+          institution_id: string | null
+          institution_name: string | null
+          is_lop: boolean | null
+          leave_type: string
+          lop_days: number | null
+          officer_id: string | null
+          paid_days: number | null
+          position_id: string | null
+          position_name: string | null
+          reason: string
+          rejected_at: string | null
+          rejected_by: string | null
+          rejected_by_name: string | null
+          rejection_reason: string | null
+          start_date: string
+          status: string
+          substitute_assignments: Json | null
+          total_days: number
+          updated_at: string | null
+        }
+        Insert: {
+          applicant_id: string
+          applicant_name: string
+          applicant_type: string
+          applied_at?: string | null
+          approval_chain?: Json | null
+          current_approval_level?: number | null
+          end_date: string
+          final_approved_at?: string | null
+          final_approved_by?: string | null
+          final_approved_by_name?: string | null
+          id?: string
+          institution_id?: string | null
+          institution_name?: string | null
+          is_lop?: boolean | null
+          leave_type: string
+          lop_days?: number | null
+          officer_id?: string | null
+          paid_days?: number | null
+          position_id?: string | null
+          position_name?: string | null
+          reason: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejected_by_name?: string | null
+          rejection_reason?: string | null
+          start_date: string
+          status?: string
+          substitute_assignments?: Json | null
+          total_days: number
+          updated_at?: string | null
+        }
+        Update: {
+          applicant_id?: string
+          applicant_name?: string
+          applicant_type?: string
+          applied_at?: string | null
+          approval_chain?: Json | null
+          current_approval_level?: number | null
+          end_date?: string
+          final_approved_at?: string | null
+          final_approved_by?: string | null
+          final_approved_by_name?: string | null
+          id?: string
+          institution_id?: string | null
+          institution_name?: string | null
+          is_lop?: boolean | null
+          leave_type?: string
+          lop_days?: number | null
+          officer_id?: string | null
+          paid_days?: number | null
+          position_id?: string | null
+          position_name?: string | null
+          reason?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejected_by_name?: string | null
+          rejection_reason?: string | null
+          start_date?: string
+          status?: string
+          substitute_assignments?: Json | null
+          total_days?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_applications_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_applications_officer_id_fkey"
+            columns: ["officer_id"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_applications_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leave_approval_hierarchy: {
+        Row: {
+          applicant_position_id: string | null
+          applicant_type: string
+          approval_order: number
+          approver_position_id: string
+          created_at: string | null
+          id: string
+          is_final_approver: boolean | null
+          is_optional: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          applicant_position_id?: string | null
+          applicant_type: string
+          approval_order: number
+          approver_position_id: string
+          created_at?: string | null
+          id?: string
+          is_final_approver?: boolean | null
+          is_optional?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          applicant_position_id?: string | null
+          applicant_type?: string
+          approval_order?: number
+          approver_position_id?: string
+          created_at?: string | null
+          id?: string
+          is_final_approver?: boolean | null
+          is_optional?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_approval_hierarchy_applicant_position_id_fkey"
+            columns: ["applicant_position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_approval_hierarchy_approver_position_id_fkey"
+            columns: ["approver_position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leave_balances: {
+        Row: {
+          balance_remaining: number
+          carried_forward: number
+          casual_leave_used: number
+          created_at: string | null
+          id: string
+          lop_days: number
+          month: number
+          monthly_credit: number
+          officer_id: string | null
+          sick_leave_used: number
+          updated_at: string | null
+          user_id: string
+          user_type: string
+          year: number
+        }
+        Insert: {
+          balance_remaining?: number
+          carried_forward?: number
+          casual_leave_used?: number
+          created_at?: string | null
+          id?: string
+          lop_days?: number
+          month: number
+          monthly_credit?: number
+          officer_id?: string | null
+          sick_leave_used?: number
+          updated_at?: string | null
+          user_id: string
+          user_type: string
+          year: number
+        }
+        Update: {
+          balance_remaining?: number
+          carried_forward?: number
+          casual_leave_used?: number
+          created_at?: string | null
+          id?: string
+          lop_days?: number
+          month?: number
+          monthly_credit?: number
+          officer_id?: string | null
+          sick_leave_used?: number
+          updated_at?: string | null
+          user_id?: string
+          user_type?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_balances_officer_id_fkey"
+            columns: ["officer_id"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       officer_attendance: {
         Row: {
@@ -1642,6 +1968,19 @@ export type Database = {
         Args: { p_class_module_assignment_id: string }
         Returns: undefined
       }
+      get_leave_balance: {
+        Args: { p_month: number; p_user_id: string; p_year: number }
+        Returns: {
+          balance_remaining: number
+          carried_forward: number
+          casual_leave_used: number
+          lop_days: number
+          monthly_credit: number
+          sick_leave_used: number
+          total_available: number
+          total_used: number
+        }[]
+      }
       get_next_id: {
         Args: { p_entity_type: string; p_institution_id: string }
         Returns: number
@@ -1661,6 +2000,16 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      initialize_leave_balance: {
+        Args: {
+          p_month: number
+          p_officer_id: string
+          p_user_id: string
+          p_user_type: string
+          p_year: number
+        }
+        Returns: string
       }
       is_project_member: {
         Args: { _project_id: string; _user_id: string }
