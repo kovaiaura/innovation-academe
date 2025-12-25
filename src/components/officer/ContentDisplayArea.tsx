@@ -242,7 +242,7 @@ export function ContentDisplayArea({
               <h2 className="text-xl font-semibold mb-1">{content.title}</h2>
               {module && (
                 <p className="text-sm text-muted-foreground">
-                  Module: {module.title}
+                  Level: {module.title}
                 </p>
               )}
             </div>

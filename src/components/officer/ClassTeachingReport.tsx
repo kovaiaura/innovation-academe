@@ -109,7 +109,7 @@ export function ClassTeachingReport({ classId, className, officerId }: ClassTeac
                   <TableHead>Course</TableHead>
                   <TableHead>Sessions</TableHead>
                   <TableHead>Hours</TableHead>
-                  <TableHead>Modules</TableHead>
+                  <TableHead>Levels</TableHead>
                   <TableHead>Last Session</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
