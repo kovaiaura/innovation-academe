@@ -194,28 +194,30 @@ export const leaveApplicationService = {
       institutionName = inst?.name || null;
     }
 
+    const insertData = {
+      applicant_id: user.id,
+      applicant_name: profile.name,
+      applicant_type: applicantType,
+      officer_id: officer?.id || null,
+      institution_id: institutionId,
+      institution_name: institutionName,
+      position_id: profile.position_id,
+      position_name: profile.position_name,
+      start_date: input.start_date,
+      end_date: input.end_date,
+      leave_type: input.leave_type,
+      reason: input.reason,
+      total_days: totalDays,
+      is_lop: isLop,
+      lop_days: lopDays,
+      paid_days: paidDays,
+      approval_chain: JSON.parse(JSON.stringify(approvalChain)),
+      substitute_assignments: JSON.parse(JSON.stringify(input.substitute_assignments || []))
+    };
+
     const { data, error } = await supabase
       .from('leave_applications')
-      .insert({
-        applicant_id: user.id,
-        applicant_name: profile.name,
-        applicant_type: applicantType,
-        officer_id: officer?.id || null,
-        institution_id: institutionId,
-        institution_name: institutionName,
-        position_id: profile.position_id,
-        position_name: profile.position_name,
-        start_date: input.start_date,
-        end_date: input.end_date,
-        leave_type: input.leave_type,
-        reason: input.reason,
-        total_days: totalDays,
-        is_lop: isLop,
-        lop_days: lopDays,
-        paid_days: paidDays,
-        approval_chain: approvalChain as unknown as Record<string, unknown>[],
-        substitute_assignments: (input.substitute_assignments || []) as unknown as Record<string, unknown>[]
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -310,7 +312,7 @@ export const leaveApplicationService = {
     const isFinalApproval = !nextLevel;
 
     const updateData: Record<string, unknown> = {
-      approval_chain: updatedChain as unknown as Record<string, unknown>[],
+      approval_chain: JSON.parse(JSON.stringify(updatedChain)),
       current_approval_level: isFinalApproval ? currentLevel : currentLevel + 1
     };
 
@@ -356,7 +358,7 @@ export const leaveApplicationService = {
       .from('leave_applications')
       .update({
         status: 'rejected',
-        approval_chain: updatedChain as unknown as Record<string, unknown>[],
+        approval_chain: JSON.parse(JSON.stringify(updatedChain)),
         rejection_reason: reason,
         rejected_by: user.id,
         rejected_by_name: profile?.name,
