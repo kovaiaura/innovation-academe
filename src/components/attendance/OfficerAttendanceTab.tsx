@@ -272,9 +272,15 @@ export function OfficerAttendanceTab({ institutionId }: OfficerAttendanceTabProp
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
+          ) : officers.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p className="font-medium">No officers assigned to this institution</p>
+              <p className="text-sm mt-1">Add officers and assign them to this institution to track attendance.</p>
+            </div>
           ) : filteredData.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No attendance records found for this month.
+              <p className="font-medium">No check-ins recorded this month</p>
+              <p className="text-sm mt-1">Officers will appear here once they check in using the mobile app.</p>
             </div>
           ) : (
             <Table>
