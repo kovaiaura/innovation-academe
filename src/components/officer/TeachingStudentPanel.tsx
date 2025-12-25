@@ -124,7 +124,8 @@ export function TeachingStudentPanel({
     const success = await markSessionComplete(
       sessionId,
       Array.from(selectedStudents),
-      classAssignmentId
+      classAssignmentId,
+      classId
     );
 
     if (success) {
