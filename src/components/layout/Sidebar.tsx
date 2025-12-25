@@ -60,6 +60,7 @@ const menuItems: MenuItem[] = [
   { label: 'Leave Management', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-management', roles: ['system_admin'] },
   { label: 'Leave Approvals', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-approvals', roles: ['system_admin'], feature: 'leave_approvals' },
   { label: 'Leave Tracking', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-tracking', roles: ['system_admin'], feature: 'leave_approvals' },
+  { label: 'Leave Calendar', icon: <Calendar className="h-5 w-5" />, path: '/leave-calendar', roles: ['system_admin'], feature: 'leave_approvals' },
   { label: 'Company Holidays', icon: <Calendar className="h-5 w-5" />, path: '/company-holidays', roles: ['system_admin'] },
   { label: 'Apply Leave', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave/apply', roles: ['system_admin'] },
   { label: 'My Leave Status', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave/status', roles: ['system_admin'] },

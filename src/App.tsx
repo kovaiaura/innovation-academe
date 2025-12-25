@@ -98,6 +98,7 @@ import CompanyHolidays from "./pages/system-admin/CompanyHolidays";
 import LeaveApply from "./pages/system-admin/LeaveApply";
 import LeaveStatus from "./pages/system-admin/LeaveStatus";
 import LeaveTracking from "./pages/system-admin/LeaveTracking";
+import LeaveCalendarPage from "./pages/system-admin/LeaveCalendarPage";
 import Performance from "./pages/management/Performance";
 import SystemAdminPositionManagement from "./pages/system-admin/PositionManagement";
 import SystemAdminTaskManagement from "./pages/system-admin/TaskManagement";
@@ -319,6 +320,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="leave_approvals">
                   <LeaveTracking />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/leave-calendar"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="leave_approvals">
+                  <LeaveCalendarPage />
                 </ProtectedRoute>
               }
             />
