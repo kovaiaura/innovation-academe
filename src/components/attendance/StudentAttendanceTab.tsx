@@ -246,8 +246,11 @@ export const StudentAttendanceTab = ({ institutionId }: StudentAttendanceTabProp
             <div className="text-center">
               <p className="text-sm text-muted-foreground">Avg Attendance</p>
               <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                {stats.avgAttendance.toFixed(1)}%
+                {stats.totalClasses > 0 ? `${stats.avgAttendance.toFixed(1)}%` : 'N/A'}
               </p>
+              {stats.totalClasses === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">Awaiting sessions</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -256,18 +259,24 @@ export const StudentAttendanceTab = ({ institutionId }: StudentAttendanceTabProp
             <div className="text-center">
               <p className="text-sm text-muted-foreground">Below 75%</p>
               <p className="text-3xl font-bold text-red-600 dark:text-red-400">
-                {stats.belowThreshold}
+                {stats.totalClasses > 0 ? stats.belowThreshold : 'N/A'}
               </p>
+              {stats.totalClasses === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">Awaiting sessions</p>
+              )}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">Classes Conducted</p>
+              <p className="text-sm text-muted-foreground">Sessions Completed</p>
               <p className="text-3xl font-bold text-green-600 dark:text-green-400">
                 {stats.totalClasses}
               </p>
+              {stats.totalClasses === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">No sessions yet</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -329,9 +338,9 @@ export const StudentAttendanceTab = ({ institutionId }: StudentAttendanceTabProp
                         <TableCell>
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
-                              <Progress value={record.attendance_percentage} className="h-2 flex-1" />
-                              <Badge variant={badge.variant} className={badge.color}>
-                                {record.total_classes > 0 ? `${record.attendance_percentage.toFixed(1)}%` : 'N/A'}
+                              <Progress value={record.total_classes > 0 ? record.attendance_percentage : 0} className="h-2 flex-1" />
+                              <Badge variant={record.total_classes > 0 ? badge.variant : 'secondary'} className={record.total_classes > 0 ? badge.color : 'text-muted-foreground'}>
+                                {record.total_classes > 0 ? `${record.attendance_percentage.toFixed(1)}%` : 'Awaiting'}
                               </Badge>
                             </div>
                           </div>
