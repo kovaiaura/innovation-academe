@@ -280,55 +280,68 @@ export const StudentAttendanceTab = ({ institutionId }: StudentAttendanceTabProp
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : filteredData.length === 0 ? (
+          ) : classes.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
-              <p>{classes.length === 0 ? 'No classes found' : 'No students or attendance data found'}</p>
+              <p>No classes found for this institution</p>
+            </div>
+          ) : students.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <p>No students enrolled in this class</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Roll Number</TableHead>
-                  <TableHead className="text-center">Present</TableHead>
-                  <TableHead className="text-center">Absent</TableHead>
-                  <TableHead className="text-center">Total Classes</TableHead>
-                  <TableHead>Attendance</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredData.map(record => {
-                  const badge = getAttendanceBadge(record.attendance_percentage);
-                  return (
-                    <TableRow key={record.student_id}>
-                      <TableCell className="font-medium">{record.student_name}</TableCell>
-                      <TableCell>{record.roll_number}</TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-green-600 dark:text-green-400 font-semibold">
-                          {record.classes_attended}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-red-600 dark:text-red-400 font-semibold">
-                          {record.total_classes - record.classes_attended}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">{record.total_classes}</TableCell>
-                      <TableCell>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Progress value={record.attendance_percentage} className="h-2 flex-1" />
-                            <Badge variant={badge.variant} className={badge.color}>
-                              {record.attendance_percentage.toFixed(1)}%
-                            </Badge>
+            <>
+              {sessionAttendance.length === 0 && (
+                <div className="mb-4 p-4 bg-muted/50 rounded-lg border border-dashed">
+                  <p className="text-sm text-muted-foreground text-center">
+                    No class sessions have been completed this month yet. Attendance will appear once officers mark class sessions.
+                  </p>
+                </div>
+              )}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Roll Number</TableHead>
+                    <TableHead className="text-center">Present</TableHead>
+                    <TableHead className="text-center">Absent</TableHead>
+                    <TableHead className="text-center">Total Classes</TableHead>
+                    <TableHead>Attendance</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredData.map(record => {
+                    const badge = getAttendanceBadge(record.attendance_percentage);
+                    return (
+                      <TableRow key={record.student_id}>
+                        <TableCell className="font-medium">{record.student_name}</TableCell>
+                        <TableCell>{record.roll_number}</TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-green-600 dark:text-green-400 font-semibold">
+                            {record.classes_attended}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-red-600 dark:text-red-400 font-semibold">
+                            {record.total_classes - record.classes_attended}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">{record.total_classes}</TableCell>
+                        <TableCell>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Progress value={record.attendance_percentage} className="h-2 flex-1" />
+                              <Badge variant={badge.variant} className={badge.color}>
+                                {record.total_classes > 0 ? `${record.attendance_percentage.toFixed(1)}%` : 'N/A'}
+                              </Badge>
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </>
           )}
         </CardContent>
       </Card>

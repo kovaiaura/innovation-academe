@@ -209,7 +209,8 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
           ) : !attendanceData || attendanceData.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>No attendance records found for this period</p>
+              <p className="font-medium">No class sessions completed yet</p>
+              <p className="text-sm mt-1">Sessions will appear here once officers mark attendance for their classes.</p>
             </div>
           ) : (
             <Table>
