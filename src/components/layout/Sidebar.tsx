@@ -350,7 +350,7 @@ export function Sidebar() {
       {/* User Section */}
       <div className="border-t border-meta-dark-lighter">
         {userRoles.includes('officer') && officerProfile ? (
-          <OfficerSidebarProfile officer={officerProfile} collapsed={collapsed} />
+          <OfficerSidebarProfile officer={officerProfile} collapsed={collapsed} photoUrl={photoUrl} />
         ) : userRoles.includes('teacher') && teacherProfile ? (
           <TeacherSidebarProfile teacher={teacherProfile} collapsed={collapsed} photoUrl={photoUrl} />
         ) : user ? (

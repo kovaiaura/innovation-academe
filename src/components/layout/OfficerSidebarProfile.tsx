@@ -6,9 +6,12 @@ import { OfficerDetails } from '@/services/systemadmin.service';
 interface OfficerSidebarProfileProps {
   officer: OfficerDetails;
   collapsed: boolean;
+  photoUrl?: string | null;
 }
 
-export function OfficerSidebarProfile({ officer, collapsed }: OfficerSidebarProfileProps) {
+export function OfficerSidebarProfile({ officer, collapsed, photoUrl }: OfficerSidebarProfileProps) {
+  // Use photoUrl from database if available, fallback to officer.profile_photo_url
+  const displayPhoto = photoUrl || officer.profile_photo_url;
   const { tenantId } = useParams<{ tenantId: string }>();
   
   const getInitials = (name: string) => {
@@ -29,7 +32,7 @@ export function OfficerSidebarProfile({ officer, collapsed }: OfficerSidebarProf
     return (
       <div className="border-t border-meta-dark-lighter p-2">
         <Avatar className="h-10 w-10 mx-auto">
-          <AvatarImage src={officer.profile_photo_url} alt={officer.name} />
+          <AvatarImage src={displayPhoto} alt={officer.name} />
           <AvatarFallback className="bg-meta-accent text-meta-dark">
             {getInitials(officer.name)}
           </AvatarFallback>
@@ -47,7 +50,7 @@ export function OfficerSidebarProfile({ officer, collapsed }: OfficerSidebarProf
             {/* Header with Avatar and Name */}
             <div className="flex items-center gap-3">
               <Avatar className="h-12 w-12">
-                <AvatarImage src={officer.profile_photo_url} alt={officer.name} />
+                <AvatarImage src={displayPhoto} alt={officer.name} />
                 <AvatarFallback className="bg-meta-accent text-meta-dark font-semibold">
                   {getInitials(officer.name)}
                 </AvatarFallback>
