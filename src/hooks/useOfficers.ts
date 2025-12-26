@@ -51,6 +51,7 @@ export interface CreateOfficerData {
   overtime_rate_multiplier?: number;
   sick_leave_allowance?: number;
   casual_leave_allowance?: number;
+  join_date?: string;
 }
 
 export function useOfficers() {

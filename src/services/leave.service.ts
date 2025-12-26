@@ -83,6 +83,59 @@ export const leaveBalanceService = {
       ...b,
       user_type: b.user_type as UserType
     }));
+  },
+
+  // Update balance when leave is approved
+  updateBalanceOnApproval: async (
+    userId: string, 
+    userType: UserType, 
+    officerId: string | null, 
+    startDate: string,
+    leaveType: LeaveType, 
+    days: number
+  ): Promise<void> => {
+    const startMonth = parseInt(format(parseISO(startDate), 'M'));
+    const startYear = parseInt(format(parseISO(startDate), 'yyyy'));
+
+    // Initialize balance if it doesn't exist
+    await supabase.rpc('initialize_leave_balance', {
+      p_user_id: userId,
+      p_user_type: userType,
+      p_officer_id: officerId,
+      p_year: startYear,
+      p_month: startMonth
+    });
+
+    // Get the current balance
+    const { data: currentBalance, error: fetchError } = await supabase
+      .from('leave_balances')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('year', startYear)
+      .eq('month', startMonth)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!currentBalance) return;
+
+    // Update based on leave type
+    const updateField = leaveType === 'sick' ? 'sick_leave_used' : 'casual_leave_used';
+    const currentUsed = leaveType === 'sick' ? currentBalance.sick_leave_used : currentBalance.casual_leave_used;
+    const newUsed = currentUsed + days;
+    const totalUsed = currentBalance.sick_leave_used + currentBalance.casual_leave_used + days;
+    const totalAvailable = currentBalance.monthly_credit + currentBalance.carried_forward;
+    const newRemaining = Math.max(0, totalAvailable - totalUsed);
+
+    const { error: updateError } = await supabase
+      .from('leave_balances')
+      .update({
+        [updateField]: newUsed,
+        balance_remaining: newRemaining,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', currentBalance.id);
+
+    if (updateError) throw updateError;
   }
 };
 
@@ -381,6 +434,22 @@ export const leaveApplicationService = {
       approval_chain: parseApprovalChain(data.approval_chain),
       substitute_assignments: parseSubstituteAssignments(data.substitute_assignments)
     };
+
+    // Update leave balance when leave is finally approved
+    if (isFinalApproval) {
+      try {
+        await leaveBalanceService.updateBalanceOnApproval(
+          result.applicant_id,
+          result.applicant_type,
+          result.officer_id || null,
+          result.start_date,
+          result.leave_type,
+          result.paid_days
+        );
+      } catch (balanceError) {
+        console.error('Failed to update leave balance:', balanceError);
+      }
+    }
 
     // Send notifications
     try {

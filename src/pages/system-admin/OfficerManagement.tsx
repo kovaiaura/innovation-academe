@@ -28,6 +28,7 @@ export default function OfficerManagement() {
     employee_id: '',
     employment_type: 'full_time',
     annual_salary: '',
+    join_date: new Date().toISOString().split('T')[0],
     // Payroll Configuration
     hourly_rate: '',
     overtime_rate_multiplier: '1.5',
@@ -64,6 +65,7 @@ export default function OfficerManagement() {
         overtime_rate_multiplier: Number(formData.overtime_rate_multiplier),
         sick_leave_allowance: Number(formData.sick_leave_allowance),
         casual_leave_allowance: Number(formData.casual_leave_allowance),
+        join_date: formData.join_date || undefined,
       });
 
       setIsAddDialogOpen(false);
@@ -77,6 +79,7 @@ export default function OfficerManagement() {
         employee_id: '',
         employment_type: 'full_time',
         annual_salary: '',
+        join_date: new Date().toISOString().split('T')[0],
         hourly_rate: '',
         overtime_rate_multiplier: '1.5',
         sick_leave_allowance: '10',
@@ -176,6 +179,15 @@ export default function OfficerManagement() {
                         value={formData.employee_id}
                         onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
                         placeholder="EMP-001"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label htmlFor="join_date">Join Date</Label>
+                      <Input
+                        id="join_date"
+                        type="date"
+                        value={formData.join_date}
+                        onChange={(e) => setFormData({ ...formData, join_date: e.target.value })}
                       />
                     </div>
                   </div>

@@ -80,6 +80,7 @@ export const metaStaffService = {
     casual_leave?: number;
     sick_leave?: number;
     earned_leave?: number;
+    join_date?: string;
   }): Promise<{ user: User; password: string }> => {
     // Get position details
     const position = await positionService.getPositionById(data.position_id);
@@ -98,7 +99,8 @@ export const metaStaffService = {
         name: data.name,
         position_id: data.position_id,
         position_name: position.position_name,
-        is_ceo: position.is_ceo_position || false
+        is_ceo: position.is_ceo_position || false,
+        join_date: data.join_date || null
       },
       headers: {
         Authorization: `Bearer ${token}`
