@@ -99,6 +99,29 @@ export const leaveApplicationService = {
     return days.length; // Count all calendar days
   },
 
+  // Calculate leave days excluding holidays
+  calculateLeaveDaysExcludingHolidays: (
+    startDate: string,
+    endDate: string,
+    holidayDates: string[]
+  ): { totalCalendarDays: number; holidaysInRange: number; actualLeaveDays: number } => {
+    const start = parseISO(startDate);
+    const end = parseISO(endDate);
+    const days = eachDayOfInterval({ start, end });
+    const totalCalendarDays = days.length;
+
+    // Count holidays that fall within the range
+    const holidaysInRange = days.filter((day) =>
+      holidayDates.some((hd) => format(parseISO(hd), 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd'))
+    ).length;
+
+    return {
+      totalCalendarDays,
+      holidaysInRange,
+      actualLeaveDays: Math.max(0, totalCalendarDays - holidaysInRange),
+    };
+  },
+
   getApprovalChain: async (applicantType: UserType, applicantPositionId?: string | null): Promise<LeaveApprovalHierarchy[]> => {
     let query = supabase
       .from('leave_approval_hierarchy')

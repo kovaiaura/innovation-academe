@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import { Layout } from '@/components/layout/Layout';
@@ -14,12 +14,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   CalendarCheck, Calendar, AlertCircle, Info, Clock, CheckCircle, 
-  XCircle, Download, FileText, TrendingUp, TrendingDown 
+  XCircle, Download, FileText, TrendingUp, TrendingDown, Gift
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { leaveApplicationService, leaveBalanceService } from '@/services/leave.service';
 import { leaveCalculationService } from '@/services/leaveCalculation.service';
+import { companyHolidayService } from '@/services/holiday.service';
 import { useAuth } from '@/contexts/AuthContext';
+import { LeaveHolidayCalendar, calculateLeaveDaysExcludingHolidays } from '@/components/leave/LeaveHolidayCalendar';
 import { 
   LeaveType, 
   LeaveStatus,
@@ -78,6 +80,24 @@ export default function Leave() {
     enabled: !!user?.id
   });
 
+  // Fetch company holidays for staff
+  const { data: companyHolidays = [], isLoading: holidaysLoading } = useQuery({
+    queryKey: ['company-holidays', currentYear],
+    queryFn: () => companyHolidayService.getByYear(currentYear),
+  });
+
+  // Calculate leave days excluding holidays
+  const leaveCalculation = useMemo(() => {
+    if (!formData.start_date || !formData.end_date) {
+      return { totalCalendarDays: 0, holidaysInRange: 0, actualLeaveDays: 0 };
+    }
+    return calculateLeaveDaysExcludingHolidays(
+      formData.start_date,
+      formData.end_date,
+      companyHolidays
+    );
+  }, [formData.start_date, formData.end_date, companyHolidays]);
+
   const applyMutation = useMutation({
     mutationFn: leaveApplicationService.applyLeave,
     onSuccess: () => {
@@ -130,8 +150,7 @@ export default function Leave() {
   };
 
   const calculateDays = () => {
-    if (!formData.start_date || !formData.end_date) return 0;
-    return leaveApplicationService.calculateWorkingDays(formData.start_date, formData.end_date);
+    return leaveCalculation.actualLeaveDays;
   };
 
   const getLOPWarning = () => {
@@ -496,6 +515,18 @@ export default function Leave() {
               </Card>
             </div>
 
+            {/* Holiday Calendar */}
+            <LeaveHolidayCalendar
+              holidays={companyHolidays}
+              selectedRange={
+                formData.start_date && formData.end_date
+                  ? { from: parseISO(formData.start_date), to: parseISO(formData.end_date) }
+                  : undefined
+              }
+              userType="staff"
+              isLoading={holidaysLoading}
+            />
+
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
@@ -508,6 +539,7 @@ export default function Leave() {
                 <p>• Maximum 1 day can be carried forward to next month</p>
                 <p>• Maximum 2 leaves can be taken in a single month (including carry forward)</p>
                 <p>• Leaves beyond available balance will be marked as LOP (Loss of Pay)</p>
+                <p>• Holidays falling within your leave period are not counted as leave days</p>
               </CardContent>
             </Card>
 
@@ -574,14 +606,32 @@ export default function Leave() {
                     />
                   </div>
 
-                  {requestedDays > 0 && (
-                    <div className="bg-muted p-4 rounded-lg space-y-2">
+                  {leaveCalculation.totalCalendarDays > 0 && (
+                    <div className="bg-muted p-4 rounded-lg space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="font-medium">Total Days Requested</span>
-                        <Badge variant="secondary" className="text-lg">{requestedDays} day(s)</Badge>
+                        <span className="font-medium">Leave Calculation</span>
+                      </div>
+                      <div className="text-sm space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Calendar days selected</span>
+                          <span>{leaveCalculation.totalCalendarDays}</span>
+                        </div>
+                        {leaveCalculation.holidaysInRange > 0 && (
+                          <div className="flex justify-between text-green-600">
+                            <span className="flex items-center gap-1">
+                              <Gift className="h-3 w-3" />
+                              Holidays (excluded)
+                            </span>
+                            <span>-{leaveCalculation.holidaysInRange}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between font-semibold pt-2 border-t">
+                          <span>Actual leave days</span>
+                          <Badge variant="secondary" className="text-lg">{requestedDays} day(s)</Badge>
+                        </div>
                       </div>
                       {lopWarning && (
-                        <div className="flex items-center gap-2 text-amber-600 text-sm">
+                        <div className="flex items-center gap-2 text-amber-600 text-sm pt-2 border-t">
                           <AlertCircle className="h-4 w-4" />
                           <span>{lopWarning}</span>
                         </div>
