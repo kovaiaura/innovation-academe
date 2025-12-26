@@ -41,6 +41,20 @@ export interface SubstituteAssignmentData {
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+// Normalize day names for comparison
+const normalizeDay = (day: string): string => {
+  const d = day.toLowerCase().trim();
+  // Handle abbreviations
+  if (d === 'mon' || d === 'monday') return 'monday';
+  if (d === 'tue' || d === 'tues' || d === 'tuesday') return 'tuesday';
+  if (d === 'wed' || d === 'wednesday') return 'wednesday';
+  if (d === 'thu' || d === 'thur' || d === 'thurs' || d === 'thursday') return 'thursday';
+  if (d === 'fri' || d === 'friday') return 'friday';
+  if (d === 'sat' || d === 'saturday') return 'saturday';
+  if (d === 'sun' || d === 'sunday') return 'sunday';
+  return d;
+};
+
 export const substituteAssignmentService = {
   // Get affected timetable slots for an officer during a date range
   getAffectedSlots: async (
@@ -55,9 +69,9 @@ export const substituteAssignmentService = {
       end: parseISO(endDate)
     });
 
-    // Get timetable assignments where officer is primary, secondary, or backup
-    // Use separate queries and combine results since .or() with foreign key filters can be tricky
-    const { data: assignments, error } = await supabase
+    // Query 1: Get timetable assignments where officer is assigned (primary, secondary, or backup)
+    // Do NOT join with institution_periods to avoid FK-related failures
+    const { data: assignments, error: assignmentError } = await supabase
       .from('institution_timetable_assignments')
       .select(`
         id,
@@ -69,17 +83,17 @@ export const substituteAssignmentService = {
         period_id,
         teacher_id,
         secondary_officer_id,
-        backup_officer_id,
-        institution_periods (
-          label,
-          start_time,
-          end_time
-        )
+        backup_officer_id
       `)
       .eq('institution_id', institutionId);
 
-    if (error || !assignments) {
-      console.error('Error fetching timetable assignments:', error);
+    if (assignmentError) {
+      console.error('Error fetching timetable assignments:', assignmentError);
+      return [];
+    }
+
+    if (!assignments || assignments.length === 0) {
+      console.log('No timetable assignments found for institution:', institutionId);
       return [];
     }
 
@@ -90,25 +104,52 @@ export const substituteAssignmentService = {
       a.backup_officer_id === officerId
     );
 
+    if (officerAssignments.length === 0) {
+      console.log('No timetable slots found for officer:', officerId);
+      return [];
+    }
+
+    // Query 2: Get all periods for this institution (separate query to avoid FK join issues)
+    const periodIds = [...new Set(officerAssignments.map(a => a.period_id))];
+    
+    const { data: periods, error: periodError } = await supabase
+      .from('institution_periods')
+      .select('id, label, start_time, end_time')
+      .eq('institution_id', institutionId)
+      .in('id', periodIds);
+
+    if (periodError) {
+      console.error('Error fetching periods:', periodError);
+    }
+
+    // Build period lookup map
+    const periodMap = new Map<string, { label: string; start_time: string; end_time: string }>();
+    if (periods) {
+      for (const p of periods) {
+        periodMap.set(p.id, { label: p.label, start_time: p.start_time, end_time: p.end_time });
+      }
+    }
+
     const affectedSlots: AffectedTimetableSlot[] = [];
 
     for (const date of dates) {
       const dayName = DAY_NAMES[date.getDay()];
+      const normalizedDayName = normalizeDay(dayName);
       const dateStr = format(date, 'yyyy-MM-dd');
 
-      // Find assignments for this day (case-insensitive comparison)
+      // Find assignments for this day (normalized comparison)
       const dayAssignments = officerAssignments.filter(a => 
-        a.day.toLowerCase().trim() === dayName.toLowerCase()
+        normalizeDay(a.day) === normalizedDayName
       );
 
       for (const assignment of dayAssignments) {
-        const period = assignment.institution_periods as any;
+        const period = periodMap.get(assignment.period_id);
         affectedSlots.push({
           id: assignment.id,
           day: dayName,
           date: dateStr,
           period_id: assignment.period_id,
-          period_label: period?.label || 'Unknown Period',
+          period_label: period?.label || 'Period',
           period_time: period ? `${period.start_time || ''} - ${period.end_time || ''}` : '',
           class_id: assignment.class_id,
           class_name: assignment.class_name,
@@ -119,6 +160,8 @@ export const substituteAssignmentService = {
         });
       }
     }
+
+    console.log(`Found ${affectedSlots.length} affected slots for officer ${officerId}`);
 
     return affectedSlots.sort((a, b) => {
       if (a.date !== b.date) return a.date.localeCompare(b.date);
@@ -143,19 +186,24 @@ export const substituteAssignmentService = {
 
     if (error || !officers) return [];
 
+    // Normalize the day for comparison
+    const normalizedDay = normalizeDay(day);
+
     // Check which officers have conflicting slots at this time
     // An officer is busy if they are primary, secondary, or backup for any slot at this time
     const { data: conflictingAssignments } = await supabase
       .from('institution_timetable_assignments')
-      .select('teacher_id, secondary_officer_id, backup_officer_id')
+      .select('teacher_id, secondary_officer_id, backup_officer_id, day')
       .eq('institution_id', institutionId)
-      .ilike('day', day)
       .eq('period_id', periodId);
 
     const busyOfficerIds = new Set<string>();
     
     if (conflictingAssignments) {
       for (const a of conflictingAssignments) {
+        // Check if the day matches (normalized)
+        if (normalizeDay(a.day) !== normalizedDay) continue;
+        
         if (a.teacher_id) busyOfficerIds.add(a.teacher_id);
         if (a.secondary_officer_id) busyOfficerIds.add(a.secondary_officer_id);
         if (a.backup_officer_id) busyOfficerIds.add(a.backup_officer_id);

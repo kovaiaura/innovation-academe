@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Bell, CheckCheck, Calendar, CheckCircle, XCircle, Ban, Clock, Users, UserPlus } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Bell, CheckCheck, Calendar, CheckCircle, XCircle, Ban, Clock, Users, UserPlus, Archive, ExternalLink } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { useDbNotifications } from '@/hooks/useDbNotifications';
 import { Button } from '@/components/ui/button';
@@ -14,10 +14,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface NotificationBellProps {
   userId: string;
   userRole: string;
+  notificationsPath?: string;
 }
 
 const getNotificationIcon = (type: string) => {
@@ -38,12 +40,12 @@ const getNotificationIcon = (type: string) => {
     case 'substitute_assigned':
       return <UserPlus className="h-4 w-4 text-teal-500" />;
     default:
-      return <Bell className="h-4 w-4 text-gray-500" />;
+      return <Bell className="h-4 w-4 text-muted-foreground" />;
   }
 };
 
-export function NotificationBell({ userId }: NotificationBellProps) {
-  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useDbNotifications(userId);
+export function NotificationBell({ userId, notificationsPath }: NotificationBellProps) {
+  const { notifications, unreadCount, loading, markAsRead, markAllAsRead, archiveNotification } = useDbNotifications(userId);
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -53,6 +55,11 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     if (link) {
       navigate(link);
     }
+  };
+
+  const handleArchive = (e: React.MouseEvent, notificationId: string) => {
+    e.stopPropagation();
+    archiveNotification(notificationId);
   };
 
   const recentNotifications = notifications.slice(0, 10);
@@ -72,23 +79,25 @@ export function NotificationBell({ userId }: NotificationBellProps) {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
-        <div className="flex items-center justify-between px-2 py-1.5">
-          <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-          {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                markAllAsRead();
-              }}
-              className="h-auto py-1 px-2 text-xs"
-            >
-              <CheckCheck className="h-3 w-3 mr-1" />
-              Mark all read
-            </Button>
-          )}
+      <DropdownMenuContent align="end" className="w-96">
+        <div className="flex items-center justify-between px-3 py-2">
+          <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
+          <div className="flex items-center gap-1">
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  markAllAsRead();
+                }}
+                className="h-auto py-1 px-2 text-xs"
+              >
+                <CheckCheck className="h-3 w-3 mr-1" />
+                Mark all read
+              </Button>
+            )}
+          </div>
         </div>
         <DropdownMenuSeparator />
         
@@ -103,35 +112,66 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         ) : (
           <ScrollArea className="h-[400px]">
             {recentNotifications.map((notification) => (
-              <DropdownMenuItem
+              <div
                 key={notification.id}
-                className="cursor-pointer px-3 py-3 focus:bg-accent"
+                className={cn(
+                  "px-3 py-3 cursor-pointer hover:bg-accent border-b border-border/50 last:border-b-0",
+                  !notification.read && "bg-accent/50"
+                )}
                 onClick={() => handleNotificationClick(notification.id, notification.link)}
               >
                 <div className="flex gap-3 w-full">
-                  <div className="mt-1">
+                  <div className="mt-0.5 flex-shrink-0">
                     {getNotificationIcon(notification.type)}
                   </div>
                   <div className="flex-1 space-y-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className={`text-sm ${!notification.read ? 'font-semibold' : 'font-normal'}`}>
+                      <p className={cn(
+                        "text-sm leading-tight",
+                        !notification.read ? 'font-semibold' : 'font-normal'
+                      )}>
                         {notification.title}
                       </p>
-                      {!notification.read && (
-                        <div className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0 mt-1" />
-                      )}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {!notification.read && (
+                          <div className="h-2 w-2 rounded-full bg-primary" />
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={(e) => handleArchive(e, notification.id)}
+                          title="Mark as complete"
+                        >
+                          <Archive className="h-3 w-3 text-muted-foreground" />
+                        </Button>
+                      </div>
                     </div>
                     <p className="text-xs text-muted-foreground line-clamp-2">
                       {notification.message}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground/70">
                       {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                     </p>
                   </div>
                 </div>
-              </DropdownMenuItem>
+              </div>
             ))}
           </ScrollArea>
+        )}
+        
+        {notificationsPath && (
+          <>
+            <DropdownMenuSeparator />
+            <div className="p-2">
+              <Link to={notificationsPath} onClick={() => setOpen(false)}>
+                <Button variant="ghost" className="w-full justify-center text-sm" size="sm">
+                  <ExternalLink className="h-3 w-3 mr-2" />
+                  View all notifications
+                </Button>
+              </Link>
+            </div>
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

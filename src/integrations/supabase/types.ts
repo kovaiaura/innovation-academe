@@ -1160,12 +1160,15 @@ export type Database = {
       }
       notifications: {
         Row: {
+          archived: boolean | null
+          archived_at: string | null
           created_at: string | null
           id: string
           link: string | null
           message: string
           metadata: Json | null
           read: boolean | null
+          read_at: string | null
           recipient_id: string
           recipient_role: string
           title: string
@@ -1173,12 +1176,15 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          archived?: boolean | null
+          archived_at?: string | null
           created_at?: string | null
           id?: string
           link?: string | null
           message: string
           metadata?: Json | null
           read?: boolean | null
+          read_at?: string | null
           recipient_id: string
           recipient_role: string
           title: string
@@ -1186,12 +1192,15 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          archived?: boolean | null
+          archived_at?: string | null
           created_at?: string | null
           id?: string
           link?: string | null
           message?: string
           metadata?: Json | null
           read?: boolean | null
+          read_at?: string | null
           recipient_id?: string
           recipient_role?: string
           title?: string

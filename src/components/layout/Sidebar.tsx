@@ -327,6 +327,14 @@ export function Sidebar() {
             <span className="text-xl font-bold">Meta-INNOVA</span>
           </div>
         )}
+        {/* Notification Bell - show for all authenticated users */}
+        {user && (
+          <NotificationBell 
+            userId={user.id} 
+            userRole={user.role} 
+            notificationsPath={getFullPath('/notifications')}
+          />
+        )}
         <Button
           variant="ghost"
           size="icon"
