@@ -401,11 +401,11 @@ export function Sidebar() {
               profilePath={getFullPath('/profile', user.role as UserRole)}
               collapsed={collapsed}
             />
-            {!collapsed && ['system_admin', 'officer', 'student'].some(r => userRoles.includes(r as UserRole)) && (
+            {!collapsed && ['system_admin', 'officer', 'student', 'management'].some(r => userRoles.includes(r as UserRole)) && (
               <div className="px-4 pb-2 flex justify-end">
                 <NotificationBell 
                   userId={user.id} 
-                  userRole={user.role as 'officer' | 'student' | 'system_admin'} 
+                  userRole={user.role} 
                 />
               </div>
             )}
