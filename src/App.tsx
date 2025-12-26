@@ -76,7 +76,7 @@ import OfficerCourseManagement from "./pages/officer/CourseManagement";
 import OfficerCourseContentViewer from "./pages/officer/CourseContentViewer";
 import OfficerTeachingSession from "./pages/officer/TeachingSession";
 import OfficerProfile from "./pages/officer/Profile";
-import OfficerLeaveManagement from "./pages/officer/LeaveManagement";
+import OfficerLeave from "./pages/officer/OfficerLeave";
 import OfficerAssessmentManagement from "./pages/officer/AssessmentManagement";
 import OfficerAskMetova from "./pages/officer/AskMetova";
 import StudentCourseDetail from "./pages/student/CourseDetail";
@@ -622,7 +622,7 @@ const App = () => (
               path="/tenant/:tenantId/officer/leave-management"
               element={
                 <ProtectedRoute allowedRoles={['officer']}>
-                  <OfficerLeaveManagement />
+                  <OfficerLeave />
                 </ProtectedRoute>
               }
             />
