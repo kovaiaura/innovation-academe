@@ -80,12 +80,18 @@ export interface ApprovalChainItem {
 
 // Substitute Assignment (for officers)
 export interface SubstituteAssignment {
+  slot_id?: string;
   class_id: string;
   class_name: string;
   day: string;
+  date: string;
   period_id: string;
   period_label: string;
+  period_time?: string;
   subject: string;
+  room?: string;
+  original_officer_id?: string;
+  original_officer_name?: string;
   substitute_officer_id: string;
   substitute_officer_name: string;
 }

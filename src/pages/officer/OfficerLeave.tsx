@@ -1,0 +1,638 @@
+import { useState, useMemo, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { format, parseISO } from 'date-fns';
+import { Layout } from '@/components/layout/Layout';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar } from '@/components/ui/calendar';
+import { 
+  CalendarCheck, Calendar as CalendarIcon, AlertCircle, Info, Clock, CheckCircle, 
+  XCircle, FileText, TrendingUp, Users, ArrowRight, ArrowLeft
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { leaveApplicationService, leaveBalanceService } from '@/services/leave.service';
+import { leaveCalculationService } from '@/services/leaveCalculation.service';
+import { institutionHolidayService } from '@/services/holiday.service';
+import { substituteAssignmentService, AffectedTimetableSlot, AvailableSubstitute } from '@/services/substituteAssignment.service';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { 
+  LeaveType, 
+  LeaveStatus,
+  SubstituteAssignment,
+  LEAVE_TYPE_LABELS, 
+  LEAVE_STATUS_LABELS,
+} from '@/types/leave';
+import type { DateRange } from 'react-day-picker';
+
+const currentYear = new Date().getFullYear();
+const years = [currentYear, currentYear - 1, currentYear - 2];
+
+export default function OfficerLeave() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth() + 1;
+  
+  const [selectedYear, setSelectedYear] = useState(currentYear.toString());
+  const [activeTab, setActiveTab] = useState('records');
+  
+  // Form state
+  const [currentStep, setCurrentStep] = useState(1);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [leaveType, setLeaveType] = useState<LeaveType>('casual');
+  const [reason, setReason] = useState('');
+  const [affectedSlots, setAffectedSlots] = useState<AffectedTimetableSlot[]>([]);
+  const [substituteAssignments, setSubstituteAssignments] = useState<SubstituteAssignment[]>([]);
+  const [availableSubstitutes, setAvailableSubstitutes] = useState<Map<string, AvailableSubstitute[]>>(new Map());
+
+  // Fetch officer info
+  const { data: officerInfo } = useQuery({
+    queryKey: ['officer-info', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from('officers')
+        .select('id, full_name, assigned_institutions')
+        .eq('user_id', user.id)
+        .single();
+      return data;
+    },
+    enabled: !!user?.id
+  });
+
+  const institutionId = officerInfo?.assigned_institutions?.[0];
+
+  // Fetch leave balance for current month
+  const { data: balance } = useQuery({
+    queryKey: ['leave-balance', user?.id, currentYear, currentMonth],
+    queryFn: () => leaveBalanceService.getBalance(user!.id, currentYear, currentMonth),
+    enabled: !!user?.id
+  });
+
+  // Fetch yearly summary
+  const { data: yearlySummary } = useQuery({
+    queryKey: ['leave-yearly-summary', user?.id, selectedYear],
+    queryFn: () => leaveCalculationService.getYearlySummary(user!.id, parseInt(selectedYear)),
+    enabled: !!user?.id
+  });
+
+  // Fetch all leave applications
+  const { data: applications = [] } = useQuery({
+    queryKey: ['my-leave-applications', user?.id],
+    queryFn: () => leaveApplicationService.getMyApplications(),
+    enabled: !!user?.id
+  });
+
+  // Fetch institution holidays for the officer's institution
+  const { data: institutionHolidays = [] } = useQuery({
+    queryKey: ['institution-holidays', institutionId, currentYear],
+    queryFn: () => institutionHolidayService.getByYear(institutionId!, currentYear),
+    enabled: !!institutionId
+  });
+
+  // Calculate leave days excluding holidays
+  const leaveCalculation = useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) {
+      return { totalCalendarDays: 0, holidaysInRange: 0, actualLeaveDays: 0 };
+    }
+    
+    const holidayDates = institutionHolidays.map(h => h.date);
+    return leaveApplicationService.calculateLeaveDaysExcludingHolidays(
+      format(dateRange.from, 'yyyy-MM-dd'),
+      format(dateRange.to, 'yyyy-MM-dd'),
+      holidayDates
+    );
+  }, [dateRange, institutionHolidays]);
+
+  const applyMutation = useMutation({
+    mutationFn: leaveApplicationService.applyLeave,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leave-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['my-leave-applications'] });
+      queryClient.invalidateQueries({ queryKey: ['leave-yearly-summary'] });
+      toast.success('Leave application submitted successfully');
+      resetForm();
+      setActiveTab('records');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    }
+  });
+
+  const resetForm = () => {
+    setDateRange(undefined);
+    setLeaveType('casual');
+    setReason('');
+    setAffectedSlots([]);
+    setSubstituteAssignments([]);
+    setCurrentStep(1);
+  };
+
+  const yearApplications = applications.filter(app => {
+    const appYear = new Date(app.start_date).getFullYear();
+    return appYear === parseInt(selectedYear);
+  });
+
+  const stats = {
+    totalEntitlement: yearlySummary?.totalEntitlement || 12,
+    used: yearApplications.filter(a => a.status === 'approved').reduce((sum, a) => sum + a.paid_days, 0),
+    pending: yearApplications.filter(a => a.status === 'pending').length,
+    lop: yearApplications.filter(a => a.status === 'approved').reduce((sum, a) => sum + a.lop_days, 0),
+    approved: yearApplications.filter(a => a.status === 'approved').length,
+    rejected: yearApplications.filter(a => a.status === 'rejected').length,
+  };
+
+  const getStatusBadge = (status: LeaveStatus) => {
+    const variants: Record<LeaveStatus, "default" | "secondary" | "destructive" | "outline"> = {
+      pending: "secondary",
+      approved: "default",
+      rejected: "destructive",
+      cancelled: "outline",
+    };
+    
+    const icons = {
+      pending: <Clock className="h-3 w-3 mr-1" />,
+      approved: <CheckCircle className="h-3 w-3 mr-1" />,
+      rejected: <XCircle className="h-3 w-3 mr-1" />,
+      cancelled: <AlertCircle className="h-3 w-3 mr-1" />,
+    };
+    
+    return (
+      <Badge variant={variants[status]} className="flex items-center w-fit">
+        {icons[status]}
+        {LEAVE_STATUS_LABELS[status]}
+      </Badge>
+    );
+  };
+
+  // Step 1: Proceed to substitute selection
+  const handleProceedToSubstitutes = async () => {
+    if (!dateRange?.from || !dateRange?.to) {
+      toast.error('Please select dates');
+      return;
+    }
+    if (reason.trim().length < 10) {
+      toast.error('Please provide a detailed reason (minimum 10 characters)');
+      return;
+    }
+    if (!officerInfo?.id || !institutionId) {
+      toast.error('Officer information not found');
+      return;
+    }
+
+    // Fetch affected slots
+    const slots = await substituteAssignmentService.getAffectedSlots(
+      officerInfo.id,
+      institutionId,
+      format(dateRange.from, 'yyyy-MM-dd'),
+      format(dateRange.to, 'yyyy-MM-dd')
+    );
+
+    if (slots.length === 0) {
+      // No timetable slots affected, proceed directly to review
+      setCurrentStep(3);
+      return;
+    }
+
+    setAffectedSlots(slots);
+
+    // Initialize empty assignments
+    const initialAssignments: SubstituteAssignment[] = slots.map(slot => ({
+      slot_id: slot.id,
+      class_id: slot.class_id,
+      class_name: slot.class_name,
+      day: slot.day,
+      date: slot.date,
+      period_id: slot.period_id,
+      period_label: slot.period_label,
+      period_time: slot.period_time,
+      subject: slot.subject,
+      room: slot.room || undefined,
+      original_officer_id: officerInfo.id,
+      original_officer_name: officerInfo.full_name,
+      substitute_officer_id: '',
+      substitute_officer_name: ''
+    }));
+    setSubstituteAssignments(initialAssignments);
+
+    // Fetch available substitutes for each slot
+    const subsMap = new Map<string, AvailableSubstitute[]>();
+    for (const slot of slots) {
+      const subs = await substituteAssignmentService.getAvailableSubstitutes(
+        institutionId,
+        slot.day,
+        slot.period_id,
+        officerInfo.id
+      );
+      subsMap.set(`${slot.date}-${slot.period_id}`, subs);
+    }
+    setAvailableSubstitutes(subsMap);
+
+    setCurrentStep(2);
+  };
+
+  const handleSubstituteSelect = (index: number, officerId: string, officerName: string) => {
+    const updated = [...substituteAssignments];
+    updated[index].substitute_officer_id = officerId;
+    updated[index].substitute_officer_name = officerName;
+    setSubstituteAssignments(updated);
+  };
+
+  const allSubstitutesSelected = substituteAssignments.every(a => a.substitute_officer_id !== '');
+
+  const handleProceedToReview = () => {
+    if (!allSubstitutesSelected) {
+      toast.error('Please select substitutes for all affected classes');
+      return;
+    }
+    setCurrentStep(3);
+  };
+
+  const handleSubmit = () => {
+    if (!dateRange?.from || !dateRange?.to) return;
+
+    applyMutation.mutate({
+      start_date: format(dateRange.from, 'yyyy-MM-dd'),
+      end_date: format(dateRange.to, 'yyyy-MM-dd'),
+      leave_type: leaveType,
+      reason: reason.trim(),
+      substitute_assignments: substituteAssignments.filter(s => s.substitute_officer_id)
+    });
+  };
+
+  const usagePercentage = (stats.used / stats.totalEntitlement) * 100;
+
+  return (
+    <Layout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <CalendarCheck className="h-8 w-8 text-primary" />
+            <div>
+              <h1 className="text-2xl font-bold">Leave Management</h1>
+              <p className="text-muted-foreground">Apply for leave and view your records</p>
+            </div>
+          </div>
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {years.map(year => (
+                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Entitlement</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{stats.totalEntitlement}</div>
+              <p className="text-xs text-muted-foreground">days for {selectedYear}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Used</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-primary">{stats.used}</div>
+              <Progress value={usagePercentage} className="mt-2 h-2" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Remaining</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-600">{stats.totalEntitlement - stats.used}</div>
+              <p className="text-xs text-muted-foreground">{stats.pending > 0 && `${stats.pending} pending`}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">LOP Days</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-red-600">{stats.lop}</div>
+              <p className="text-xs text-muted-foreground">loss of pay</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="records">Leave Records</TabsTrigger>
+            <TabsTrigger value="apply">Apply for Leave</TabsTrigger>
+          </TabsList>
+
+          {/* Leave Records Tab */}
+          <TabsContent value="records" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Leave Applications - {selectedYear}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Applied On</TableHead>
+                      <TableHead>Date Range</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Days</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Approved/Rejected By</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {yearApplications.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          No leave applications for {selectedYear}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      yearApplications.map(app => (
+                        <TableRow key={app.id}>
+                          <TableCell>{format(parseISO(app.applied_at!), 'PP')}</TableCell>
+                          <TableCell>
+                            {format(parseISO(app.start_date), 'PP')} - {format(parseISO(app.end_date), 'PP')}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{LEAVE_TYPE_LABELS[app.leave_type]}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {app.total_days}
+                            {app.lop_days > 0 && (
+                              <span className="text-red-600 text-xs ml-1">({app.lop_days} LOP)</span>
+                            )}
+                          </TableCell>
+                          <TableCell>{getStatusBadge(app.status)}</TableCell>
+                          <TableCell>{app.final_approved_by_name || app.rejected_by_name || '-'}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Apply for Leave Tab */}
+          <TabsContent value="apply" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Apply for Leave</CardTitle>
+                <CardDescription>Select dates, assign substitutes for your classes, and submit</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Step Progress */}
+                <div className="flex items-center justify-center gap-4 pb-4">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      {currentStep > 1 ? <CheckCircle className="h-5 w-5" /> : '1'}
+                    </div>
+                    <span className="text-sm font-medium">Leave Details</span>
+                  </div>
+                  <div className={`h-px w-12 ${currentStep > 1 ? 'bg-primary' : 'bg-muted'}`} />
+                  <div className="flex items-center gap-2">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      {currentStep > 2 ? <CheckCircle className="h-5 w-5" /> : '2'}
+                    </div>
+                    <span className="text-sm font-medium">Assign Substitutes</span>
+                  </div>
+                  <div className={`h-px w-12 ${currentStep > 2 ? 'bg-primary' : 'bg-muted'}`} />
+                  <div className="flex items-center gap-2">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      3
+                    </div>
+                    <span className="text-sm font-medium">Review & Submit</span>
+                  </div>
+                </div>
+
+                {/* Step 1: Leave Details */}
+                {currentStep === 1 && (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Select Date Range</Label>
+                          <div className="border rounded-lg p-4 mt-2">
+                            <Calendar
+                              mode="range"
+                              selected={dateRange}
+                              onSelect={setDateRange}
+                              disabled={(date) => date < new Date()}
+                              numberOfMonths={1}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Leave Type</Label>
+                          <Select value={leaveType} onValueChange={(v) => setLeaveType(v as LeaveType)}>
+                            <SelectTrigger className="mt-2">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="sick">Sick Leave</SelectItem>
+                              <SelectItem value="casual">Casual Leave</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Reason</Label>
+                          <Textarea
+                            placeholder="Provide a detailed reason..."
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            rows={4}
+                            className="mt-2"
+                          />
+                        </div>
+                        {dateRange?.from && dateRange?.to && (
+                          <div className="p-4 bg-muted rounded-lg">
+                            <p className="font-medium">Leave Summary</p>
+                            <div className="text-sm text-muted-foreground mt-2 space-y-1">
+                              <p>From: {format(dateRange.from, 'PPP')}</p>
+                              <p>To: {format(dateRange.to, 'PPP')}</p>
+                              <p>Working Days: {leaveCalculation.actualLeaveDays}</p>
+                              {leaveCalculation.holidaysInRange > 0 && (
+                                <p className="text-green-600">Holidays excluded: {leaveCalculation.holidaysInRange}</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        <Button 
+                          onClick={handleProceedToSubstitutes} 
+                          className="w-full"
+                          disabled={!dateRange?.from || !dateRange?.to || reason.length < 10}
+                        >
+                          Next: Assign Substitutes <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 2: Assign Substitutes */}
+                {currentStep === 2 && (
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Users className="h-5 w-5" />
+                      <p>Assign substitutes for your classes during leave</p>
+                    </div>
+                    
+                    {affectedSlots.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No classes scheduled during your leave period.
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {affectedSlots.map((slot, index) => {
+                          const subs = availableSubstitutes.get(`${slot.date}-${slot.period_id}`) || [];
+                          const assignment = substituteAssignments[index];
+                          
+                          return (
+                            <Card key={`${slot.date}-${slot.period_id}`}>
+                              <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="font-medium">{slot.class_name} - {slot.subject}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {format(parseISO(slot.date), 'EEEE, MMM dd')} • {slot.period_label} ({slot.period_time})
+                                    </p>
+                                  </div>
+                                  <Select
+                                    value={assignment?.substitute_officer_id || ''}
+                                    onValueChange={(v) => {
+                                      const sub = subs.find(s => s.officer_id === v);
+                                      if (sub) {
+                                        handleSubstituteSelect(index, sub.officer_id, sub.officer_name);
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger className="w-[200px]">
+                                      <SelectValue placeholder="Select substitute" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {subs.map(sub => (
+                                        <SelectItem 
+                                          key={sub.officer_id} 
+                                          value={sub.officer_id}
+                                          disabled={!sub.is_available}
+                                        >
+                                          {sub.officer_name}
+                                          {!sub.is_available && ' (Busy)'}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <div className="flex gap-4">
+                      <Button variant="outline" onClick={() => setCurrentStep(1)}>
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                      </Button>
+                      <Button 
+                        onClick={handleProceedToReview} 
+                        className="flex-1"
+                        disabled={affectedSlots.length > 0 && !allSubstitutesSelected}
+                      >
+                        Next: Review <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: Review & Submit */}
+                {currentStep === 3 && (
+                  <div className="space-y-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Review Your Leave Application</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Date Range</p>
+                            <p className="font-medium">
+                              {dateRange?.from && format(dateRange.from, 'PPP')} - {dateRange?.to && format(dateRange.to, 'PPP')}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Leave Type</p>
+                            <p className="font-medium">{LEAVE_TYPE_LABELS[leaveType]}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Working Days</p>
+                            <p className="font-medium">{leaveCalculation.actualLeaveDays}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Reason</p>
+                            <p className="font-medium">{reason}</p>
+                          </div>
+                        </div>
+
+                        {substituteAssignments.length > 0 && (
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-2">Substitute Assignments</p>
+                            <div className="space-y-2">
+                              {substituteAssignments.map((a, i) => (
+                                <div key={i} className="flex items-center justify-between p-2 bg-muted rounded">
+                                  <span>{a.class_name} - {a.subject} ({format(parseISO(a.date), 'MMM dd')})</span>
+                                  <Badge variant="outline">{a.substitute_officer_name}</Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <div className="flex gap-4">
+                      <Button variant="outline" onClick={() => setCurrentStep(affectedSlots.length > 0 ? 2 : 1)}>
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                      </Button>
+                      <Button 
+                        onClick={handleSubmit} 
+                        className="flex-1"
+                        disabled={applyMutation.isPending}
+                      >
+                        {applyMutation.isPending ? 'Submitting...' : 'Submit Leave Application'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </Layout>
+  );
+}
