@@ -1158,6 +1158,48 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          link: string | null
+          message: string
+          metadata: Json | null
+          read: boolean | null
+          recipient_id: string
+          recipient_role: string
+          title: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          link?: string | null
+          message: string
+          metadata?: Json | null
+          read?: boolean | null
+          recipient_id: string
+          recipient_role: string
+          title: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          link?: string | null
+          message?: string
+          metadata?: Json | null
+          read?: boolean | null
+          recipient_id?: string
+          recipient_role?: string
+          title?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       officer_attendance: {
         Row: {
           check_in_address: string | null

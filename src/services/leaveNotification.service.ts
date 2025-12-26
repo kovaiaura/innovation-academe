@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { createNotification } from '@/hooks/useNotifications';
+import { notificationService } from './notification.service';
 import { LeaveApplication } from '@/types/leave';
 import { format } from 'date-fns';
 
@@ -29,9 +29,9 @@ export const leaveNotificationService = {
 
     // Send notification to all users with the approver position
     for (const approver of approvers) {
-      createNotification(
+      await notificationService.createNotification(
         approver.id,
-        'officer',
+        'system_admin',
         'leave_pending_approval',
         'New Leave Application',
         `${application.applicant_name} has submitted a ${application.leave_type} leave request from ${format(new Date(application.start_date), 'MMM dd')} to ${format(new Date(application.end_date), 'MMM dd, yyyy')} (${application.total_days} days)`,
@@ -66,9 +66,9 @@ export const leaveNotificationService = {
     if (!approvers || approvers.length === 0) return;
 
     for (const approver of approvers) {
-      createNotification(
+      await notificationService.createNotification(
         approver.id,
-        'officer',
+        'system_admin',
         'leave_pending_approval',
         'Leave Application Pending Your Approval',
         `${application.applicant_name}'s ${application.leave_type} leave request requires your approval (${application.total_days} days: ${format(new Date(application.start_date), 'MMM dd')} - ${format(new Date(application.end_date), 'MMM dd')})`,
@@ -95,13 +95,16 @@ export const leaveNotificationService = {
       ? `Your ${application.leave_type} leave from ${format(new Date(application.start_date), 'MMM dd')} to ${format(new Date(application.end_date), 'MMM dd, yyyy')} has been approved by ${approverName}`
       : `Your ${application.leave_type} leave request has been approved by ${approverName}. Waiting for next level approval.`;
 
-    createNotification(
+    const recipientRole = application.applicant_type === 'officer' ? 'officer' : 'system_admin';
+    const link = application.applicant_type === 'officer' ? '/officer/leave' : '/system-admin/leave';
+
+    await notificationService.createNotification(
       application.applicant_id,
-      'officer',
+      recipientRole,
       isFinal ? 'leave_application_approved' : 'leave_pending_approval',
       title,
       message,
-      '/officer/leave-status',
+      link,
       {
         leave_application_id: application.id,
         leave_type: application.leave_type,
@@ -116,13 +119,16 @@ export const leaveNotificationService = {
    * Notify applicant when their leave is rejected
    */
   notifyApplicantOnRejection: async (application: LeaveApplication, rejectorName: string, reason: string): Promise<void> => {
-    createNotification(
+    const recipientRole = application.applicant_type === 'officer' ? 'officer' : 'system_admin';
+    const link = application.applicant_type === 'officer' ? '/officer/leave' : '/system-admin/leave';
+
+    await notificationService.createNotification(
       application.applicant_id,
-      'officer',
+      recipientRole,
       'leave_application_rejected',
       'Leave Application Rejected',
       `Your ${application.leave_type} leave request from ${format(new Date(application.start_date), 'MMM dd')} to ${format(new Date(application.end_date), 'MMM dd, yyyy')} was rejected by ${rejectorName}. Reason: ${reason}`,
-      '/officer/leave-status',
+      link,
       {
         leave_application_id: application.id,
         leave_type: application.leave_type,
@@ -137,7 +143,7 @@ export const leaveNotificationService = {
    * Notify management/institution admin when an officer is on approved leave
    */
   notifyManagementOnOfficerLeave: async (application: LeaveApplication): Promise<void> => {
-    if (!application.institution_id) return;
+    if (application.applicant_type !== 'officer' || !application.institution_id) return;
 
     // Get management users for the institution
     const { data: managementUsers } = await supabase
@@ -145,54 +151,103 @@ export const leaveNotificationService = {
       .select('id, name, position_id')
       .eq('institution_id', application.institution_id);
 
-    // Get management positions
-    const { data: managementPositions } = await supabase
-      .from('positions')
-      .select('id')
-      .eq('is_ceo_position', true);
-
-    const managementPositionIds = managementPositions?.map(p => p.id) || [];
-
-    // Also notify system admins
-    const { data: systemAdmins } = await supabase
+    // Get users with management role
+    const { data: managementRoles } = await supabase
       .from('user_roles')
       .select('user_id')
-      .in('role', ['system_admin', 'super_admin', 'management']);
+      .eq('role', 'management');
 
-    const adminIds = new Set(systemAdmins?.map(a => a.user_id) || []);
+    const managementRoleUserIds = new Set(managementRoles?.map(r => r.user_id) || []);
 
-    // Combine management users
-    const notifyUsers = new Set<string>();
+    // Filter to management users in this institution
+    const institutionManagers = managementUsers?.filter(u => 
+      managementRoleUserIds.has(u.id) && u.id !== application.applicant_id
+    ) || [];
+
+    // Also notify system admins
+    const { data: adminRoles } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .in('role', ['system_admin', 'super_admin']);
+
+    const allNotifyIds = new Set<string>();
     
-    managementUsers?.forEach(user => {
-      if (user.position_id && managementPositionIds.includes(user.position_id)) {
-        notifyUsers.add(user.id);
+    institutionManagers.forEach(m => allNotifyIds.add(m.id));
+    adminRoles?.forEach(a => {
+      if (a.user_id !== application.applicant_id) {
+        allNotifyIds.add(a.user_id);
       }
     });
 
-    adminIds.forEach(id => notifyUsers.add(id));
-
-    // Don't notify the applicant themselves
-    notifyUsers.delete(application.applicant_id);
-
-    for (const userId of notifyUsers) {
-      createNotification(
+    for (const userId of allNotifyIds) {
+      await notificationService.createNotification(
         userId,
         'management',
         'officer_on_leave',
         'Officer On Leave',
-        `${application.applicant_name} will be on ${application.leave_type} leave from ${format(new Date(application.start_date), 'MMM dd')} to ${format(new Date(application.end_date), 'MMM dd, yyyy')} (${application.total_days} days)`,
-        '/system-admin/leave-approvals',
+        `${application.applicant_name} will be on ${application.leave_type} leave from ${format(new Date(application.start_date), 'MMM dd')} to ${format(new Date(application.end_date), 'MMM dd, yyyy')} (${application.total_days} days). Reason: ${application.reason}`,
+        '/management/dashboard',
         {
           leave_application_id: application.id,
           officer_name: application.applicant_name,
-          officer_id: application.officer_id || undefined,
+          officer_id: application.officer_id,
           leave_type: application.leave_type,
           start_date: application.start_date,
           end_date: application.end_date,
           total_days: application.total_days,
-          institution_id: application.institution_id || undefined,
-          institution_name: application.institution_name || undefined
+          institution_id: application.institution_id,
+          institution_name: application.institution_name,
+          reason: application.reason
+        }
+      );
+    }
+  },
+
+  /**
+   * Notify substitutes when they are assigned to cover classes
+   */
+  notifySubstitutesOnAssignment: async (application: LeaveApplication): Promise<void> => {
+    const substitutes = application.substitute_assignments;
+    if (!substitutes || substitutes.length === 0) return;
+
+    // Group by substitute officer to avoid duplicate notifications
+    const substituteMap = new Map<string, typeof substitutes>();
+    
+    for (const sub of substitutes) {
+      if (!sub.substitute_officer_id) continue;
+      
+      const existing = substituteMap.get(sub.substitute_officer_id) || [];
+      existing.push(sub);
+      substituteMap.set(sub.substitute_officer_id, existing);
+    }
+
+    // Find officer user_ids and send notifications
+    for (const [officerId, assignments] of substituteMap) {
+      const { data: officer } = await supabase
+        .from('officers')
+        .select('user_id, full_name')
+        .eq('id', officerId)
+        .single();
+
+      if (!officer?.user_id) continue;
+
+      const classesText = assignments.map(a => 
+        `${a.class_name || 'Class'} on ${format(new Date(a.date), 'PP')} (${a.period_label || 'Period'})`
+      ).slice(0, 3).join(', ');
+
+      const moreText = assignments.length > 3 ? ` and ${assignments.length - 3} more` : '';
+
+      await notificationService.createNotification(
+        officer.user_id,
+        'officer',
+        'substitute_assigned',
+        'Substitute Assignment',
+        `You have been assigned to cover for ${application.applicant_name}: ${classesText}${moreText}`,
+        '/officer/timetable',
+        {
+          application_id: application.id,
+          original_officer: application.applicant_name,
+          assignments: assignments
         }
       );
     }
