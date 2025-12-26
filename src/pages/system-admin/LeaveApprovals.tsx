@@ -33,9 +33,11 @@ import { Label } from "@/components/ui/label";
 import { leaveApplicationService } from "@/services/leave.service";
 import { LeaveApplication, LEAVE_TYPE_LABELS, LEAVE_STATUS_LABELS, LeaveStatus, LeaveType } from "@/types/leave";
 import { format, parseISO } from "date-fns";
-import { Check, X, Eye, Search, Filter, RefreshCw, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Check, X, Eye, Search, Filter, RefreshCw, Clock, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { LOPApprovalDialog } from "@/components/leave/LOPApprovalDialog";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function LeaveApprovals() {
   const { user } = useAuth();
@@ -44,14 +46,70 @@ export default function LeaveApprovals() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [leaveTypeFilter, setLeaveTypeFilter] = useState<string>("all");
   const [selectedApplication, setSelectedApplication] = useState<LeaveApplication | null>(null);
-  const [actionMode, setActionMode] = useState<"approve" | "reject" | "view" | null>(null);
+  const [actionMode, setActionMode] = useState<"approve" | "reject" | "view" | "lop" | null>(null);
   const [comments, setComments] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
+  const [userPositionId, setUserPositionId] = useState<string | null>(null);
+
+  // Fetch user's position ID for filtering
+  useEffect(() => {
+    const fetchUserPosition = async () => {
+      if (!user?.id) return;
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('position_id')
+        .eq('id', user.id)
+        .single();
+      
+      if (profile?.position_id) {
+        setUserPositionId(profile.position_id);
+      }
+    };
+    
+    fetchUserPosition();
+  }, [user?.id]);
 
   const { data: applications = [], isLoading, refetch } = useQuery({
     queryKey: ['leave-applications-all'],
     queryFn: () => leaveApplicationService.getAllApplications()
   });
+
+  // Filter applications based on user's position in approval chain
+  const filterByApprovalHierarchy = (apps: LeaveApplication[]) => {
+    if (!userPositionId && !user?.is_ceo) return apps;
+    
+    return apps.filter(app => {
+      // For pending applications, check if user is the current approver
+      if (app.status === 'pending') {
+        const currentLevel = app.current_approval_level || 1;
+        const currentApprover = app.approval_chain.find(a => a.order === currentLevel);
+        
+        if (currentApprover) {
+          // Check if user's position matches current approver position
+          if (currentApprover.position_id === userPositionId) return true;
+          
+          // CEO can approve if they're in the chain
+          if (user?.is_ceo) {
+            const ceoInChain = app.approval_chain.some(a => 
+              a.position_name?.toLowerCase().includes('ceo') || 
+              a.position_name?.toLowerCase().includes('chief executive')
+            );
+            if (ceoInChain && currentApprover.position_name?.toLowerCase().includes('ceo')) {
+              return true;
+            }
+          }
+        }
+        return false;
+      }
+      
+      // For history, show all applications where user was involved
+      const wasApprover = app.approval_chain.some(a => 
+        a.approved_by === user?.id || a.position_id === userPositionId
+      );
+      return wasApprover || app.final_approved_by === user?.id || app.rejected_by === user?.id;
+    });
+  };
 
   const approveMutation = useMutation({
     mutationFn: ({ id, comments }: { id: string; comments?: string }) => 
@@ -79,7 +137,66 @@ export default function LeaveApprovals() {
     }
   });
 
-  const filteredApplications = applications.filter(app => {
+  const lopMutation = useMutation({
+    mutationFn: async ({ id, lopDays, paidDays, comments }: { id: string; lopDays: number; paidDays: number; comments: string }) => {
+      // Update the application with LOP info and approve it
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('Not authenticated');
+      
+      const { data: profile } = await supabase.from('profiles').select('name').eq('id', authUser.id).single();
+      const { data: app } = await supabase.from('leave_applications').select('*').eq('id', id).single();
+      
+      if (!app) throw new Error('Application not found');
+      
+      const approvalChain = Array.isArray(app.approval_chain) ? app.approval_chain : [];
+      const currentLevel = app.current_approval_level || 1;
+      
+      const updatedChain = approvalChain.map((a: any) => {
+        if (a.order === currentLevel) {
+          return { 
+            ...a, 
+            status: 'approved', 
+            approved_by: authUser.id, 
+            approved_by_name: profile?.name || 'Unknown', 
+            approved_at: new Date().toISOString(), 
+            comments: `Approved with LOP: ${lopDays} day(s). ${comments}` 
+          };
+        }
+        return a;
+      });
+      
+      const nextLevel = approvalChain.find((a: any) => a.order === currentLevel + 1);
+      const isFinalApproval = !nextLevel;
+      
+      const updateData: Record<string, unknown> = {
+        approval_chain: JSON.parse(JSON.stringify(updatedChain)),
+        current_approval_level: isFinalApproval ? currentLevel : currentLevel + 1,
+        is_lop: lopDays > 0,
+        lop_days: lopDays,
+        paid_days: paidDays
+      };
+      
+      if (isFinalApproval) {
+        updateData.status = 'approved';
+        updateData.final_approved_by = authUser.id;
+        updateData.final_approved_by_name = profile?.name;
+        updateData.final_approved_at = new Date().toISOString();
+      }
+      
+      const { error } = await supabase.from('leave_applications').update(updateData).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leave-applications-all'] });
+      toast.success('Leave approved with LOP');
+      handleCloseDialog();
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    }
+  });
+
+  const filteredApplications = filterByApprovalHierarchy(applications).filter(app => {
     const matchesSearch = searchTerm === "" || 
       app.applicant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       app.institution_name?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -103,6 +220,11 @@ export default function LeaveApprovals() {
     setSelectedApplication(app);
     setActionMode("reject");
     setRejectionReason("");
+  };
+
+  const handleMarkLOP = (app: LeaveApplication) => {
+    setSelectedApplication(app);
+    setActionMode("lop");
   };
 
   const handleViewDetails = (app: LeaveApplication) => {
@@ -131,6 +253,11 @@ export default function LeaveApprovals() {
     }
   };
 
+  const handleLOPConfirm = (lopDays: number, paidDays: number, comments: string) => {
+    if (!selectedApplication) return;
+    lopMutation.mutate({ id: selectedApplication.id, lopDays, paidDays, comments });
+  };
+
   const getStatusBadge = (status: LeaveStatus) => {
     const variants: Record<LeaveStatus, "default" | "secondary" | "destructive" | "outline"> = {
       pending: "secondary",
@@ -155,9 +282,9 @@ export default function LeaveApprovals() {
   };
 
   const stats = {
-    pending: applications.filter(a => a.status === 'pending').length,
-    approved: applications.filter(a => a.status === 'approved').length,
-    rejected: applications.filter(a => a.status === 'rejected').length,
+    pending: pendingApplications.length,
+    approved: historyApplications.filter(a => a.status === 'approved').length,
+    rejected: historyApplications.filter(a => a.status === 'rejected').length,
   };
 
   return (
@@ -167,7 +294,7 @@ export default function LeaveApprovals() {
           <div>
             <h1 className="text-3xl font-bold">Leave Approvals</h1>
             <p className="text-muted-foreground">
-              Review and manage leave applications
+              Review and manage leave applications based on your approval authority
             </p>
           </div>
           <Button variant="outline" onClick={() => refetch()}>
@@ -180,7 +307,7 @@ export default function LeaveApprovals() {
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
+              <CardTitle className="text-sm font-medium">Pending for Your Action</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
@@ -188,7 +315,7 @@ export default function LeaveApprovals() {
           </Card>
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Approved</CardTitle>
+              <CardTitle className="text-sm font-medium">Approved by You</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
@@ -196,7 +323,7 @@ export default function LeaveApprovals() {
           </Card>
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Rejected</CardTitle>
+              <CardTitle className="text-sm font-medium">Rejected by You</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
@@ -281,7 +408,7 @@ export default function LeaveApprovals() {
                     {pendingApplications.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                          No pending applications
+                          No pending applications for your approval
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -306,6 +433,10 @@ export default function LeaveApprovals() {
                               <Button size="sm" variant="default" onClick={() => handleApprove(app)}>
                                 <Check className="h-4 w-4 mr-1" />
                                 Approve
+                              </Button>
+                              <Button size="sm" variant="outline" className="text-amber-600 border-amber-600 hover:bg-amber-50" onClick={() => handleMarkLOP(app)}>
+                                <AlertTriangle className="h-4 w-4 mr-1" />
+                                LOP
                               </Button>
                               <Button size="sm" variant="destructive" onClick={() => handleReject(app)}>
                                 <X className="h-4 w-4 mr-1" />
@@ -332,7 +463,7 @@ export default function LeaveApprovals() {
                     <TableHead>Date Range</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Days</TableHead>
-                    <TableHead>Applied On</TableHead>
+                    <TableHead>Paid/LOP</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Reviewed By</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -357,7 +488,12 @@ export default function LeaveApprovals() {
                           <Badge variant="outline">{LEAVE_TYPE_LABELS[app.leave_type]}</Badge>
                         </TableCell>
                         <TableCell>{app.total_days}</TableCell>
-                        <TableCell>{format(parseISO(app.applied_at), "PP")}</TableCell>
+                        <TableCell>
+                          <span className="text-green-600">{app.paid_days}</span>
+                          {app.lop_days > 0 && (
+                            <span className="text-red-600 ml-1">/ {app.lop_days} LOP</span>
+                          )}
+                        </TableCell>
                         <TableCell>{getStatusBadge(app.status)}</TableCell>
                         <TableCell>{app.final_approved_by_name || app.rejected_by_name || "-"}</TableCell>
                         <TableCell className="text-right">
@@ -375,8 +511,8 @@ export default function LeaveApprovals() {
         </Tabs>
       </div>
 
-      {/* Action Dialog */}
-      <Dialog open={actionMode !== null} onOpenChange={() => handleCloseDialog()}>
+      {/* Approve/Reject/View Dialog */}
+      <Dialog open={actionMode !== null && actionMode !== "lop"} onOpenChange={() => handleCloseDialog()}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
@@ -442,7 +578,7 @@ export default function LeaveApprovals() {
                         }>
                           {step.order}
                         </Badge>
-                        <span>Level {step.order}</span>
+                        <span>{step.position_name || `Level ${step.order}`}</span>
                         {step.approved_by_name && (
                           <span className="text-muted-foreground">({step.approved_by_name})</span>
                         )}
@@ -504,6 +640,15 @@ export default function LeaveApprovals() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* LOP Dialog */}
+      <LOPApprovalDialog
+        open={actionMode === "lop"}
+        onOpenChange={(open) => !open && handleCloseDialog()}
+        application={selectedApplication}
+        onConfirm={handleLOPConfirm}
+        isPending={lopMutation.isPending}
+      />
     </Layout>
   );
 }
