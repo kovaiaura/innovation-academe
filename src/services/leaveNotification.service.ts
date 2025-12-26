@@ -3,6 +3,39 @@ import { notificationService } from './notification.service';
 import { LeaveApplication } from '@/types/leave';
 import { format } from 'date-fns';
 
+// Helper to get tenant-aware route
+const getTenantSlug = (): string => {
+  try {
+    const tenantStr = localStorage.getItem('tenant');
+    const tenant = tenantStr ? JSON.parse(tenantStr) : null;
+    return tenant?.slug || 'default';
+  } catch {
+    return 'default';
+  }
+};
+
+// Generate role-aware notification links
+const getNotificationLink = (role: string, path: string): string => {
+  const slug = getTenantSlug();
+  
+  switch (role) {
+    case 'system_admin':
+      return `/system-admin${path}`;
+    case 'super_admin':
+      return `/super-admin${path}`;
+    case 'officer':
+      return `/tenant/${slug}/officer${path}`;
+    case 'management':
+      return `/tenant/${slug}/management${path}`;
+    case 'teacher':
+      return `/tenant/${slug}/teacher${path}`;
+    case 'student':
+      return `/tenant/${slug}/student${path}`;
+    default:
+      return path;
+  }
+};
+
 export const leaveNotificationService = {
   /**
    * Notify first approver when a new leave application is submitted
@@ -35,7 +68,7 @@ export const leaveNotificationService = {
         'leave_pending_approval',
         'New Leave Application',
         `${application.applicant_name} has submitted a ${application.leave_type} leave request from ${format(new Date(application.start_date), 'MMM dd')} to ${format(new Date(application.end_date), 'MMM dd, yyyy')} (${application.total_days} days)`,
-        '/system-admin/leave-approvals',
+        getNotificationLink('system_admin', '/leave-approvals'),
         {
           leave_application_id: application.id,
           applicant_name: application.applicant_name,
@@ -72,7 +105,7 @@ export const leaveNotificationService = {
         'leave_pending_approval',
         'Leave Application Pending Your Approval',
         `${application.applicant_name}'s ${application.leave_type} leave request requires your approval (${application.total_days} days: ${format(new Date(application.start_date), 'MMM dd')} - ${format(new Date(application.end_date), 'MMM dd')})`,
-        '/system-admin/leave-approvals',
+        getNotificationLink('system_admin', '/leave-approvals'),
         {
           leave_application_id: application.id,
           applicant_name: application.applicant_name,
@@ -96,7 +129,7 @@ export const leaveNotificationService = {
       : `Your ${application.leave_type} leave request has been approved by ${approverName}. Waiting for next level approval.`;
 
     const recipientRole = application.applicant_type === 'officer' ? 'officer' : 'system_admin';
-    const link = application.applicant_type === 'officer' ? '/officer/leave' : '/system-admin/leave';
+    const path = application.applicant_type === 'officer' ? '/leave-management' : '/leave';
 
     await notificationService.createNotification(
       application.applicant_id,
@@ -104,7 +137,7 @@ export const leaveNotificationService = {
       isFinal ? 'leave_application_approved' : 'leave_pending_approval',
       title,
       message,
-      link,
+      getNotificationLink(recipientRole, path),
       {
         leave_application_id: application.id,
         leave_type: application.leave_type,
@@ -120,7 +153,7 @@ export const leaveNotificationService = {
    */
   notifyApplicantOnRejection: async (application: LeaveApplication, rejectorName: string, reason: string): Promise<void> => {
     const recipientRole = application.applicant_type === 'officer' ? 'officer' : 'system_admin';
-    const link = application.applicant_type === 'officer' ? '/officer/leave' : '/system-admin/leave';
+    const path = application.applicant_type === 'officer' ? '/leave-management' : '/leave';
 
     await notificationService.createNotification(
       application.applicant_id,
@@ -128,7 +161,7 @@ export const leaveNotificationService = {
       'leave_application_rejected',
       'Leave Application Rejected',
       `Your ${application.leave_type} leave request from ${format(new Date(application.start_date), 'MMM dd')} to ${format(new Date(application.end_date), 'MMM dd, yyyy')} was rejected by ${rejectorName}. Reason: ${reason}`,
-      link,
+      getNotificationLink(recipientRole, path),
       {
         leave_application_id: application.id,
         leave_type: application.leave_type,
@@ -180,13 +213,18 @@ export const leaveNotificationService = {
     });
 
     for (const userId of allNotifyIds) {
+      // Check user role to generate correct link
+      const isManager = institutionManagers.some(m => m.id === userId);
+      const role = isManager ? 'management' : 'system_admin';
+      const path = isManager ? '/dashboard' : '/officers';
+
       await notificationService.createNotification(
         userId,
-        'management',
+        role,
         'officer_on_leave',
         'Officer On Leave',
         `${application.applicant_name} will be on ${application.leave_type} leave from ${format(new Date(application.start_date), 'MMM dd')} to ${format(new Date(application.end_date), 'MMM dd, yyyy')} (${application.total_days} days). Reason: ${application.reason}`,
-        '/management/dashboard',
+        getNotificationLink(role, path),
         {
           leave_application_id: application.id,
           officer_name: application.applicant_name,
@@ -243,7 +281,7 @@ export const leaveNotificationService = {
         'substitute_assigned',
         'Substitute Assignment',
         `You have been assigned to cover for ${application.applicant_name}: ${classesText}${moreText}`,
-        '/officer/timetable',
+        getNotificationLink('officer', '/timetable'),
         {
           application_id: application.id,
           original_officer: application.applicant_name,
