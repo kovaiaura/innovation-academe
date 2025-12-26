@@ -19,6 +19,7 @@ interface CreateOfficerRequest {
   sick_leave_allowance?: number;
   casual_leave_allowance?: number;
   institution_id?: string;
+  join_date?: string;
 }
 
 serve(async (req) => {
@@ -127,7 +128,8 @@ serve(async (req) => {
         overtime_rate_multiplier: requestData.overtime_rate_multiplier || 1.5,
         annual_leave_allowance: annualLeave,
         sick_leave_allowance: sickLeave,
-        casual_leave_allowance: casualLeave
+        casual_leave_allowance: casualLeave,
+        join_date: requestData.join_date || new Date().toISOString().split('T')[0]
       })
       .select()
       .single();

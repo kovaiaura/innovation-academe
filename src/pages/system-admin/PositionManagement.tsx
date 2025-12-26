@@ -51,6 +51,7 @@ export default function PositionManagement() {
     position_id: '',
     password_mode: 'auto' as 'auto' | 'custom',
     custom_password: '',
+    join_date: new Date().toISOString().split('T')[0],
     // Leave allowances
     casual_leave: '12',
     sick_leave: '10',
@@ -200,10 +201,21 @@ export default function PositionManagement() {
         casual_leave: parseInt(newUserData.casual_leave) || 12,
         sick_leave: parseInt(newUserData.sick_leave) || 10,
         earned_leave: parseInt(newUserData.earned_leave) || 15,
+        join_date: newUserData.join_date || undefined,
       });
       toast.success('User added successfully');
       setIsAddUserDialogOpen(false);
-      setNewUserData({ name: '', email: '', position_id: '', password_mode: 'auto', custom_password: '', casual_leave: '12', sick_leave: '10', earned_leave: '15' });
+      setNewUserData({ 
+        name: '', 
+        email: '', 
+        position_id: '', 
+        password_mode: 'auto', 
+        custom_password: '', 
+        join_date: new Date().toISOString().split('T')[0],
+        casual_leave: '12', 
+        sick_leave: '10', 
+        earned_leave: '15' 
+      });
 
       setCredentialsDialog({
         open: true,
@@ -461,6 +473,15 @@ export default function PositionManagement() {
                 value={newUserData.email}
                 onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
                 placeholder="Enter email"
+              />
+            </div>
+            <div>
+              <Label htmlFor="join-date">Join Date</Label>
+              <Input
+                id="join-date"
+                type="date"
+                value={newUserData.join_date}
+                onChange={(e) => setNewUserData({ ...newUserData, join_date: e.target.value })}
               />
             </div>
             <div>

@@ -13,6 +13,7 @@ interface CreateUserPayload {
   position_id: string;
   position_name: string;
   is_ceo: boolean;
+  join_date?: string | null;
 }
 
 interface DeleteUserPayload {
@@ -100,7 +101,7 @@ Deno.serve(async (req) => {
 
     switch (payload.action) {
       case 'create_user': {
-        const { email, password, name, position_id, position_name, is_ceo } = payload;
+        const { email, password, name, position_id, position_name, is_ceo, join_date } = payload;
         
         // Create user in Supabase Auth
         const { data: authData, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -120,7 +121,7 @@ Deno.serve(async (req) => {
 
         const userId = authData.user.id;
 
-        // Update profile with position info
+        // Update profile with position info and join_date
         const { error: profileError } = await supabaseAdmin
           .from('profiles')
           .update({
@@ -128,6 +129,7 @@ Deno.serve(async (req) => {
             position_id,
             position_name,
             is_ceo,
+            join_date: join_date || new Date().toISOString().split('T')[0],
             must_change_password: true,
             password_changed: false
           })

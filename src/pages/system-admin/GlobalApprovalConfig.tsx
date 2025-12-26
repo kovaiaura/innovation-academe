@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,10 +11,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Trash2, ArrowRight, Users, GitBranch, Info, Crown, Briefcase, UserCog } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Plus, Trash2, ArrowRight, Users, GitBranch, Info, Crown, Briefcase, UserCog, Settings, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { approvalHierarchyService } from '@/services/leave.service';
 import { positionService } from '@/services/position.service';
+import { leaveSettingsService, type LeaveSettings } from '@/services/leaveSettings.service';
 import { UserType } from '@/types/leave';
 
 export default function GlobalApprovalConfig() {
@@ -26,6 +28,15 @@ export default function GlobalApprovalConfig() {
   const [isFinalApprover, setIsFinalApprover] = useState(false);
   const [isOptional, setIsOptional] = useState(false);
   const [selectedPositionForConfig, setSelectedPositionForConfig] = useState('');
+  
+  // Leave settings state
+  const [leaveSettings, setLeaveSettings] = useState<LeaveSettings>({
+    leaves_per_year: 12,
+    leaves_per_month: 1,
+    max_carry_forward: 1,
+    max_leaves_per_month: 2
+  });
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   const { data: allPositions = [] } = useQuery({
     queryKey: ['positions'],
@@ -36,6 +47,19 @@ export default function GlobalApprovalConfig() {
     queryKey: ['approval-hierarchies'],
     queryFn: () => approvalHierarchyService.getAll()
   });
+
+  // Fetch leave settings
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settings = await leaveSettingsService.getSettings();
+        setLeaveSettings(settings);
+      } catch (error) {
+        console.error('Failed to load leave settings:', error);
+      }
+    };
+    loadSettings();
+  }, []);
 
   // Filter for global hierarchies (applicant_position_id is NULL)
   const officerHierarchies = allHierarchies.filter(
@@ -380,6 +404,10 @@ export default function GlobalApprovalConfig() {
               <UserCog className="h-4 w-4" />
               Position-Specific
             </TabsTrigger>
+            <TabsTrigger value="settings" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Leave Settings
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="global" className="space-y-6">
@@ -479,6 +507,155 @@ export default function GlobalApprovalConfig() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          {/* Leave Settings Tab */}
+          <TabsContent value="settings" className="space-y-6">
+            <Alert className="bg-green-500/10 border-green-500/20">
+              <Info className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-sm">
+                <strong>Leave Settings</strong> configure the default leave policy for all employees. These values are used when calculating leave balances and entitlements.
+              </AlertDescription>
+            </Alert>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Leave Policy Configuration
+                </CardTitle>
+                <CardDescription>
+                  Configure default leave allowances and carry-over rules
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="leaves_per_year">Leaves Per Year</Label>
+                    <Input
+                      id="leaves_per_year"
+                      type="number"
+                      min="0"
+                      value={leaveSettings.leaves_per_year}
+                      onChange={(e) => setLeaveSettings({
+                        ...leaveSettings,
+                        leaves_per_year: parseInt(e.target.value) || 0
+                      })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Total leaves allocated per year for full-time employees
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="leaves_per_month">Leaves Per Month</Label>
+                    <Input
+                      id="leaves_per_month"
+                      type="number"
+                      min="0"
+                      value={leaveSettings.leaves_per_month}
+                      onChange={(e) => setLeaveSettings({
+                        ...leaveSettings,
+                        leaves_per_month: parseInt(e.target.value) || 0
+                      })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Leaves credited each month
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="max_carry_forward">Max Carry Forward</Label>
+                    <Input
+                      id="max_carry_forward"
+                      type="number"
+                      min="0"
+                      value={leaveSettings.max_carry_forward}
+                      onChange={(e) => setLeaveSettings({
+                        ...leaveSettings,
+                        max_carry_forward: parseInt(e.target.value) || 0
+                      })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Maximum leaves that can be carried to the next month
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="max_leaves_per_month">Max Leaves Per Month</Label>
+                    <Input
+                      id="max_leaves_per_month"
+                      type="number"
+                      min="0"
+                      value={leaveSettings.max_leaves_per_month}
+                      onChange={(e) => setLeaveSettings({
+                        ...leaveSettings,
+                        max_leaves_per_month: parseInt(e.target.value) || 0
+                      })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Maximum leaves allowed in a single month (including carry-over)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t flex justify-end">
+                  <Button 
+                    onClick={async () => {
+                      setIsSavingSettings(true);
+                      try {
+                        await leaveSettingsService.updateAllSettings(leaveSettings);
+                        toast.success('Leave settings saved successfully');
+                      } catch (error) {
+                        toast.error('Failed to save leave settings');
+                      } finally {
+                        setIsSavingSettings(false);
+                      }
+                    }}
+                    disabled={isSavingSettings}
+                  >
+                    {isSavingSettings ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Settings
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Summary card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Current Configuration Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-4 bg-muted rounded-lg text-center">
+                    <p className="text-2xl font-bold">{leaveSettings.leaves_per_year}</p>
+                    <p className="text-xs text-muted-foreground">Leaves/Year</p>
+                  </div>
+                  <div className="p-4 bg-muted rounded-lg text-center">
+                    <p className="text-2xl font-bold">{leaveSettings.leaves_per_month}</p>
+                    <p className="text-xs text-muted-foreground">Leaves/Month</p>
+                  </div>
+                  <div className="p-4 bg-muted rounded-lg text-center">
+                    <p className="text-2xl font-bold">{leaveSettings.max_carry_forward}</p>
+                    <p className="text-xs text-muted-foreground">Max Carry Forward</p>
+                  </div>
+                  <div className="p-4 bg-muted rounded-lg text-center">
+                    <p className="text-2xl font-bold">{leaveSettings.max_leaves_per_month}</p>
+                    <p className="text-xs text-muted-foreground">Max/Month</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
