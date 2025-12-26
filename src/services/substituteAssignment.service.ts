@@ -49,22 +49,14 @@ export const substituteAssignmentService = {
     startDate: string,
     endDate: string
   ): Promise<AffectedTimetableSlot[]> => {
-    // Get the officer record to find teacher_id
-    const { data: officer } = await supabase
-      .from('officers')
-      .select('id')
-      .eq('id', officerId)
-      .single();
-
-    if (!officer) return [];
-
     // Get all dates in range
     const dates = eachDayOfInterval({
       start: parseISO(startDate),
       end: parseISO(endDate)
     });
 
-    // Get timetable assignments for this officer
+    // Get timetable assignments where officer is primary, secondary, or backup
+    // Use separate queries and combine results since .or() with foreign key filters can be tricky
     const { data: assignments, error } = await supabase
       .from('institution_timetable_assignments')
       .select(`
@@ -75,16 +67,28 @@ export const substituteAssignmentService = {
         subject,
         room,
         period_id,
-        institution_periods!inner (
+        teacher_id,
+        secondary_officer_id,
+        backup_officer_id,
+        institution_periods (
           label,
           start_time,
           end_time
         )
       `)
-      .eq('institution_id', institutionId)
-      .eq('teacher_id', officerId);
+      .eq('institution_id', institutionId);
 
-    if (error || !assignments) return [];
+    if (error || !assignments) {
+      console.error('Error fetching timetable assignments:', error);
+      return [];
+    }
+
+    // Filter assignments where the officer is assigned as primary, secondary, or backup
+    const officerAssignments = assignments.filter(a => 
+      a.teacher_id === officerId || 
+      a.secondary_officer_id === officerId || 
+      a.backup_officer_id === officerId
+    );
 
     const affectedSlots: AffectedTimetableSlot[] = [];
 
@@ -92,8 +96,10 @@ export const substituteAssignmentService = {
       const dayName = DAY_NAMES[date.getDay()];
       const dateStr = format(date, 'yyyy-MM-dd');
 
-      // Find assignments for this day
-      const dayAssignments = assignments.filter(a => a.day === dayName);
+      // Find assignments for this day (case-insensitive comparison)
+      const dayAssignments = officerAssignments.filter(a => 
+        a.day.toLowerCase().trim() === dayName.toLowerCase()
+      );
 
       for (const assignment of dayAssignments) {
         const period = assignment.institution_periods as any;
@@ -102,8 +108,8 @@ export const substituteAssignmentService = {
           day: dayName,
           date: dateStr,
           period_id: assignment.period_id,
-          period_label: period?.label || '',
-          period_time: `${period?.start_time || ''} - ${period?.end_time || ''}`,
+          period_label: period?.label || 'Unknown Period',
+          period_time: period ? `${period.start_time || ''} - ${period.end_time || ''}` : '',
           class_id: assignment.class_id,
           class_name: assignment.class_name,
           subject: assignment.subject,
@@ -138,14 +144,23 @@ export const substituteAssignmentService = {
     if (error || !officers) return [];
 
     // Check which officers have conflicting slots at this time
+    // An officer is busy if they are primary, secondary, or backup for any slot at this time
     const { data: conflictingAssignments } = await supabase
       .from('institution_timetable_assignments')
-      .select('teacher_id')
+      .select('teacher_id, secondary_officer_id, backup_officer_id')
       .eq('institution_id', institutionId)
-      .eq('day', day)
+      .ilike('day', day)
       .eq('period_id', periodId);
 
-    const busyOfficerIds = new Set(conflictingAssignments?.map(a => a.teacher_id) || []);
+    const busyOfficerIds = new Set<string>();
+    
+    if (conflictingAssignments) {
+      for (const a of conflictingAssignments) {
+        if (a.teacher_id) busyOfficerIds.add(a.teacher_id);
+        if (a.secondary_officer_id) busyOfficerIds.add(a.secondary_officer_id);
+        if (a.backup_officer_id) busyOfficerIds.add(a.backup_officer_id);
+      }
+    }
 
     return officers.map(officer => ({
       officer_id: officer.id,

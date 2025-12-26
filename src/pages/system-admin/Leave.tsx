@@ -59,10 +59,19 @@ export default function Leave() {
     enabled: !!user?.id
   });
 
-  // Fetch yearly balances for records
+  // Fetch yearly balances for all 12 months using RPC (works even if no table rows exist)
   const { data: yearlyBalances = [] } = useQuery({
-    queryKey: ['leave-balances-yearly', user?.id, selectedYear],
-    queryFn: () => leaveBalanceService.getYearlyBalances(user!.id, parseInt(selectedYear)),
+    queryKey: ['leave-balances-yearly-rpc', user?.id, selectedYear],
+    queryFn: async () => {
+      const year = parseInt(selectedYear);
+      const results = await Promise.all(
+        Array.from({ length: 12 }, (_, i) => i + 1).map(async (month) => {
+          const balance = await leaveBalanceService.getBalance(user!.id, year, month);
+          return balance ? { month, ...balance } : null;
+        })
+      );
+      return results.filter((b): b is NonNullable<typeof b> => b !== null);
+    },
     enabled: !!user?.id
   });
 
@@ -384,7 +393,8 @@ export default function Leave() {
                       </TableHeader>
                       <TableBody>
                         {months.map((month, index) => {
-                          const balanceData = yearlyBalances.find(b => b.month === index + 1);
+                          const monthNum = index + 1;
+                          const balanceData = yearlyBalances.find(b => b.month === monthNum);
                           const isCurrentMonth = new Date().getMonth() === index && 
                                                 new Date().getFullYear() === parseInt(selectedYear);
                           return (
@@ -395,20 +405,22 @@ export default function Leave() {
                                   <Badge variant="outline" className="ml-2 text-xs">Current</Badge>
                                 )}
                               </TableCell>
-                              <TableCell className="text-right">{balanceData?.monthly_credit || '-'}</TableCell>
-                              <TableCell className="text-right">{balanceData?.carried_forward || '-'}</TableCell>
+                              <TableCell className="text-right">{balanceData?.monthly_credit ?? 1}</TableCell>
+                              <TableCell className="text-right">{balanceData?.carried_forward ?? 0}</TableCell>
                               <TableCell className="text-right">
-                                {balanceData ? balanceData.monthly_credit + balanceData.carried_forward : '-'}
+                                {balanceData?.total_available ?? (balanceData ? balanceData.monthly_credit + balanceData.carried_forward : 1)}
                               </TableCell>
-                              <TableCell className="text-right">{balanceData?.sick_leave_used || '-'}</TableCell>
-                              <TableCell className="text-right">{balanceData?.casual_leave_used || '-'}</TableCell>
+                              <TableCell className="text-right">{balanceData?.sick_leave_used ?? 0}</TableCell>
+                              <TableCell className="text-right">{balanceData?.casual_leave_used ?? 0}</TableCell>
                               <TableCell className="text-right">
-                                {balanceData?.lop_days ? (
+                                {balanceData?.lop_days && balanceData.lop_days > 0 ? (
                                   <span className="text-red-600">{balanceData.lop_days}</span>
-                                ) : '-'}
+                                ) : '0'}
                               </TableCell>
                               <TableCell className="text-right font-medium">
-                                {balanceData?.balance_remaining ?? '-'}
+                                <span className={balanceData?.balance_remaining === 0 ? 'text-red-600' : ''}>
+                                  {balanceData?.balance_remaining ?? 1}
+                                </span>
                               </TableCell>
                             </TableRow>
                           );

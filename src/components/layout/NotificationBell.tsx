@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Bell, CheckCheck, Calendar, CheckCircle, XCircle, Ban, Clock, Users } from 'lucide-react';
+import { Bell, CheckCheck, Calendar, CheckCircle, XCircle, Ban, Clock, Users, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
-import { useNotifications, NotificationRecipientRole } from '@/hooks/useNotifications';
-import { NotificationType } from '@/types/notification';
+import { useDbNotifications } from '@/hooks/useDbNotifications';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -18,10 +17,10 @@ import { Badge } from '@/components/ui/badge';
 
 interface NotificationBellProps {
   userId: string;
-  userRole: NotificationRecipientRole;
+  userRole: string;
 }
 
-const getNotificationIcon = (type: NotificationType) => {
+const getNotificationIcon = (type: string) => {
   switch (type) {
     case 'leave_application_submitted':
       return <Calendar className="h-4 w-4 text-blue-500" />;
@@ -36,20 +35,24 @@ const getNotificationIcon = (type: NotificationType) => {
       return <Clock className="h-4 w-4 text-amber-500" />;
     case 'officer_on_leave':
       return <Users className="h-4 w-4 text-purple-500" />;
+    case 'substitute_assigned':
+      return <UserPlus className="h-4 w-4 text-teal-500" />;
     default:
       return <Bell className="h-4 w-4 text-gray-500" />;
   }
 };
 
-export function NotificationBell({ userId, userRole }: NotificationBellProps) {
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(userId, userRole);
+export function NotificationBell({ userId }: NotificationBellProps) {
+  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useDbNotifications(userId);
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
 
-  const handleNotificationClick = (notificationId: string, link: string) => {
+  const handleNotificationClick = (notificationId: string, link: string | null) => {
     markAsRead(notificationId);
     setOpen(false);
-    navigate(link);
+    if (link) {
+      navigate(link);
+    }
   };
 
   const recentNotifications = notifications.slice(0, 10);
@@ -89,7 +92,11 @@ export function NotificationBell({ userId, userRole }: NotificationBellProps) {
         </div>
         <DropdownMenuSeparator />
         
-        {recentNotifications.length === 0 ? (
+        {loading ? (
+          <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+            Loading...
+          </div>
+        ) : recentNotifications.length === 0 ? (
           <div className="px-4 py-8 text-center text-sm text-muted-foreground">
             No notifications
           </div>
