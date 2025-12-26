@@ -1509,6 +1509,7 @@ export type Database = {
           id: string
           institution_id: string | null
           is_ceo: boolean | null
+          join_date: string | null
           must_change_password: boolean | null
           name: string
           normal_working_hours: number | null
@@ -1528,6 +1529,7 @@ export type Database = {
           id: string
           institution_id?: string | null
           is_ceo?: boolean | null
+          join_date?: string | null
           must_change_password?: boolean | null
           name: string
           normal_working_hours?: number | null
@@ -1547,6 +1549,7 @@ export type Database = {
           id?: string
           institution_id?: string | null
           is_ceo?: boolean | null
+          join_date?: string | null
           must_change_password?: boolean | null
           name?: string
           normal_working_hours?: number | null

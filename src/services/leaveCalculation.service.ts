@@ -13,17 +13,36 @@ export const leaveCalculationService = {
   /**
    * Calculate pro-rated leave entitlement based on join date
    * Leaves start from the month of joining
+   * Works for both officers (via officers.join_date) and staff (via profiles.join_date or created_at)
    */
   calculateProRatedEntitlement: async (userId: string, year: number): Promise<ProRatedLeaveInfo> => {
-    // Get the officer's join date
+    // First check if user is an officer and get their join date
     const { data: officer, error: officerError } = await supabase
       .from('officers')
       .select('join_date')
       .eq('user_id', userId)
       .single();
 
-    // Default values if no officer record found
-    if (officerError || !officer?.join_date) {
+    let joinDateStr: string | null = null;
+
+    // If officer with join_date, use that
+    if (!officerError && officer?.join_date) {
+      joinDateStr = officer.join_date;
+    } else {
+      // Fall back to profile's join_date or created_at for staff
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('join_date, created_at')
+        .eq('id', userId)
+        .single();
+      
+      if (!profileError && profile) {
+        joinDateStr = profile.join_date || profile.created_at;
+      }
+    }
+
+    // Default values if no join date found
+    if (!joinDateStr) {
       return {
         totalEntitlement: 12,
         monthsWorked: 12,
@@ -33,7 +52,7 @@ export const leaveCalculationService = {
       };
     }
 
-    const joinDate = parseISO(officer.join_date);
+    const joinDate = parseISO(joinDateStr);
     const joinYear = joinDate.getFullYear();
     const joinMonth = joinDate.getMonth() + 1; // 1-12
 
@@ -44,7 +63,7 @@ export const leaveCalculationService = {
         monthsWorked: 12,
         monthlyCredit: 1,
         startMonth: 1,
-        joinDate: officer.join_date
+        joinDate: joinDateStr
       };
     }
 
@@ -56,7 +75,7 @@ export const leaveCalculationService = {
         monthsWorked: monthsRemaining,
         monthlyCredit: 1,
         startMonth: joinMonth,
-        joinDate: officer.join_date
+        joinDate: joinDateStr
       };
     }
 
@@ -66,7 +85,7 @@ export const leaveCalculationService = {
       monthsWorked: 0,
       monthlyCredit: 0,
       startMonth: 0,
-      joinDate: officer.join_date
+      joinDate: joinDateStr
     };
   },
 
