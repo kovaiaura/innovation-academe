@@ -118,6 +118,7 @@ import PerformanceRatings from "./pages/system-admin/PerformanceRatings";
 import SystemAdminSettings from "./pages/system-admin/Settings";
 import OfficerSettings from "./pages/officer/Settings";
 import TeacherSettings from "./pages/teacher/Settings";
+import NotificationsPage from "./pages/common/NotificationsPage";
 import { TimetableRedirect } from "./components/TimetableRedirect";
 
 const queryClient = new QueryClient({
@@ -169,6 +170,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['super_admin']}>
                   <SuperAdminAuditLogs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/super-admin/notifications"
+              element={
+                <ProtectedRoute allowedRoles={['super_admin']}>
+                  <NotificationsPage />
                 </ProtectedRoute>
               }
             />
@@ -471,6 +480,14 @@ const App = () => (
               }
             />
             <Route
+              path="/system-admin/notifications"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <NotificationsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/system-admin/settings"
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
@@ -540,6 +557,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['teacher']}>
                   <TeacherProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/teacher/notifications"
+              element={
+                <ProtectedRoute allowedRoles={['teacher']}>
+                  <NotificationsPage />
                 </ProtectedRoute>
               }
             />
@@ -668,6 +693,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/tenant/:tenantId/officer/notifications"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <NotificationsPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Management Routes (path-based multi-tenancy) - Merged with institution admin */}
             <Route
@@ -784,6 +817,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['management']}>
                   <ManagementProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/management/notifications"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <NotificationsPage />
                 </ProtectedRoute>
               }
             />
@@ -908,6 +949,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['student']}>
                   <StudentProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/notifications"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <NotificationsPage />
                 </ProtectedRoute>
               }
             />
