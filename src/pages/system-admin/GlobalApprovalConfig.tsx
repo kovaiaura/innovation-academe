@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Plus, Trash2, ArrowRight, Users, GitBranch, Info, Crown, Briefcase } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, Trash2, ArrowRight, Users, GitBranch, Info, Crown, Briefcase, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
 import { approvalHierarchyService } from '@/services/leave.service';
 import { positionService } from '@/services/position.service';
@@ -20,9 +21,11 @@ export default function GlobalApprovalConfig() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogApplicantType, setDialogApplicantType] = useState<UserType>('officer');
+  const [dialogApplicantPositionId, setDialogApplicantPositionId] = useState<string | null>(null);
   const [selectedApproverPosition, setSelectedApproverPosition] = useState('');
   const [isFinalApprover, setIsFinalApprover] = useState(false);
   const [isOptional, setIsOptional] = useState(false);
+  const [selectedPositionForConfig, setSelectedPositionForConfig] = useState('');
 
   const { data: allPositions = [] } = useQuery({
     queryKey: ['positions'],
@@ -42,6 +45,18 @@ export default function GlobalApprovalConfig() {
   const staffHierarchies = allHierarchies.filter(
     h => h.applicant_type === 'staff' && !h.applicant_position_id
   ).sort((a, b) => a.approval_order - b.approval_order);
+
+  // Get position-specific hierarchies
+  const getPositionHierarchies = (positionId: string) => {
+    return allHierarchies.filter(
+      h => h.applicant_position_id === positionId
+    ).sort((a, b) => a.approval_order - b.approval_order);
+  };
+
+  // Get positions that have custom approval chains
+  const positionsWithCustomChains = allPositions.filter(p => 
+    allHierarchies.some(h => h.applicant_position_id === p.id)
+  );
 
   // Get CEO position
   const ceoPosition = allPositions.find(p => p.is_ceo_position);
@@ -74,10 +89,12 @@ export default function GlobalApprovalConfig() {
     setSelectedApproverPosition('');
     setIsFinalApprover(false);
     setIsOptional(false);
+    setDialogApplicantPositionId(null);
   };
 
-  const handleOpenDialog = (type: UserType) => {
+  const handleOpenDialog = (type: UserType, applicantPositionId: string | null = null) => {
     setDialogApplicantType(type);
+    setDialogApplicantPositionId(applicantPositionId);
     setIsDialogOpen(true);
   };
 
@@ -87,14 +104,21 @@ export default function GlobalApprovalConfig() {
       return;
     }
 
-    const currentChain = dialogApplicantType === 'officer' ? officerHierarchies : staffHierarchies;
+    // Get the current chain based on whether it's position-specific or global
+    let currentChain;
+    if (dialogApplicantPositionId) {
+      currentChain = getPositionHierarchies(dialogApplicantPositionId);
+    } else {
+      currentChain = dialogApplicantType === 'officer' ? officerHierarchies : staffHierarchies;
+    }
+    
     const nextOrder = currentChain.length > 0 
       ? Math.max(...currentChain.map(h => h.approval_order)) + 1 
       : 1;
 
     createMutation.mutate({
       applicant_type: dialogApplicantType,
-      applicant_position_id: null, // NULL means global chain
+      applicant_position_id: dialogApplicantPositionId,
       approver_position_id: selectedApproverPosition,
       approval_order: nextOrder,
       is_final_approver: isFinalApprover,
@@ -118,21 +142,51 @@ export default function GlobalApprovalConfig() {
     return pos?.is_ceo_position || false;
   };
 
-  const getAvailableApprovers = (type: UserType) => {
-    const currentChain = type === 'officer' ? officerHierarchies : staffHierarchies;
+  const getAvailableApprovers = (currentChain: typeof officerHierarchies) => {
     return allPositions.filter(p => 
       !currentChain.some(h => h.approver_position_id === p.id)
     );
   };
 
-  const availableApprovers = getAvailableApprovers(dialogApplicantType);
+  // Get available approvers for the dialog
+  const getDialogAvailableApprovers = () => {
+    let currentChain;
+    if (dialogApplicantPositionId) {
+      currentChain = getPositionHierarchies(dialogApplicantPositionId);
+    } else {
+      currentChain = dialogApplicantType === 'officer' ? officerHierarchies : staffHierarchies;
+    }
+    return getAvailableApprovers(currentChain);
+  };
+
+  const availableApprovers = getDialogAvailableApprovers();
+
+  const handleAddPositionConfig = () => {
+    if (!selectedPositionForConfig) {
+      toast.error('Please select a position');
+      return;
+    }
+    // Open dialog to add first approver for this position
+    const position = allPositions.find(p => p.id === selectedPositionForConfig);
+    if (position) {
+      handleOpenDialog('staff', selectedPositionForConfig);
+      setSelectedPositionForConfig('');
+    }
+  };
+
+  // Get positions that don't have custom chains yet (excluding CEO)
+  const availablePositionsForConfig = allPositions.filter(p => 
+    !p.is_ceo_position && 
+    !positionsWithCustomChains.some(pc => pc.id === p.id)
+  );
 
   const renderApprovalChain = (
     type: UserType, 
     hierarchies: typeof officerHierarchies, 
     icon: React.ReactNode,
     badgeClass: string,
-    label: string
+    label: string,
+    applicantPositionId: string | null = null
   ) => (
     <Card>
       <CardHeader>
@@ -143,10 +197,13 @@ export default function GlobalApprovalConfig() {
               {label} Leave Approval Chain
             </CardTitle>
             <CardDescription>
-              When any {label.toLowerCase()} applies for leave, approvals follow this sequence
+              {applicantPositionId 
+                ? `Custom approval chain for ${label} position`
+                : `When any ${label.toLowerCase()} applies for leave, approvals follow this sequence`
+              }
             </CardDescription>
           </div>
-          <Button onClick={() => handleOpenDialog(type)}>
+          <Button onClick={() => handleOpenDialog(type, applicantPositionId)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Approver
           </Button>
@@ -161,7 +218,7 @@ export default function GlobalApprovalConfig() {
             <p className="text-sm text-muted-foreground mt-1">
               Add approvers to create the leave approval workflow for {label.toLowerCase()}s
             </p>
-            <Button className="mt-4" onClick={() => handleOpenDialog(type)}>
+            <Button className="mt-4" onClick={() => handleOpenDialog(type, applicantPositionId)}>
               <Plus className="h-4 w-4 mr-2" />
               Add First Approver
             </Button>
@@ -253,47 +310,188 @@ export default function GlobalApprovalConfig() {
     </Card>
   );
 
+  const renderPositionSpecificChain = (position: typeof allPositions[0]) => {
+    const hierarchies = getPositionHierarchies(position.id);
+    return (
+      <div key={position.id} className="border rounded-lg p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <UserCog className="h-5 w-5 text-muted-foreground" />
+            <h3 className="font-semibold">{position.display_name}</h3>
+            <Badge variant="outline" className="text-xs">Custom Chain</Badge>
+          </div>
+          <Button size="sm" onClick={() => handleOpenDialog('staff', position.id)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Add
+          </Button>
+        </div>
+        
+        {hierarchies.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No approvers configured. Will use global chain.</p>
+        ) : (
+          <>
+            {/* Visual chain */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="secondary" className="py-1.5 px-3 bg-orange-500/20 text-orange-700">
+                {position.display_name}
+              </Badge>
+              {hierarchies.map((h, index) => (
+                <div key={h.id} className="flex items-center gap-2">
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                  <Badge 
+                    className={`py-1.5 px-3 cursor-pointer hover:bg-destructive hover:text-destructive-foreground transition-colors group ${
+                      isCEOPosition(h.approver_position_id) ? 'bg-primary' : 'bg-green-500/20 text-green-700'
+                    }`}
+                    onClick={() => handleDeleteApprover(h.id)}
+                  >
+                    <span className="group-hover:hidden flex items-center gap-1">
+                      {isCEOPosition(h.approver_position_id) && <Crown className="h-3 w-3" />}
+                      {index + 1}. {getPositionName(h.approver_position_id)}
+                      {h.is_final_approver && <span className="text-xs opacity-70">(Final)</span>}
+                    </span>
+                    <span className="hidden group-hover:inline"><Trash2 className="h-3 w-3" /></span>
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Global Leave Approval Configuration</h1>
+          <h1 className="text-3xl font-bold">Leave Approval Configuration</h1>
           <p className="text-muted-foreground">
-            Configure who approves leave applications for Officers and Staff across the organization
+            Configure who approves leave applications for Officers, Staff, and specific positions
           </p>
         </div>
 
-        <Alert className="bg-primary/5 border-primary/20">
-          <Info className="h-4 w-4 text-primary" />
-          <AlertDescription className="text-sm">
-            <strong>How it works:</strong> When an Officer or Staff member submits a leave request, it goes through the approval chain you configure here.
-            Each approver is notified in sequence (1st → 2nd → ...). The final approver's decision completes the request.
-          </AlertDescription>
-        </Alert>
+        <Tabs defaultValue="global" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="global" className="gap-2">
+              <GitBranch className="h-4 w-4" />
+              Global Chains
+            </TabsTrigger>
+            <TabsTrigger value="position" className="gap-2">
+              <UserCog className="h-4 w-4" />
+              Position-Specific
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Officer Approval Chain */}
-        {renderApprovalChain(
-          'officer',
-          officerHierarchies,
-          <GitBranch className="h-5 w-5" />,
-          'bg-blue-500/20 text-blue-700',
-          'Officer'
-        )}
+          <TabsContent value="global" className="space-y-6">
+            <Alert className="bg-primary/5 border-primary/20">
+              <Info className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-sm">
+                <strong>Global chains</strong> apply to all Officers or Staff members unless they have a position with a custom approval chain configured.
+              </AlertDescription>
+            </Alert>
 
-        {/* Staff Approval Chain */}
-        {renderApprovalChain(
-          'staff',
-          staffHierarchies,
-          <Briefcase className="h-5 w-5" />,
-          'bg-purple-500/20 text-purple-700',
-          'Staff'
-        )}
+            {/* Officer Approval Chain */}
+            {renderApprovalChain(
+              'officer',
+              officerHierarchies,
+              <GitBranch className="h-5 w-5" />,
+              'bg-blue-500/20 text-blue-700',
+              'Officer'
+            )}
+
+            {/* Staff Approval Chain */}
+            {renderApprovalChain(
+              'staff',
+              staffHierarchies,
+              <Briefcase className="h-5 w-5" />,
+              'bg-purple-500/20 text-purple-700',
+              'Staff'
+            )}
+          </TabsContent>
+
+          <TabsContent value="position" className="space-y-6">
+            <Alert className="bg-amber-500/10 border-amber-500/20">
+              <Info className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-sm">
+                <strong>Position-specific chains</strong> override the global chain. If a staff member has a position with a custom chain, that chain will be used instead of the global staff chain.
+              </AlertDescription>
+            </Alert>
+
+            {/* Add new position config */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserCog className="h-5 w-5" />
+                  Add Position-Specific Approval Chain
+                </CardTitle>
+                <CardDescription>
+                  Create a custom approval chain for a specific position
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-3">
+                  <Select value={selectedPositionForConfig} onValueChange={setSelectedPositionForConfig}>
+                    <SelectTrigger className="w-[300px]">
+                      <SelectValue placeholder="Select a position..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availablePositionsForConfig.map(pos => (
+                        <SelectItem key={pos.id} value={pos.id}>
+                          {pos.display_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={handleAddPositionConfig} disabled={!selectedPositionForConfig}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Configure Chain
+                  </Button>
+                </div>
+                {availablePositionsForConfig.length === 0 && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    All positions already have custom chains or are CEO positions.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Existing position-specific chains */}
+            {positionsWithCustomChains.length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Configured Position Chains</CardTitle>
+                  <CardDescription>
+                    These positions have custom approval chains that override the global chain
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {positionsWithCustomChains.map(position => renderPositionSpecificChain(position))}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <UserCog className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                  <h3 className="font-medium">No Position-Specific Chains</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    All positions currently use the global approval chain. Add a position above to create a custom chain.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
 
         {/* Add Approver Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Add Approver to {dialogApplicantType === 'officer' ? 'Officer' : 'Staff'} Chain</DialogTitle>
+              <DialogTitle>
+                {dialogApplicantPositionId 
+                  ? `Add Approver for ${getPositionName(dialogApplicantPositionId)}`
+                  : `Add Approver to ${dialogApplicantType === 'officer' ? 'Officer' : 'Staff'} Chain`
+                }
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
