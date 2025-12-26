@@ -10,15 +10,16 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Plus, Trash2, ArrowRight, Users, GitBranch, Info, Crown, Shield } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, Users, GitBranch, Info, Crown, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
 import { approvalHierarchyService } from '@/services/leave.service';
 import { positionService } from '@/services/position.service';
-import { LeaveApprovalHierarchy } from '@/types/leave';
+import { UserType } from '@/types/leave';
 
 export default function GlobalApprovalConfig() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogApplicantType, setDialogApplicantType] = useState<UserType>('officer');
   const [selectedApproverPosition, setSelectedApproverPosition] = useState('');
   const [isFinalApprover, setIsFinalApprover] = useState(false);
   const [isOptional, setIsOptional] = useState(false);
@@ -33,14 +34,17 @@ export default function GlobalApprovalConfig() {
     queryFn: () => approvalHierarchyService.getAll()
   });
 
-  // Filter for officer-type hierarchies (no applicant_position_id means it's for officers)
+  // Filter for global hierarchies (applicant_position_id is NULL)
   const officerHierarchies = allHierarchies.filter(
     h => h.applicant_type === 'officer' && !h.applicant_position_id
   ).sort((a, b) => a.approval_order - b.approval_order);
 
+  const staffHierarchies = allHierarchies.filter(
+    h => h.applicant_type === 'staff' && !h.applicant_position_id
+  ).sort((a, b) => a.approval_order - b.approval_order);
+
   // Get CEO position
   const ceoPosition = allPositions.find(p => p.is_ceo_position);
-  const isCEOInChain = officerHierarchies.some(h => h.approver_position_id === ceoPosition?.id);
 
   const createMutation = useMutation({
     mutationFn: approvalHierarchyService.create,
@@ -72,43 +76,29 @@ export default function GlobalApprovalConfig() {
     setIsOptional(false);
   };
 
+  const handleOpenDialog = (type: UserType) => {
+    setDialogApplicantType(type);
+    setIsDialogOpen(true);
+  };
+
   const handleAddApprover = () => {
     if (!selectedApproverPosition) {
       toast.error('Please select an approver position');
       return;
     }
 
-    const nextOrder = officerHierarchies.length > 0 
-      ? Math.max(...officerHierarchies.map(h => h.approval_order)) + 1 
+    const currentChain = dialogApplicantType === 'officer' ? officerHierarchies : staffHierarchies;
+    const nextOrder = currentChain.length > 0 
+      ? Math.max(...currentChain.map(h => h.approval_order)) + 1 
       : 1;
 
     createMutation.mutate({
-      applicant_type: 'officer',
-      applicant_position_id: null,
+      applicant_type: dialogApplicantType,
+      applicant_position_id: null, // NULL means global chain
       approver_position_id: selectedApproverPosition,
       approval_order: nextOrder,
       is_final_approver: isFinalApprover,
       is_optional: isOptional
-    });
-  };
-
-  const handleAddCEO = () => {
-    if (!ceoPosition) {
-      toast.error('CEO position not configured');
-      return;
-    }
-
-    const nextOrder = officerHierarchies.length > 0 
-      ? Math.max(...officerHierarchies.map(h => h.approval_order)) + 1 
-      : 1;
-
-    createMutation.mutate({
-      applicant_type: 'officer',
-      applicant_position_id: null,
-      approver_position_id: ceoPosition.id,
-      approval_order: nextOrder,
-      is_final_approver: true,
-      is_optional: false
     });
   };
 
@@ -128,175 +118,182 @@ export default function GlobalApprovalConfig() {
     return pos?.is_ceo_position || false;
   };
 
-  const availableApprovers = allPositions.filter(p => 
-    !officerHierarchies.some(h => h.approver_position_id === p.id)
+  const getAvailableApprovers = (type: UserType) => {
+    const currentChain = type === 'officer' ? officerHierarchies : staffHierarchies;
+    return allPositions.filter(p => 
+      !currentChain.some(h => h.approver_position_id === p.id)
+    );
+  };
+
+  const availableApprovers = getAvailableApprovers(dialogApplicantType);
+
+  const renderApprovalChain = (
+    type: UserType, 
+    hierarchies: typeof officerHierarchies, 
+    icon: React.ReactNode,
+    badgeClass: string,
+    label: string
+  ) => (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              {icon}
+              {label} Leave Approval Chain
+            </CardTitle>
+            <CardDescription>
+              When any {label.toLowerCase()} applies for leave, approvals follow this sequence
+            </CardDescription>
+          </div>
+          <Button onClick={() => handleOpenDialog(type)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Approver
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Visual Chain */}
+        {hierarchies.length === 0 ? (
+          <div className="text-center py-8 border rounded-lg bg-muted/30">
+            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+            <h3 className="font-medium">No Approval Chain Configured</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Add approvers to create the leave approval workflow for {label.toLowerCase()}s
+            </p>
+            <Button className="mt-4" onClick={() => handleOpenDialog(type)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add First Approver
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="secondary" className={`py-2 px-4 ${badgeClass}`}>
+              <Users className="h-4 w-4 mr-2" />
+              {label} (Applicant)
+            </Badge>
+            {hierarchies.map((h, index) => (
+              <div key={h.id} className="flex items-center gap-2">
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                <Badge 
+                  className={`py-2 px-4 cursor-pointer hover:bg-destructive hover:text-destructive-foreground transition-colors group ${
+                    isCEOPosition(h.approver_position_id) ? 'bg-primary' : 'bg-green-500/20 text-green-700'
+                  }`}
+                  onClick={() => handleDeleteApprover(h.id)}
+                >
+                  <span className="group-hover:hidden flex items-center gap-2">
+                    {isCEOPosition(h.approver_position_id) && <Crown className="h-3 w-3" />}
+                    {index + 1}. {getPositionName(h.approver_position_id)}
+                  </span>
+                  <span className="hidden group-hover:inline"><Trash2 className="h-3 w-3" /></span>
+                  {h.is_final_approver && <span className="ml-2 text-xs opacity-70">(Final)</span>}
+                  {h.is_optional && <span className="ml-2 text-xs opacity-70">(Optional)</span>}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Table View */}
+        {hierarchies.length > 0 && (
+          <div className="pt-4 border-t">
+            <h4 className="text-sm font-medium mb-3">Chain Details</h4>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Order</TableHead>
+                  <TableHead>Approver Position</TableHead>
+                  <TableHead>CEO</TableHead>
+                  <TableHead>Final Approver</TableHead>
+                  <TableHead>Optional</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {hierarchies.map(h => (
+                  <TableRow key={h.id}>
+                    <TableCell>
+                      <Badge variant="outline">{h.approval_order}</Badge>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {isCEOPosition(h.approver_position_id) && (
+                          <Crown className="h-4 w-4 text-primary" />
+                        )}
+                        {getPositionName(h.approver_position_id)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {isCEOPosition(h.approver_position_id) ? (
+                        <Badge className="bg-primary/20 text-primary">Yes</Badge>
+                      ) : '-'}
+                    </TableCell>
+                    <TableCell>
+                      {h.is_final_approver ? (
+                        <Badge className="bg-green-500/20 text-green-600">Yes</Badge>
+                      ) : 'No'}
+                    </TableCell>
+                    <TableCell>{h.is_optional ? 'Yes' : 'No'}</TableCell>
+                    <TableCell className="text-right">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleDeleteApprover(h.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 
   return (
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Global Approval Configuration</h1>
+          <h1 className="text-3xl font-bold">Global Leave Approval Configuration</h1>
           <p className="text-muted-foreground">
-            Configure the leave approval chain for officers (company-wide)
+            Configure who approves leave applications for Officers and Staff across the organization
           </p>
         </div>
 
-        {/* CEO Quick Add */}
-        {ceoPosition && !isCEOInChain && (
-          <Card className="border-primary/30 bg-primary/5">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Crown className="h-8 w-8 text-primary" />
-                  <div>
-                    <h3 className="font-semibold">Add CEO as Final Approver</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {ceoPosition.display_name} can be added as the final authority in the approval chain
-                    </p>
-                  </div>
-                </div>
-                <Button onClick={handleAddCEO} disabled={createMutation.isPending}>
-                  <Crown className="h-4 w-4 mr-2" />
-                  Add CEO to Chain
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        <Alert className="bg-primary/5 border-primary/20">
+          <Info className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-sm">
+            <strong>How it works:</strong> When an Officer or Staff member submits a leave request, it goes through the approval chain you configure here.
+            Each approver is notified in sequence (1st → 2nd → ...). The final approver's decision completes the request.
+          </AlertDescription>
+        </Alert>
 
         {/* Officer Approval Chain */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <GitBranch className="h-5 w-5" />
-                  Officer Leave Approval Chain
-                </CardTitle>
-                <CardDescription>
-                  This chain applies to all officers across the organization
-                </CardDescription>
-              </div>
-              <Button onClick={() => setIsDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Approver
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <Alert className="bg-primary/5 border-primary/20">
-              <Info className="h-4 w-4 text-primary" />
-              <AlertDescription className="text-sm">
-                Leave applications from officers will follow this approval chain. 
-                Each approver is notified in sequence, and the final approver's decision completes the request.
-              </AlertDescription>
-            </Alert>
+        {renderApprovalChain(
+          'officer',
+          officerHierarchies,
+          <GitBranch className="h-5 w-5" />,
+          'bg-blue-500/20 text-blue-700',
+          'Officer'
+        )}
 
-            {/* Visual Chain */}
-            {officerHierarchies.length === 0 ? (
-              <div className="text-center py-8 border rounded-lg bg-muted/30">
-                <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                <h3 className="font-medium">No Approval Chain Configured</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Add approvers to create the leave approval workflow for officers
-                </p>
-                <Button className="mt-4" onClick={() => setIsDialogOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add First Approver
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="secondary" className="py-2 px-4">
-                  <Users className="h-4 w-4 mr-2" />
-                  Officer (Applicant)
-                </Badge>
-                {officerHierarchies.map((h) => (
-                  <div key={h.id} className="flex items-center gap-2">
-                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                    <Badge 
-                      className={`py-2 px-4 cursor-pointer hover:bg-destructive hover:text-destructive-foreground transition-colors group ${
-                        isCEOPosition(h.approver_position_id) ? 'bg-primary' : ''
-                      }`}
-                      onClick={() => handleDeleteApprover(h.id)}
-                    >
-                      <span className="group-hover:hidden flex items-center gap-2">
-                        {isCEOPosition(h.approver_position_id) && <Crown className="h-3 w-3" />}
-                        {getPositionName(h.approver_position_id)}
-                      </span>
-                      <span className="hidden group-hover:inline"><Trash2 className="h-3 w-3" /></span>
-                      {h.is_final_approver && <span className="ml-2 text-xs opacity-70">(Final)</span>}
-                      {h.is_optional && <span className="ml-2 text-xs opacity-70">(Optional)</span>}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Table View */}
-            {officerHierarchies.length > 0 && (
-              <div className="pt-4 border-t">
-                <h4 className="text-sm font-medium mb-3">Chain Details</h4>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Order</TableHead>
-                      <TableHead>Position</TableHead>
-                      <TableHead>CEO</TableHead>
-                      <TableHead>Final Approver</TableHead>
-                      <TableHead>Optional</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {officerHierarchies.map(h => (
-                      <TableRow key={h.id}>
-                        <TableCell>
-                          <Badge variant="outline">{h.approval_order}</Badge>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            {isCEOPosition(h.approver_position_id) && (
-                              <Crown className="h-4 w-4 text-primary" />
-                            )}
-                            {getPositionName(h.approver_position_id)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {isCEOPosition(h.approver_position_id) ? (
-                            <Badge className="bg-primary/20 text-primary">Yes</Badge>
-                          ) : '-'}
-                        </TableCell>
-                        <TableCell>
-                          {h.is_final_approver ? (
-                            <Badge className="bg-green-500/20 text-green-600">Yes</Badge>
-                          ) : 'No'}
-                        </TableCell>
-                        <TableCell>{h.is_optional ? 'Yes' : 'No'}</TableCell>
-                        <TableCell className="text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => handleDeleteApprover(h.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Staff Approval Chain */}
+        {renderApprovalChain(
+          'staff',
+          staffHierarchies,
+          <Briefcase className="h-5 w-5" />,
+          'bg-purple-500/20 text-purple-700',
+          'Staff'
+        )}
 
         {/* Add Approver Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Add Approver to Officer Chain</DialogTitle>
+              <DialogTitle>Add Approver to {dialogApplicantType === 'officer' ? 'Officer' : 'Staff'} Chain</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">

@@ -14,7 +14,6 @@ import { CustomPosition, SystemAdminFeature } from '@/types/permissions';
 import { User } from '@/types';
 import { CreatePositionDialog } from '@/components/position/CreatePositionDialog';
 import { EditPositionDialog } from '@/components/position/EditPositionDialog';
-import { ApprovalHierarchyConfig } from '@/components/position/ApprovalHierarchyConfig';
 import { PositionCard } from '@/components/position/PositionCard';
 import {
   Dialog,
@@ -416,9 +415,6 @@ export default function PositionManagement() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Approval Hierarchy Config */}
-            <ApprovalHierarchyConfig position={selectedPosition} />
           </>
         )}
       </div>
