@@ -123,21 +123,33 @@ export const leaveApplicationService = {
   },
 
   getApprovalChain: async (applicantType: UserType, applicantPositionId?: string | null): Promise<LeaveApprovalHierarchy[]> => {
-    let query = supabase
+    // For staff with a position, first try position-specific chain
+    if (applicantType === 'staff' && applicantPositionId) {
+      const { data: positionChain, error: posError } = await supabase
+        .from('leave_approval_hierarchy')
+        .select('*')
+        .eq('applicant_type', applicantType)
+        .eq('applicant_position_id', applicantPositionId)
+        .order('approval_order', { ascending: true });
+      
+      if (!posError && positionChain && positionChain.length > 0) {
+        return positionChain.map(h => ({
+          ...h,
+          applicant_type: h.applicant_type as UserType
+        }));
+      }
+    }
+
+    // Fall back to global chain (applicant_position_id IS NULL)
+    const { data: globalChain, error } = await supabase
       .from('leave_approval_hierarchy')
       .select('*')
       .eq('applicant_type', applicantType)
+      .is('applicant_position_id', null)
       .order('approval_order', { ascending: true });
 
-    if (applicantType === 'staff' && applicantPositionId) {
-      query = query.eq('applicant_position_id', applicantPositionId);
-    } else if (applicantType === 'officer') {
-      query = query.is('applicant_position_id', null);
-    }
-
-    const { data, error } = await query;
     if (error) throw error;
-    return (data || []).map(h => ({
+    return (globalChain || []).map(h => ({
       ...h,
       applicant_type: h.applicant_type as UserType
     }));
