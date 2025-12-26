@@ -99,6 +99,8 @@ import LeaveApply from "./pages/system-admin/LeaveApply";
 import LeaveStatus from "./pages/system-admin/LeaveStatus";
 import LeaveTracking from "./pages/system-admin/LeaveTracking";
 import LeaveCalendarPage from "./pages/system-admin/LeaveCalendarPage";
+import LeaveRecords from "./pages/system-admin/LeaveRecords";
+import GlobalApprovalConfig from "./pages/system-admin/GlobalApprovalConfig";
 import Performance from "./pages/management/Performance";
 import SystemAdminPositionManagement from "./pages/system-admin/PositionManagement";
 import SystemAdminTaskManagement from "./pages/system-admin/TaskManagement";
@@ -328,6 +330,22 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="leave_approvals">
                   <LeaveCalendarPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/leave/records"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <LeaveRecords />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/global-approval-config"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <GlobalApprovalConfig />
                 </ProtectedRoute>
               }
             />
