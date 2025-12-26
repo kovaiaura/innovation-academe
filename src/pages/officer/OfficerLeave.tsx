@@ -197,9 +197,14 @@ export default function OfficerLeave() {
       format(dateRange.to, 'yyyy-MM-dd')
     );
 
+    // Always proceed to Step 2, even with no slots
+    // The UI will show appropriate message based on slots count
+    setAffectedSlots(slots);
+    
     if (slots.length === 0) {
-      // No timetable slots affected, proceed directly to review
-      setCurrentStep(3);
+      // No slots to assign substitutes for
+      setSubstituteAssignments([]);
+      setCurrentStep(2);
       return;
     }
 
@@ -502,8 +507,19 @@ export default function OfficerLeave() {
                     </div>
                     
                     {affectedSlots.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        No classes scheduled during your leave period.
+                      <div className="text-center py-12 space-y-4">
+                        <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
+                          <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-foreground">No Classes Scheduled</h3>
+                          <p className="text-muted-foreground mt-1">
+                            You don't have any classes scheduled during your leave period.
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            No substitute assignments are needed. You can proceed to review.
+                          </p>
+                        </div>
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -556,15 +572,21 @@ export default function OfficerLeave() {
 
                     <div className="flex gap-4">
                       <Button variant="outline" onClick={() => setCurrentStep(1)}>
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Change Dates
                       </Button>
-                      <Button 
-                        onClick={handleProceedToReview} 
-                        className="flex-1"
-                        disabled={affectedSlots.length > 0 && !allSubstitutesSelected}
-                      >
-                        Next: Review <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
+                      {affectedSlots.length === 0 ? (
+                        <Button onClick={() => setCurrentStep(3)} className="flex-1">
+                          Continue to Review <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <Button 
+                          onClick={handleProceedToReview} 
+                          className="flex-1"
+                          disabled={!allSubstitutesSelected}
+                        >
+                          Next: Review <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )}
