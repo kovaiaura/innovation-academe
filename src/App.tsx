@@ -100,6 +100,7 @@ import LeaveStatus from "./pages/system-admin/LeaveStatus";
 import LeaveTracking from "./pages/system-admin/LeaveTracking";
 import LeaveCalendarPage from "./pages/system-admin/LeaveCalendarPage";
 import LeaveRecords from "./pages/system-admin/LeaveRecords";
+import Leave from "./pages/system-admin/Leave";
 import GlobalApprovalConfig from "./pages/system-admin/GlobalApprovalConfig";
 import Performance from "./pages/management/Performance";
 import SystemAdminPositionManagement from "./pages/system-admin/PositionManagement";
@@ -302,42 +303,10 @@ const App = () => (
               }
             />
             <Route
-              path="/system-admin/leave/apply"
+              path="/system-admin/leave"
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
-                  <LeaveApply />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/system-admin/leave/status"
-              element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
-                  <LeaveStatus />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/system-admin/leave-tracking"
-              element={
-                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="leave_approvals">
-                  <LeaveTracking />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/system-admin/leave-calendar"
-              element={
-                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="leave_approvals">
-                  <LeaveCalendarPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/system-admin/leave/records"
-              element={
-                <ProtectedRoute allowedRoles={['system_admin']}>
-                  <LeaveRecords />
+                  <Leave />
                 </ProtectedRoute>
               }
             />

@@ -59,13 +59,10 @@ const menuItems: MenuItem[] = [
   { label: 'Inventory Management', icon: <Package className="h-5 w-5" />, path: '/inventory-management', roles: ['system_admin'], feature: 'inventory_management' },
   { label: 'Attendance and Payroll', icon: <Clock className="h-5 w-5" />, path: '/officer-attendance', roles: ['system_admin'], feature: 'attendance_payroll' },
   // Leave Approval (separate menu for approvers based on approval chain)
-  { label: 'Leave Approvals', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-approvals', roles: ['system_admin'], feature: 'leave_approvals' },
-  { label: 'Leave Calendar', icon: <CalendarDays className="h-5 w-5" />, path: '/leave-calendar', roles: ['system_admin'], feature: 'leave_approvals' },
+  { label: 'Leave Approval', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-approvals', roles: ['system_admin'], feature: 'leave_approvals' },
   { label: 'Global Approval Config', icon: <Shield className="h-5 w-5" />, path: '/global-approval-config', roles: ['system_admin'], ceoOnly: true },
-  // Leaves menu items for all system admins
-  { label: 'Apply Leave', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave/apply', roles: ['system_admin'] },
-  { label: 'My Leave Status', icon: <FileText className="h-5 w-5" />, path: '/leave/status', roles: ['system_admin'] },
-  { label: 'Leave Records', icon: <History className="h-5 w-5" />, path: '/leave/records', roles: ['system_admin'] },
+  // Unified Leave menu for all system admins
+  { label: 'Leave', icon: <CalendarDays className="h-5 w-5" />, path: '/leave', roles: ['system_admin'] },
   { label: 'Company Holidays', icon: <Calendar className="h-5 w-5" />, path: '/company-holidays', roles: ['system_admin'] },
   // Position Management (CEO only)
   { label: 'Position Management', icon: <Shield className="h-5 w-5" />, path: '/position-management', roles: ['system_admin'], ceoOnly: true },
