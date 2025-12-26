@@ -27,6 +27,7 @@ import { getPendingLeaveCount, getPendingLeaveCountByStage } from '@/data/mockLe
 import { NotificationBell } from './NotificationBell';
 import { SidebarProfileCard } from './SidebarProfileCard';
 import { useUserProfilePhoto } from '@/hooks/useUserProfilePhoto';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MenuItem {
   label: string;
@@ -145,9 +146,39 @@ export function Sidebar() {
   const [managerLeaveCount, setManagerLeaveCount] = useState(0);
   const [agmLeaveCount, setAgmLeaveCount] = useState(0);
   const [ceoLeaveCount, setCeoLeaveCount] = useState(0);
+  const [isApprover, setIsApprover] = useState(false);
   
   // Fetch profile photo for sidebar display
   const { photoUrl } = useUserProfilePhoto(user?.id);
+
+  // Check if user is an approver in any leave approval chain
+  useEffect(() => {
+    const checkIfApprover = async () => {
+      if (!user?.position_id) {
+        setIsApprover(false);
+        return;
+      }
+      
+      try {
+        const { data, error } = await supabase
+          .from('leave_approval_hierarchy')
+          .select('id')
+          .eq('approver_position_id', user.position_id)
+          .limit(1);
+        
+        if (!error && data && data.length > 0) {
+          setIsApprover(true);
+        } else {
+          setIsApprover(false);
+        }
+      } catch (err) {
+        console.error('Error checking approver status:', err);
+        setIsApprover(false);
+      }
+    };
+    
+    checkIfApprover();
+  }, [user?.position_id]);
 
   useEffect(() => {
     // Fetch officer profile if user is an officer
@@ -217,6 +248,9 @@ export function Sidebar() {
       
       // Feature-based items
       if (item.feature && !canAccessFeature(user, item.feature)) return false;
+      
+      // Leave Approval menu: only show if user is an approver in the approval chain
+      if (item.feature === 'leave_approvals' && !isApprover) return false;
     }
     
     return true;

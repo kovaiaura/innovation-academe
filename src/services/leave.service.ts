@@ -91,11 +91,12 @@ export const leaveBalanceService = {
 // =============================================
 
 export const leaveApplicationService = {
+  // Calculate all calendar days (including weekends)
   calculateWorkingDays: (startDate: string, endDate: string): number => {
     const start = parseISO(startDate);
     const end = parseISO(endDate);
     const days = eachDayOfInterval({ start, end });
-    return days.filter(day => !isWeekend(day)).length;
+    return days.length; // Count all calendar days
   },
 
   getApprovalChain: async (applicantType: UserType, applicantPositionId?: string | null): Promise<LeaveApprovalHierarchy[]> => {

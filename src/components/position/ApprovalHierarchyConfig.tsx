@@ -110,8 +110,9 @@ export function ApprovalHierarchyConfig({ position }: Props) {
     return pos?.display_name || 'Unknown';
   };
 
+  // Allow all positions as approvers except those already in the current chain
+  // Do NOT exclude the current position (e.g., CEO can approve CEO's own leaves if needed)
   const availableApprovers = allPositions.filter(p => 
-    p.id !== position.id && 
     !(groupedHierarchies[applicantType] || []).some(h => h.approver_position_id === p.id)
   );
 
@@ -120,18 +121,18 @@ export function ApprovalHierarchyConfig({ position }: Props) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <GitBranch className="h-5 w-5" />
-          Leave Approval Chain
+          Leave Approval Chain for "{position.display_name}"
         </CardTitle>
         <CardDescription>
-          Configure who approves leave applications for users in this position
+          When users in "{position.display_name}" position apply for leave, the following approvers will review their applications (in order).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <Alert className="bg-primary/5 border-primary/20">
           <Info className="h-4 w-4 text-primary" />
           <AlertDescription className="text-sm">
-            Define the approval chain for leave applications. Approvers are notified in order.
-            The final approver's decision will complete the leave request.
+            Configure who reviews leave applications from "{position.display_name}" users.
+            Approvers are notified in sequence (1st → 2nd → ...). The final approver's decision completes the request.
           </AlertDescription>
         </Alert>
 
@@ -140,7 +141,7 @@ export function ApprovalHierarchyConfig({ position }: Props) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="bg-blue-500/10 text-blue-600">Officer</Badge>
-              <span className="text-sm text-muted-foreground">When user type is Officer</span>
+              <span className="text-sm text-muted-foreground">When this position is an Officer</span>
             </div>
             <Button 
               size="sm" 
@@ -161,18 +162,20 @@ export function ApprovalHierarchyConfig({ position }: Props) {
             </div>
           ) : (
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="secondary" className="py-1.5 px-3">
+              <Badge variant="secondary" className="py-1.5 px-3 bg-amber-500/20 text-amber-700">
                 <Users className="h-3 w-3 mr-1" />
-                {position.display_name}
+                Applicant: {position.display_name}
               </Badge>
               {groupedHierarchies.officer.map((h, index) => (
                 <div key={h.id} className="flex items-center gap-2">
                   <ArrowRight className="h-4 w-4 text-muted-foreground" />
                   <Badge 
-                    className="py-1.5 px-3 cursor-pointer hover:bg-destructive hover:text-destructive-foreground transition-colors group"
+                    className="py-1.5 px-3 cursor-pointer hover:bg-destructive hover:text-destructive-foreground transition-colors group bg-green-500/20 text-green-700"
                     onClick={() => handleDeleteApprover(h.id)}
                   >
-                    <span className="group-hover:hidden">{getPositionName(h.approver_position_id)}</span>
+                    <span className="group-hover:hidden">
+                      {index + 1}. {getPositionName(h.approver_position_id)}
+                    </span>
                     <span className="hidden group-hover:inline"><Trash2 className="h-3 w-3" /></span>
                     {h.is_final_approver && <span className="ml-1 text-xs opacity-70">(Final)</span>}
                     {h.is_optional && <span className="ml-1 text-xs opacity-70">(Optional)</span>}
@@ -188,7 +191,7 @@ export function ApprovalHierarchyConfig({ position }: Props) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="bg-purple-500/10 text-purple-600">Staff</Badge>
-              <span className="text-sm text-muted-foreground">When user type is Staff</span>
+              <span className="text-sm text-muted-foreground">When this position is Staff</span>
             </div>
             <Button 
               size="sm" 
@@ -209,18 +212,20 @@ export function ApprovalHierarchyConfig({ position }: Props) {
             </div>
           ) : (
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="secondary" className="py-1.5 px-3">
+              <Badge variant="secondary" className="py-1.5 px-3 bg-amber-500/20 text-amber-700">
                 <Users className="h-3 w-3 mr-1" />
-                {position.display_name}
+                Applicant: {position.display_name}
               </Badge>
               {groupedHierarchies.staff.map((h, index) => (
                 <div key={h.id} className="flex items-center gap-2">
                   <ArrowRight className="h-4 w-4 text-muted-foreground" />
                   <Badge 
-                    className="py-1.5 px-3 cursor-pointer hover:bg-destructive hover:text-destructive-foreground transition-colors group"
+                    className="py-1.5 px-3 cursor-pointer hover:bg-destructive hover:text-destructive-foreground transition-colors group bg-green-500/20 text-green-700"
                     onClick={() => handleDeleteApprover(h.id)}
                   >
-                    <span className="group-hover:hidden">{getPositionName(h.approver_position_id)}</span>
+                    <span className="group-hover:hidden">
+                      {index + 1}. {getPositionName(h.approver_position_id)}
+                    </span>
                     <span className="hidden group-hover:inline"><Trash2 className="h-3 w-3" /></span>
                     {h.is_final_approver && <span className="ml-1 text-xs opacity-70">(Final)</span>}
                   </Badge>
