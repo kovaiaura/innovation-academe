@@ -261,13 +261,29 @@ export const leaveNotificationService = {
 
     // Find officer user_ids and send notifications
     for (const [officerId, assignments] of substituteMap) {
+      // Try to find in officers table first
       const { data: officer } = await supabase
         .from('officers')
         .select('user_id, full_name')
         .eq('id', officerId)
         .single();
 
-      if (!officer?.user_id) continue;
+      // If not found in officers, it might be a profile id (for staff with positions)
+      let userId = officer?.user_id;
+      if (!userId) {
+        // Check if it's a profile id directly
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .eq('id', officerId)
+          .single();
+        
+        if (profile) {
+          userId = profile.id;
+        }
+      }
+
+      if (!userId) continue;
 
       const classesText = assignments.map(a => 
         `${a.class_name || 'Class'} on ${format(new Date(a.date), 'PP')} (${a.period_label || 'Period'})`
@@ -275,19 +291,74 @@ export const leaveNotificationService = {
 
       const moreText = assignments.length > 3 ? ` and ${assignments.length - 3} more` : '';
 
+      // Determine the recipient role
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+
+      const recipientRole = roles?.some(r => r.role === 'officer') ? 'officer' : 'system_admin';
+      const path = recipientRole === 'officer' ? '/timetable' : '/dashboard';
+
       await notificationService.createNotification(
-        officer.user_id,
-        'officer',
+        userId,
+        recipientRole,
         'substitute_assigned',
         'Substitute Assignment',
         `You have been assigned to cover for ${application.applicant_name}: ${classesText}${moreText}`,
-        getNotificationLink('officer', '/timetable'),
+        getNotificationLink(recipientRole, path),
         {
           application_id: application.id,
           original_officer: application.applicant_name,
           assignments: assignments
         }
       );
+    }
+  },
+
+  /**
+   * Notify approvers about substitute assignments when leave is submitted
+   */
+  notifyApproversAboutSubstitutes: async (application: LeaveApplication): Promise<void> => {
+    const substitutes = application.substitute_assignments;
+    if (!substitutes || substitutes.length === 0) return;
+    if (!application.approval_chain || application.approval_chain.length === 0) return;
+
+    // Build substitute summary
+    const substituteNames = [...new Set(substitutes.map(s => s.substitute_officer_name).filter(Boolean))];
+    const classesCount = substitutes.length;
+    
+    const message = `Substitutes arranged for ${application.applicant_name}'s leave (${format(new Date(application.start_date), 'MMM dd')} - ${format(new Date(application.end_date), 'MMM dd')}): ${substituteNames.join(', ')} will cover ${classesCount} class${classesCount > 1 ? 'es' : ''}`;
+
+    // Notify all approvers in the chain
+    for (const approver of application.approval_chain) {
+      if (!approver.position_id) continue;
+
+      const { data: approvers } = await supabase
+        .from('profiles')
+        .select('id, name')
+        .eq('position_id', approver.position_id);
+
+      if (!approvers) continue;
+
+      for (const profile of approvers) {
+        await notificationService.createNotification(
+          profile.id,
+          'system_admin',
+          'substitute_info',
+          'Substitute Arrangements for Leave',
+          message,
+          getNotificationLink('system_admin', '/leave-approvals'),
+          {
+            leave_application_id: application.id,
+            applicant_name: application.applicant_name,
+            substitute_names: substituteNames,
+            classes_count: classesCount,
+            start_date: application.start_date,
+            end_date: application.end_date
+          }
+        );
+      }
     }
   }
 };

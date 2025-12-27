@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { 
   CalendarCheck, Calendar as CalendarIcon, AlertCircle, Info, Clock, CheckCircle, 
-  XCircle, FileText, TrendingUp, Users, ArrowRight, ArrowLeft
+  XCircle, FileText, TrendingUp, Users, ArrowRight, ArrowLeft, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { leaveApplicationService, leaveBalanceService } from '@/services/leave.service';
@@ -53,6 +53,7 @@ export default function OfficerLeave() {
   const [affectedSlots, setAffectedSlots] = useState<AffectedTimetableSlot[]>([]);
   const [substituteAssignments, setSubstituteAssignments] = useState<SubstituteAssignment[]>([]);
   const [availableSubstitutes, setAvailableSubstitutes] = useState<Map<string, AvailableSubstitute[]>>(new Map());
+  const [isFetchingSlots, setIsFetchingSlots] = useState(false);
 
   // Fetch officer info
   const { data: officerInfo } = useQuery({
@@ -189,60 +190,64 @@ export default function OfficerLeave() {
       return;
     }
 
-    // Fetch affected slots
-    const slots = await substituteAssignmentService.getAffectedSlots(
-      officerInfo.id,
-      institutionId,
-      format(dateRange.from, 'yyyy-MM-dd'),
-      format(dateRange.to, 'yyyy-MM-dd')
-    );
+    setIsFetchingSlots(true);
 
-    // Always proceed to Step 2, even with no slots
-    // The UI will show appropriate message based on slots count
-    setAffectedSlots(slots);
-    
-    if (slots.length === 0) {
-      // No slots to assign substitutes for
-      setSubstituteAssignments([]);
-      setCurrentStep(2);
-      return;
-    }
-
-    setAffectedSlots(slots);
-
-    // Initialize empty assignments
-    const initialAssignments: SubstituteAssignment[] = slots.map(slot => ({
-      slot_id: slot.id,
-      class_id: slot.class_id,
-      class_name: slot.class_name,
-      day: slot.day,
-      date: slot.date,
-      period_id: slot.period_id,
-      period_label: slot.period_label,
-      period_time: slot.period_time,
-      subject: slot.subject,
-      room: slot.room || undefined,
-      original_officer_id: officerInfo.id,
-      original_officer_name: officerInfo.full_name,
-      substitute_officer_id: '',
-      substitute_officer_name: ''
-    }));
-    setSubstituteAssignments(initialAssignments);
-
-    // Fetch available substitutes for each slot
-    const subsMap = new Map<string, AvailableSubstitute[]>();
-    for (const slot of slots) {
-      const subs = await substituteAssignmentService.getAvailableSubstitutes(
+    try {
+      // Fetch affected slots
+      const slots = await substituteAssignmentService.getAffectedSlots(
+        officerInfo.id,
         institutionId,
-        slot.day,
-        slot.period_id,
-        officerInfo.id
+        format(dateRange.from, 'yyyy-MM-dd'),
+        format(dateRange.to, 'yyyy-MM-dd')
       );
-      subsMap.set(`${slot.date}-${slot.period_id}`, subs);
-    }
-    setAvailableSubstitutes(subsMap);
 
-    setCurrentStep(2);
+      // Always proceed to Step 2, even with no slots
+      // The UI will show appropriate message based on slots count
+      setAffectedSlots(slots);
+      
+      if (slots.length === 0) {
+        // No slots to assign substitutes for
+        setSubstituteAssignments([]);
+        setCurrentStep(2);
+        return;
+      }
+
+      // Initialize empty assignments
+      const initialAssignments: SubstituteAssignment[] = slots.map(slot => ({
+        slot_id: slot.id,
+        class_id: slot.class_id,
+        class_name: slot.class_name,
+        day: slot.day,
+        date: slot.date,
+        period_id: slot.period_id,
+        period_label: slot.period_label,
+        period_time: slot.period_time,
+        subject: slot.subject,
+        room: slot.room || undefined,
+        original_officer_id: officerInfo.id,
+        original_officer_name: officerInfo.full_name,
+        substitute_officer_id: '',
+        substitute_officer_name: ''
+      }));
+      setSubstituteAssignments(initialAssignments);
+
+      // Fetch available substitutes for each slot
+      const subsMap = new Map<string, AvailableSubstitute[]>();
+      for (const slot of slots) {
+        const subs = await substituteAssignmentService.getAvailableSubstitutes(
+          institutionId,
+          slot.day,
+          slot.period_id,
+          officerInfo.id
+        );
+        subsMap.set(`${slot.date}-${slot.period_id}`, subs);
+      }
+      setAvailableSubstitutes(subsMap);
+
+      setCurrentStep(2);
+    } finally {
+      setIsFetchingSlots(false);
+    }
   };
 
   const handleSubstituteSelect = (index: number, officerId: string, officerName: string) => {
@@ -489,9 +494,18 @@ export default function OfficerLeave() {
                         <Button 
                           onClick={handleProceedToSubstitutes} 
                           className="w-full"
-                          disabled={!dateRange?.from || !dateRange?.to || reason.length < 10}
+                          disabled={!dateRange?.from || !dateRange?.to || reason.length < 10 || isFetchingSlots}
                         >
-                          Next: Assign Substitutes <ArrowRight className="ml-2 h-4 w-4" />
+                          {isFetchingSlots ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Fetching Class Schedule...
+                            </>
+                          ) : (
+                            <>
+                              Next: Assign Substitutes <ArrowRight className="ml-2 h-4 w-4" />
+                            </>
+                          )}
                         </Button>
                       </div>
                     </div>
