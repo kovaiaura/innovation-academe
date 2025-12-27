@@ -257,7 +257,7 @@ const App = () => (
               }
             />
             <Route
-              path="/system-admin/payroll-dashboard"
+              path="/system-admin/payroll-management"
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <PayrollDashboard />
