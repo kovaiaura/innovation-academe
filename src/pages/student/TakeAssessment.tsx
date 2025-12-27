@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,26 +8,101 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { mockAssessments, mockAssessmentQuestions } from '@/data/mockAssessmentData';
-import { AssessmentAnswer } from '@/types/assessment';
+import { assessmentService } from '@/services/assessment.service';
+import { Assessment, AssessmentQuestion, AssessmentAttempt } from '@/types/assessment';
 import { formatTimeRemaining } from '@/utils/assessmentHelpers';
-import { Clock, CheckCircle, Circle, AlertTriangle, Send } from 'lucide-react';
+import { Clock, AlertTriangle, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function TakeAssessment() {
   const { assessmentId } = useParams();
   const navigate = useNavigate();
-  
-  const assessment = mockAssessments.find(a => a.id === assessmentId);
-  const questions = mockAssessmentQuestions.filter(q => q.assessment_id === assessmentId);
+  const { user } = useAuth();
+
+  const [assessment, setAssessment] = useState<Assessment | null>(null);
+  const [questions, setQuestions] = useState<AssessmentQuestion[]>([]);
+  const [attempt, setAttempt] = useState<AssessmentAttempt | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Map<string, string>>(new Map());
-  const [timeRemaining, setTimeRemaining] = useState(assessment ? assessment.duration_minutes * 60 : 0);
+  const [timeRemaining, setTimeRemaining] = useState(0);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showTimeWarning, setShowTimeWarning] = useState(false);
 
+  const studentId = user?.id || '';
+  const classId = user?.class_id || '';
+  const institutionId = user?.institution_id || user?.tenant_id || '';
+
+  // Get tenant slug for navigation
+  const getTenantPath = () => {
+    try {
+      const tenant = localStorage.getItem('tenant');
+      if (tenant) {
+        const parsed = JSON.parse(tenant);
+        return `/tenant/${parsed.slug}`;
+      }
+    } catch {}
+    return '/student';
+  };
+
+  // Load assessment and start attempt
   useEffect(() => {
+    const loadAssessment = async () => {
+      if (!assessmentId || !studentId) return;
+
+      setIsLoading(true);
+      try {
+        const loadedAssessment = await assessmentService.getAssessmentById(assessmentId);
+        if (!loadedAssessment) {
+          toast.error('Assessment not found');
+          navigate(`${getTenantPath()}/student/assessments`);
+          return;
+        }
+
+        setAssessment(loadedAssessment);
+
+        // Load questions
+        let loadedQuestions = await assessmentService.getQuestions(assessmentId);
+        
+        // Shuffle if enabled
+        if (loadedAssessment.shuffle_questions) {
+          loadedQuestions = [...loadedQuestions].sort(() => Math.random() - 0.5);
+        }
+        setQuestions(loadedQuestions);
+
+        // Start attempt
+        const attemptResult = await assessmentService.startAttempt(
+          assessmentId,
+          studentId,
+          classId,
+          institutionId
+        );
+
+        if (attemptResult) {
+          setAttempt(attemptResult);
+          setTimeRemaining(loadedAssessment.duration_minutes * 60);
+        } else {
+          toast.error('Failed to start assessment');
+          navigate(`${getTenantPath()}/student/assessments`);
+        }
+      } catch (error) {
+        console.error('Error loading assessment:', error);
+        toast.error('Failed to load assessment');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAssessment();
+  }, [assessmentId, studentId, classId, institutionId, navigate]);
+
+  // Timer countdown
+  useEffect(() => {
+    if (!attempt || timeRemaining <= 0) return;
+
     const interval = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
@@ -44,29 +119,33 @@ export default function TakeAssessment() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [attempt]);
 
-  if (!assessment || questions.length === 0) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-[60vh]">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold mb-2">Assessment Not Found</h2>
-            <p className="text-muted-foreground">The assessment you're looking for doesn't exist.</p>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
+  const handleAutoSubmit = useCallback(async () => {
+    if (!attempt) return;
+    toast.info('Time is up! Assessment auto-submitted.');
+    await handleSubmit(true);
+  }, [attempt]);
 
-  const currentQuestion = questions[currentQuestionIndex];
-  const answeredCount = answers.size;
-  const progress = (answeredCount / questions.length) * 100;
+  const handleAnswerSelect = async (optionId: string) => {
+    if (!attempt || !currentQuestion) return;
 
-  const handleAnswerSelect = (optionId: string) => {
     const newAnswers = new Map(answers);
     newAnswers.set(currentQuestion.id, optionId);
     setAnswers(newAnswers);
+
+    // Save answer to database
+    const isCorrect = optionId === currentQuestion.correct_option_id;
+    const pointsEarned = isCorrect ? currentQuestion.points : 0;
+    
+    await assessmentService.saveAnswer(
+      attempt.id,
+      currentQuestion.id,
+      optionId,
+      isCorrect,
+      pointsEarned,
+      0 // Time spent tracking would require more complex implementation
+    );
   };
 
   const handleNext = () => {
@@ -85,27 +164,61 @@ export default function TakeAssessment() {
     setCurrentQuestionIndex(index);
   };
 
-  const handleSubmit = () => {
-    const assessmentAnswers: AssessmentAnswer[] = questions.map(q => {
-      const selectedOptionId = answers.get(q.id);
-      const isCorrect = selectedOptionId === q.correct_option_id;
-      return {
-        question_id: q.id,
-        selected_option_id: selectedOptionId,
-        is_correct: isCorrect,
-        points_earned: isCorrect ? q.points : 0,
-        time_spent_seconds: 0 // Would be tracked in real implementation
-      };
-    });
+  const handleSubmit = async (isAutoSubmit: boolean = false) => {
+    if (!attempt) return;
 
-    toast.success('Assessment submitted successfully!');
-    navigate('/tenant/default/student/assessments');
+    setIsSubmitting(true);
+    setShowSubmitDialog(false);
+
+    try {
+      const success = await assessmentService.submitAttempt(attempt.id, isAutoSubmit);
+      
+      if (success) {
+        toast.success('Assessment submitted successfully!');
+        navigate(`${getTenantPath()}/student/assessments`);
+      } else {
+        toast.error('Failed to submit assessment');
+      }
+    } catch (error) {
+      console.error('Error submitting assessment:', error);
+      toast.error('Failed to submit assessment');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleAutoSubmit = () => {
-    toast.info('Time is up! Assessment auto-submitted.');
-    handleSubmit();
-  };
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading assessment...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!assessment || questions.length === 0) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold mb-2">Assessment Not Found</h2>
+            <p className="text-muted-foreground">The assessment you're looking for doesn't exist or has no questions.</p>
+            <Button className="mt-4" onClick={() => navigate(`${getTenantPath()}/student/assessments`)}>
+              Back to Assessments
+            </Button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  const currentQuestion = questions[currentQuestionIndex];
+  const answeredCount = answers.size;
+  const progress = (answeredCount / questions.length) * 100;
 
   return (
     <Layout>
@@ -168,7 +281,7 @@ export default function TakeAssessment() {
                         aspect-square rounded-md flex items-center justify-center text-sm font-medium
                         transition-colors
                         ${isCurrent ? 'bg-primary text-primary-foreground' : ''}
-                        ${!isCurrent && isAnswered ? 'bg-green-100 text-green-700' : ''}
+                        ${!isCurrent && isAnswered ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : ''}
                         ${!isCurrent && !isAnswered ? 'bg-muted hover:bg-muted/80' : ''}
                       `}
                     >
@@ -186,7 +299,7 @@ export default function TakeAssessment() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>
-                    Question {currentQuestion.question_number} of {questions.length}
+                    Question {currentQuestionIndex + 1} of {questions.length}
                   </CardTitle>
                   <Badge variant="outline">{currentQuestion.points} points</Badge>
                 </div>
@@ -239,8 +352,8 @@ export default function TakeAssessment() {
               
               <div className="flex gap-2">
                 {currentQuestionIndex === questions.length - 1 ? (
-                  <Button onClick={() => setShowSubmitDialog(true)}>
-                    <Send className="h-4 w-4 mr-2" />
+                  <Button onClick={() => setShowSubmitDialog(true)} disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
                     Submit Assessment
                   </Button>
                 ) : (
@@ -273,7 +386,8 @@ export default function TakeAssessment() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Review Answers</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSubmit}>
+            <AlertDialogAction onClick={() => handleSubmit(false)} disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
               Submit Assessment
             </AlertDialogAction>
           </AlertDialogFooter>

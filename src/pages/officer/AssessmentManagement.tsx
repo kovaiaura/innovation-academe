@@ -12,10 +12,10 @@ import { AssessmentStatusBadge } from '@/components/assessment/AssessmentStatusB
 import { QuestionBuilder } from '@/components/assessment/QuestionBuilder';
 import { QuestionList } from '@/components/assessment/QuestionList';
 import { PublishingSelector } from '@/components/assessment/PublishingSelector';
-import { loadAssessments, addAssessment, loadAssessmentQuestions, saveAssessmentQuestions } from '@/data/mockAssessmentData';
+import { assessmentService } from '@/services/assessment.service';
 import { Assessment, AssessmentQuestion, AssessmentPublishing } from '@/types/assessment';
-import { getAssessmentStatus, formatDuration } from '@/utils/assessmentHelpers';
-import { Search, Plus, Clock, Award, Users, FileText, Eye, Edit, Trash2 } from 'lucide-react';
+import { getAssessmentStatus, formatDuration, calculateTotalPoints } from '@/utils/assessmentHelpers';
+import { Search, Plus, Clock, Award, Users, FileText, Eye, Edit, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -25,25 +25,11 @@ export default function OfficerAssessmentManagement() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   
-  // Get officer's institution ID from user context - use correct fallback
-  const officerInstitutionId = user?.institution_id || user?.tenant_id || 'inst-msd-001';
+  const officerInstitutionId = user?.institution_id || user?.tenant_id;
   
-  // Load assessments from localStorage
-  useEffect(() => {
-    const loaded = loadAssessments();
-    setAssessments(loaded);
-  }, []);
-  
-  // Filter assessments for this institution only
-  const institutionAssessments = assessments.filter(a => {
-    // Show generic assessments published to this institution
-    const publishedToThisInstitution = a.published_to.some(p => p.institution_id === officerInstitutionId);
-    // Show assessments created by officers of this institution
-    const createdByThisInstitution = a.created_by_role === 'officer' && a.institution_id === officerInstitutionId;
-    return publishedToThisInstitution || createdByThisInstitution;
-  });
-
   // Create Assessment State
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState('');
@@ -61,8 +47,27 @@ export default function OfficerAssessmentManagement() {
   const [editingQuestion, setEditingQuestion] = useState<Partial<AssessmentQuestion> | null>(null);
   const [showQuestionBuilder, setShowQuestionBuilder] = useState(false);
   const [publishing, setPublishing] = useState<AssessmentPublishing[]>([]);
+  const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null);
 
-  const filteredAssessments = institutionAssessments.filter((assessment) => {
+  // Load assessments from database
+  useEffect(() => {
+    loadAssessments();
+  }, [officerInstitutionId]);
+
+  const loadAssessments = async () => {
+    setIsLoading(true);
+    const data = await assessmentService.getAssessments();
+    // Filter to show assessments published to this institution or created by officers of this institution
+    const filtered = data.filter(a => {
+      const publishedToThisInstitution = a.published_to.some(p => p.institution_id === officerInstitutionId);
+      const createdByThisInstitution = a.created_by_role === 'officer' && a.institution_id === officerInstitutionId;
+      return publishedToThisInstitution || createdByThisInstitution;
+    });
+    setAssessments(filtered);
+    setIsLoading(false);
+  };
+
+  const filteredAssessments = assessments.filter((assessment) => {
     const matchesSearch = assessment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       assessment.description.toLowerCase().includes(searchTerm.toLowerCase());
     const currentStatus = getAssessmentStatus(assessment);
@@ -71,11 +76,11 @@ export default function OfficerAssessmentManagement() {
   });
 
   const statusCounts = {
-    all: institutionAssessments.length,
-    draft: institutionAssessments.filter(a => a.status === 'draft').length,
-    upcoming: institutionAssessments.filter(a => getAssessmentStatus(a) === 'upcoming').length,
-    ongoing: institutionAssessments.filter(a => getAssessmentStatus(a) === 'ongoing').length,
-    completed: institutionAssessments.filter(a => getAssessmentStatus(a) === 'completed').length
+    all: assessments.length,
+    draft: assessments.filter(a => a.status === 'draft').length,
+    upcoming: assessments.filter(a => getAssessmentStatus(a) === 'upcoming').length,
+    ongoing: assessments.filter(a => getAssessmentStatus(a) === 'ongoing').length,
+    completed: assessments.filter(a => getAssessmentStatus(a) === 'completed').length
   };
 
   const handleAddQuestion = (question: Partial<AssessmentQuestion>) => {
@@ -83,7 +88,12 @@ export default function OfficerAssessmentManagement() {
       setQuestions(questions.map(q => q.id === question.id ? question : q));
       toast.success('Question updated');
     } else {
-      setQuestions([...questions, { ...question, question_number: questions.length + 1 }]);
+      const newQuestion = { 
+        ...question, 
+        id: `temp-${Date.now()}`,
+        question_number: questions.length + 1 
+      };
+      setQuestions([...questions, newQuestion]);
       toast.success('Question added');
     }
     setEditingQuestion(null);
@@ -95,14 +105,149 @@ export default function OfficerAssessmentManagement() {
     toast.success('Question deleted');
   };
 
-  const handleCreateAssessment = () => {
-    toast.success('Assessment created successfully');
+  const handleCreateAssessment = async () => {
+    if (!title || !startTime || !endTime || !officerInstitutionId) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      if (editingAssessment) {
+        // Update existing assessment
+        const success = await assessmentService.updateAssessment(editingAssessment.id, {
+          title,
+          description,
+          start_time: new Date(startTime).toISOString(),
+          end_time: new Date(endTime).toISOString(),
+          duration_minutes: durationMinutes,
+          pass_percentage: passPercentage[0],
+          auto_submit: autoSubmit,
+          auto_evaluate: autoEvaluate,
+          shuffle_questions: shuffleQuestions,
+          show_results_immediately: showResultsImmediately,
+          allow_review_after_submission: allowReview,
+        });
+
+        if (success) {
+          // Update questions
+          const existingQuestions = await assessmentService.getQuestions(editingAssessment.id);
+          for (const q of existingQuestions) {
+            await assessmentService.deleteQuestion(q.id);
+          }
+          if (questions.length > 0) {
+            await assessmentService.addQuestions(editingAssessment.id, questions);
+          }
+
+          // Publish
+          if (publishing.length > 0) {
+            await assessmentService.publishAssessment(editingAssessment.id, publishing);
+          }
+
+          toast.success('Assessment updated successfully');
+        } else {
+          toast.error('Failed to update assessment');
+        }
+      } else {
+        // Create new assessment
+        const assessment = await assessmentService.createAssessment({
+          title,
+          description,
+          start_time: new Date(startTime).toISOString(),
+          end_time: new Date(endTime).toISOString(),
+          duration_minutes: durationMinutes,
+          pass_percentage: passPercentage[0],
+          auto_submit: autoSubmit,
+          auto_evaluate: autoEvaluate,
+          shuffle_questions: shuffleQuestions,
+          show_results_immediately: showResultsImmediately,
+          allow_review_after_submission: allowReview,
+          created_by: user?.id,
+          created_by_role: 'officer',
+          institution_id: officerInstitutionId,
+          status: 'published'
+        });
+
+        if (assessment) {
+          // Add questions
+          if (questions.length > 0) {
+            await assessmentService.addQuestions(assessment.id, questions);
+          }
+
+          // Publish
+          if (publishing.length > 0) {
+            await assessmentService.publishAssessment(assessment.id, publishing);
+          }
+
+          toast.success('Assessment created successfully');
+        } else {
+          toast.error('Failed to create assessment');
+        }
+      }
+
+      // Reset form and reload
+      resetForm();
+      setActiveTab('all');
+      await loadAssessments();
+    } catch (error) {
+      console.error('Error saving assessment:', error);
+      toast.error('An error occurred while saving');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const resetForm = () => {
     setStep(1);
     setTitle('');
     setDescription('');
+    setDurationMinutes(30);
+    setStartTime('');
+    setEndTime('');
+    setPassPercentage([70]);
+    setAutoSubmit(true);
+    setAutoEvaluate(true);
+    setShuffleQuestions(false);
+    setShowResultsImmediately(true);
+    setAllowReview(true);
     setQuestions([]);
     setPublishing([]);
-    setActiveTab('all');
+    setEditingAssessment(null);
+  };
+
+  const handleEditAssessment = async (assessment: Assessment) => {
+    setEditingAssessment(assessment);
+    setTitle(assessment.title);
+    setDescription(assessment.description);
+    setDurationMinutes(assessment.duration_minutes);
+    setStartTime(new Date(assessment.start_time).toISOString().slice(0, 16));
+    setEndTime(new Date(assessment.end_time).toISOString().slice(0, 16));
+    setPassPercentage([assessment.pass_percentage]);
+    setAutoSubmit(assessment.auto_submit);
+    setAutoEvaluate(assessment.auto_evaluate);
+    setShuffleQuestions(assessment.shuffle_questions);
+    setShowResultsImmediately(assessment.show_results_immediately);
+    setAllowReview(assessment.allow_review_after_submission);
+    setPublishing(assessment.published_to);
+
+    const loadedQuestions = await assessmentService.getQuestions(assessment.id);
+    setQuestions(loadedQuestions);
+
+    setActiveTab('create');
+    setStep(1);
+  };
+
+  const handleDeleteAssessment = async (assessmentId: string) => {
+    if (!confirm('Are you sure you want to delete this assessment?')) return;
+
+    const success = await assessmentService.deleteAssessment(assessmentId);
+    if (success) {
+      toast.success('Assessment deleted');
+      await loadAssessments();
+    } else {
+      toast.error('Failed to delete assessment');
+    }
   };
 
   const canEdit = (assessment: Assessment) => {
@@ -178,74 +323,99 @@ export default function OfficerAssessmentManagement() {
             </div>
 
             {/* Assessment Grid */}
-            <div className="grid gap-4">
-              {filteredAssessments.map((assessment) => {
-                const currentStatus = getAssessmentStatus(assessment);
-                const totalClasses = assessment.published_to.reduce((sum, pub) => sum + pub.class_ids.length, 0);
-                const isOfficerCreated = assessment.created_by_role === 'officer';
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredAssessments.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                No assessments found. Create your first assessment!
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {filteredAssessments.map((assessment) => {
+                  const currentStatus = getAssessmentStatus(assessment);
+                  const totalClasses = assessment.published_to.reduce((sum, pub) => sum + pub.class_ids.length, 0);
+                  const isOfficerCreated = assessment.created_by_role === 'officer';
 
-                return (
-                  <Card key={assessment.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 space-y-3">
-                          <div>
-                            <div className="flex items-center gap-3">
-                              <h3 className="text-lg font-semibold">{assessment.title}</h3>
-                              <AssessmentStatusBadge status={currentStatus} />
-                              {isOfficerCreated && (
-                                <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
-                                  Institution Specific
-                                </span>
-                              )}
+                  return (
+                    <Card key={assessment.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 space-y-3">
+                            <div>
+                              <div className="flex items-center gap-3">
+                                <h3 className="text-lg font-semibold">{assessment.title}</h3>
+                                <AssessmentStatusBadge status={currentStatus} />
+                                {isOfficerCreated && (
+                                  <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                                    Institution Specific
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1">{assessment.description}</p>
                             </div>
-                            <p className="text-sm text-muted-foreground mt-1">{assessment.description}</p>
+
+                            <div className="flex flex-wrap gap-4 text-sm">
+                              <div className="flex items-center gap-1">
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                <span>{assessment.question_count} questions</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Award className="h-4 w-4 text-muted-foreground" />
+                                <span>{assessment.total_points} points</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-4 w-4 text-muted-foreground" />
+                                <span>{formatDuration(assessment.duration_minutes)}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Users className="h-4 w-4 text-muted-foreground" />
+                                <span>{totalClasses} classes</span>
+                              </div>
+                            </div>
                           </div>
 
-                          <div className="flex flex-wrap gap-4 text-sm">
-                            <div className="flex items-center gap-1">
-                              <FileText className="h-4 w-4 text-muted-foreground" />
-                              <span>{assessment.question_count} questions</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Award className="h-4 w-4 text-muted-foreground" />
-                              <span>{assessment.total_points} points</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-4 w-4 text-muted-foreground" />
-                              <span>{formatDuration(assessment.duration_minutes)}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Users className="h-4 w-4 text-muted-foreground" />
-                              <span>{totalClasses} classes</span>
-                            </div>
+                          <div className="flex gap-2">
+                            <Button variant="ghost" size="icon">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {canEdit(assessment) && (
+                              <>
+                                <Button variant="ghost" size="icon" onClick={() => handleEditAssessment(assessment)}>
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => handleDeleteAssessment(assessment.id)}>
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </div>
-
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="icon">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {canEdit(assessment) && (
-                            <>
-                              <Button variant="ghost" size="icon">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon">
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="create" className="space-y-6">
+            {editingAssessment && (
+              <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      Editing: <strong>{editingAssessment.title}</strong>
+                    </p>
+                    <Button variant="outline" size="sm" onClick={resetForm}>
+                      Cancel Edit
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Step Indicator */}
             <div className="flex items-center justify-between mb-8">
               {[1, 2, 3, 4, 5].map((s) => (
@@ -265,11 +435,11 @@ export default function OfficerAssessmentManagement() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label>Title *</Label>
-                    <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+                    <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter assessment title" />
                   </div>
                   <div className="space-y-2">
                     <Label>Description *</Label>
-                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Describe the assessment" />
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
@@ -395,11 +565,15 @@ export default function OfficerAssessmentManagement() {
                     <div><strong>Title:</strong> {title}</div>
                     <div><strong>Duration:</strong> {formatDuration(durationMinutes)}</div>
                     <div><strong>Questions:</strong> {questions.length}</div>
+                    <div><strong>Total Points:</strong> {calculateTotalPoints(questions as AssessmentQuestion[])}</div>
                     <div><strong>Pass Percentage:</strong> {passPercentage[0]}%</div>
                   </div>
                   <div className="flex gap-3">
                     <Button variant="outline" onClick={() => setStep(4)}>Back</Button>
-                    <Button onClick={handleCreateAssessment}>Create Assessment</Button>
+                    <Button onClick={handleCreateAssessment} disabled={isSaving}>
+                      {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                      {editingAssessment ? 'Update Assessment' : 'Create Assessment'}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
