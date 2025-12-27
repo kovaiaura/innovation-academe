@@ -38,7 +38,7 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
   const loadEmployees = async () => {
     setIsLoading(true);
     try {
-      const data = await fetchAllEmployees();
+      const data = await fetchAllEmployees(month, year);
       setEmployees(data);
     } catch (error) {
       console.error('Error loading employees:', error);

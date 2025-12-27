@@ -745,6 +745,12 @@ export const fetchOvertimeRequests = async (
     }
     
     const userIds = data?.map(r => r.user_id) || [];
+    
+    // Guard: avoid 400 error when userIds is empty
+    if (userIds.length === 0) {
+      return [];
+    }
+    
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, name, position_id, positions:position_id(display_name)')

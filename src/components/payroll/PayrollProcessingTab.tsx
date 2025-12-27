@@ -42,7 +42,7 @@ export function PayrollProcessingTab({ month, year }: PayrollProcessingTabProps)
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const data = await fetchAllEmployees();
+      const data = await fetchAllEmployees(month, year);
       setEmployees(data);
     } catch (error) {
       console.error('Error loading data:', error);
