@@ -614,6 +614,56 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_work_logs: {
+        Row: {
+          created_at: string | null
+          date: string
+          hours_logged: number | null
+          id: string
+          notes: string | null
+          officer_id: string | null
+          productivity_score: number | null
+          tasks_completed: string | null
+          updated_at: string | null
+          user_id: string
+          user_type: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          hours_logged?: number | null
+          id?: string
+          notes?: string | null
+          officer_id?: string | null
+          productivity_score?: number | null
+          tasks_completed?: string | null
+          updated_at?: string | null
+          user_id: string
+          user_type?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          hours_logged?: number | null
+          id?: string
+          notes?: string | null
+          officer_id?: string | null
+          productivity_score?: number | null
+          tasks_completed?: string | null
+          updated_at?: string | null
+          user_id?: string
+          user_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_work_logs_officer_id_fkey"
+            columns: ["officer_id"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       id_counters: {
         Row: {
           counter_padding: number | null
@@ -1541,6 +1591,265 @@ export type Database = {
         }
         Relationships: []
       }
+      overtime_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          approved_by_name: string | null
+          calculated_pay: number | null
+          created_at: string | null
+          date: string
+          id: string
+          institution_id: string | null
+          officer_id: string | null
+          overtime_rate: number | null
+          reason: string
+          rejection_reason: string | null
+          requested_hours: number
+          status: string | null
+          updated_at: string | null
+          user_id: string
+          user_type: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_by_name?: string | null
+          calculated_pay?: number | null
+          created_at?: string | null
+          date: string
+          id?: string
+          institution_id?: string | null
+          officer_id?: string | null
+          overtime_rate?: number | null
+          reason: string
+          rejection_reason?: string | null
+          requested_hours: number
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+          user_type?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_by_name?: string | null
+          calculated_pay?: number | null
+          created_at?: string | null
+          date?: string
+          id?: string
+          institution_id?: string | null
+          officer_id?: string | null
+          overtime_rate?: number | null
+          reason?: string
+          rejection_reason?: string | null
+          requested_hours?: number
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+          user_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "overtime_requests_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "overtime_requests_officer_id_fkey"
+            columns: ["officer_id"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_records: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          basic_pay: number | null
+          created_at: string | null
+          da: number | null
+          days_absent: number | null
+          days_leave: number | null
+          days_lop: number | null
+          days_present: number | null
+          deductions: Json | null
+          esi_employee: number | null
+          esi_employer: number | null
+          generated_at: string | null
+          gross_salary: number | null
+          hra: number | null
+          id: string
+          institution_id: string | null
+          loan_deduction: number | null
+          lop_deduction: number | null
+          month: number
+          monthly_salary: number
+          net_pay: number | null
+          notes: string | null
+          officer_id: string | null
+          other_allowances: number | null
+          other_deductions: number | null
+          overtime_approved: boolean | null
+          overtime_hours: number | null
+          overtime_pay: number | null
+          paid_date: string | null
+          payment_mode: string | null
+          payment_reference: string | null
+          per_day_salary: number | null
+          pf_employee: number | null
+          pf_employer: number | null
+          position_id: string | null
+          professional_tax: number | null
+          salary_components: Json | null
+          special_allowance: number | null
+          standard_days: number | null
+          status: string | null
+          tds: number | null
+          total_deductions: number | null
+          total_earnings: number | null
+          total_hours_worked: number | null
+          uninformed_leave_days: number | null
+          updated_at: string | null
+          user_id: string
+          user_type: string
+          working_days: number
+          year: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          basic_pay?: number | null
+          created_at?: string | null
+          da?: number | null
+          days_absent?: number | null
+          days_leave?: number | null
+          days_lop?: number | null
+          days_present?: number | null
+          deductions?: Json | null
+          esi_employee?: number | null
+          esi_employer?: number | null
+          generated_at?: string | null
+          gross_salary?: number | null
+          hra?: number | null
+          id?: string
+          institution_id?: string | null
+          loan_deduction?: number | null
+          lop_deduction?: number | null
+          month: number
+          monthly_salary?: number
+          net_pay?: number | null
+          notes?: string | null
+          officer_id?: string | null
+          other_allowances?: number | null
+          other_deductions?: number | null
+          overtime_approved?: boolean | null
+          overtime_hours?: number | null
+          overtime_pay?: number | null
+          paid_date?: string | null
+          payment_mode?: string | null
+          payment_reference?: string | null
+          per_day_salary?: number | null
+          pf_employee?: number | null
+          pf_employer?: number | null
+          position_id?: string | null
+          professional_tax?: number | null
+          salary_components?: Json | null
+          special_allowance?: number | null
+          standard_days?: number | null
+          status?: string | null
+          tds?: number | null
+          total_deductions?: number | null
+          total_earnings?: number | null
+          total_hours_worked?: number | null
+          uninformed_leave_days?: number | null
+          updated_at?: string | null
+          user_id: string
+          user_type: string
+          working_days?: number
+          year: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          basic_pay?: number | null
+          created_at?: string | null
+          da?: number | null
+          days_absent?: number | null
+          days_leave?: number | null
+          days_lop?: number | null
+          days_present?: number | null
+          deductions?: Json | null
+          esi_employee?: number | null
+          esi_employer?: number | null
+          generated_at?: string | null
+          gross_salary?: number | null
+          hra?: number | null
+          id?: string
+          institution_id?: string | null
+          loan_deduction?: number | null
+          lop_deduction?: number | null
+          month?: number
+          monthly_salary?: number
+          net_pay?: number | null
+          notes?: string | null
+          officer_id?: string | null
+          other_allowances?: number | null
+          other_deductions?: number | null
+          overtime_approved?: boolean | null
+          overtime_hours?: number | null
+          overtime_pay?: number | null
+          paid_date?: string | null
+          payment_mode?: string | null
+          payment_reference?: string | null
+          per_day_salary?: number | null
+          pf_employee?: number | null
+          pf_employer?: number | null
+          position_id?: string | null
+          professional_tax?: number | null
+          salary_components?: Json | null
+          special_allowance?: number | null
+          standard_days?: number | null
+          status?: string | null
+          tds?: number | null
+          total_deductions?: number | null
+          total_earnings?: number | null
+          total_hours_worked?: number | null
+          uninformed_leave_days?: number | null
+          updated_at?: string | null
+          user_id?: string
+          user_type?: string
+          working_days?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_records_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_records_officer_id_fkey"
+            columns: ["officer_id"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_records_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       positions: {
         Row: {
           created_at: string | null
@@ -1876,6 +2185,99 @@ export type Database = {
             columns: ["institution_id"]
             isOneToOne: false
             referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_attendance: {
+        Row: {
+          check_in_address: string | null
+          check_in_distance_meters: number | null
+          check_in_latitude: number | null
+          check_in_longitude: number | null
+          check_in_time: string | null
+          check_in_validated: boolean | null
+          check_out_address: string | null
+          check_out_distance_meters: number | null
+          check_out_latitude: number | null
+          check_out_longitude: number | null
+          check_out_time: string | null
+          check_out_validated: boolean | null
+          created_at: string | null
+          date: string
+          id: string
+          institution_id: string | null
+          notes: string | null
+          overtime_hours: number | null
+          position_id: string | null
+          status: string | null
+          total_hours_worked: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          check_in_address?: string | null
+          check_in_distance_meters?: number | null
+          check_in_latitude?: number | null
+          check_in_longitude?: number | null
+          check_in_time?: string | null
+          check_in_validated?: boolean | null
+          check_out_address?: string | null
+          check_out_distance_meters?: number | null
+          check_out_latitude?: number | null
+          check_out_longitude?: number | null
+          check_out_time?: string | null
+          check_out_validated?: boolean | null
+          created_at?: string | null
+          date?: string
+          id?: string
+          institution_id?: string | null
+          notes?: string | null
+          overtime_hours?: number | null
+          position_id?: string | null
+          status?: string | null
+          total_hours_worked?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          check_in_address?: string | null
+          check_in_distance_meters?: number | null
+          check_in_latitude?: number | null
+          check_in_longitude?: number | null
+          check_in_time?: string | null
+          check_in_validated?: boolean | null
+          check_out_address?: string | null
+          check_out_distance_meters?: number | null
+          check_out_latitude?: number | null
+          check_out_longitude?: number | null
+          check_out_time?: string | null
+          check_out_validated?: boolean | null
+          created_at?: string | null
+          date?: string
+          id?: string
+          institution_id?: string | null
+          notes?: string | null
+          overtime_hours?: number | null
+          position_id?: string | null
+          status?: string | null
+          total_hours_worked?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_attendance_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
             referencedColumns: ["id"]
           },
         ]
