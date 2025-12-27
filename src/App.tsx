@@ -120,6 +120,7 @@ import OfficerSettings from "./pages/officer/Settings";
 import TeacherSettings from "./pages/teacher/Settings";
 import NotificationsPage from "./pages/common/NotificationsPage";
 import { TimetableRedirect } from "./components/TimetableRedirect";
+import PayrollDashboard from "./pages/system-admin/PayrollDashboard";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -252,6 +253,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="attendance_payroll">
                   <SystemAdminOfficerAttendance />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/payroll-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <PayrollDashboard />
                 </ProtectedRoute>
               }
             />

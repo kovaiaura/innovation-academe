@@ -392,17 +392,25 @@ export const detectUninformedLeave = async (
     }
     
     // Get days with attendance
-    const attendanceTable = userType === 'officer' ? 'officer_attendance' : 'staff_attendance';
-    const userIdColumn = userType === 'officer' ? 'officer_id' : 'user_id';
+    let attendanceDays = new Set<string>();
     
-    const { data: attendanceRecords } = await supabase
-      .from(attendanceTable)
-      .select('date')
-      .eq(userIdColumn, userId)
-      .gte('date', startDate.toISOString().split('T')[0])
-      .lte('date', endDate.toISOString().split('T')[0]);
-    
-    const attendanceDays = new Set(attendanceRecords?.map(r => r.date) || []);
+    if (userType === 'officer') {
+      const { data: attendanceRecords } = await supabase
+        .from('officer_attendance')
+        .select('date')
+        .eq('officer_id', userId)
+        .gte('date', startDate.toISOString().split('T')[0])
+        .lte('date', endDate.toISOString().split('T')[0]);
+      attendanceDays = new Set(attendanceRecords?.map(r => r.date) || []);
+    } else {
+      const { data: attendanceRecords } = await supabase
+        .from('staff_attendance')
+        .select('date')
+        .eq('user_id', userId)
+        .gte('date', startDate.toISOString().split('T')[0])
+        .lte('date', endDate.toISOString().split('T')[0]);
+      attendanceDays = new Set(attendanceRecords?.map(r => r.date) || []);
+    }
     
     // Get days with approved leave
     const { data: leaveRecords } = await supabase
@@ -410,7 +418,7 @@ export const detectUninformedLeave = async (
       .select('start_date, end_date')
       .eq('applicant_id', userId)
       .eq('status', 'approved')
-      .gte('start_date', startDate.toISOString().split('T')[0]) as { data: { start_date: string; end_date: string }[] | null; error: any }
+      .gte('start_date', startDate.toISOString().split('T')[0])
       .lte('end_date', endDate.toISOString().split('T')[0]);
     
     const leaveDays = new Set<string>();
