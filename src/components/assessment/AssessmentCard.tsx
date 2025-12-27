@@ -22,6 +22,18 @@ export const AssessmentCard = ({ assessment, attempt, mode }: AssessmentCardProp
   const [resultsDialogOpen, setResultsDialogOpen] = useState(false);
   const status = getAssessmentStatus(assessment);
 
+  // Get tenant path from localStorage
+  const getTenantPath = () => {
+    try {
+      const tenant = localStorage.getItem('tenant');
+      if (tenant) {
+        const parsed = JSON.parse(tenant);
+        return `/tenant/${parsed.slug}`;
+      }
+    } catch {}
+    return '';
+  };
+
   useEffect(() => {
     if (mode === 'upcoming') {
       const interval = setInterval(() => {
@@ -35,7 +47,8 @@ export const AssessmentCard = ({ assessment, attempt, mode }: AssessmentCardProp
   }, [mode, assessment.start_time]);
 
   const handleTakeAssessment = () => {
-    navigate(`/tenant/default/student/assessments/${assessment.id}/take`);
+    const tenantPath = getTenantPath();
+    navigate(`${tenantPath}/student/assessments/${assessment.id}/take`);
   };
 
   const handleViewResults = () => {
@@ -121,7 +134,7 @@ export const AssessmentCard = ({ assessment, attempt, mode }: AssessmentCardProp
                 <Progress value={attempt.percentage} className="h-2" />
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
-                    Completed: {new Date(attempt.submitted_at!).toLocaleString()}
+                    Completed: {attempt.submitted_at ? new Date(attempt.submitted_at).toLocaleString() : 'N/A'}
                   </span>
                   {assessment.allow_review_after_submission && (
                     <Button variant="outline" size="sm" onClick={handleViewResults}>

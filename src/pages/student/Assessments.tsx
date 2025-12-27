@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AssessmentCard } from '@/components/assessment/AssessmentCard';
-import { loadAssessments, loadAssessmentAttempts } from '@/data/mockAssessmentData';
+import { assessmentService } from '@/services/assessment.service';
 import { getAssessmentStatus } from '@/utils/assessmentHelpers';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
 import { Assessment, AssessmentAttempt } from '@/types/assessment';
 
 export default function StudentAssessments() {
@@ -14,45 +14,52 @@ export default function StudentAssessments() {
   const [searchTerm, setSearchTerm] = useState('');
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [attempts, setAttempts] = useState<AssessmentAttempt[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Get student's class and institution from user context
-  const studentClassId = user?.class_id || 'class-msd-9a'; // Fallback for demo
-  const studentInstitutionId = user?.institution_id || user?.tenant_id || 'inst-msd-001';
-  const studentId = user?.id || 'student-msd-001';
+  const studentClassId = user?.class_id || '';
+  const studentInstitutionId = user?.institution_id || user?.tenant_id || '';
+  const studentId = user?.id || '';
 
-  // Load data from localStorage on mount
+  // Load data from database on mount
   useEffect(() => {
-    const loadedAssessments = loadAssessments();
-    const loadedAttempts = loadAssessmentAttempts();
-    setAssessments(loadedAssessments);
-    setAttempts(loadedAttempts);
-  }, []);
-  
-  // Filter assessments published to student's institution AND class
-  const studentAssessments = assessments.filter(a => 
-    a.published_to.some(p => 
-      p.institution_id === studentInstitutionId && 
-      p.class_ids.includes(studentClassId)
-    )
-  );
+    const loadData = async () => {
+      if (!studentId || !studentClassId || !studentInstitutionId) {
+        setIsLoading(false);
+        return;
+      }
 
-  // Get student's attempts
-  const studentAttempts = attempts.filter(a => a.student_id === studentId);
+      setIsLoading(true);
+      try {
+        const [loadedAssessments, loadedAttempts] = await Promise.all([
+          assessmentService.getStudentAssessments(studentId, studentClassId, studentInstitutionId),
+          assessmentService.getStudentAttempts(studentId)
+        ]);
+        setAssessments(loadedAssessments);
+        setAttempts(loadedAttempts);
+      } catch (error) {
+        console.error('Error loading assessments:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // Available assessments (ongoing or upcoming, not yet attempted or can retake)
-  const availableAssessments = studentAssessments.filter(a => {
+    loadData();
+  }, [studentId, studentClassId, studentInstitutionId]);
+
+  // Available assessments (ongoing, not yet attempted or can retake)
+  const availableAssessments = assessments.filter(a => {
     const status = getAssessmentStatus(a);
-    const hasAttempt = studentAttempts.some(attempt => 
+    const hasCompletedAttempt = attempts.some(attempt => 
       attempt.assessment_id === a.id && attempt.status !== 'in_progress'
     );
-    return (status === 'ongoing' || status === 'upcoming') && !hasAttempt;
+    return status === 'ongoing' && !hasCompletedAttempt;
   }).filter(a => 
     a.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Completed assessments
-  const completedAssessments = studentAttempts.filter(attempt => 
-    attempt.status === 'evaluated' || attempt.status === 'submitted'
+  const completedAssessments = attempts.filter(attempt => 
+    attempt.status === 'evaluated' || attempt.status === 'submitted' || attempt.status === 'auto_submitted'
   ).map(attempt => {
     const assessment = assessments.find(a => a.id === attempt.assessment_id);
     return { attempt, assessment };
@@ -61,12 +68,22 @@ export default function StudentAssessments() {
   );
 
   // Upcoming assessments
-  const upcomingAssessments = studentAssessments.filter(a => {
+  const upcomingAssessments = assessments.filter(a => {
     const status = getAssessmentStatus(a);
     return status === 'upcoming';
   }).filter(a => 
     a.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

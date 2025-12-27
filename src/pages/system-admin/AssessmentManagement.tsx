@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AssessmentStatusBadge } from '@/components/assessment/AssessmentStatusBadge';
 import { QuestionBuilder } from '@/components/assessment/QuestionBuilder';
@@ -17,17 +16,22 @@ import { PublishingSelector } from '@/components/assessment/PublishingSelector';
 import { PublishAssessmentDialog } from '@/components/assessment/PublishAssessmentDialog';
 import { DuplicateAssessmentDialog } from '@/components/assessment/DuplicateAssessmentDialog';
 import { CertificateSelector } from '@/components/gamification/CertificateSelector';
-import { mockAssessments, mockAssessmentQuestions } from '@/data/mockAssessmentData';
+import { assessmentService } from '@/services/assessment.service';
 import { Assessment, AssessmentQuestion, AssessmentPublishing } from '@/types/assessment';
 import { getAssessmentStatus, formatDuration, calculateTotalPoints } from '@/utils/assessmentHelpers';
-import { Search, Plus, Calendar, Clock, Award, Users, FileText, Edit, Trash2, Eye, Info } from 'lucide-react';
+import { Search, Plus, Clock, Award, Users, FileText, Edit, Trash2, Eye, Info, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AssessmentDetailsDialog } from '@/components/assessment/AssessmentDetailsDialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function AssessmentManagement() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Create Assessment State
   const [step, setStep] = useState(1);
@@ -55,22 +59,34 @@ export default function AssessmentManagement() {
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
   const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null);
 
-  const filteredAssessments = mockAssessments.filter((assessment) => {
+  // Load assessments from database
+  useEffect(() => {
+    loadAssessments();
+  }, []);
+
+  const loadAssessments = async () => {
+    setIsLoading(true);
+    const data = await assessmentService.getAssessments();
+    setAssessments(data);
+    setIsLoading(false);
+  };
+
+  const filteredAssessments = assessments.filter((assessment) => {
     const matchesSearch = assessment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       assessment.description.toLowerCase().includes(searchTerm.toLowerCase());
     const currentStatus = getAssessmentStatus(assessment);
-    const matchesFilter = filterStatus === 'all' || currentStatus === filterStatus;
+    const matchesFilter = filterStatus === 'all' || currentStatus === filterStatus || assessment.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
 
   const statusCounts = {
-    all: mockAssessments.length,
-    draft: mockAssessments.filter(a => a.status === 'draft').length,
-    published: mockAssessments.filter(a => getAssessmentStatus(a) === 'published').length,
-    unpublished: mockAssessments.filter(a => a.status === 'unpublished').length,
-    upcoming: mockAssessments.filter(a => getAssessmentStatus(a) === 'upcoming').length,
-    ongoing: mockAssessments.filter(a => getAssessmentStatus(a) === 'ongoing').length,
-    completed: mockAssessments.filter(a => getAssessmentStatus(a) === 'completed').length
+    all: assessments.length,
+    draft: assessments.filter(a => a.status === 'draft').length,
+    published: assessments.filter(a => a.status === 'published').length,
+    unpublished: assessments.filter(a => a.status === 'unpublished').length,
+    upcoming: assessments.filter(a => getAssessmentStatus(a) === 'upcoming').length,
+    ongoing: assessments.filter(a => getAssessmentStatus(a) === 'ongoing').length,
+    completed: assessments.filter(a => getAssessmentStatus(a) === 'completed').length
   };
 
   const handleAddQuestion = (question: Partial<AssessmentQuestion>) => {
@@ -78,7 +94,12 @@ export default function AssessmentManagement() {
       setQuestions(questions.map(q => q.id === question.id ? question : q));
       toast.success('Question updated');
     } else {
-      setQuestions([...questions, { ...question, question_number: questions.length + 1 }]);
+      const newQuestion = { 
+        ...question, 
+        id: `temp-${Date.now()}`,
+        question_number: questions.length + 1 
+      };
+      setQuestions([...questions, newQuestion]);
       toast.success('Question added');
     }
     setEditingQuestion(null);
@@ -90,39 +111,166 @@ export default function AssessmentManagement() {
     toast.success('Question deleted');
   };
 
-  const handleCreateAssessment = (isDraft: boolean) => {
-    toast.success(editingAssessment 
-      ? 'Assessment updated successfully' 
-      : (isDraft ? 'Assessment saved as draft' : 'Assessment created and published')
-    );
-    // Reset form
+  const handleCreateAssessment = async (isDraft: boolean) => {
+    if (!title || !startTime || !endTime) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      if (editingAssessment) {
+        // Update existing assessment
+        const success = await assessmentService.updateAssessment(editingAssessment.id, {
+          title,
+          description,
+          start_time: new Date(startTime).toISOString(),
+          end_time: new Date(endTime).toISOString(),
+          duration_minutes: durationMinutes,
+          pass_percentage: passPercentage[0],
+          auto_submit: autoSubmit,
+          auto_evaluate: autoEvaluate,
+          shuffle_questions: shuffleQuestions,
+          show_results_immediately: showResultsImmediately,
+          allow_review_after_submission: allowReview,
+          certificate_template_id: certificateTemplateId,
+          status: isDraft ? 'draft' : 'published'
+        });
+
+        if (success) {
+          // Update questions - delete old and add new
+          const existingQuestions = await assessmentService.getQuestions(editingAssessment.id);
+          for (const q of existingQuestions) {
+            await assessmentService.deleteQuestion(q.id);
+          }
+          if (questions.length > 0) {
+            await assessmentService.addQuestions(editingAssessment.id, questions);
+          }
+
+          // Publish if not draft
+          if (!isDraft && publishing.length > 0) {
+            await assessmentService.publishAssessment(editingAssessment.id, publishing);
+          }
+
+          toast.success('Assessment updated successfully');
+        } else {
+          toast.error('Failed to update assessment');
+        }
+      } else {
+        // Create new assessment
+        const assessment = await assessmentService.createAssessment({
+          title,
+          description,
+          start_time: new Date(startTime).toISOString(),
+          end_time: new Date(endTime).toISOString(),
+          duration_minutes: durationMinutes,
+          pass_percentage: passPercentage[0],
+          auto_submit: autoSubmit,
+          auto_evaluate: autoEvaluate,
+          shuffle_questions: shuffleQuestions,
+          show_results_immediately: showResultsImmediately,
+          allow_review_after_submission: allowReview,
+          certificate_template_id: certificateTemplateId,
+          created_by: user?.id,
+          created_by_role: 'system_admin',
+          status: isDraft ? 'draft' : 'published'
+        });
+
+        if (assessment) {
+          // Add questions
+          if (questions.length > 0) {
+            await assessmentService.addQuestions(assessment.id, questions);
+          }
+
+          // Publish if not draft
+          if (!isDraft && publishing.length > 0) {
+            await assessmentService.publishAssessment(assessment.id, publishing);
+          }
+
+          toast.success(isDraft ? 'Assessment saved as draft' : 'Assessment created and published');
+        } else {
+          toast.error('Failed to create assessment');
+        }
+      }
+
+      // Reset form and reload
+      resetForm();
+      setActiveTab('all');
+      await loadAssessments();
+    } catch (error) {
+      console.error('Error saving assessment:', error);
+      toast.error('An error occurred while saving');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const resetForm = () => {
     setStep(1);
     setTitle('');
     setDescription('');
+    setDurationMinutes(30);
+    setStartTime('');
+    setEndTime('');
+    setPassPercentage([70]);
+    setAutoSubmit(true);
+    setAutoEvaluate(true);
+    setShuffleQuestions(false);
+    setShowResultsImmediately(true);
+    setAllowReview(true);
     setQuestions([]);
     setPublishing([]);
+    setCertificateTemplateId(undefined);
     setEditingAssessment(null);
-    setActiveTab('all');
   };
 
-  const handleEditAssessment = (assessment: Assessment) => {
+  const handleEditAssessment = async (assessment: Assessment) => {
     setEditingAssessment(assessment);
-    // Pre-fill form
     setTitle(assessment.title);
     setDescription(assessment.description);
     setDurationMinutes(assessment.duration_minutes);
-    setStartTime(assessment.start_time.slice(0, 16)); // Format for datetime-local
-    setEndTime(assessment.end_time.slice(0, 16));
+    setStartTime(new Date(assessment.start_time).toISOString().slice(0, 16));
+    setEndTime(new Date(assessment.end_time).toISOString().slice(0, 16));
     setPassPercentage([assessment.pass_percentage]);
     setAutoSubmit(assessment.auto_submit);
     setAutoEvaluate(assessment.auto_evaluate);
     setShuffleQuestions(assessment.shuffle_questions);
     setShowResultsImmediately(assessment.show_results_immediately);
     setAllowReview(assessment.allow_review_after_submission);
-    setQuestions(assessment.questions || []);
+    setCertificateTemplateId(assessment.certificate_template_id);
     setPublishing(assessment.published_to);
+
+    // Load questions
+    const loadedQuestions = await assessmentService.getQuestions(assessment.id);
+    setQuestions(loadedQuestions);
+
     setActiveTab('create');
     setStep(1);
+  };
+
+  const handleDeleteAssessment = async (assessmentId: string) => {
+    if (!confirm('Are you sure you want to delete this assessment?')) return;
+
+    const success = await assessmentService.deleteAssessment(assessmentId);
+    if (success) {
+      toast.success('Assessment deleted');
+      await loadAssessments();
+    } else {
+      toast.error('Failed to delete assessment');
+    }
+  };
+
+  const handlePublishConfirm = async (pub: AssessmentPublishing[]) => {
+    if (!selectedAssessment) return;
+    
+    const success = await assessmentService.publishAssessment(selectedAssessment.id, pub);
+    if (success) {
+      toast.success('Assessment published');
+      await loadAssessments();
+    } else {
+      toast.error('Failed to publish assessment');
+    }
   };
 
   return (
@@ -194,82 +342,101 @@ export default function AssessmentManagement() {
             </div>
 
             {/* Assessment Grid */}
-            <div className="grid gap-4">
-              {filteredAssessments.map((assessment) => {
-                const currentStatus = getAssessmentStatus(assessment);
-                const totalInstitutions = assessment.published_to.length;
-                const totalClasses = assessment.published_to.reduce((sum, pub) => sum + pub.class_ids.length, 0);
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredAssessments.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                No assessments found. Create your first assessment!
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {filteredAssessments.map((assessment) => {
+                  const currentStatus = getAssessmentStatus(assessment);
+                  const totalInstitutions = assessment.published_to.length;
+                  const totalClasses = assessment.published_to.reduce((sum, pub) => sum + pub.class_ids.length, 0);
 
-                return (
-                  <Card key={assessment.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 space-y-3">
-                          <div>
-                            <div className="flex items-center gap-3">
-                              <h3 className="text-lg font-semibold">{assessment.title}</h3>
-                              <AssessmentStatusBadge status={currentStatus} />
+                  return (
+                    <Card key={assessment.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 space-y-3">
+                            <div>
+                              <div className="flex items-center gap-3">
+                                <h3 className="text-lg font-semibold">{assessment.title}</h3>
+                                <AssessmentStatusBadge status={currentStatus} />
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1">{assessment.description}</p>
                             </div>
-                            <p className="text-sm text-muted-foreground mt-1">{assessment.description}</p>
+
+                            <div className="flex flex-wrap gap-4 text-sm">
+                              <div className="flex items-center gap-1">
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                <span>{assessment.question_count} questions</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Award className="h-4 w-4 text-muted-foreground" />
+                                <span>{assessment.total_points} points</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-4 w-4 text-muted-foreground" />
+                                <span>{formatDuration(assessment.duration_minutes)}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Users className="h-4 w-4 text-muted-foreground" />
+                                <span>{totalInstitutions} institutions, {totalClasses} classes</span>
+                              </div>
+                            </div>
                           </div>
 
-                          <div className="flex flex-wrap gap-4 text-sm">
-                            <div className="flex items-center gap-1">
-                              <FileText className="h-4 w-4 text-muted-foreground" />
-                              <span>{assessment.question_count} questions</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Award className="h-4 w-4 text-muted-foreground" />
-                              <span>{assessment.total_points} points</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-4 w-4 text-muted-foreground" />
-                              <span>{formatDuration(assessment.duration_minutes)}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Users className="h-4 w-4 text-muted-foreground" />
-                              <span>{totalInstitutions} institutions, {totalClasses} classes</span>
-                            </div>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => { 
+                                setSelectedAssessment(assessment); 
+                                setViewDialogOpen(true); 
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleEditAssessment(assessment)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => handleDeleteAssessment(assessment.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
                           </div>
                         </div>
-
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => { 
-                              setSelectedAssessment(assessment); 
-                              setViewDialogOpen(true); 
-                            }}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleEditAssessment(assessment)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon">
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="create" className="space-y-6">
             {editingAssessment && (
               <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
                 <CardContent className="pt-6">
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    Editing: <strong>{editingAssessment.title}</strong>
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      Editing: <strong>{editingAssessment.title}</strong>
+                    </p>
+                    <Button variant="outline" size="sm" onClick={resetForm}>
+                      Cancel Edit
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -295,11 +462,11 @@ export default function AssessmentManagement() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label>Title *</Label>
-                    <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+                    <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter assessment title" />
                   </div>
                   <div className="space-y-2">
                     <Label>Description *</Label>
-                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Describe the assessment" />
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
@@ -322,7 +489,7 @@ export default function AssessmentManagement() {
                     onSelect={setCertificateTemplateId}
                   />
 
-                  <Button onClick={() => setStep(2)}>Next</Button>
+                  <Button onClick={() => setStep(2)} disabled={!title || !startTime || !endTime}>Next</Button>
                 </CardContent>
               </Card>
             )}
@@ -337,11 +504,11 @@ export default function AssessmentManagement() {
                     <Slider value={passPercentage} onValueChange={setPassPercentage} max={100} step={5} />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label>Auto Submit</Label>
+                    <Label>Auto Submit (when time expires)</Label>
                     <Switch checked={autoSubmit} onCheckedChange={setAutoSubmit} />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label>Auto Evaluate</Label>
+                    <Label>Auto Evaluate (calculate score automatically)</Label>
                     <Switch checked={autoEvaluate} onCheckedChange={setAutoEvaluate} />
                   </div>
                   <div className="flex items-center justify-between">
@@ -351,6 +518,10 @@ export default function AssessmentManagement() {
                   <div className="flex items-center justify-between">
                     <Label>Show Results Immediately</Label>
                     <Switch checked={showResultsImmediately} onCheckedChange={setShowResultsImmediately} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label>Allow Review After Submission</Label>
+                    <Switch checked={allowReview} onCheckedChange={setAllowReview} />
                   </div>
                   <div className="flex gap-3">
                     <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
@@ -452,11 +623,14 @@ export default function AssessmentManagement() {
                   </div>
                   <div className="flex gap-3">
                     <Button variant="outline" onClick={() => setStep(4)}>Back</Button>
-                    <Button onClick={() => handleCreateAssessment(false)}>
+                    <Button onClick={() => handleCreateAssessment(false)} disabled={isSaving}>
+                      {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                       {editingAssessment ? 'Update Assessment' : 'Create Assessment'}
                     </Button>
                     {!editingAssessment && (
-                      <Button variant="outline" onClick={() => handleCreateAssessment(true)}>Save as Draft</Button>
+                      <Button variant="outline" onClick={() => handleCreateAssessment(true)} disabled={isSaving}>
+                        Save as Draft
+                      </Button>
                     )}
                   </div>
                 </CardContent>
@@ -474,14 +648,14 @@ export default function AssessmentManagement() {
             assessmentId={selectedAssessment.id}
             assessmentTitle={selectedAssessment.title}
             currentPublishing={selectedAssessment.published_to}
-            onConfirm={(pub) => toast.success('Assessment published')}
+            onConfirm={handlePublishConfirm}
           />
           <DuplicateAssessmentDialog
             open={duplicateDialogOpen}
             onOpenChange={setDuplicateDialogOpen}
             assessmentId={selectedAssessment.id}
             assessmentTitle={selectedAssessment.title}
-            onConfirm={() => toast.success('Assessment duplicated')}
+            onConfirm={() => { toast.success('Assessment duplicated'); loadAssessments(); }}
           />
         </>
       )}
