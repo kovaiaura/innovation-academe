@@ -325,6 +325,12 @@ export const leaveApplicationService = {
     // Send notification to first approver
     try {
       await leaveNotificationService.notifyApproverOnSubmission(result);
+      
+      // Notify substitutes about their assignment
+      if (result.substitute_assignments && result.substitute_assignments.length > 0) {
+        await leaveNotificationService.notifySubstitutesOnAssignment(result);
+        await leaveNotificationService.notifyApproversAboutSubstitutes(result);
+      }
     } catch (notifError) {
       console.error('Failed to send submission notification:', notifError);
     }

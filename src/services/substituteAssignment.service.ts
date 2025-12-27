@@ -176,21 +176,80 @@ export const substituteAssignmentService = {
     periodId: string,
     excludeOfficerId: string
   ): Promise<AvailableSubstitute[]> => {
-    // Get all officers assigned to this institution
-    const { data: officers, error } = await supabase
+    const allSubstitutes: AvailableSubstitute[] = [];
+    const seenUserIds = new Set<string>();
+
+    // 1. Get officers assigned to this institution
+    const { data: officers, error: officerError } = await supabase
       .from('officers')
       .select('id, full_name, user_id, skills')
       .contains('assigned_institutions', [institutionId])
       .eq('status', 'active')
       .neq('id', excludeOfficerId);
 
-    if (error || !officers) return [];
+    if (!officerError && officers) {
+      for (const officer of officers) {
+        if (officer.user_id && !seenUserIds.has(officer.user_id)) {
+          seenUserIds.add(officer.user_id);
+          allSubstitutes.push({
+            officer_id: officer.id,
+            officer_name: officer.full_name,
+            user_id: officer.user_id,
+            skills: (officer.skills as string[]) || [],
+            is_available: true
+          });
+        }
+      }
+    }
 
-    // Normalize the day for comparison
+    // 2. Get staff from profiles with positions (like CEO, Project Manager, etc.)
+    // Exclude management role users
+    const { data: managementRoles } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .eq('role', 'management');
+
+    const managementUserIds = new Set(managementRoles?.map(r => r.user_id) || []);
+
+    const { data: staffProfiles, error: profileError } = await supabase
+      .from('profiles')
+      .select(`
+        id,
+        name,
+        position_id,
+        positions:position_id (
+          id,
+          display_name,
+          position_name
+        )
+      `)
+      .not('position_id', 'is', null);
+
+    if (!profileError && staffProfiles) {
+      for (const profile of staffProfiles) {
+        // Skip if already added via officers table
+        if (seenUserIds.has(profile.id)) continue;
+        // Skip management users
+        if (managementUserIds.has(profile.id)) continue;
+
+        const position = profile.positions as unknown as { id: string; display_name: string; position_name: string } | null;
+        
+        if (position) {
+          seenUserIds.add(profile.id);
+          allSubstitutes.push({
+            officer_id: profile.id, // Using profile id as officer_id for staff
+            officer_name: `${profile.name} (${position.display_name || position.position_name})`,
+            user_id: profile.id,
+            skills: [],
+            is_available: true
+          });
+        }
+      }
+    }
+
+    // 3. Check availability based on timetable conflicts
     const normalizedDay = normalizeDay(day);
 
-    // Check which officers have conflicting slots at this time
-    // An officer is busy if they are primary, secondary, or backup for any slot at this time
     const { data: conflictingAssignments } = await supabase
       .from('institution_timetable_assignments')
       .select('teacher_id, secondary_officer_id, backup_officer_id, day')
@@ -201,21 +260,17 @@ export const substituteAssignmentService = {
     
     if (conflictingAssignments) {
       for (const a of conflictingAssignments) {
-        // Check if the day matches (normalized)
         if (normalizeDay(a.day) !== normalizedDay) continue;
-        
         if (a.teacher_id) busyOfficerIds.add(a.teacher_id);
         if (a.secondary_officer_id) busyOfficerIds.add(a.secondary_officer_id);
         if (a.backup_officer_id) busyOfficerIds.add(a.backup_officer_id);
       }
     }
 
-    return officers.map(officer => ({
-      officer_id: officer.id,
-      officer_name: officer.full_name,
-      user_id: officer.user_id,
-      skills: (officer.skills as string[]) || [],
-      is_available: !busyOfficerIds.has(officer.id)
+    // Update availability based on conflicts
+    return allSubstitutes.map(sub => ({
+      ...sub,
+      is_available: !busyOfficerIds.has(sub.officer_id)
     }));
   },
 

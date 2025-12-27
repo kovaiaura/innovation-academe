@@ -413,7 +413,8 @@ export function Sidebar() {
               <div className="px-4 pb-2 flex justify-end">
                 <NotificationBell 
                   userId={user.id} 
-                  userRole={user.role} 
+                  userRole={user.role}
+                  notificationsPath={getFullPath('/notifications')}
                 />
               </div>
             )}
