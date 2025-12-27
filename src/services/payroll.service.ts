@@ -53,6 +53,24 @@ export interface DailyAttendanceRecord {
   notes?: string;
 }
 
+export interface CalendarDayData {
+  date: string;
+  dayOfMonth: number;
+  isWeekend: boolean;
+  isHoliday: boolean;
+  holidayName?: string;
+  isToday: boolean;
+  isFuture: boolean;
+  attendance: {
+    present: number;
+    absent: number;
+    late: number;
+    leave: number;
+    noPay: number;
+  };
+  records: DailyAttendanceRecord[];
+}
+
 export interface OvertimeRequest {
   id: string;
   user_id: string;
@@ -91,9 +109,147 @@ export const calculateLOPDeduction = (monthlySalary: number, lopDays: number): n
   return perDaySalary * lopDays;
 };
 
-// Fetch all employees (officers + staff with positions) - excludes CEO
-export const fetchAllEmployees = async (): Promise<EmployeePayrollSummary[]> => {
+// Helper: Get working days for a month (or from join date)
+export const getWorkingDaysInMonth = (year: number, month: number, fromDate?: Date): string[] => {
+  const startDate = new Date(year, month - 1, 1);
+  const endDate = new Date(year, month, 0);
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  
+  const workingDays: string[] = [];
+  
+  for (let d = new Date(startDate); d <= endDate && d <= today; d.setDate(d.getDate() + 1)) {
+    const dayOfWeek = d.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday or Saturday
+      // If fromDate is provided, only count days from that date
+      if (!fromDate || d >= fromDate) {
+        workingDays.push(d.toISOString().split('T')[0]);
+      }
+    }
+  }
+  
+  return workingDays;
+};
+
+// Fetch attendance days count for an employee
+export const getAttendanceDaysCount = async (
+  userId: string,
+  userType: 'officer' | 'staff',
+  officerId: string | undefined,
+  month: number,
+  year: number
+): Promise<{ daysPresent: number; attendanceDates: Set<string>; totalHours: number }> => {
+  const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
+  const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+  
+  let daysPresent = 0;
+  let totalHours = 0;
+  const attendanceDates = new Set<string>();
+  
+  if (userType === 'officer' && officerId) {
+    const { data } = await supabase
+      .from('officer_attendance')
+      .select('date, status, total_hours_worked')
+      .eq('officer_id', officerId)
+      .gte('date', startDate)
+      .lte('date', endDate);
+    
+    if (data) {
+      for (const record of data) {
+        if (record.status === 'checked_out' || record.status === 'checked_in' || record.status === 'present') {
+          daysPresent++;
+          attendanceDates.add(record.date);
+          totalHours += record.total_hours_worked || 0;
+        }
+      }
+    }
+  } else {
+    const { data } = await supabase
+      .from('staff_attendance')
+      .select('date, status, total_hours_worked')
+      .eq('user_id', userId)
+      .gte('date', startDate)
+      .lte('date', endDate);
+    
+    if (data) {
+      for (const record of data) {
+        if (record.status === 'checked_out' || record.status === 'checked_in' || record.status === 'present') {
+          daysPresent++;
+          attendanceDates.add(record.date);
+          totalHours += record.total_hours_worked || 0;
+        }
+      }
+    }
+  }
+  
+  return { daysPresent, attendanceDates, totalHours };
+};
+
+// Get approved leave days
+export const getApprovedLeaveDays = async (
+  userId: string,
+  month: number,
+  year: number
+): Promise<{ leaveDays: number; leaveDates: Set<string> }> => {
+  const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
+  const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+  
+  const { data: leaveRecords } = await supabase
+    .from('leave_applications')
+    .select('start_date, end_date, is_lop')
+    .eq('applicant_id', userId)
+    .eq('status', 'approved')
+    .or(`start_date.gte.${startDate},end_date.lte.${endDate}`);
+  
+  const leaveDates = new Set<string>();
+  
+  if (leaveRecords) {
+    for (const leave of leaveRecords) {
+      const start = new Date(leave.start_date);
+      const end = new Date(leave.end_date);
+      const monthStart = new Date(year, month - 1, 1);
+      const monthEnd = new Date(year, month, 0);
+      
+      const loopStart = start.getTime() > monthStart.getTime() ? start : monthStart;
+      const loopEnd = end.getTime() < monthEnd.getTime() ? end : monthEnd;
+      
+      for (let d = new Date(loopStart); d <= loopEnd; d.setDate(d.getDate() + 1)) {
+        leaveDates.add(d.toISOString().split('T')[0]);
+      }
+    }
+  }
+  
+  return { leaveDays: leaveDates.size, leaveDates };
+};
+
+// Get holidays
+export const getHolidaysInMonth = async (month: number, year: number): Promise<Set<string>> => {
+  const { data: holidays } = await supabase
+    .from('company_holidays')
+    .select('date')
+    .eq('year', year);
+  
+  const holidayDates = new Set<string>();
+  if (holidays) {
+    for (const h of holidays) {
+      const hMonth = new Date(h.date).getMonth() + 1;
+      if (hMonth === month) {
+        holidayDates.add(h.date);
+      }
+    }
+  }
+  
+  return holidayDates;
+};
+
+// Fetch all employees with REAL attendance data
+export const fetchAllEmployees = async (month?: number, year?: number): Promise<EmployeePayrollSummary[]> => {
   const employees: EmployeePayrollSummary[] = [];
+  const currentMonth = month || new Date().getMonth() + 1;
+  const currentYear = year || new Date().getFullYear();
+  
+  // Get holidays once
+  const holidays = await getHolidaysInMonth(currentMonth, currentYear);
   
   try {
     // 1. Fetch all officers with join date
@@ -119,6 +275,38 @@ export const fetchAllEmployees = async (): Promise<EmployeePayrollSummary[]> => 
     if (officers) {
       for (const officer of officers) {
         const monthlySalary = (officer.annual_salary || 0) / 12;
+        const joinDate = officer.join_date ? new Date(officer.join_date) : undefined;
+        
+        // Get actual attendance data
+        const { daysPresent, attendanceDates, totalHours } = await getAttendanceDaysCount(
+          officer.user_id || officer.id, 
+          'officer', 
+          officer.id, 
+          currentMonth, 
+          currentYear
+        );
+        
+        // Get approved leave
+        const { leaveDays, leaveDates } = await getApprovedLeaveDays(
+          officer.user_id || officer.id, 
+          currentMonth, 
+          currentYear
+        );
+        
+        // Calculate working days from join date
+        const workingDays = getWorkingDaysInMonth(currentYear, currentMonth, joinDate);
+        const workingDaysExcludingHolidays = workingDays.filter(d => !holidays.has(d));
+        
+        // Calculate LOP: Working days - Present days - Leave days - Holidays
+        const coveredDays = new Set([...attendanceDates, ...leaveDates]);
+        const lopDays = workingDaysExcludingHolidays.filter(d => !coveredDays.has(d)).length;
+        
+        // Calculate net pay
+        const perDaySalary = calculatePerDaySalary(monthlySalary);
+        const proratedSalary = perDaySalary * workingDaysExcludingHolidays.length;
+        const lopDeduction = perDaySalary * lopDays;
+        const netPay = proratedSalary - lopDeduction;
+        
         employees.push({
           user_id: officer.user_id || officer.id,
           user_type: 'officer',
@@ -129,25 +317,24 @@ export const fetchAllEmployees = async (): Promise<EmployeePayrollSummary[]> => 
           institution_id: officer.assigned_institutions?.[0],
           join_date: officer.join_date || undefined,
           monthly_salary: monthlySalary,
-          per_day_salary: calculatePerDaySalary(monthlySalary),
-          days_present: 0,
-          days_absent: 0,
-          days_leave: 0,
-          days_lop: 0,
-          uninformed_leave_days: 0,
+          per_day_salary: perDaySalary,
+          days_present: daysPresent,
+          days_absent: lopDays,
+          days_leave: leaveDays,
+          days_lop: lopDays,
+          uninformed_leave_days: lopDays,
           overtime_hours: 0,
           overtime_pending_approval: 0,
-          total_hours_worked: 0,
-          gross_salary: monthlySalary,
-          total_deductions: 0,
-          net_pay: monthlySalary,
+          total_hours_worked: totalHours,
+          gross_salary: proratedSalary,
+          total_deductions: lopDeduction,
+          net_pay: netPay,
           payroll_status: 'draft'
         });
       }
     }
     
-    // 2. Fetch ALL staff with positions (from profiles) - includes those without institution_id
-    // This ensures Saran and other staff assigned via Position Management are included
+    // 2. Fetch ALL staff with positions (from profiles)
     const { data: staffProfiles, error: profileError } = await supabase
       .from('profiles')
       .select(`
@@ -179,11 +366,38 @@ export const fetchAllEmployees = async (): Promise<EmployeePayrollSummary[]> => 
         
         const position = profile.positions as unknown as { display_name: string; position_name: string; is_ceo_position?: boolean } | null;
         
-        // Skip CEO - they manage payroll, not their own
+        // Skip CEO
         if (profile.is_ceo || position?.is_ceo_position) continue;
         
         const hourlyRate = profile.hourly_rate || 500;
-        const monthlySalary = hourlyRate * 8 * 22; // Estimate: hourly rate * 8hrs/day * 22 working days
+        const monthlySalary = hourlyRate * 8 * 22;
+        const joinDate = profile.join_date ? new Date(profile.join_date) : undefined;
+        
+        // Get actual attendance data
+        const { daysPresent, attendanceDates, totalHours } = await getAttendanceDaysCount(
+          profile.id, 
+          'staff', 
+          undefined, 
+          currentMonth, 
+          currentYear
+        );
+        
+        // Get approved leave
+        const { leaveDays, leaveDates } = await getApprovedLeaveDays(profile.id, currentMonth, currentYear);
+        
+        // Calculate working days from join date
+        const workingDays = getWorkingDaysInMonth(currentYear, currentMonth, joinDate);
+        const workingDaysExcludingHolidays = workingDays.filter(d => !holidays.has(d));
+        
+        // Calculate LOP
+        const coveredDays = new Set([...attendanceDates, ...leaveDates]);
+        const lopDays = workingDaysExcludingHolidays.filter(d => !coveredDays.has(d)).length;
+        
+        // Calculate net pay
+        const perDaySalary = calculatePerDaySalary(monthlySalary);
+        const proratedSalary = perDaySalary * workingDaysExcludingHolidays.length;
+        const lopDeduction = perDaySalary * lopDays;
+        const netPay = proratedSalary - lopDeduction;
         
         employees.push({
           user_id: profile.id,
@@ -195,18 +409,18 @@ export const fetchAllEmployees = async (): Promise<EmployeePayrollSummary[]> => 
           institution_id: profile.institution_id || undefined,
           join_date: profile.join_date || undefined,
           monthly_salary: monthlySalary,
-          per_day_salary: calculatePerDaySalary(monthlySalary),
-          days_present: 0,
-          days_absent: 0,
-          days_leave: 0,
-          days_lop: 0,
-          uninformed_leave_days: 0,
+          per_day_salary: perDaySalary,
+          days_present: daysPresent,
+          days_absent: lopDays,
+          days_leave: leaveDays,
+          days_lop: lopDays,
+          uninformed_leave_days: lopDays,
           overtime_hours: 0,
           overtime_pending_approval: 0,
-          total_hours_worked: 0,
-          gross_salary: monthlySalary,
-          total_deductions: 0,
-          net_pay: monthlySalary,
+          total_hours_worked: totalHours,
+          gross_salary: proratedSalary,
+          total_deductions: lopDeduction,
+          net_pay: netPay,
           payroll_status: 'draft',
           is_ceo: false
         });
@@ -222,7 +436,7 @@ export const fetchAllEmployees = async (): Promise<EmployeePayrollSummary[]> => 
 
 // Fetch payroll dashboard stats
 export const fetchPayrollDashboardStats = async (month: number, year: number): Promise<PayrollDashboardStats> => {
-  const employees = await fetchAllEmployees();
+  const employees = await fetchAllEmployees(month, year);
   
   // Fetch overtime requests
   const { data: overtimeRequests } = await supabase
@@ -233,9 +447,10 @@ export const fetchPayrollDashboardStats = async (month: number, year: number): P
   const pendingOvertimeRequests = overtimeRequests?.length || 0;
   const totalOvertimeHours = overtimeRequests?.reduce((sum, r) => sum + (r.requested_hours || 0), 0) || 0;
   
-  // Calculate totals
-  const totalPayrollCost = employees.reduce((sum, e) => sum + e.monthly_salary, 0);
-  const totalLopDeductions = employees.reduce((sum, e) => sum + calculateLOPDeduction(e.monthly_salary, e.days_lop), 0);
+  // Calculate totals from real data
+  const totalPayrollCost = employees.reduce((sum, e) => sum + e.net_pay, 0);
+  const totalLopDeductions = employees.reduce((sum, e) => sum + e.total_deductions, 0);
+  const uninformedLeaveCount = employees.reduce((sum, e) => sum + e.days_lop, 0);
   
   return {
     total_employees: employees.length,
@@ -244,7 +459,7 @@ export const fetchPayrollDashboardStats = async (month: number, year: number): P
     pending_overtime_requests: pendingOvertimeRequests,
     total_lop_deductions: totalLopDeductions,
     pending_payroll_count: 0,
-    uninformed_leave_count: 0
+    uninformed_leave_count: uninformedLeaveCount
   };
 };
 
@@ -288,11 +503,8 @@ export const fetchDailyAttendance = async (
       for (const record of officerAttendance) {
         const officer = record.officers as unknown as { full_name: string; user_id: string } | null;
         
-        // Check for late check-in (after 9:30 AM)
         const checkInTime = record.check_in_time ? new Date(record.check_in_time) : null;
         const isLate = checkInTime ? checkInTime.getHours() > 9 || (checkInTime.getHours() === 9 && checkInTime.getMinutes() > 30) : false;
-        
-        // Check for missed checkout
         const missedCheckout = record.check_in_time && !record.check_out_time && record.status !== 'checked_in';
         
         records.push({
@@ -341,7 +553,6 @@ export const fetchDailyAttendance = async (
     }
     
     if (staffAttendance) {
-      // Get user names
       const userIds = staffAttendance.map(s => s.user_id);
       const { data: profiles } = await supabase
         .from('profiles')
@@ -383,6 +594,79 @@ export const fetchDailyAttendance = async (
   }
 };
 
+// Fetch calendar data for a month
+export const fetchCalendarData = async (month: number, year: number): Promise<CalendarDayData[]> => {
+  const calendarDays: CalendarDayData[] = [];
+  const startDate = new Date(year, month - 1, 1);
+  const endDate = new Date(year, month, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // Get all attendance for the month
+  const startDateStr = startDate.toISOString().split('T')[0];
+  const endDateStr = endDate.toISOString().split('T')[0];
+  const allRecords = await fetchDailyAttendance(startDateStr, endDateStr);
+  
+  // Get holidays
+  const { data: holidays } = await supabase
+    .from('company_holidays')
+    .select('date, name')
+    .eq('year', year);
+  
+  const holidayMap = new Map(holidays?.map(h => [h.date, h.name]) || []);
+  
+  // Get all employees for "absent" calculation
+  const employees = await fetchAllEmployees(month, year);
+  const employeeCount = employees.length;
+  
+  // Build calendar data for each day
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const dateStr = d.toISOString().split('T')[0];
+    const dayOfWeek = d.getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const isHoliday = holidayMap.has(dateStr);
+    const isToday = d.getTime() === today.getTime();
+    const isFuture = d > today;
+    
+    // Get records for this day
+    const dayRecords = allRecords.filter(r => r.date === dateStr);
+    
+    // Calculate counts
+    const presentCount = dayRecords.filter(r => 
+      r.status === 'checked_out' || r.status === 'checked_in' || r.status === 'present'
+    ).length;
+    const lateCount = dayRecords.filter(r => r.is_late).length;
+    const leaveCount = dayRecords.filter(r => r.status === 'leave').length;
+    const noPayCount = dayRecords.filter(r => r.status === 'no_pay').length;
+    
+    // Absent = employees who should have been present but weren't
+    let absentCount = 0;
+    if (!isWeekend && !isHoliday && !isFuture) {
+      absentCount = Math.max(0, employeeCount - presentCount - leaveCount);
+    }
+    
+    calendarDays.push({
+      date: dateStr,
+      dayOfMonth: d.getDate(),
+      isWeekend,
+      isHoliday,
+      holidayName: holidayMap.get(dateStr),
+      isToday,
+      isFuture,
+      attendance: {
+        present: presentCount,
+        absent: absentCount,
+        late: lateCount,
+        leave: leaveCount,
+        noPay: noPayCount
+      },
+      records: dayRecords
+    });
+  }
+  
+  return calendarDays;
+};
+
 // Detect uninformed leave (days without check-in and no approved leave)
 export const detectUninformedLeave = async (
   userId: string,
@@ -393,17 +677,9 @@ export const detectUninformedLeave = async (
   const uninformedDays: string[] = [];
   
   try {
-    // Get all working days in the month (excluding weekends)
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
-    const workingDays: string[] = [];
-    
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      const dayOfWeek = d.getDay();
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday or Saturday
-        workingDays.push(d.toISOString().split('T')[0]);
-      }
-    }
+    const workingDays = getWorkingDaysInMonth(year, month);
     
     // Get days with attendance
     let attendanceDays = new Set<string>();
@@ -427,40 +703,16 @@ export const detectUninformedLeave = async (
     }
     
     // Get days with approved leave
-    const { data: leaveRecords } = await supabase
-      .from('leave_applications')
-      .select('start_date, end_date')
-      .eq('applicant_id', userId)
-      .eq('status', 'approved')
-      .gte('start_date', startDate.toISOString().split('T')[0])
-      .lte('end_date', endDate.toISOString().split('T')[0]);
-    
-    const leaveDays = new Set<string>();
-    if (leaveRecords) {
-      for (const leave of leaveRecords) {
-        const start = new Date(leave.start_date);
-        const end = new Date(leave.end_date);
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          leaveDays.add(d.toISOString().split('T')[0]);
-        }
-      }
-    }
+    const { leaveDates } = await getApprovedLeaveDays(userId, month, year);
     
     // Get company holidays
-    const { data: holidays } = await supabase
-      .from('company_holidays')
-      .select('date')
-      .eq('year', year);
-    
-    const holidayDays = new Set(holidays?.map(h => h.date) || []);
+    const holidays = await getHolidaysInMonth(month, year);
     
     // Find uninformed days
-    const today = new Date().toISOString().split('T')[0];
     for (const day of workingDays) {
-      if (day >= today) continue; // Skip future dates
       if (attendanceDays.has(day)) continue;
-      if (leaveDays.has(day)) continue;
-      if (holidayDays.has(day)) continue;
+      if (leaveDates.has(day)) continue;
+      if (holidays.has(day)) continue;
       uninformedDays.push(day);
     }
     
@@ -492,7 +744,6 @@ export const fetchOvertimeRequests = async (
       return [];
     }
     
-    // Get user names
     const userIds = data?.map(r => r.user_id) || [];
     const { data: profiles } = await supabase
       .from('profiles')
@@ -585,6 +836,79 @@ export const rejectOvertimeRequest = async (
     return true;
   } catch (error) {
     console.error('Error rejecting overtime request:', error);
+    return false;
+  }
+};
+
+// Create attendance record for a missing day
+export const createAttendanceRecord = async (
+  userId: string,
+  userType: 'officer' | 'staff',
+  date: string,
+  status: string,
+  checkInTime?: string,
+  checkOutTime?: string,
+  notes?: string,
+  institutionId?: string
+): Promise<boolean> => {
+  try {
+    const recordData: Record<string, any> = {
+      date,
+      status,
+      notes: notes || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    if (checkInTime) {
+      recordData.check_in_time = new Date(`${date}T${checkInTime}:00`).toISOString();
+    }
+    
+    if (checkOutTime) {
+      recordData.check_out_time = new Date(`${date}T${checkOutTime}:00`).toISOString();
+      
+      if (checkInTime) {
+        const checkIn = new Date(`${date}T${checkInTime}:00`);
+        const checkOut = new Date(`${date}T${checkOutTime}:00`);
+        recordData.total_hours_worked = Math.max(0, (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60));
+      }
+    }
+    
+    if (userType === 'officer') {
+      // Need to get officer_id from user_id
+      const { data: officer } = await supabase
+        .from('officers')
+        .select('id, assigned_institutions')
+        .eq('user_id', userId)
+        .single();
+      
+      if (!officer) {
+        console.error('Officer not found for user:', userId);
+        return false;
+      }
+      
+      const officerRecordData = {
+        ...recordData,
+        officer_id: officer.id,
+        institution_id: institutionId || officer.assigned_institutions?.[0]
+      };
+      
+      const { error } = await supabase.from('officer_attendance').insert(officerRecordData);
+      if (error) throw error;
+    } else {
+      const staffRecordData = {
+        ...recordData,
+        user_id: userId,
+        institution_id: institutionId || undefined
+      };
+      
+      const { error } = await supabase.from('staff_attendance').insert(staffRecordData);
+      if (error) throw error;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error creating attendance record:', error);
     return false;
   }
 };

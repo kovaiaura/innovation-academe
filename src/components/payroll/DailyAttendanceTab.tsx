@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Search, CalendarIcon, Clock, MapPin, 
-  AlertTriangle, XCircle, User, Edit2, DollarSign
+  AlertTriangle, XCircle, User, Edit2, DollarSign, LayoutGrid, List
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -18,13 +19,15 @@ import {
   DailyAttendanceRecord 
 } from '@/services/payroll.service';
 import { EditAttendanceDialog } from './EditAttendanceDialog';
+import { AttendanceCalendar } from './AttendanceCalendar';
 
 interface DailyAttendanceTabProps {
   month: number;
   year: number;
+  onMonthChange?: (month: number, year: number) => void;
 }
 
-export function DailyAttendanceTab({ month, year }: DailyAttendanceTabProps) {
+export function DailyAttendanceTab({ month, year, onMonthChange }: DailyAttendanceTabProps) {
   const [attendanceRecords, setAttendanceRecords] = useState<DailyAttendanceRecord[]>([]);
   const [filteredRecords, setFilteredRecords] = useState<DailyAttendanceRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,6 +36,9 @@ export function DailyAttendanceTab({ month, year }: DailyAttendanceTabProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<DailyAttendanceRecord | null>(null);
+  const [viewMode, setViewMode] = useState<'calendar' | 'table'>('calendar');
+  const [currentMonth, setCurrentMonth] = useState(month);
+  const [currentYear, setCurrentYear] = useState(year);
 
   useEffect(() => {
     loadAttendance();
@@ -150,13 +156,41 @@ export function DailyAttendanceTab({ month, year }: DailyAttendanceTabProps) {
     setEditDialogOpen(true);
   };
 
+  const handleMonthChange = (newMonth: number, newYear: number) => {
+    setCurrentMonth(newMonth);
+    setCurrentYear(newYear);
+    onMonthChange?.(newMonth, newYear);
+  };
+
   return (
     <>
+      <div className="flex items-center gap-2 mb-4">
+        <Button
+          variant={viewMode === 'calendar' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setViewMode('calendar')}
+        >
+          <LayoutGrid className="h-4 w-4 mr-2" />
+          Calendar View
+        </Button>
+        <Button
+          variant={viewMode === 'table' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setViewMode('table')}
+        >
+          <List className="h-4 w-4 mr-2" />
+          Table View
+        </Button>
+      </div>
+
+      {viewMode === 'calendar' ? (
+        <AttendanceCalendar 
+          month={currentMonth} 
+          year={currentYear} 
+          onMonthChange={handleMonthChange}
+        />
+      ) : (
       <Card>
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <CardTitle>Daily Attendance Log</CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 Check-in/out times with location • Edit to correct missed entries • No Pay = LOP deduction
               </p>
@@ -337,6 +371,7 @@ export function DailyAttendanceTab({ month, year }: DailyAttendanceTabProps) {
           )}
         </CardContent>
       </Card>
+      )}
 
       <EditAttendanceDialog
         open={editDialogOpen}
