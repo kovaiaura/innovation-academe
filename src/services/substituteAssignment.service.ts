@@ -179,7 +179,24 @@ export const substituteAssignmentService = {
     const allSubstitutes: AvailableSubstitute[] = [];
     const seenUserIds = new Set<string>();
 
-    // 1. Get officers assigned to this institution
+    // 1. Get the user_id of the applying officer to exclude from profiles
+    const { data: applyingOfficer } = await supabase
+      .from('officers')
+      .select('user_id')
+      .eq('id', excludeOfficerId)
+      .single();
+
+    const excludeUserId = applyingOfficer?.user_id;
+
+    // 2. Get management role user IDs to exclude
+    const { data: managementRoles } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .eq('role', 'management');
+
+    const managementUserIds = new Set(managementRoles?.map(r => r.user_id) || []);
+
+    // 3. Get officers assigned to this institution (excluding the applying officer)
     const { data: officers, error: officerError } = await supabase
       .from('officers')
       .select('id, full_name, user_id, skills')
@@ -189,6 +206,9 @@ export const substituteAssignmentService = {
 
     if (!officerError && officers) {
       for (const officer of officers) {
+        // Skip management users
+        if (officer.user_id && managementUserIds.has(officer.user_id)) continue;
+        
         if (officer.user_id && !seenUserIds.has(officer.user_id)) {
           seenUserIds.add(officer.user_id);
           allSubstitutes.push({
@@ -202,52 +222,65 @@ export const substituteAssignmentService = {
       }
     }
 
-    // 2. Get staff from profiles with positions (like CEO, Project Manager, etc.)
-    // Exclude management role users
-    const { data: managementRoles } = await supabase
-      .from('user_roles')
-      .select('user_id')
-      .eq('role', 'management');
-
-    const managementUserIds = new Set(managementRoles?.map(r => r.user_id) || []);
-
+    // 4. Get ALL profiles from this institution (not just those with positions)
     const { data: staffProfiles, error: profileError } = await supabase
       .from('profiles')
       .select(`
         id,
         name,
         position_id,
+        institution_id,
         positions:position_id (
           id,
           display_name,
           position_name
         )
       `)
-      .not('position_id', 'is', null);
+      .eq('institution_id', institutionId);
+
+    // 5. Get user roles for these profiles to show in dropdown
+    const profileIds = staffProfiles?.map(p => p.id) || [];
+    const { data: userRoles } = await supabase
+      .from('user_roles')
+      .select('user_id, role')
+      .in('user_id', profileIds);
+
+    const roleMap = new Map(userRoles?.map(r => [r.user_id, r.role]) || []);
 
     if (!profileError && staffProfiles) {
       for (const profile of staffProfiles) {
+        // Skip the applying officer by user_id
+        if (excludeUserId && profile.id === excludeUserId) continue;
         // Skip if already added via officers table
         if (seenUserIds.has(profile.id)) continue;
         // Skip management users
         if (managementUserIds.has(profile.id)) continue;
 
         const position = profile.positions as unknown as { id: string; display_name: string; position_name: string } | null;
+        const role = roleMap.get(profile.id);
         
-        if (position) {
-          seenUserIds.add(profile.id);
-          allSubstitutes.push({
-            officer_id: profile.id, // Using profile id as officer_id for staff
-            officer_name: `${profile.name} (${position.display_name || position.position_name})`,
-            user_id: profile.id,
-            skills: [],
-            is_available: true
-          });
+        // Build display name: prefer position > role > just name
+        let displayName = profile.name;
+        if (position?.display_name) {
+          displayName = `${profile.name} (${position.display_name})`;
+        } else if (position?.position_name) {
+          displayName = `${profile.name} (${position.position_name})`;
+        } else if (role) {
+          displayName = `${profile.name} (${role})`;
         }
+
+        seenUserIds.add(profile.id);
+        allSubstitutes.push({
+          officer_id: profile.id, // Using profile id for staff without officer record
+          officer_name: displayName,
+          user_id: profile.id,
+          skills: [],
+          is_available: true
+        });
       }
     }
 
-    // 3. Check availability based on timetable conflicts
+    // 6. Check availability based on timetable conflicts
     const normalizedDay = normalizeDay(day);
 
     const { data: conflictingAssignments } = await supabase
