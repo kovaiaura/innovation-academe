@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Download, User, Building2 } from 'lucide-react';
+import { Search, Download, User, Building2, Calendar } from 'lucide-react';
 import { formatCurrency } from '@/utils/attendanceHelpers';
+import { format, parseISO, isValid } from 'date-fns';
 import { 
   fetchAllEmployees, 
   EmployeePayrollSummary,
@@ -79,20 +80,61 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
     }
   };
 
+  const formatJoinDate = (dateStr?: string) => {
+    if (!dateStr) return '-';
+    try {
+      const date = parseISO(dateStr);
+      if (!isValid(date)) return '-';
+      return format(date, 'dd MMM yyyy');
+    } catch {
+      return '-';
+    }
+  };
+
+  // Calculate prorated salary based on join date
+  const calculateProratedSalary = (employee: EmployeePayrollSummary): number => {
+    if (!employee.join_date) return employee.monthly_salary;
+    
+    const joinDate = parseISO(employee.join_date);
+    if (!isValid(joinDate)) return employee.monthly_salary;
+    
+    const currentMonthStart = new Date(year, month - 1, 1);
+    const currentMonthEnd = new Date(year, month, 0);
+    
+    // If join date is after the month end, no salary
+    if (joinDate > currentMonthEnd) return 0;
+    
+    // If join date is before or on the month start, full salary
+    if (joinDate <= currentMonthStart) return employee.monthly_salary;
+    
+    // Prorate: calculate days from join date to end of month
+    const daysInMonth = currentMonthEnd.getDate();
+    const daysWorked = daysInMonth - joinDate.getDate() + 1;
+    
+    return (employee.monthly_salary / STANDARD_DAYS_PER_MONTH) * daysWorked;
+  };
+
   const exportToCSV = () => {
-    const headers = ['Name', 'Email', 'Type', 'Position', 'Monthly Salary', 'Per Day Salary', 'Days LOP', 'LOP Deduction', 'Net Pay', 'Status'];
-    const rows = filteredEmployees.map(e => [
-      e.name,
-      e.email,
-      e.user_type,
-      e.position_name || e.department || '-',
-      e.monthly_salary,
-      e.per_day_salary.toFixed(2),
-      e.days_lop,
-      calculateLOPDeduction(e.monthly_salary, e.days_lop).toFixed(2),
-      e.net_pay.toFixed(2),
-      e.payroll_status
-    ]);
+    const headers = ['Name', 'Email', 'Type', 'Position', 'Join Date', 'Monthly Salary', 'Per Day Salary', 'Days LOP', 'LOP Deduction', 'Net Pay', 'Status'];
+    const rows = filteredEmployees.map(e => {
+      const proratedSalary = calculateProratedSalary(e);
+      const lopDeduction = calculateLOPDeduction(proratedSalary, e.days_lop);
+      const netPay = proratedSalary - lopDeduction;
+      
+      return [
+        e.name,
+        e.email,
+        e.user_type,
+        e.position_name || e.department || '-',
+        e.join_date || '-',
+        proratedSalary.toFixed(2),
+        e.per_day_salary.toFixed(2),
+        e.days_lop,
+        lopDeduction.toFixed(2),
+        netPay.toFixed(2),
+        e.payroll_status
+      ];
+    });
     
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -110,7 +152,7 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
           <div>
             <CardTitle>Officers & Staff Overview</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
-              All employees with their payroll summary • LOP = Monthly Salary ÷ {STANDARD_DAYS_PER_MONTH} days × LOP Days
+              All employees with their payroll summary • LOP = Monthly Salary ÷ {STANDARD_DAYS_PER_MONTH} days × LOP Days • Salary prorated from join date
             </p>
           </div>
           
@@ -156,6 +198,7 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
                   <TableHead>Employee</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Position / Department</TableHead>
+                  <TableHead>Join Date</TableHead>
                   <TableHead className="text-right">Monthly Salary</TableHead>
                   <TableHead className="text-right">Per Day (÷30)</TableHead>
                   <TableHead className="text-center">Days Present</TableHead>
@@ -168,14 +211,16 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
               <TableBody>
                 {filteredEmployees.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                       No employees found
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredEmployees.map((employee) => {
-                    const lopDeduction = calculateLOPDeduction(employee.monthly_salary, employee.days_lop);
-                    const netPay = employee.monthly_salary - lopDeduction;
+                    const proratedSalary = calculateProratedSalary(employee);
+                    const lopDeduction = calculateLOPDeduction(proratedSalary, employee.days_lop);
+                    const netPay = proratedSalary - lopDeduction;
+                    const isProrated = proratedSalary !== employee.monthly_salary;
                     
                     return (
                       <TableRow key={employee.user_id}>
@@ -201,8 +246,19 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
                             <span>{employee.position_name || employee.department || '-'}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatCurrency(employee.monthly_salary)}
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">{formatJoinDate(employee.join_date)}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div>
+                            <span className="font-medium">{formatCurrency(proratedSalary)}</span>
+                            {isProrated && (
+                              <p className="text-xs text-orange-600">(Prorated)</p>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
                           {formatCurrency(employee.per_day_salary)}
@@ -245,9 +301,13 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
               Showing {filteredEmployees.length} of {employees.length} employees
             </p>
             <div className="text-right">
-              <p className="text-sm text-muted-foreground">Total Payroll Cost</p>
+              <p className="text-sm text-muted-foreground">Total Net Payroll</p>
               <p className="text-lg font-bold">
-                {formatCurrency(filteredEmployees.reduce((sum, e) => sum + e.monthly_salary, 0))}
+                {formatCurrency(filteredEmployees.reduce((sum, e) => {
+                  const proratedSalary = calculateProratedSalary(e);
+                  const lopDeduction = calculateLOPDeduction(proratedSalary, e.days_lop);
+                  return sum + (proratedSalary - lopDeduction);
+                }, 0))}
               </p>
             </div>
           </div>

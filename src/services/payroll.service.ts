@@ -15,6 +15,7 @@ export interface EmployeePayrollSummary {
   department?: string;
   institution_id?: string;
   institution_name?: string;
+  join_date?: string;
   monthly_salary: number;
   per_day_salary: number;
   days_present: number;
@@ -29,6 +30,7 @@ export interface EmployeePayrollSummary {
   total_deductions: number;
   net_pay: number;
   payroll_status: 'draft' | 'pending' | 'approved' | 'paid';
+  is_ceo?: boolean;
 }
 
 export interface DailyAttendanceRecord {
@@ -89,12 +91,12 @@ export const calculateLOPDeduction = (monthlySalary: number, lopDays: number): n
   return perDaySalary * lopDays;
 };
 
-// Fetch all employees (officers + staff with positions)
+// Fetch all employees (officers + staff with positions) - excludes CEO
 export const fetchAllEmployees = async (): Promise<EmployeePayrollSummary[]> => {
   const employees: EmployeePayrollSummary[] = [];
   
   try {
-    // 1. Fetch all officers
+    // 1. Fetch all officers with join date
     const { data: officers, error: officerError } = await supabase
       .from('officers')
       .select(`
@@ -105,7 +107,8 @@ export const fetchAllEmployees = async (): Promise<EmployeePayrollSummary[]> => 
         department,
         annual_salary,
         assigned_institutions,
-        status
+        status,
+        join_date
       `)
       .eq('status', 'active');
     
@@ -124,6 +127,7 @@ export const fetchAllEmployees = async (): Promise<EmployeePayrollSummary[]> => 
           email: officer.email,
           department: officer.department || 'STEM',
           institution_id: officer.assigned_institutions?.[0],
+          join_date: officer.join_date || undefined,
           monthly_salary: monthlySalary,
           per_day_salary: calculatePerDaySalary(monthlySalary),
           days_present: 0,
@@ -142,7 +146,8 @@ export const fetchAllEmployees = async (): Promise<EmployeePayrollSummary[]> => 
       }
     }
     
-    // 2. Fetch staff with positions (from profiles)
+    // 2. Fetch ALL staff with positions (from profiles) - includes those without institution_id
+    // This ensures Saran and other staff assigned via Position Management are included
     const { data: staffProfiles, error: profileError } = await supabase
       .from('profiles')
       .select(`
@@ -152,10 +157,13 @@ export const fetchAllEmployees = async (): Promise<EmployeePayrollSummary[]> => 
         position_id,
         institution_id,
         hourly_rate,
+        join_date,
+        is_ceo,
         positions:position_id (
           id,
           display_name,
-          position_name
+          position_name,
+          is_ceo_position
         )
       `)
       .not('position_id', 'is', null);
@@ -169,7 +177,11 @@ export const fetchAllEmployees = async (): Promise<EmployeePayrollSummary[]> => 
         // Skip if already added as officer
         if (employees.some(e => e.user_id === profile.id)) continue;
         
-        const position = profile.positions as unknown as { display_name: string; position_name: string } | null;
+        const position = profile.positions as unknown as { display_name: string; position_name: string; is_ceo_position?: boolean } | null;
+        
+        // Skip CEO - they manage payroll, not their own
+        if (profile.is_ceo || position?.is_ceo_position) continue;
+        
         const hourlyRate = profile.hourly_rate || 500;
         const monthlySalary = hourlyRate * 8 * 22; // Estimate: hourly rate * 8hrs/day * 22 working days
         
@@ -181,6 +193,7 @@ export const fetchAllEmployees = async (): Promise<EmployeePayrollSummary[]> => 
           email: profile.email,
           position_name: position?.display_name || position?.position_name,
           institution_id: profile.institution_id || undefined,
+          join_date: profile.join_date || undefined,
           monthly_salary: monthlySalary,
           per_day_salary: calculatePerDaySalary(monthlySalary),
           days_present: 0,
@@ -194,7 +207,8 @@ export const fetchAllEmployees = async (): Promise<EmployeePayrollSummary[]> => 
           gross_salary: monthlySalary,
           total_deductions: 0,
           net_pay: monthlySalary,
-          payroll_status: 'draft'
+          payroll_status: 'draft',
+          is_ceo: false
         });
       }
     }
