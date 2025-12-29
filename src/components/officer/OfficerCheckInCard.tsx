@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, MapPin, Loader2, AlertCircle, CheckCircle2, XCircle, Building2, Map } from 'lucide-react';
+import { Clock, MapPin, Loader2, AlertCircle, CheckCircle2, XCircle, Building2, Map, MapPinOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCurrentLocation } from '@/utils/locationHelpers';
 import { toast } from 'sonner';
@@ -20,6 +20,7 @@ import {
 } from '@/hooks/useOfficerAttendance';
 import { LocationMapPreview } from './LocationMapPreview';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { leaveSettingsService } from '@/services/leaveSettings.service';
 
 interface OfficerCheckInCardProps {
   officerId: string;
@@ -33,6 +34,23 @@ export function OfficerCheckInCard({ officerId, institutionId, onStatusChange }:
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [gpsEnabled, setGpsEnabled] = useState(true);
+  const [loadingGpsSetting, setLoadingGpsSetting] = useState(true);
+
+  // Fetch GPS enabled setting
+  useEffect(() => {
+    const loadGpsSetting = async () => {
+      try {
+        const enabled = await leaveSettingsService.isGpsEnabled();
+        setGpsEnabled(enabled);
+      } catch (error) {
+        console.error('Failed to load GPS setting:', error);
+      } finally {
+        setLoadingGpsSetting(false);
+      }
+    };
+    loadGpsSetting();
+  }, []);
 
   // Fetch today's attendance
   const { data: todayAttendance, isLoading: isLoadingAttendance } = useOfficerTodayAttendance(
@@ -74,14 +92,40 @@ export function OfficerCheckInCard({ officerId, institutionId, onStatusChange }:
   }, [todayAttendance?.status, onStatusChange]);
 
   const handleCheckIn = async () => {
-    if (!institutionSettings?.gps_location) {
-      toast.error('Institution GPS coordinates not configured');
-      return;
-    }
-
     setIsLoadingLocation(true);
 
     try {
+      // If GPS is disabled globally, skip location fetching
+      if (!gpsEnabled) {
+        const result = await checkInMutation.mutateAsync({
+          officer_id: officerId,
+          institution_id: institutionId,
+          latitude: 0,
+          longitude: 0,
+          institution_latitude: 0,
+          institution_longitude: 0,
+          attendance_radius_meters: 0,
+          skip_gps: true,
+        });
+
+        if (result.success) {
+          toast.success('Check-in Successful', {
+            description: 'Time recorded (GPS verification disabled)',
+          });
+        } else {
+          toast.error('Check-in Failed', {
+            description: result.error || 'Please try again',
+          });
+        }
+        return;
+      }
+
+      // GPS is enabled - normal flow
+      if (!institutionSettings?.gps_location) {
+        toast.error('Institution GPS coordinates not configured');
+        return;
+      }
+
       const location = await getCurrentLocation();
 
       const result = await checkInMutation.mutateAsync({
@@ -120,14 +164,41 @@ export function OfficerCheckInCard({ officerId, institutionId, onStatusChange }:
   };
 
   const handleCheckOut = async () => {
-    if (!institutionSettings?.gps_location) {
-      toast.error('Institution GPS coordinates not configured');
-      return;
-    }
-
     setIsLoadingLocation(true);
 
     try {
+      // If GPS is disabled globally, skip location fetching
+      if (!gpsEnabled) {
+        const result = await checkOutMutation.mutateAsync({
+          officer_id: officerId,
+          institution_id: institutionId,
+          latitude: 0,
+          longitude: 0,
+          institution_latitude: 0,
+          institution_longitude: 0,
+          attendance_radius_meters: 0,
+          normal_working_hours: institutionSettings?.normal_working_hours || 8,
+          skip_gps: true,
+        });
+
+        if (result.success) {
+          toast.success('Check-out Successful', {
+            description: `Total hours: ${result.hoursWorked.toFixed(2)}h | Overtime: ${result.overtimeHours.toFixed(2)}h`,
+          });
+        } else {
+          toast.error('Check-out Failed', {
+            description: result.error || 'Please try again',
+          });
+        }
+        return;
+      }
+
+      // GPS is enabled - normal flow
+      if (!institutionSettings?.gps_location) {
+        toast.error('Institution GPS coordinates not configured');
+        return;
+      }
+
       const location = await getCurrentLocation();
 
       const result = await checkOutMutation.mutateAsync({
@@ -159,6 +230,7 @@ export function OfficerCheckInCard({ officerId, institutionId, onStatusChange }:
       setIsLoadingLocation(false);
     }
   };
+
 
   const getStatusBadge = () => {
     if (!todayAttendance || todayAttendance.status === 'not_checked_in') {

@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, MapPin, Loader2, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { Clock, MapPin, Loader2, AlertCircle, CheckCircle2, XCircle, MapPinOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { staffAttendanceService } from '@/services/staff-attendance.service';
 import { getCurrentLocation } from '@/utils/locationHelpers';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { leaveSettingsService } from '@/services/leaveSettings.service';
 
 export function StaffAttendanceCard() {
   const { user } = useAuth();
@@ -23,20 +24,31 @@ export function StaffAttendanceCard() {
   });
   const [hoursWorked, setHoursWorked] = useState(0);
   const [locationValidated, setLocationValidated] = useState<boolean | null>(null);
+  const [gpsEnabled, setGpsEnabled] = useState(true);
+
+  useEffect(() => {
+    const loadGpsSetting = async () => {
+      try {
+        const enabled = await leaveSettingsService.isGpsEnabled();
+        setGpsEnabled(enabled);
+      } catch (error) {
+        console.error('Failed to load GPS setting:', error);
+      }
+    };
+    loadGpsSetting();
+  }, []);
 
   useEffect(() => {
     if (user?.id) {
       const status = staffAttendanceService.getTodayCheckInStatus(user.id);
       setCheckInStatus(status);
 
-      // Calculate hours worked if both check-in and check-out exist
       if (status.checkInTime && status.checkOutTime) {
         const checkIn = new Date(status.checkInTime);
         const checkOut = new Date(status.checkOutTime);
         const hours = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
         setHoursWorked(hours);
       } else if (status.checkInTime && !status.checkOutTime) {
-        // Live timer for hours worked today
         const checkIn = new Date(status.checkInTime);
         const interval = setInterval(() => {
           const now = new Date();
@@ -55,7 +67,12 @@ export function StaffAttendanceCard() {
     setLocationValidated(null);
 
     try {
-      const location = await getCurrentLocation();
+      let location = null;
+      
+      // Only get location if GPS is enabled
+      if (gpsEnabled) {
+        location = await getCurrentLocation();
+      }
 
       const result = await staffAttendanceService.recordStaffCheckIn({
         staff_id: user.id,
@@ -63,7 +80,7 @@ export function StaffAttendanceCard() {
         timestamp: new Date().toISOString(),
       });
 
-      setLocationValidated(result.validated);
+      setLocationValidated(gpsEnabled ? result.validated : null);
       setCheckInStatus((prev) => ({
         ...prev,
         checkedIn: true,
@@ -71,7 +88,7 @@ export function StaffAttendanceCard() {
       }));
 
       toast.success('Check-in Successful', {
-        description: result.message,
+        description: gpsEnabled ? result.message : 'Time recorded (GPS verification disabled)',
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to check in';
@@ -89,7 +106,12 @@ export function StaffAttendanceCard() {
     setLoading(true);
 
     try {
-      const location = await getCurrentLocation();
+      let location = null;
+      
+      // Only get location if GPS is enabled
+      if (gpsEnabled) {
+        location = await getCurrentLocation();
+      }
 
       const result = await staffAttendanceService.recordStaffCheckOut({
         staff_id: user.id,
@@ -104,7 +126,7 @@ export function StaffAttendanceCard() {
       }));
 
       toast.success('Check-out Successful', {
-        description: result.message,
+        description: gpsEnabled ? result.message : 'Time recorded (GPS verification disabled)',
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to check out';
