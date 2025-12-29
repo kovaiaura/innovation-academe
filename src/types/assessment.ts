@@ -109,6 +109,14 @@ export interface AssessmentAttempt {
   
   // Status
   status: 'in_progress' | 'submitted' | 'auto_submitted' | 'evaluated';
+  
+  // Manual assessment entry
+  is_manual?: boolean;
+  manual_notes?: string;
+  conducted_at?: string;
+  
+  // Question order for shuffle persistence
+  question_order?: string[];
 }
 
 export interface AssessmentAnswer {

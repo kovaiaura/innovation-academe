@@ -160,7 +160,11 @@ function transformAttempt(dbAttempt: DbAttempt, answers: AssessmentAnswer[] = []
     percentage: Number(dbAttempt.percentage),
     passed: dbAttempt.passed,
     answers: answers,
-    status: dbAttempt.status as AssessmentAttempt['status']
+    status: dbAttempt.status as AssessmentAttempt['status'],
+    is_manual: (dbAttempt as any).is_manual || false,
+    manual_notes: (dbAttempt as any).manual_notes || undefined,
+    conducted_at: (dbAttempt as any).conducted_at || undefined,
+    question_order: (dbAttempt as any).question_order || undefined
   };
 }
 
@@ -847,5 +851,82 @@ export const assessmentService = {
       institution_stats: institutionStats,
       question_stats: [] // Would require more complex query
     };
+  },
+
+  // ============================================
+  // Additional Methods for TakeAssessment
+  // ============================================
+
+  async updateAttemptQuestionOrder(attemptId: string, questionOrder: string[]): Promise<boolean> {
+    const { error } = await supabase
+      .from('assessment_attempts')
+      .update({ question_order: questionOrder })
+      .eq('id', attemptId);
+
+    if (error) {
+      console.error('Error updating question order:', error);
+      return false;
+    }
+
+    return true;
+  },
+
+  async getAttemptAnswers(attemptId: string): Promise<AssessmentAnswer[]> {
+    const { data: answers, error } = await supabase
+      .from('assessment_answers')
+      .select('*')
+      .eq('attempt_id', attemptId);
+
+    if (error) {
+      console.error('Error fetching answers:', error);
+      return [];
+    }
+
+    return (answers || []).map(a => ({
+      question_id: a.question_id,
+      selected_option_id: a.selected_option_id,
+      is_correct: a.is_correct,
+      points_earned: a.points_earned,
+      time_spent_seconds: a.time_spent_seconds
+    }));
+  },
+
+  async createManualAttempt(data: {
+    assessment_id: string;
+    student_id: string;
+    class_id: string;
+    institution_id: string;
+    score: number;
+    total_points: number;
+    percentage: number;
+    passed: boolean;
+    conducted_at: string;
+    manual_notes?: string;
+  }): Promise<boolean> {
+    const { error } = await supabase
+      .from('assessment_attempts')
+      .insert({
+        assessment_id: data.assessment_id,
+        student_id: data.student_id,
+        class_id: data.class_id,
+        institution_id: data.institution_id,
+        score: data.score,
+        total_points: data.total_points,
+        percentage: data.percentage,
+        passed: data.passed,
+        status: 'submitted',
+        is_manual: true,
+        manual_notes: data.manual_notes,
+        conducted_at: data.conducted_at,
+        started_at: data.conducted_at,
+        submitted_at: data.conducted_at
+      });
+
+    if (error) {
+      console.error('Error creating manual attempt:', error);
+      return false;
+    }
+
+    return true;
   }
 };

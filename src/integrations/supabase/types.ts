@@ -66,11 +66,15 @@ export type Database = {
         Row: {
           assessment_id: string
           class_id: string
+          conducted_at: string | null
           created_at: string
           id: string
           institution_id: string
+          is_manual: boolean
+          manual_notes: string | null
           passed: boolean
           percentage: number
+          question_order: Json | null
           score: number
           started_at: string
           status: string
@@ -82,11 +86,15 @@ export type Database = {
         Insert: {
           assessment_id: string
           class_id: string
+          conducted_at?: string | null
           created_at?: string
           id?: string
           institution_id: string
+          is_manual?: boolean
+          manual_notes?: string | null
           passed?: boolean
           percentage?: number
+          question_order?: Json | null
           score?: number
           started_at?: string
           status?: string
@@ -98,11 +106,15 @@ export type Database = {
         Update: {
           assessment_id?: string
           class_id?: string
+          conducted_at?: string | null
           created_at?: string
           id?: string
           institution_id?: string
+          is_manual?: boolean
+          manual_notes?: string | null
           passed?: boolean
           percentage?: number
+          question_order?: Json | null
           score?: number
           started_at?: string
           status?: string
