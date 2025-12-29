@@ -5,6 +5,7 @@ export interface LeaveSettings {
   leaves_per_month: number;
   max_carry_forward: number;
   max_leaves_per_month: number;
+  gps_checkin_enabled: boolean;
 }
 
 // Cache for settings
@@ -32,7 +33,8 @@ export const leaveSettingsService = {
         leaves_per_year: 12,
         leaves_per_month: 1,
         max_carry_forward: 1,
-        max_leaves_per_month: 2
+        max_leaves_per_month: 2,
+        gps_checkin_enabled: true
       };
     }
 
@@ -40,27 +42,34 @@ export const leaveSettingsService = {
       leaves_per_year: 12,
       leaves_per_month: 1,
       max_carry_forward: 1,
-      max_leaves_per_month: 2
+      max_leaves_per_month: 2,
+      gps_checkin_enabled: true
     };
 
     data?.forEach(row => {
-      const value = typeof row.setting_value === 'string' 
-        ? parseInt(row.setting_value) 
-        : Number(row.setting_value);
-      
-      switch (row.setting_key) {
-        case 'leaves_per_year':
-          settings.leaves_per_year = value;
-          break;
-        case 'leaves_per_month':
-          settings.leaves_per_month = value;
-          break;
-        case 'max_carry_forward':
-          settings.max_carry_forward = value;
-          break;
-        case 'max_leaves_per_month':
-          settings.max_leaves_per_month = value;
-          break;
+      if (row.setting_key === 'gps_checkin_enabled') {
+        // Handle boolean setting
+        const value = row.setting_value;
+        settings.gps_checkin_enabled = value === true || value === 'true';
+      } else {
+        const value = typeof row.setting_value === 'string' 
+          ? parseInt(row.setting_value) 
+          : Number(row.setting_value);
+        
+        switch (row.setting_key) {
+          case 'leaves_per_year':
+            settings.leaves_per_year = value;
+            break;
+          case 'leaves_per_month':
+            settings.leaves_per_month = value;
+            break;
+          case 'max_carry_forward':
+            settings.max_carry_forward = value;
+            break;
+          case 'max_leaves_per_month':
+            settings.max_leaves_per_month = value;
+            break;
+        }
       }
     });
 
@@ -70,7 +79,7 @@ export const leaveSettingsService = {
     return settings;
   },
 
-  updateSetting: async (key: string, value: number): Promise<void> => {
+  updateSetting: async (key: string, value: number | boolean): Promise<void> => {
     const { error } = await supabase
       .from('leave_settings')
       .update({ setting_value: value })
@@ -87,7 +96,8 @@ export const leaveSettingsService = {
       { key: 'leaves_per_year', value: settings.leaves_per_year },
       { key: 'leaves_per_month', value: settings.leaves_per_month },
       { key: 'max_carry_forward', value: settings.max_carry_forward },
-      { key: 'max_leaves_per_month', value: settings.max_leaves_per_month }
+      { key: 'max_leaves_per_month', value: settings.max_leaves_per_month },
+      { key: 'gps_checkin_enabled', value: settings.gps_checkin_enabled }
     ];
 
     for (const { key, value } of updates) {
@@ -101,6 +111,12 @@ export const leaveSettingsService = {
     
     // Invalidate cache
     settingsCache = null;
+  },
+
+  // Quick helper to check if GPS is enabled (with caching)
+  isGpsEnabled: async (): Promise<boolean> => {
+    const settings = await leaveSettingsService.getSettings();
+    return settings.gps_checkin_enabled;
   },
 
   clearCache: () => {

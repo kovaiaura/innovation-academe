@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, ArrowRight, Users, GitBranch, Info, Crown, Briefcase, UserCog, Settings, Save, Loader2 } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, Users, GitBranch, Info, Crown, Briefcase, UserCog, Settings, Save, Loader2, MapPin, MapPinOff, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { approvalHierarchyService } from '@/services/leave.service';
 import { positionService } from '@/services/position.service';
@@ -34,9 +34,11 @@ export default function GlobalApprovalConfig() {
     leaves_per_year: 12,
     leaves_per_month: 1,
     max_carry_forward: 1,
-    max_leaves_per_month: 2
+    max_leaves_per_month: 2,
+    gps_checkin_enabled: true
   });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [isSavingGps, setIsSavingGps] = useState(false);
 
   const { data: allPositions = [] } = useQuery({
     queryKey: ['positions'],
@@ -511,6 +513,66 @@ export default function GlobalApprovalConfig() {
 
           {/* Leave Settings Tab */}
           <TabsContent value="settings" className="space-y-6">
+            {/* GPS Check-in/Check-out Toggle */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  {leaveSettings.gps_checkin_enabled ? (
+                    <MapPin className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <MapPinOff className="h-5 w-5 text-muted-foreground" />
+                  )}
+                  GPS-Based Check-in/Check-out
+                </CardTitle>
+                <CardDescription>
+                  Control whether employees need to provide GPS location during attendance
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Enable GPS Verification</span>
+                      {leaveSettings.gps_checkin_enabled ? (
+                        <Badge className="bg-green-500">Enabled</Badge>
+                      ) : (
+                        <Badge variant="secondary">Disabled</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      When enabled, employees must provide their GPS location during check-in and check-out.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={leaveSettings.gps_checkin_enabled}
+                    disabled={isSavingGps}
+                    onCheckedChange={async (checked) => {
+                      setIsSavingGps(true);
+                      try {
+                        await leaveSettingsService.updateSetting('gps_checkin_enabled', checked);
+                        setLeaveSettings(prev => ({ ...prev, gps_checkin_enabled: checked }));
+                        toast.success(checked ? 'GPS verification enabled' : 'GPS verification disabled');
+                      } catch (error) {
+                        toast.error('Failed to update GPS setting');
+                      } finally {
+                        setIsSavingGps(false);
+                      }
+                    }}
+                  />
+                </div>
+                
+                {!leaveSettings.gps_checkin_enabled && (
+                  <Alert className="bg-amber-500/10 border-amber-500/20">
+                    <AlertCircle className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="text-sm">
+                      <strong>GPS Disabled:</strong> Employees can check in/out without location verification. 
+                      Only time will be recorded. Enable this setting when GPS issues are resolved.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+
             <Alert className="bg-green-500/10 border-green-500/20">
               <Info className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-sm">

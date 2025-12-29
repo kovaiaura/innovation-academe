@@ -39,6 +39,7 @@ export interface CheckInParams {
   institution_latitude: number;
   institution_longitude: number;
   attendance_radius_meters: number;
+  skip_gps?: boolean;
 }
 
 export interface CheckOutParams {
@@ -50,6 +51,7 @@ export interface CheckOutParams {
   institution_longitude: number;
   attendance_radius_meters: number;
   normal_working_hours: number;
+  skip_gps?: boolean;
 }
 
 export interface InstitutionGPSSettings {
@@ -143,6 +145,40 @@ export const recordCheckIn = async (params: CheckInParams): Promise<{
   const today = new Date().toISOString().split('T')[0];
   const checkInTime = new Date().toISOString();
 
+  // If GPS is skipped, record without location validation
+  if (params.skip_gps) {
+    const { data, error } = await supabase
+      .from('officer_attendance')
+      .upsert({
+        officer_id: params.officer_id,
+        institution_id: params.institution_id,
+        date: today,
+        check_in_time: checkInTime,
+        check_in_latitude: null,
+        check_in_longitude: null,
+        check_in_address: null,
+        check_in_distance_meters: null,
+        check_in_validated: null,
+        status: 'checked_in',
+      }, {
+        onConflict: 'officer_id,institution_id,date',
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error recording check-in:', error);
+      return { success: false, validated: false, distance: 0, error: error.message };
+    }
+
+    return {
+      success: true,
+      validated: false,
+      distance: 0,
+      record: data as OfficerAttendanceRecord,
+    };
+  }
+
   // Calculate distance from institution
   const distance = calculateDistance(
     params.latitude,
@@ -223,6 +259,53 @@ export const recordCheckOut = async (params: CheckOutParams): Promise<{
     };
   }
 
+  // Calculate hours worked
+  const checkInDate = new Date(existingRecord.check_in_time!);
+  const checkOutDate = new Date(checkOutTime);
+  const hoursWorked = (checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60);
+  const overtimeHours = Math.max(0, hoursWorked - params.normal_working_hours);
+
+  // If GPS is skipped, record without location validation
+  if (params.skip_gps) {
+    const { data, error } = await supabase
+      .from('officer_attendance')
+      .update({
+        check_out_time: checkOutTime,
+        check_out_latitude: null,
+        check_out_longitude: null,
+        check_out_address: null,
+        check_out_distance_meters: null,
+        check_out_validated: null,
+        total_hours_worked: Math.round(hoursWorked * 100) / 100,
+        overtime_hours: Math.round(overtimeHours * 100) / 100,
+        status: 'checked_out',
+      })
+      .eq('id', existingRecord.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error recording check-out:', error);
+      return {
+        success: false,
+        validated: false,
+        distance: 0,
+        hoursWorked: 0,
+        overtimeHours: 0,
+        error: error.message,
+      };
+    }
+
+    return {
+      success: true,
+      validated: false,
+      distance: 0,
+      hoursWorked: Math.round(hoursWorked * 100) / 100,
+      overtimeHours: Math.round(overtimeHours * 100) / 100,
+      record: data as OfficerAttendanceRecord,
+    };
+  }
+
   // Calculate distance from institution
   const distance = calculateDistance(
     params.latitude,
@@ -232,12 +315,6 @@ export const recordCheckOut = async (params: CheckOutParams): Promise<{
   );
 
   const isValidated = distance <= params.attendance_radius_meters;
-
-  // Calculate hours worked
-  const checkInDate = new Date(existingRecord.check_in_time!);
-  const checkOutDate = new Date(checkOutTime);
-  const hoursWorked = (checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60);
-  const overtimeHours = Math.max(0, hoursWorked - params.normal_working_hours);
 
   // Try to get address (non-blocking)
   let address: string | null = null;
