@@ -402,24 +402,27 @@ export default function TakeAssessment() {
                   onValueChange={handleAnswerSelect}
                   className="space-y-3"
                 >
-                  {currentQuestion.options.map((option) => (
-                    <div
-                      key={option.id}
-                      className={`
-                        flex items-center space-x-3 p-4 rounded-lg border-2 transition-colors cursor-pointer
-                        ${answers.get(currentQuestion.id) === option.id
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:border-primary/50'
-                        }
-                      `}
-                    >
-                      <RadioGroupItem value={option.id} id={option.id} />
-                      <Label htmlFor={option.id} className="flex-1 cursor-pointer">
-                        <span className="font-medium mr-2">{option.option_label}.</span>
-                        {option.option_text}
-                      </Label>
-                    </div>
-                  ))}
+                  {currentQuestion.options.map((option) => {
+                    const uniqueOptionId = `${currentQuestion.id}-${option.id}`;
+                    return (
+                      <div
+                        key={uniqueOptionId}
+                        className={`
+                          flex items-center space-x-3 p-4 rounded-lg border-2 transition-colors cursor-pointer
+                          ${answers.get(currentQuestion.id) === option.id
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                          }
+                        `}
+                      >
+                        <RadioGroupItem value={option.id} id={uniqueOptionId} />
+                        <Label htmlFor={uniqueOptionId} className="flex-1 cursor-pointer">
+                          <span className="font-medium mr-2">{option.option_label}.</span>
+                          {option.option_text}
+                        </Label>
+                      </div>
+                    );
+                  })}
                 </RadioGroup>
               </CardContent>
             </Card>
