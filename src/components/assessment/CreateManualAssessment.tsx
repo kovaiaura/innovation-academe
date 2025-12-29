@@ -100,12 +100,23 @@ export function CreateManualAssessment({ restrictToInstitutionId, onComplete, on
   };
 
   const loadStudents = async (classId: string) => {
-    const { data: studentsData } = await supabase
-      .from('profiles')
-      .select('id, name, email')
-      .eq('class_id', classId);
+    // Use the students table instead of profiles - officers have RLS access to students table
+    const { data: studentsData, error } = await supabase
+      .from('students')
+      .select('id, student_name, email, user_id')
+      .eq('class_id', classId)
+      .eq('status', 'active');
 
-    const studentsList = studentsData || [];
+    if (error) {
+      console.error('Error loading students:', error);
+    }
+
+    const studentsList = (studentsData || []).map(s => ({
+      id: s.user_id || s.id, // Use user_id for assessment attempts (profile id), fallback to student id
+      name: s.student_name,
+      email: s.email || ''
+    }));
+    
     setStudents(studentsList);
 
     // Initialize results
