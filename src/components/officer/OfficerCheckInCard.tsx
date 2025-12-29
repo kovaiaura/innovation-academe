@@ -310,8 +310,14 @@ export function OfficerCheckInCard({ officerId, institutionId, onStatusChange }:
           <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
             <Building2 className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">{institutionSettings.name}</span>
-            {institutionSettings.gps_location ? (
-              <Badge variant="outline" className="ml-auto text-xs">
+            {!gpsEnabled ? (
+              <Badge variant="secondary" className="ml-auto text-xs gap-1">
+                <MapPinOff className="h-3 w-3" />
+                GPS Disabled
+              </Badge>
+            ) : institutionSettings.gps_location ? (
+              <Badge variant="outline" className="ml-auto text-xs gap-1">
+                <MapPin className="h-3 w-3" />
                 GPS Enabled
               </Badge>
             ) : (
