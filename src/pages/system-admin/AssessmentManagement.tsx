@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,10 +17,12 @@ import { PublishAssessmentDialog } from '@/components/assessment/PublishAssessme
 import { DuplicateAssessmentDialog } from '@/components/assessment/DuplicateAssessmentDialog';
 import { CertificateSelector } from '@/components/gamification/CertificateSelector';
 import { ManualAssessmentEntry } from '@/components/assessment/ManualAssessmentEntry';
+import { CreateManualAssessment } from '@/components/assessment/CreateManualAssessment';
+import { AssessmentAnalytics } from '@/components/assessment/AssessmentAnalytics';
 import { assessmentService } from '@/services/assessment.service';
 import { Assessment, AssessmentQuestion, AssessmentPublishing } from '@/types/assessment';
 import { getAssessmentStatus, formatDuration, calculateTotalPoints, formatDateTimeLocal, parseLocalToUTC } from '@/utils/assessmentHelpers';
-import { Search, Plus, Clock, Award, Users, FileText, Edit, Trash2, Eye, Info, Loader2, ClipboardEdit } from 'lucide-react';
+import { Search, Plus, Clock, Award, Users, FileText, Edit, Trash2, Eye, Info, Loader2, ClipboardEdit, BarChart3, PlusCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { AssessmentDetailsDialog } from '@/components/assessment/AssessmentDetailsDialog';
 import { useAuth } from '@/contexts/AuthContext';
@@ -59,6 +61,8 @@ export default function AssessmentManagement() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
   const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showCreateManual, setShowCreateManual] = useState(false);
 
   // Load assessments from database
   useEffect(() => {
@@ -283,16 +287,34 @@ export default function AssessmentManagement() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="all">All Assessments</TabsTrigger>
             <TabsTrigger value="create">Create Assessment</TabsTrigger>
-            <TabsTrigger value="manual" className="flex items-center gap-2">
-              <ClipboardEdit className="h-4 w-4" />
-              Manual Entry
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="space-y-6">
+            {/* Analytics View */}
+            {showAnalytics && selectedAssessment ? (
+              <AssessmentAnalytics 
+                assessment={selectedAssessment} 
+                onClose={() => { setShowAnalytics(false); setSelectedAssessment(null); }} 
+              />
+            ) : showCreateManual ? (
+              <CreateManualAssessment 
+                onComplete={() => { setShowCreateManual(false); loadAssessments(); }}
+                onCancel={() => setShowCreateManual(false)}
+              />
+            ) : (
+              <>
+                {/* Action Buttons */}
+                <div className="flex gap-4">
+                  <Button onClick={() => setShowCreateManual(true)} variant="outline">
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Create Manual Assessment
+                  </Button>
+                </div>
+
+                {/* Summary Cards */}
             {/* Summary Cards */}
             <div className="grid grid-cols-4 gap-4">
               <Card>
@@ -401,6 +423,17 @@ export default function AssessmentManagement() {
                               size="icon" 
                               onClick={() => { 
                                 setSelectedAssessment(assessment); 
+                                setShowAnalytics(true); 
+                              }}
+                              title="View Analytics"
+                            >
+                              <BarChart3 className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => { 
+                                setSelectedAssessment(assessment); 
                                 setViewDialogOpen(true); 
                               }}
                             >
@@ -427,6 +460,8 @@ export default function AssessmentManagement() {
                   );
                 })}
               </div>
+            )}
+              </>
             )}
           </TabsContent>
 
