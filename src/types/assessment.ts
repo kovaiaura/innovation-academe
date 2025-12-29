@@ -108,7 +108,7 @@ export interface AssessmentAttempt {
   answers: AssessmentAnswer[];
   
   // Status
-  status: 'in_progress' | 'submitted' | 'auto_submitted' | 'evaluated';
+  status: 'in_progress' | 'submitted' | 'auto_submitted' | 'evaluated' | 'retaken';
   
   // Manual assessment entry
   is_manual?: boolean;
@@ -117,6 +117,9 @@ export interface AssessmentAttempt {
   
   // Question order for shuffle persistence
   question_order?: string[];
+  
+  // Retake feature
+  retake_allowed?: boolean;
 }
 
 export interface AssessmentAnswer {

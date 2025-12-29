@@ -75,6 +75,7 @@ export type Database = {
           passed: boolean
           percentage: number
           question_order: Json | null
+          retake_allowed: boolean | null
           score: number
           started_at: string
           status: string
@@ -95,6 +96,7 @@ export type Database = {
           passed?: boolean
           percentage?: number
           question_order?: Json | null
+          retake_allowed?: boolean | null
           score?: number
           started_at?: string
           status?: string
@@ -115,6 +117,7 @@ export type Database = {
           passed?: boolean
           percentage?: number
           question_order?: Json | null
+          retake_allowed?: boolean | null
           score?: number
           started_at?: string
           status?: string

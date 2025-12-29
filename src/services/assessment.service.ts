@@ -164,7 +164,8 @@ function transformAttempt(dbAttempt: DbAttempt, answers: AssessmentAnswer[] = []
     is_manual: (dbAttempt as any).is_manual || false,
     manual_notes: (dbAttempt as any).manual_notes || undefined,
     conducted_at: (dbAttempt as any).conducted_at || undefined,
-    question_order: (dbAttempt as any).question_order || undefined
+    question_order: (dbAttempt as any).question_order || undefined,
+    retake_allowed: (dbAttempt as any).retake_allowed || false
   };
 }
 
@@ -526,18 +527,46 @@ export const assessmentService = {
 
     if (!students || students.length === 0) return;
 
-    // Create notifications
+    // Create notifications without link
     const notifications = students.map(student => ({
       recipient_id: student.id,
       type: 'assessment_scheduled',
       recipient_role: 'student',
       title: 'New Assessment Scheduled',
       message: `Assessment "${assessment.title}" has been scheduled. Available from ${new Date(assessment.start_time).toLocaleDateString()} to ${new Date(assessment.end_time).toLocaleDateString()}.`,
-      link: '/student/assessments',
       metadata: { assessment_id: assessmentId }
     }));
 
     await supabase.from('notifications').insert(notifications);
+  },
+
+  async allowRetake(attemptId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('assessment_attempts')
+      .update({ retake_allowed: true })
+      .eq('id', attemptId);
+
+    if (error) {
+      console.error('Error allowing retake:', error);
+      return false;
+    }
+    return true;
+  },
+
+  async resetAttemptForRetake(assessmentId: string, studentId: string): Promise<boolean> {
+    // Archive the old attempt by updating status
+    const { error } = await supabase
+      .from('assessment_attempts')
+      .update({ status: 'retaken' })
+      .eq('assessment_id', assessmentId)
+      .eq('student_id', studentId)
+      .eq('retake_allowed', true);
+
+    if (error) {
+      console.error('Error resetting attempt:', error);
+      return false;
+    }
+    return true;
   },
 
   // ============================================

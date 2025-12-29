@@ -13,10 +13,12 @@ import { QuestionBuilder } from '@/components/assessment/QuestionBuilder';
 import { QuestionList } from '@/components/assessment/QuestionList';
 import { PublishingSelector } from '@/components/assessment/PublishingSelector';
 import { ManualAssessmentEntry } from '@/components/assessment/ManualAssessmentEntry';
+import { CreateManualAssessment } from '@/components/assessment/CreateManualAssessment';
+import { AssessmentAnalytics } from '@/components/assessment/AssessmentAnalytics';
 import { assessmentService } from '@/services/assessment.service';
 import { Assessment, AssessmentQuestion, AssessmentPublishing } from '@/types/assessment';
 import { getAssessmentStatus, formatDuration, calculateTotalPoints, formatDateTimeLocal, parseLocalToUTC } from '@/utils/assessmentHelpers';
-import { Search, Plus, Clock, Award, Users, FileText, Eye, Edit, Trash2, Loader2, ClipboardEdit } from 'lucide-react';
+import { Search, Plus, Clock, Award, Users, FileText, Eye, Edit, Trash2, Loader2, ClipboardEdit, BarChart3, PlusCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -49,6 +51,9 @@ export default function OfficerAssessmentManagement() {
   const [showQuestionBuilder, setShowQuestionBuilder] = useState(false);
   const [publishing, setPublishing] = useState<AssessmentPublishing[]>([]);
   const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showCreateManual, setShowCreateManual] = useState(false);
+  const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
 
   // Load assessments from database
   useEffect(() => {
@@ -264,16 +269,32 @@ export default function OfficerAssessmentManagement() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="all">All Assessments</TabsTrigger>
             <TabsTrigger value="create">Create Assessment</TabsTrigger>
-            <TabsTrigger value="manual" className="flex items-center gap-2">
-              <ClipboardEdit className="h-4 w-4" />
-              Manual Entry
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="space-y-6">
+            {showAnalytics && selectedAssessment ? (
+              <AssessmentAnalytics 
+                assessment={selectedAssessment} 
+                institutionId={officerInstitutionId}
+                onClose={() => { setShowAnalytics(false); setSelectedAssessment(null); }} 
+              />
+            ) : showCreateManual ? (
+              <CreateManualAssessment 
+                restrictToInstitutionId={officerInstitutionId}
+                onComplete={() => { setShowCreateManual(false); loadAssessments(); }}
+                onCancel={() => setShowCreateManual(false)}
+              />
+            ) : (
+              <>
+                <div className="flex gap-4">
+                  <Button onClick={() => setShowCreateManual(true)} variant="outline">
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Create Manual Assessment
+                  </Button>
+                </div>
             {/* Summary Cards */}
             <div className="grid grid-cols-4 gap-4">
               <Card>
@@ -382,6 +403,14 @@ export default function OfficerAssessmentManagement() {
                           </div>
 
                           <div className="flex gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => { setSelectedAssessment(assessment); setShowAnalytics(true); }}
+                              title="View Analytics"
+                            >
+                              <BarChart3 className="h-4 w-4" />
+                            </Button>
                             <Button variant="ghost" size="icon">
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -402,6 +431,8 @@ export default function OfficerAssessmentManagement() {
                   );
                 })}
               </div>
+            )}
+              </>
             )}
           </TabsContent>
 
