@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus, Search, Mail, Phone, Building2, Calendar, Loader2, IndianRupee } from 'lucide-react';
+import { UserPlus, Search, Mail, Phone, Building2, Loader2, IndianRupee } from 'lucide-react';
 import { toast } from 'sonner';
 import { useOfficers, useCreateOfficer, type Officer } from '@/hooks/useOfficers';
 
@@ -32,13 +32,7 @@ export default function OfficerManagement() {
     // Payroll Configuration
     hourly_rate: '',
     overtime_rate_multiplier: '1.5',
-    // Leave Balance Configuration
-    sick_leave_allowance: '10',
-    casual_leave_allowance: '12',
   });
-
-  // Auto-calculate annual leave from sick + casual
-  const calculatedAnnualLeave = Number(formData.sick_leave_allowance || 0) + Number(formData.casual_leave_allowance || 0);
 
   const handleAddOfficer = async () => {
     // Validation
@@ -63,8 +57,6 @@ export default function OfficerManagement() {
         annual_salary: Number(formData.annual_salary),
         hourly_rate: formData.hourly_rate ? Number(formData.hourly_rate) : undefined,
         overtime_rate_multiplier: Number(formData.overtime_rate_multiplier),
-        sick_leave_allowance: Number(formData.sick_leave_allowance),
-        casual_leave_allowance: Number(formData.casual_leave_allowance),
         join_date: formData.join_date || undefined,
       });
 
@@ -82,8 +74,6 @@ export default function OfficerManagement() {
         join_date: new Date().toISOString().split('T')[0],
         hourly_rate: '',
         overtime_rate_multiplier: '1.5',
-        sick_leave_allowance: '10',
-        casual_leave_allowance: '12',
       });
     } catch (error) {
       // Error is handled in the mutation
@@ -255,46 +245,6 @@ export default function OfficerManagement() {
                     </div>
                   </div>
 
-                  {/* Leave Balance Configuration Section */}
-                  <div className="border-t pt-4 mt-4">
-                    <h3 className="font-semibold mb-3 flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Leave Allowance
-                    </h3>
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label htmlFor="sick_leave">Sick Leave</Label>
-                        <Input
-                          id="sick_leave"
-                          type="number"
-                          value={formData.sick_leave_allowance}
-                          onChange={(e) => setFormData({ ...formData, sick_leave_allowance: e.target.value })}
-                          placeholder="10"
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">days/year</p>
-                      </div>
-                      <div>
-                        <Label htmlFor="casual_leave">Casual Leave</Label>
-                        <Input
-                          id="casual_leave"
-                          type="number"
-                          value={formData.casual_leave_allowance}
-                          onChange={(e) => setFormData({ ...formData, casual_leave_allowance: e.target.value })}
-                          placeholder="12"
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">days/year</p>
-                      </div>
-                    </div>
-                    
-                    {/* Calculated Annual Leave Display */}
-                    <div className="mt-3 p-3 bg-muted rounded-md">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Annual Leave (Sick + Casual)</span>
-                        <span className="font-semibold">{calculatedAnnualLeave} days/year</span>
-                      </div>
-                    </div>
-                  </div>
                   
                   <Button 
                     onClick={handleAddOfficer} 
