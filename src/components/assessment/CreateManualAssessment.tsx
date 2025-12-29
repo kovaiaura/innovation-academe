@@ -9,9 +9,8 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { assessmentService } from '@/services/assessment.service';
-import { Assessment } from '@/types/assessment';
 import { toast } from 'sonner';
-import { Loader2, Save, Plus, ArrowLeft } from 'lucide-react';
+import { Loader2, Save, ArrowLeft } from 'lucide-react';
 
 interface CreateManualAssessmentProps {
   restrictToInstitutionId?: string;
@@ -33,14 +32,24 @@ interface ManualResult {
   notes: string;
 }
 
+interface Institution {
+  id: string;
+  name: string;
+}
+
 export function CreateManualAssessment({ restrictToInstitutionId, onComplete, onCancel }: CreateManualAssessmentProps) {
-  const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [classes, setClasses] = useState<{ id: string; class_name: string; institution_id: string }[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [selectedAssessmentId, setSelectedAssessmentId] = useState('');
+  // New assessment fields
+  const [assessmentTitle, setAssessmentTitle] = useState('');
+  const [totalMarks, setTotalMarks] = useState(100);
+  const [passPercentage, setPassPercentage] = useState(70);
+  
+  const [selectedInstitutionId, setSelectedInstitutionId] = useState(restrictToInstitutionId || '');
   const [selectedClassId, setSelectedClassId] = useState('');
   const [conductedAt, setConductedAt] = useState(new Date().toISOString().slice(0, 10));
   const [manualNotes, setManualNotes] = useState('');
@@ -51,6 +60,12 @@ export function CreateManualAssessment({ restrictToInstitutionId, onComplete, on
   }, [restrictToInstitutionId]);
 
   useEffect(() => {
+    if (selectedInstitutionId) {
+      loadClasses(selectedInstitutionId);
+    }
+  }, [selectedInstitutionId]);
+
+  useEffect(() => {
     if (selectedClassId) {
       loadStudents(selectedClassId);
     }
@@ -59,19 +74,29 @@ export function CreateManualAssessment({ restrictToInstitutionId, onComplete, on
   const loadData = async () => {
     setIsLoading(true);
     
-    // Load assessments
-    const assessmentsData = await assessmentService.getAssessments();
-    setAssessments(assessmentsData);
-
-    // Load classes
-    let classQuery = supabase.from('classes').select('id, class_name, institution_id');
-    if (restrictToInstitutionId) {
-      classQuery = classQuery.eq('institution_id', restrictToInstitutionId);
+    // Load institutions (only if not restricted)
+    if (!restrictToInstitutionId) {
+      const { data: institutionsData } = await supabase
+        .from('institutions')
+        .select('id, name')
+        .eq('status', 'active');
+      setInstitutions(institutionsData || []);
     }
-    const { data: classesData } = await classQuery;
-    setClasses(classesData || []);
+
+    // Load classes if institution is pre-selected
+    if (restrictToInstitutionId) {
+      await loadClasses(restrictToInstitutionId);
+    }
 
     setIsLoading(false);
+  };
+
+  const loadClasses = async (institutionId: string) => {
+    const { data: classesData } = await supabase
+      .from('classes')
+      .select('id, class_name, institution_id')
+      .eq('institution_id', institutionId);
+    setClasses(classesData || []);
   };
 
   const loadStudents = async (classId: string) => {
@@ -84,10 +109,6 @@ export function CreateManualAssessment({ restrictToInstitutionId, onComplete, on
     setStudents(studentsList);
 
     // Initialize results
-    const selectedAssessment = assessments.find(a => a.id === selectedAssessmentId);
-    const passPercentage = selectedAssessment?.pass_percentage || 70;
-    const totalPoints = selectedAssessment?.total_points || 100;
-
     setResults(studentsList.map(student => ({
       student_id: student.id,
       student_name: student.name,
@@ -98,10 +119,7 @@ export function CreateManualAssessment({ restrictToInstitutionId, onComplete, on
   };
 
   const handleScoreChange = (studentId: string, score: number) => {
-    const selectedAssessment = assessments.find(a => a.id === selectedAssessmentId);
-    const passPercentage = selectedAssessment?.pass_percentage || 70;
-    const totalPoints = selectedAssessment?.total_points || 100;
-    const percentage = totalPoints > 0 ? (score / totalPoints) * 100 : 0;
+    const percentage = totalMarks > 0 ? (score / totalMarks) * 100 : 0;
     const passed = percentage >= passPercentage;
 
     setResults(results.map(r => 
@@ -122,28 +140,61 @@ export function CreateManualAssessment({ restrictToInstitutionId, onComplete, on
   };
 
   const handleSubmit = async () => {
-    if (!selectedAssessmentId || !selectedClassId || !conductedAt) {
+    if (!assessmentTitle.trim()) {
+      toast.error('Please enter an assessment title');
+      return;
+    }
+    if (!selectedClassId || !conductedAt) {
       toast.error('Please fill in all required fields');
       return;
     }
 
     setIsSaving(true);
 
-    const selectedAssessment = assessments.find(a => a.id === selectedAssessmentId);
-    const selectedClass = classes.find(c => c.id === selectedClassId);
-    const totalPoints = selectedAssessment?.total_points || 100;
-
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // 1. Create the manual assessment
+      const now = new Date().toISOString();
+      const { data: newAssessment, error: assessmentError } = await supabase
+        .from('assessments')
+        .insert({
+          title: assessmentTitle,
+          description: `Manual assessment conducted on ${conductedAt}`,
+          status: 'completed',
+          start_time: conductedAt,
+          end_time: conductedAt,
+          duration_minutes: 0,
+          total_points: totalMarks,
+          pass_percentage: passPercentage,
+          auto_submit: false,
+          auto_evaluate: false,
+          shuffle_questions: false,
+          show_results_immediately: false,
+          allow_review_after_submission: false,
+          created_by: user?.id,
+          created_by_role: 'system_admin',
+          institution_id: selectedInstitutionId || restrictToInstitutionId
+        })
+        .select()
+        .single();
+
+      if (assessmentError) {
+        throw assessmentError;
+      }
+
+      // 2. Create manual attempts for each student
       for (const result of results) {
-        const percentage = totalPoints > 0 ? (result.score / totalPoints) * 100 : 0;
+        const percentage = totalMarks > 0 ? (result.score / totalMarks) * 100 : 0;
         
         await assessmentService.createManualAttempt({
-          assessment_id: selectedAssessmentId,
+          assessment_id: newAssessment.id,
           student_id: result.student_id,
           class_id: selectedClassId,
-          institution_id: selectedClass?.institution_id || restrictToInstitutionId || '',
+          institution_id: selectedInstitutionId || restrictToInstitutionId || '',
           score: result.score,
-          total_points: totalPoints,
+          total_points: totalMarks,
           percentage,
           passed: result.passed,
           conducted_at: new Date(conductedAt).toISOString(),
@@ -151,11 +202,11 @@ export function CreateManualAssessment({ restrictToInstitutionId, onComplete, on
         });
       }
 
-      toast.success('Manual assessment results saved successfully');
+      toast.success('Manual assessment created and results saved successfully');
       onComplete?.();
     } catch (error) {
-      console.error('Error saving manual results:', error);
-      toast.error('Failed to save results');
+      console.error('Error saving manual assessment:', error);
+      toast.error('Failed to save assessment');
     } finally {
       setIsSaving(false);
     }
@@ -178,36 +229,71 @@ export function CreateManualAssessment({ restrictToInstitutionId, onComplete, on
           </Button>
         )}
         <div>
-          <h2 className="text-2xl font-bold">Create Manual Assessment Entry</h2>
-          <p className="text-muted-foreground">Record offline assessment results for students</p>
+          <h2 className="text-2xl font-bold">Create Manual Assessment</h2>
+          <p className="text-muted-foreground">Create a new offline assessment and record student results</p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Assessment Details</CardTitle>
-          <CardDescription>Select the assessment and class for which you're recording results</CardDescription>
+          <CardDescription>Enter the assessment information and select the class</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="assessment">Assessment *</Label>
-              <Select value={selectedAssessmentId} onValueChange={setSelectedAssessmentId}>
-                <SelectTrigger id="assessment">
-                  <SelectValue placeholder="Select assessment" />
-                </SelectTrigger>
-                <SelectContent>
-                  {assessments.map(assessment => (
-                    <SelectItem key={assessment.id} value={assessment.id}>
-                      {assessment.title} ({assessment.total_points} pts)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="title">Assessment Title *</Label>
+              <Input
+                id="title"
+                placeholder="Enter assessment title (e.g., Mid-term Exam 2025)"
+                value={assessmentTitle}
+                onChange={(e) => setAssessmentTitle(e.target.value)}
+              />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="class">Class *</Label>
+              <Label htmlFor="totalMarks">Total Marks *</Label>
+              <Input
+                id="totalMarks"
+                type="number"
+                min={1}
+                value={totalMarks}
+                onChange={(e) => setTotalMarks(parseInt(e.target.value) || 100)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="passPercentage">Pass Percentage *</Label>
+              <Input
+                id="passPercentage"
+                type="number"
+                min={0}
+                max={100}
+                value={passPercentage}
+                onChange={(e) => setPassPercentage(parseInt(e.target.value) || 70)}
+              />
+            </div>
+
+            {!restrictToInstitutionId && (
+              <div className="space-y-2">
+                <Label htmlFor="institution">Institution *</Label>
+                <Select value={selectedInstitutionId} onValueChange={setSelectedInstitutionId}>
+                  <SelectTrigger id="institution">
+                    <SelectValue placeholder="Select institution" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {institutions.map(inst => (
+                      <SelectItem key={inst.id} value={inst.id}>
+                        {inst.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="class">Class/Grade *</Label>
               <Select value={selectedClassId} onValueChange={setSelectedClassId}>
                 <SelectTrigger id="class">
                   <SelectValue placeholder="Select class" />
@@ -232,7 +318,7 @@ export function CreateManualAssessment({ restrictToInstitutionId, onComplete, on
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="notes">General Notes</Label>
               <Textarea
                 id="notes"
@@ -251,7 +337,7 @@ export function CreateManualAssessment({ restrictToInstitutionId, onComplete, on
           <CardHeader>
             <CardTitle>Student Results</CardTitle>
             <CardDescription>
-              Enter scores for each student. Pass mark is automatically calculated based on assessment settings.
+              Enter scores for each student (out of {totalMarks} marks). Pass mark: {passPercentage}%
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -259,7 +345,7 @@ export function CreateManualAssessment({ restrictToInstitutionId, onComplete, on
               <TableHeader>
                 <TableRow>
                   <TableHead>Student Name</TableHead>
-                  <TableHead className="w-32">Score</TableHead>
+                  <TableHead className="w-32">Score (/{totalMarks})</TableHead>
                   <TableHead className="w-24">Passed</TableHead>
                   <TableHead>Notes</TableHead>
                 </TableRow>
@@ -272,7 +358,7 @@ export function CreateManualAssessment({ restrictToInstitutionId, onComplete, on
                       <Input
                         type="number"
                         min={0}
-                        max={assessments.find(a => a.id === selectedAssessmentId)?.total_points || 100}
+                        max={totalMarks}
                         value={result.score}
                         onChange={(e) => handleScoreChange(result.student_id, parseInt(e.target.value) || 0)}
                         className="w-24"
@@ -301,12 +387,12 @@ export function CreateManualAssessment({ restrictToInstitutionId, onComplete, on
                 {isSaving ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
+                    Creating Assessment...
                   </>
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    Save Manual Results
+                    Create & Save Results
                   </>
                 )}
               </Button>

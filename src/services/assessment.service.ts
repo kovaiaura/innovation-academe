@@ -540,35 +540,6 @@ export const assessmentService = {
     await supabase.from('notifications').insert(notifications);
   },
 
-  async allowRetake(attemptId: string): Promise<boolean> {
-    const { error } = await supabase
-      .from('assessment_attempts')
-      .update({ retake_allowed: true })
-      .eq('id', attemptId);
-
-    if (error) {
-      console.error('Error allowing retake:', error);
-      return false;
-    }
-    return true;
-  },
-
-  async resetAttemptForRetake(assessmentId: string, studentId: string): Promise<boolean> {
-    // Archive the old attempt by updating status
-    const { error } = await supabase
-      .from('assessment_attempts')
-      .update({ status: 'retaken' })
-      .eq('assessment_id', assessmentId)
-      .eq('student_id', studentId)
-      .eq('retake_allowed', true);
-
-    if (error) {
-      console.error('Error resetting attempt:', error);
-      return false;
-    }
-    return true;
-  },
-
   // ============================================
   // Student Assessment Operations
   // ============================================
@@ -953,6 +924,32 @@ export const assessmentService = {
 
     if (error) {
       console.error('Error creating manual attempt:', error);
+      return false;
+    }
+
+    return true;
+  },
+
+  async allowRetake(attemptId: string): Promise<boolean> {
+    // 1. First delete all answers for this attempt
+    const { error: answersError } = await supabase
+      .from('assessment_answers')
+      .delete()
+      .eq('attempt_id', attemptId);
+
+    if (answersError) {
+      console.error('Error deleting attempt answers:', answersError);
+      return false;
+    }
+
+    // 2. Delete the attempt itself
+    const { error: attemptError } = await supabase
+      .from('assessment_attempts')
+      .delete()
+      .eq('id', attemptId);
+
+    if (attemptError) {
+      console.error('Error deleting attempt:', attemptError);
       return false;
     }
 
