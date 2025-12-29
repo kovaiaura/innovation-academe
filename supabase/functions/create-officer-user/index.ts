@@ -16,8 +16,6 @@ interface CreateOfficerRequest {
   annual_salary: number;
   hourly_rate?: number;
   overtime_rate_multiplier?: number;
-  sick_leave_allowance?: number;
-  casual_leave_allowance?: number;
   institution_id?: string;
   join_date?: string;
 }
@@ -51,10 +49,31 @@ serve(async (req) => {
       );
     }
 
-    // Calculate annual leave as sum of sick + casual
-    const sickLeave = requestData.sick_leave_allowance || 10;
-    const casualLeave = requestData.casual_leave_allowance || 12;
+    // Fetch global leave settings from leave_settings table
+    let sickLeave = 10; // default fallback
+    let casualLeave = 12; // default fallback
+    
+    const { data: leaveSettings } = await supabaseAdmin
+      .from('leave_settings')
+      .select('setting_key, setting_value');
+    
+    if (leaveSettings) {
+      for (const setting of leaveSettings) {
+        if (setting.setting_key === 'sick_leave_per_year') {
+          sickLeave = Number(setting.setting_value) || 10;
+        } else if (setting.setting_key === 'casual_leave_per_year') {
+          casualLeave = Number(setting.setting_value) || 12;
+        } else if (setting.setting_key === 'leaves_per_year') {
+          // If only total leaves is configured, split between sick and casual
+          const totalLeaves = Number(setting.setting_value) || 22;
+          sickLeave = Math.floor(totalLeaves / 2);
+          casualLeave = totalLeaves - sickLeave;
+        }
+      }
+    }
+    
     const annualLeave = sickLeave + casualLeave;
+    console.log(`[CreateOfficerUser] Using leave settings - Sick: ${sickLeave}, Casual: ${casualLeave}, Annual: ${annualLeave}`);
 
     // Create the auth user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
