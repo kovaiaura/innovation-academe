@@ -8,14 +8,21 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AssessmentPublishing } from '@/types/assessment';
-import { mockInstitutionClasses } from '@/data/mockClassData';
+import { supabase } from '@/integrations/supabase/client';
+import { Search, Building2, GraduationCap, AlertTriangle, CheckSquare, Loader2 } from 'lucide-react';
 
-// Standardized institutions matching mockClassData
-const mockInstitutions = [
-  { id: 'inst-msd-001', name: 'Modern School Vasant Vihar', location: 'New Delhi, India' },
-  { id: 'inst-kga-001', name: 'Kikani Global Academy', location: 'Coimbatore, India' }
-];
-import { Search, Building2, GraduationCap, AlertTriangle, CheckSquare } from 'lucide-react';
+interface Institution {
+  id: string;
+  name: string;
+  address: any;
+}
+
+interface ClassItem {
+  id: string;
+  class_name: string;
+  section: string | null;
+  institution_id: string;
+}
 
 interface PublishingSelectorProps {
   value: AssessmentPublishing[];
@@ -26,6 +33,59 @@ interface PublishingSelectorProps {
 export const PublishingSelector = ({ value, onChange, restrictToInstitution }: PublishingSelectorProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedInstitutions, setSelectedInstitutions] = useState<Map<string, Set<string>>>(new Map());
+  const [institutions, setInstitutions] = useState<Institution[]>([]);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch institutions and classes from database
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch institutions
+        let institutionsQuery = supabase
+          .from('institutions')
+          .select('id, name, address')
+          .eq('status', 'active');
+        
+        if (restrictToInstitution) {
+          institutionsQuery = institutionsQuery.eq('id', restrictToInstitution);
+        }
+        
+        const { data: institutionsData, error: instError } = await institutionsQuery;
+        
+        if (instError) {
+          console.error('Error fetching institutions:', instError);
+        } else {
+          setInstitutions(institutionsData || []);
+        }
+
+        // Fetch classes
+        let classesQuery = supabase
+          .from('classes')
+          .select('id, class_name, section, institution_id')
+          .eq('status', 'active');
+        
+        if (restrictToInstitution) {
+          classesQuery = classesQuery.eq('institution_id', restrictToInstitution);
+        }
+        
+        const { data: classesData, error: classError } = await classesQuery;
+        
+        if (classError) {
+          console.error('Error fetching classes:', classError);
+        } else {
+          setClasses(classesData || []);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [restrictToInstitution]);
 
   // Initialize from value prop on mount only
   useEffect(() => {
@@ -38,12 +98,7 @@ export const PublishingSelector = ({ value, onChange, restrictToInstitution }: P
     }
   }, []); // Empty dependency - only run on mount to prevent overriding user selections
 
-  // Filter institutions based on restriction
-  const availableInstitutions = restrictToInstitution 
-    ? mockInstitutions.filter(inst => inst.id === restrictToInstitution)
-    : mockInstitutions;
-
-  const filteredInstitutions = availableInstitutions.filter((inst) =>
+  const filteredInstitutions = institutions.filter((inst) =>
     inst.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -62,23 +117,23 @@ export const PublishingSelector = ({ value, onChange, restrictToInstitution }: P
 
   const toggleClass = (institutionId: string, classId: string, checked: boolean) => {
     const newMap = new Map(selectedInstitutions);
-    const classes = newMap.get(institutionId) || new Set();
+    const classSet = newMap.get(institutionId) || new Set();
     
     if (checked) {
-      classes.add(classId);
+      classSet.add(classId);
     } else {
-      classes.delete(classId);
+      classSet.delete(classId);
     }
     
-    newMap.set(institutionId, classes);
+    newMap.set(institutionId, classSet);
     setSelectedInstitutions(newMap);
     updatePublishing(newMap);
   };
 
   const selectAllClasses = (institutionId: string) => {
     const newMap = new Map(selectedInstitutions);
-    const classes = getInstitutionClasses(institutionId);
-    const allClassIds = new Set(classes.map(c => c.id));
+    const institutionClasses = getInstitutionClasses(institutionId);
+    const allClassIds = new Set(institutionClasses.map(c => c.id));
     
     newMap.set(institutionId, allClassIds);
     setSelectedInstitutions(newMap);
@@ -90,8 +145,8 @@ export const PublishingSelector = ({ value, onChange, restrictToInstitution }: P
     
     institutionMap.forEach((classIds, institutionId) => {
       if (classIds.size > 0) {
-        const institution = mockInstitutions.find((i) => i.id === institutionId);
-        const selectedClasses = mockInstitutionClasses.filter(
+        const institution = institutions.find((i) => i.id === institutionId);
+        const selectedClasses = classes.filter(
           (c) => c.institution_id === institutionId && classIds.has(c.id)
         );
         
@@ -100,7 +155,9 @@ export const PublishingSelector = ({ value, onChange, restrictToInstitution }: P
             institution_id: institutionId,
             institution_name: institution.name,
             class_ids: Array.from(classIds),
-            class_names: selectedClasses.map((c) => c.class_name)
+            class_names: selectedClasses.map((c) => 
+              c.section ? `${c.class_name} ${c.section}` : c.class_name
+            )
           });
         }
       }
@@ -110,13 +167,13 @@ export const PublishingSelector = ({ value, onChange, restrictToInstitution }: P
   };
 
   const getInstitutionClasses = (institutionId: string) => {
-    return mockInstitutionClasses.filter((c) => c.institution_id === institutionId);
+    return classes.filter((c) => c.institution_id === institutionId);
   };
 
   const getTotalSelectedCount = () => {
     let totalClasses = 0;
-    selectedInstitutions.forEach((classes) => {
-      totalClasses += classes.size;
+    selectedInstitutions.forEach((classSet) => {
+      totalClasses += classSet.size;
     });
     return {
       institutions: selectedInstitutions.size,
@@ -124,7 +181,24 @@ export const PublishingSelector = ({ value, onChange, restrictToInstitution }: P
     };
   };
 
+  const getLocationFromAddress = (address: any): string => {
+    if (!address) return '';
+    if (typeof address === 'string') return address;
+    if (address.city && address.country) return `${address.city}, ${address.country}`;
+    if (address.city) return address.city;
+    return '';
+  };
+
   const counts = getTotalSelectedCount();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Loading institutions...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -173,11 +247,16 @@ export const PublishingSelector = ({ value, onChange, restrictToInstitution }: P
       {/* Institution List */}
       <ScrollArea className="h-[400px] rounded-md border p-4">
         <div className="space-y-4">
+          {filteredInstitutions.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              No institutions found
+            </div>
+          )}
           {filteredInstitutions.map((institution) => {
             const isSelected = selectedInstitutions.has(institution.id);
             const selectedClassIds = selectedInstitutions.get(institution.id) || new Set();
-            const classes = getInstitutionClasses(institution.id);
-            const hasClasses = classes.length > 0;
+            const institutionClasses = getInstitutionClasses(institution.id);
+            const hasClasses = institutionClasses.length > 0;
             const needsAction = isSelected && hasClasses && selectedClassIds.size === 0;
             const hasSelection = isSelected && selectedClassIds.size > 0;
 
@@ -204,7 +283,9 @@ export const PublishingSelector = ({ value, onChange, restrictToInstitution }: P
                         <Label htmlFor={`inst-${institution.id}`} className="text-base font-semibold cursor-pointer">
                           {institution.name}
                         </Label>
-                        <p className="text-sm text-muted-foreground">{institution.location}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {getLocationFromAddress(institution.address)}
+                        </p>
                         <div className="flex gap-2 mt-2">
                           {selectedClassIds.size > 0 && (
                             <Badge variant="secondary">
@@ -234,10 +315,10 @@ export const PublishingSelector = ({ value, onChange, restrictToInstitution }: P
                   </div>
                 </CardHeader>
                 
-                {isSelected && classes.length > 0 && (
+                {isSelected && institutionClasses.length > 0 && (
                   <CardContent>
                     <div className="grid grid-cols-2 gap-3 pl-8">
-                      {classes.map((classItem) => (
+                      {institutionClasses.map((classItem) => (
                         <div key={classItem.id} className="flex items-center gap-2">
                           <Checkbox
                             id={`class-${classItem.id}`}
@@ -247,7 +328,7 @@ export const PublishingSelector = ({ value, onChange, restrictToInstitution }: P
                             }
                           />
                           <Label htmlFor={`class-${classItem.id}`} className="text-sm cursor-pointer">
-                            {classItem.class_name}
+                            {classItem.section ? `${classItem.class_name} ${classItem.section}` : classItem.class_name}
                           </Label>
                         </div>
                       ))}
@@ -255,7 +336,7 @@ export const PublishingSelector = ({ value, onChange, restrictToInstitution }: P
                   </CardContent>
                 )}
                 
-                {isSelected && classes.length === 0 && (
+                {isSelected && institutionClasses.length === 0 && (
                   <CardContent>
                     <p className="text-sm text-muted-foreground pl-8">
                       No classes available for this institution
