@@ -136,3 +136,25 @@ export const getStatusColor = (status: AssessmentStatus): string => {
       return 'bg-muted text-muted-foreground';
   }
 };
+
+// Timezone helpers for datetime-local inputs
+// Convert UTC ISO string to local datetime-local format for input display
+export const formatDateTimeLocal = (isoString: string): string => {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+// Convert datetime-local input value to UTC ISO string for storage
+export const parseLocalToUTC = (localDateTimeString: string): string => {
+  if (!localDateTimeString) return '';
+  // datetime-local input gives us local time, create Date from it
+  // which JS interprets as local time when no timezone specified
+  const date = new Date(localDateTimeString);
+  return date.toISOString();
+};

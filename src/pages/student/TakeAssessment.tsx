@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,6 +32,11 @@ export default function TakeAssessment() {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showTimeWarning, setShowTimeWarning] = useState(false);
 
+  // Refs for stable references in callbacks
+  const attemptRef = useRef<AssessmentAttempt | null>(null);
+  const isAutoSubmittingRef = useRef(false);
+  const hasLoadedRef = useRef(false);
+
   const studentId = user?.id || '';
   const classId = user?.class_id || '';
   const institutionId = user?.institution_id || user?.tenant_id || '';
@@ -48,8 +53,51 @@ export default function TakeAssessment() {
     return '/student';
   };
 
-  // Load assessment and start attempt
+  // Update attempt ref when state changes
   useEffect(() => {
+    attemptRef.current = attempt;
+  }, [attempt]);
+
+  // Auto-submit handler with stable ref
+  const handleAutoSubmit = useCallback(async () => {
+    if (isAutoSubmittingRef.current || !attemptRef.current) return;
+    isAutoSubmittingRef.current = true;
+    toast.info('Time is up! Assessment auto-submitted.');
+    
+    try {
+      const success = await assessmentService.submitAttempt(attemptRef.current.id, true);
+      if (success) {
+        toast.success('Assessment submitted successfully!');
+        navigate(`${getTenantPath()}/student/assessments`);
+      } else {
+        toast.error('Failed to submit assessment');
+        isAutoSubmittingRef.current = false;
+      }
+    } catch (error) {
+      console.error('Error auto-submitting:', error);
+      toast.error('Failed to submit assessment');
+      isAutoSubmittingRef.current = false;
+    }
+  }, [navigate]);
+
+  // Reload warning - prevent accidental navigation during assessment
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (attempt && attempt.status === 'in_progress') {
+        e.preventDefault();
+        e.returnValue = 'You have an assessment in progress. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [attempt]);
+
+  // Load assessment and start/resume attempt
+  useEffect(() => {
+    if (hasLoadedRef.current) return;
+    
     const loadAssessment = async () => {
       if (!assessmentId || !studentId) return;
 
@@ -64,16 +112,7 @@ export default function TakeAssessment() {
 
         setAssessment(loadedAssessment);
 
-        // Load questions
-        let loadedQuestions = await assessmentService.getQuestions(assessmentId);
-        
-        // Shuffle if enabled
-        if (loadedAssessment.shuffle_questions) {
-          loadedQuestions = [...loadedQuestions].sort(() => Math.random() - 0.5);
-        }
-        setQuestions(loadedQuestions);
-
-        // Start attempt
+        // Start or resume attempt
         const attemptResult = await assessmentService.startAttempt(
           assessmentId,
           studentId,
@@ -81,13 +120,63 @@ export default function TakeAssessment() {
           institutionId
         );
 
-        if (attemptResult) {
-          setAttempt(attemptResult);
-          setTimeRemaining(loadedAssessment.duration_minutes * 60);
-        } else {
+        if (!attemptResult) {
           toast.error('Failed to start assessment');
           navigate(`${getTenantPath()}/student/assessments`);
+          return;
         }
+
+        setAttempt(attemptResult);
+        attemptRef.current = attemptResult;
+        hasLoadedRef.current = true;
+
+        // Load questions - use stored order if available, otherwise load fresh
+        let loadedQuestions = await assessmentService.getQuestions(assessmentId);
+        
+        // Check if we have a stored question order (for shuffle persistence)
+        if (attemptResult.question_order && Array.isArray(attemptResult.question_order)) {
+          // Reorder questions based on stored order
+          const orderMap = new Map(attemptResult.question_order.map((id: string, idx: number) => [id, idx]));
+          loadedQuestions = [...loadedQuestions].sort((a, b) => {
+            const aIdx = orderMap.get(a.id) ?? 999;
+            const bIdx = orderMap.get(b.id) ?? 999;
+            return aIdx - bIdx;
+          });
+        } else if (loadedAssessment.shuffle_questions) {
+          // First time loading with shuffle - shuffle and save the order
+          loadedQuestions = [...loadedQuestions].sort(() => Math.random() - 0.5);
+          const questionOrder = loadedQuestions.map(q => q.id);
+          // Save the shuffled order to the attempt
+          await assessmentService.updateAttemptQuestionOrder(attemptResult.id, questionOrder);
+        }
+        
+        setQuestions(loadedQuestions);
+
+        // Load existing answers if resuming
+        const existingAnswers = await assessmentService.getAttemptAnswers(attemptResult.id);
+        if (existingAnswers.length > 0) {
+          const answersMap = new Map<string, string>();
+          existingAnswers.forEach(a => {
+            if (a.selected_option_id) {
+              answersMap.set(a.question_id, a.selected_option_id);
+            }
+          });
+          setAnswers(answersMap);
+        }
+
+        // Calculate remaining time from attempt started_at
+        const startedAt = new Date(attemptResult.started_at).getTime();
+        const durationMs = loadedAssessment.duration_minutes * 60 * 1000;
+        const elapsedMs = Date.now() - startedAt;
+        const remainingSeconds = Math.max(0, Math.floor((durationMs - elapsedMs) / 1000));
+
+        // If time already expired, auto-submit
+        if (remainingSeconds <= 0) {
+          handleAutoSubmit();
+          return;
+        }
+
+        setTimeRemaining(remainingSeconds);
       } catch (error) {
         console.error('Error loading assessment:', error);
         toast.error('Failed to load assessment');
@@ -97,7 +186,7 @@ export default function TakeAssessment() {
     };
 
     loadAssessment();
-  }, [assessmentId, studentId, classId, institutionId, navigate]);
+  }, [assessmentId, studentId, classId, institutionId, navigate, handleAutoSubmit]);
 
   // Timer countdown
   useEffect(() => {
@@ -106,6 +195,7 @@ export default function TakeAssessment() {
     const interval = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
+          clearInterval(interval);
           handleAutoSubmit();
           return 0;
         }
@@ -119,13 +209,7 @@ export default function TakeAssessment() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [attempt]);
-
-  const handleAutoSubmit = useCallback(async () => {
-    if (!attempt) return;
-    toast.info('Time is up! Assessment auto-submitted.');
-    await handleSubmit(true);
-  }, [attempt]);
+  }, [attempt, timeRemaining, handleAutoSubmit]);
 
   const handleAnswerSelect = async (optionId: string) => {
     if (!attempt || !currentQuestion) return;

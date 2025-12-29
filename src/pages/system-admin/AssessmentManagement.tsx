@@ -16,10 +16,11 @@ import { PublishingSelector } from '@/components/assessment/PublishingSelector';
 import { PublishAssessmentDialog } from '@/components/assessment/PublishAssessmentDialog';
 import { DuplicateAssessmentDialog } from '@/components/assessment/DuplicateAssessmentDialog';
 import { CertificateSelector } from '@/components/gamification/CertificateSelector';
+import { ManualAssessmentEntry } from '@/components/assessment/ManualAssessmentEntry';
 import { assessmentService } from '@/services/assessment.service';
 import { Assessment, AssessmentQuestion, AssessmentPublishing } from '@/types/assessment';
-import { getAssessmentStatus, formatDuration, calculateTotalPoints } from '@/utils/assessmentHelpers';
-import { Search, Plus, Clock, Award, Users, FileText, Edit, Trash2, Eye, Info, Loader2 } from 'lucide-react';
+import { getAssessmentStatus, formatDuration, calculateTotalPoints, formatDateTimeLocal, parseLocalToUTC } from '@/utils/assessmentHelpers';
+import { Search, Plus, Clock, Award, Users, FileText, Edit, Trash2, Eye, Info, Loader2, ClipboardEdit } from 'lucide-react';
 import { toast } from 'sonner';
 import { AssessmentDetailsDialog } from '@/components/assessment/AssessmentDetailsDialog';
 import { useAuth } from '@/contexts/AuthContext';
@@ -125,8 +126,8 @@ export default function AssessmentManagement() {
         const success = await assessmentService.updateAssessment(editingAssessment.id, {
           title,
           description,
-          start_time: new Date(startTime).toISOString(),
-          end_time: new Date(endTime).toISOString(),
+          start_time: parseLocalToUTC(startTime),
+          end_time: parseLocalToUTC(endTime),
           duration_minutes: durationMinutes,
           pass_percentage: passPercentage[0],
           auto_submit: autoSubmit,
@@ -162,8 +163,8 @@ export default function AssessmentManagement() {
         const assessment = await assessmentService.createAssessment({
           title,
           description,
-          start_time: new Date(startTime).toISOString(),
-          end_time: new Date(endTime).toISOString(),
+          start_time: parseLocalToUTC(startTime),
+          end_time: parseLocalToUTC(endTime),
           duration_minutes: durationMinutes,
           pass_percentage: passPercentage[0],
           auto_submit: autoSubmit,
@@ -230,8 +231,8 @@ export default function AssessmentManagement() {
     setTitle(assessment.title);
     setDescription(assessment.description);
     setDurationMinutes(assessment.duration_minutes);
-    setStartTime(new Date(assessment.start_time).toISOString().slice(0, 16));
-    setEndTime(new Date(assessment.end_time).toISOString().slice(0, 16));
+    setStartTime(formatDateTimeLocal(assessment.start_time));
+    setEndTime(formatDateTimeLocal(assessment.end_time));
     setPassPercentage([assessment.pass_percentage]);
     setAutoSubmit(assessment.auto_submit);
     setAutoEvaluate(assessment.auto_evaluate);
@@ -282,9 +283,13 @@ export default function AssessmentManagement() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="all">All Assessments</TabsTrigger>
             <TabsTrigger value="create">Create Assessment</TabsTrigger>
+            <TabsTrigger value="manual" className="flex items-center gap-2">
+              <ClipboardEdit className="h-4 w-4" />
+              Manual Entry
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="space-y-6">
@@ -636,6 +641,10 @@ export default function AssessmentManagement() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          <TabsContent value="manual" className="space-y-6">
+            <ManualAssessmentEntry onComplete={loadAssessments} />
           </TabsContent>
         </Tabs>
       </div>
