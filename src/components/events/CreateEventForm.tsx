@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,15 +7,25 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
-import { CalendarIcon, Upload, X, FileText, Loader2 } from 'lucide-react';
+import { CalendarIcon, Upload, X, FileText, Loader2, Building, GraduationCap, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ActivityEventType, EVENT_TYPE_LABELS } from '@/types/events';
-import { useCreateEvent, useUploadBrochure, useUploadAttachment } from '@/hooks/useEvents';
+import { useCreateEvent, useUploadBrochure, useUploadAttachment, usePublishEvent } from '@/hooks/useEvents';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface CreateEventFormProps {
   onSuccess?: () => void;
+}
+
+interface Institution {
+  id: string;
+  name: string;
+  classes: { id: string; class_name: string; section?: string }[];
 }
 
 export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
@@ -31,10 +41,118 @@ export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
   const [brochureUrl, setBrochureUrl] = useState<string>('');
   const [attachments, setAttachments] = useState<{ name: string; url: string }[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  
+  // Institution/Class selection
+  const [showPublishing, setShowPublishing] = useState(false);
+  const [institutions, setInstitutions] = useState<Institution[]>([]);
+  const [loadingInstitutions, setLoadingInstitutions] = useState(false);
+  const [selectedClasses, setSelectedClasses] = useState<{ institution_id: string; class_id: string }[]>([]);
+  const [expandedInstitutions, setExpandedInstitutions] = useState<Set<string>>(new Set());
 
   const createEvent = useCreateEvent();
   const uploadBrochure = useUploadBrochure();
   const uploadAttachment = useUploadAttachment();
+  const publishEvent = usePublishEvent();
+
+  useEffect(() => {
+    if (showPublishing && institutions.length === 0) {
+      fetchInstitutionsAndClasses();
+    }
+  }, [showPublishing]);
+
+  const fetchInstitutionsAndClasses = async () => {
+    setLoadingInstitutions(true);
+    try {
+      const { data: institutionsData, error: instError } = await supabase
+        .from('institutions')
+        .select('id, name')
+        .eq('status', 'active')
+        .order('name');
+
+      if (instError) throw instError;
+
+      const institutionsWithClasses: Institution[] = [];
+
+      for (const inst of institutionsData || []) {
+        const { data: classesData } = await supabase
+          .from('classes')
+          .select('id, class_name, section')
+          .eq('institution_id', inst.id)
+          .eq('status', 'active')
+          .order('display_order');
+
+        institutionsWithClasses.push({
+          id: inst.id,
+          name: inst.name,
+          classes: classesData || [],
+        });
+      }
+
+      setInstitutions(institutionsWithClasses);
+    } catch (error) {
+      console.error('Error fetching institutions:', error);
+      toast.error('Failed to load institutions');
+    } finally {
+      setLoadingInstitutions(false);
+    }
+  };
+
+  const toggleInstitutionExpand = (instId: string) => {
+    const newExpanded = new Set(expandedInstitutions);
+    if (newExpanded.has(instId)) {
+      newExpanded.delete(instId);
+    } else {
+      newExpanded.add(instId);
+    }
+    setExpandedInstitutions(newExpanded);
+  };
+
+  const toggleClass = (institutionId: string, classId: string) => {
+    const exists = selectedClasses.find(
+      (c) => c.institution_id === institutionId && c.class_id === classId
+    );
+
+    if (exists) {
+      setSelectedClasses(
+        selectedClasses.filter(
+          (c) => !(c.institution_id === institutionId && c.class_id === classId)
+        )
+      );
+    } else {
+      setSelectedClasses([...selectedClasses, { institution_id: institutionId, class_id: classId }]);
+    }
+  };
+
+  const toggleAllClassesInInstitution = (institution: Institution) => {
+    const allSelected = institution.classes.every((cls) =>
+      selectedClasses.some((s) => s.institution_id === institution.id && s.class_id === cls.id)
+    );
+
+    if (allSelected) {
+      setSelectedClasses(
+        selectedClasses.filter((s) => s.institution_id !== institution.id)
+      );
+    } else {
+      const newSelections = institution.classes.map((cls) => ({
+        institution_id: institution.id,
+        class_id: cls.id,
+      }));
+      const filtered = selectedClasses.filter((s) => s.institution_id !== institution.id);
+      setSelectedClasses([...filtered, ...newSelections]);
+    }
+  };
+
+  const isClassSelected = (institutionId: string, classId: string) => {
+    return selectedClasses.some(
+      (c) => c.institution_id === institutionId && c.class_id === classId
+    );
+  };
+
+  const isAllClassesSelected = (institution: Institution) => {
+    return institution.classes.length > 0 && institution.classes.every((cls) =>
+      selectedClasses.some((s) => s.institution_id === institution.id && s.class_id === cls.id)
+    );
+  };
 
   const handleBrochureChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -82,7 +200,7 @@ export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
     }
 
     try {
-      await createEvent.mutateAsync({
+      const createdEvent = await createEvent.mutateAsync({
         title,
         description,
         event_type: eventType,
@@ -94,6 +212,14 @@ export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
         brochure_url: brochureUrl || undefined,
         attachments: attachments.length > 0 ? attachments : undefined,
       });
+
+      // If classes are selected, publish immediately
+      if (selectedClasses.length > 0 && createdEvent) {
+        await publishEvent.mutateAsync({
+          event_id: createdEvent.id,
+          assignments: selectedClasses,
+        });
+      }
 
       // Reset form
       setTitle('');
@@ -107,6 +233,9 @@ export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
       setBrochureFile(null);
       setBrochureUrl('');
       setAttachments([]);
+      setSelectedClasses([]);
+      setShowPublishing(false);
+      setExpandedInstitutions(new Set());
 
       onSuccess?.();
     } catch (error) {
@@ -356,19 +485,111 @@ export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
             </div>
           </div>
 
+          {/* Institution & Class Selection */}
+          <div className="space-y-4">
+            <Collapsible open={showPublishing} onOpenChange={setShowPublishing}>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" className="w-full justify-between">
+                  <span className="flex items-center gap-2">
+                    <Building className="h-4 w-4" />
+                    Publish to Institutions/Classes (Optional)
+                  </span>
+                  {showPublishing ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4">
+                <div className="border rounded-lg p-4">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Select institutions and classes to publish this event immediately. 
+                    If none selected, the event will be saved as a draft.
+                  </p>
+                  
+                  {loadingInstitutions ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    </div>
+                  ) : (
+                    <ScrollArea className="h-[250px]">
+                      <div className="space-y-3">
+                        {institutions.map((institution) => (
+                          <div key={institution.id} className="border rounded-lg p-3">
+                            <div className="flex items-center gap-3">
+                              <Checkbox
+                                id={`create-inst-${institution.id}`}
+                                checked={isAllClassesSelected(institution)}
+                                onCheckedChange={() => toggleAllClassesInInstitution(institution)}
+                              />
+                              <div
+                                className="flex items-center gap-2 flex-1 cursor-pointer"
+                                onClick={() => toggleInstitutionExpand(institution.id)}
+                              >
+                                <Building className="h-4 w-4 text-muted-foreground" />
+                                <Label className="cursor-pointer font-medium text-sm">
+                                  {institution.name}
+                                </Label>
+                                <span className="text-xs text-muted-foreground">
+                                  ({institution.classes.length} classes)
+                                </span>
+                                {expandedInstitutions.has(institution.id) ? (
+                                  <ChevronDown className="h-4 w-4 ml-auto" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 ml-auto" />
+                                )}
+                              </div>
+                            </div>
+
+                            {expandedInstitutions.has(institution.id) && institution.classes.length > 0 && (
+                              <div className="ml-8 mt-3 space-y-2">
+                                {institution.classes.map((cls) => (
+                                  <div key={cls.id} className="flex items-center gap-3">
+                                    <Checkbox
+                                      id={`create-class-${cls.id}`}
+                                      checked={isClassSelected(institution.id, cls.id)}
+                                      onCheckedChange={() => toggleClass(institution.id, cls.id)}
+                                    />
+                                    <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                                    <Label htmlFor={`create-class-${cls.id}`} className="cursor-pointer text-sm">
+                                      {cls.class_name} {cls.section ? `- ${cls.section}` : ''}
+                                    </Label>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+
+                        {institutions.length === 0 && (
+                          <p className="text-center text-muted-foreground py-4 text-sm">
+                            No institutions found
+                          </p>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  )}
+                  
+                  {selectedClasses.length > 0 && (
+                    <p className="text-sm text-muted-foreground mt-3">
+                      {selectedClasses.length} class(es) selected - Event will be published immediately
+                    </p>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+
           {/* Actions */}
           <div className="flex gap-4 pt-4">
             <Button
               onClick={handleSubmit}
-              disabled={createEvent.isPending || isUploading}
+              disabled={createEvent.isPending || publishEvent.isPending || isUploading}
             >
-              {createEvent.isPending ? (
+              {createEvent.isPending || publishEvent.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
+                  {selectedClasses.length > 0 ? 'Creating & Publishing...' : 'Creating...'}
                 </>
               ) : (
-                'Create Event'
+                selectedClasses.length > 0 ? 'Create & Publish Event' : 'Create Event (Draft)'
               )}
             </Button>
           </div>
