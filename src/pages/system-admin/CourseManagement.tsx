@@ -95,7 +95,7 @@ export default function CourseManagement() {
         thumbnail_url: thumbnailPath || null,
         prerequisites: newCourse.prerequisites || null,
         learning_outcomes: newCourse.learning_outcomes.filter(o => o.trim()),
-        sdg_goals: newCourse.sdg_goals.length > 0 ? newCourse.sdg_goals : null,
+        sdg_goals: newCourse.sdg_goals.length > 0 ? newCourse.sdg_goals.map(String) : null,
         status: isDraft ? 'draft' : 'active',
         created_by: user?.id || null
       });
@@ -108,7 +108,7 @@ export default function CourseManagement() {
         thumbnail_url: '',
         prerequisites: '',
         learning_outcomes: [''],
-        sdg_goals: [],
+        sdg_goals: [] as number[],
       });
       setThumbnailPreview('');
       setThumbnailFile(null);
@@ -523,6 +523,7 @@ export default function CourseManagement() {
                         thumbnail_url: '',
                         prerequisites: '',
                         learning_outcomes: [''],
+                        sdg_goals: [] as number[],
                       });
                       setThumbnailPreview('');
                       setThumbnailFile(null);

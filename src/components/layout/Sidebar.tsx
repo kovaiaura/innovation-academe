@@ -144,14 +144,17 @@ const menuItems: MenuItem[] = [
   { label: 'Students', icon: <GraduationCap className="h-5 w-5" />, path: '/students', roles: ['management'] },
   { label: 'Innovation Officers', icon: <UserCheck className="h-5 w-5" />, path: '/officers', roles: ['management'] },
   { label: 'Courses & Sessions', icon: <BookOpen className="h-5 w-5" />, path: '/courses-sessions', roles: ['management'] },
+  { label: 'Assessments', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['management'] },
   { label: 'Inventory & Purchase', icon: <Package className="h-5 w-5" />, path: '/inventory-purchase', roles: ['management'] },
   { label: 'Projects & Awards', icon: <Target className="h-5 w-5" />, path: '/projects-certificates', roles: ['management'] },
+  { label: 'SDG Dashboard', icon: <Target className="h-5 w-5" />, path: '/sdg-dashboard', roles: ['management'] },
   { label: 'Events', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['management'] },
   { label: 'Reports', icon: <FileText className="h-5 w-5" />, path: '/reports', roles: ['management'] },
   { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['management'] },
   { label: 'Attendance', icon: <Clock className="h-5 w-5" />, path: '/attendance', roles: ['management'] },
   { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['management'] },
-  // Student My Profile
+  // Student menu items (additional)
+  { label: 'SDG Contribution', icon: <Target className="h-5 w-5" />, path: '/sdg', roles: ['student'] },
   { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['student'] },
   // Teacher My Profile
   { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['teacher'] },

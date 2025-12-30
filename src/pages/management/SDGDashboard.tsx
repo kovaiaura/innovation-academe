@@ -14,6 +14,7 @@ export default function ManagementSDGDashboard() {
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<any[]>([]);
   const [sdgCounts, setSDGCounts] = useState<Record<number, number>>({});
+  const [totalStudents, setTotalStudents] = useState(0);
 
   useEffect(() => {
     const loadInstitutionSDGData = async () => {
@@ -39,8 +40,15 @@ export default function ManagementSDGDashboard() {
           });
         });
 
+        // Count students in institution
+        const { count: studentCount } = await supabase
+          .from('students')
+          .select('id', { count: 'exact', head: true })
+          .eq('institution_id', user.tenant_id);
+
         setProjects(institutionProjects);
         setSDGCounts(counts);
+        setTotalStudents(studentCount || 0);
       } catch (error) {
         console.error('Error loading SDG data:', error);
       } finally {

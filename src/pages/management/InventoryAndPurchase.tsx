@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from "@/components/layout/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { useInventoryItems, usePurchaseRequests, useInventoryIssues, useApproveP
 import { PurchaseRequest, InventoryIssue } from "@/types/inventory";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const getStatusBadge = (status: string) => {
   const variants: Record<string, { className: string; label: string }> = {
@@ -50,7 +51,7 @@ const getSeverityBadge = (severity: string) => {
 
 export default function InventoryAndPurchase() {
   const { user } = useAuth();
-  const institutionId = user?.institution_id || '';
+  const institutionId = user?.institution_id || user?.tenant_id || '';
   
   const { data: inventory = [], isLoading: inventoryLoading } = useInventoryItems(institutionId);
   const { data: requests = [], isLoading: requestsLoading } = usePurchaseRequests(institutionId);
@@ -63,6 +64,33 @@ export default function InventoryAndPurchase() {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [actionRequest, setActionRequest] = useState<PurchaseRequest | null>(null);
   const [comments, setComments] = useState('');
+  
+  // Fetch institution details
+  const [institutionData, setInstitutionData] = useState<any>(null);
+  const [studentCount, setStudentCount] = useState(0);
+  
+  useEffect(() => {
+    const fetchInstitutionData = async () => {
+      if (!institutionId) return;
+      
+      const { data: inst } = await supabase
+        .from('institutions')
+        .select('name, address, settings')
+        .eq('id', institutionId)
+        .single();
+      
+      if (inst) setInstitutionData(inst);
+      
+      const { count } = await supabase
+        .from('students')
+        .select('id', { count: 'exact', head: true })
+        .eq('institution_id', institutionId);
+      
+      setStudentCount(count || 0);
+    };
+    
+    fetchInstitutionData();
+  }, [institutionId]);
 
   const totalValue = inventory.reduce((sum, item) => sum + (item.total_value || 0), 0);
   const totalItems = inventory.reduce((sum, item) => sum + (item.units || 0), 0);
@@ -120,7 +148,13 @@ export default function InventoryAndPurchase() {
   return (
     <Layout>
       <div className="space-y-6">
-        <InstitutionHeader />
+        <InstitutionHeader 
+          institutionName={institutionData?.name || 'Loading...'}
+          establishedYear={(institutionData?.settings as any)?.established_year || new Date().getFullYear().toString()}
+          location={`${(institutionData?.address as any)?.city || ''}, ${(institutionData?.address as any)?.state || ''}`}
+          totalStudents={studentCount}
+          academicYear="2024-25"
+        />
         
         <Tabs defaultValue="inventory" className="w-full">
           <TabsList>
