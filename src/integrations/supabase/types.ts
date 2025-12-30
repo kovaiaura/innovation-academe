@@ -356,6 +356,59 @@ export type Database = {
           },
         ]
       }
+      certificate_templates: {
+        Row: {
+          category: string
+          created_at: string | null
+          created_by: string | null
+          date_position: Json | null
+          default_height: number | null
+          default_width: number | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          name_position: Json | null
+          template_image_url: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          date_position?: Json | null
+          default_height?: number | null
+          default_width?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          name_position?: Json | null
+          template_image_url?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          date_position?: Json | null
+          default_height?: number | null
+          default_width?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          name_position?: Json | null
+          template_image_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificate_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_module_assignments: {
         Row: {
           class_assignment_id: string
@@ -1226,6 +1279,53 @@ export type Database = {
         }
         Relationships: []
       }
+      gamification_badges: {
+        Row: {
+          category: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          icon: string
+          id: string
+          is_active: boolean | null
+          name: string
+          unlock_criteria: Json
+          xp_reward: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          icon?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          unlock_criteria?: Json
+          xp_reward?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          icon?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          unlock_criteria?: Json
+          xp_reward?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamification_badges_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       id_counters: {
         Row: {
           counter_padding: number | null
@@ -1651,6 +1751,50 @@ export type Database = {
             foreignKeyName: "inventory_items_institution_id_fkey"
             columns: ["institution_id"]
             isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leaderboard_configs: {
+        Row: {
+          created_at: string | null
+          id: string
+          institution_id: string
+          is_public: boolean | null
+          reset_schedule: string | null
+          scope: string | null
+          time_period: string | null
+          top_n_display: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          institution_id: string
+          is_public?: boolean | null
+          reset_schedule?: string | null
+          scope?: string | null
+          time_period?: string | null
+          top_n_display?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          institution_id?: string
+          is_public?: boolean | null
+          reset_schedule?: string | null
+          scope?: string | null
+          time_period?: string | null
+          top_n_display?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leaderboard_configs_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: true
             referencedRelation: "institutions"
             referencedColumns: ["id"]
           },
@@ -3130,6 +3274,119 @@ export type Database = {
           },
         ]
       }
+      student_badges: {
+        Row: {
+          badge_id: string
+          earned_at: string | null
+          id: string
+          institution_id: string | null
+          student_id: string
+        }
+        Insert: {
+          badge_id: string
+          earned_at?: string | null
+          id?: string
+          institution_id?: string | null
+          student_id: string
+        }
+        Update: {
+          badge_id?: string
+          earned_at?: string | null
+          id?: string
+          institution_id?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "gamification_badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_badges_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_badges_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_certificates: {
+        Row: {
+          activity_id: string | null
+          activity_name: string
+          activity_type: string
+          certificate_url: string | null
+          created_at: string | null
+          grade: string | null
+          id: string
+          institution_id: string | null
+          issued_date: string | null
+          student_id: string
+          template_id: string | null
+          verification_code: string | null
+        }
+        Insert: {
+          activity_id?: string | null
+          activity_name: string
+          activity_type: string
+          certificate_url?: string | null
+          created_at?: string | null
+          grade?: string | null
+          id?: string
+          institution_id?: string | null
+          issued_date?: string | null
+          student_id: string
+          template_id?: string | null
+          verification_code?: string | null
+        }
+        Update: {
+          activity_id?: string | null
+          activity_name?: string
+          activity_type?: string
+          certificate_url?: string | null
+          created_at?: string | null
+          grade?: string | null
+          id?: string
+          institution_id?: string | null
+          issued_date?: string | null
+          student_id?: string
+          template_id?: string | null
+          verification_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_certificates_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_certificates_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_certificates_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "certificate_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_content_completions: {
         Row: {
           class_assignment_id: string
@@ -3175,6 +3432,92 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_streaks: {
+        Row: {
+          created_at: string | null
+          current_streak: number | null
+          id: string
+          last_activity_date: string | null
+          longest_streak: number | null
+          student_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_streak?: number | null
+          id?: string
+          last_activity_date?: string | null
+          longest_streak?: number | null
+          student_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_streak?: number | null
+          id?: string
+          last_activity_date?: string | null
+          longest_streak?: number | null
+          student_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_streaks_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_xp_transactions: {
+        Row: {
+          activity_id: string | null
+          activity_type: string
+          description: string | null
+          earned_at: string | null
+          id: string
+          institution_id: string | null
+          points_earned: number
+          student_id: string
+        }
+        Insert: {
+          activity_id?: string | null
+          activity_type: string
+          description?: string | null
+          earned_at?: string | null
+          id?: string
+          institution_id?: string | null
+          points_earned: number
+          student_id: string
+        }
+        Update: {
+          activity_id?: string | null
+          activity_type?: string
+          description?: string | null
+          earned_at?: string | null
+          id?: string
+          institution_id?: string | null
+          points_earned?: number
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_xp_transactions_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_xp_transactions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -3287,6 +3630,36 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      xp_rules: {
+        Row: {
+          activity: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          multiplier: number | null
+          points: number
+        }
+        Insert: {
+          activity: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          multiplier?: number | null
+          points?: number
+        }
+        Update: {
+          activity?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          multiplier?: number | null
+          points?: number
         }
         Relationships: []
       }

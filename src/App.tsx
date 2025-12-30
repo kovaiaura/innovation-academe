@@ -33,7 +33,7 @@ import StudentGamification from "./pages/student/Gamification";
 import StudentResume from "./pages/student/Resume";
 import StudentEvents from "./pages/student/Events";
 import StudentSettings from "./pages/student/Settings";
-import TakeAssignment from "./pages/student/TakeAssignment";
+
 import OfficerDashboard from "./pages/officer/Dashboard";
 import OfficerSessions from "./pages/officer/Sessions";
 import OfficerProjects from "./pages/officer/Projects";
@@ -73,7 +73,7 @@ import TeacherProfile from "./pages/teacher/Profile";
 import SystemAdminCourseManagement from "./pages/system-admin/CourseManagement";
 import SystemAdminCourseDetail from "./pages/system-admin/CourseDetail";
 import SystemAdminAssessmentManagement from "./pages/system-admin/AssessmentManagement";
-import SystemAdminAssignmentManagement from "./pages/system-admin/AssignmentManagement";
+
 import OfficerCourseManagement from "./pages/officer/CourseManagement";
 import OfficerCourseContentViewer from "./pages/officer/CourseContentViewer";
 import OfficerTeachingSession from "./pages/officer/TeachingSession";
@@ -83,7 +83,7 @@ import OfficerAssessmentManagement from "./pages/officer/AssessmentManagement";
 import OfficerAskMetova from "./pages/officer/AskMetova";
 import StudentCourseDetail from "./pages/student/CourseDetail";
 import StudentAssessments from "./pages/student/Assessments";
-import StudentAssignments from "./pages/student/Assignments";
+
 import TakeAssessment from "./pages/student/TakeAssessment";
 import InstitutionalCalendar from "./pages/system-admin/InstitutionalCalendar";
 import InstitutionDetail from "./pages/system-admin/InstitutionDetail";
@@ -367,14 +367,6 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="assessment_management">
                   <SystemAdminAssessmentManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/system-admin/assignment-management"
-              element={
-                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="assignment_management">
-                  <SystemAdminAssignmentManagement />
                 </ProtectedRoute>
               }
             />
@@ -934,22 +926,6 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['student']}>
                   <TakeAssessment />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/tenant/:tenantId/student/assignments"
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <StudentAssignments />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/tenant/:tenantId/student/assignments/:assignmentId/take"
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <TakeAssignment />
                 </ProtectedRoute>
               }
             />
