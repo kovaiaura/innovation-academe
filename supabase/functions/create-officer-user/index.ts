@@ -132,7 +132,7 @@ serve(async (req) => {
       }
     }
 
-    // Create officer record
+    // Create officer record with institution assignment
     const { data: officerData, error: officerError } = await supabaseAdmin
       .from('officers')
       .insert({
@@ -148,7 +148,8 @@ serve(async (req) => {
         annual_leave_allowance: annualLeave,
         sick_leave_allowance: sickLeave,
         casual_leave_allowance: casualLeave,
-        join_date: requestData.join_date || new Date().toISOString().split('T')[0]
+        join_date: requestData.join_date || new Date().toISOString().split('T')[0],
+        assigned_institutions: requestData.institution_id ? [requestData.institution_id] : []
       })
       .select()
       .single();
