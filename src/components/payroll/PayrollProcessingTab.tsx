@@ -177,26 +177,9 @@ export function PayrollProcessingTab({ month, year }: PayrollProcessingTabProps)
           </div>
           
           <div className="flex items-center gap-2">
-            <Button 
-              onClick={handleGenerateAll} 
-              disabled={isGenerating}
-              className="gap-2"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4" />
-                  Generate All
-                </>
-              )}
-            </Button>
             <Button variant="outline" onClick={exportPayroll} className="gap-2">
               <Download className="h-4 w-4" />
-              Export
+              Export CSV
             </Button>
           </div>
         </div>

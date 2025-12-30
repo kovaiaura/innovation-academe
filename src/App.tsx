@@ -65,6 +65,9 @@ import ManagementTimetable from "./pages/management/Timetable";
 import ManagementEvents from "./pages/management/Events";
 import ManagementCourseDetail from "./pages/management/CourseDetail";
 import ManagementProfile from "./pages/management/Profile";
+import ManagementAssessments from "./pages/management/Assessments";
+import ManagementSDGDashboard from "./pages/management/SDGDashboard";
+import StudentSDGContribution from "./pages/student/SDGContribution";
 import StudentProfile from "./pages/student/Profile";
 import TeacherProfile from "./pages/teacher/Profile";
 import SystemAdminCourseManagement from "./pages/system-admin/CourseManagement";
@@ -821,6 +824,22 @@ const App = () => (
               }
             />
             <Route
+              path="/tenant/:tenantId/management/assessments"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <ManagementAssessments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/management/sdg-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <ManagementSDGDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/tenant/:tenantId/management/notifications"
               element={
                 <ProtectedRoute allowedRoles={['management']}>
@@ -957,6 +976,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['student']}>
                   <NotificationsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/sdg"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentSDGContribution />
                 </ProtectedRoute>
               }
             />
