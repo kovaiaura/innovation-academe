@@ -412,7 +412,7 @@ export default function GamificationManagement() {
               </CardHeader>
               <CardContent>
                 <StudentPerformanceTable 
-                  students={filteredStudents}
+                  performances={filteredStudents}
                   onViewDetails={handleViewStudentDetails}
                 />
               </CardContent>
@@ -435,6 +435,7 @@ export default function GamificationManagement() {
                 <LeaderboardConfigCard
                   key={config.id}
                   config={config}
+                  students={students}
                   onSave={handleSaveLeaderboard}
                 />
               ))}
