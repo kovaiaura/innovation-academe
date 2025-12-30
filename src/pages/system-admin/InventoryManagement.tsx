@@ -1,814 +1,674 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Package, AlertTriangle, CheckCircle, TrendingUp, Search, Clock, DollarSign, AlertCircle as AlertCircleIcon, XCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Package, AlertTriangle, CheckCircle, TrendingUp, Search, Plus, Edit, Trash2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useInstitutions } from '@/hooks/useInstitutions';
 import { 
-  loadPurchaseRequests, 
-  savePurchaseRequests,
-  loadInventoryItems,
-  loadAuditRecords,
-  getInventoryByInstitution,
-  getAuditRecordsByInstitution,
-} from '@/data/mockInventoryData';
-import { PurchaseRequest, InventoryItem, AuditRecord } from '@/types/inventory';
-import { PurchaseRequestStatusBadge } from '@/components/inventory/PurchaseRequestStatusBadge';
-import { PurchaseRequestDetailDialog } from '@/components/inventory/PurchaseRequestDetailDialog';
-import { ApproveRejectDialog } from '@/components/inventory/ApproveRejectDialog';
-import { FulfillRequestDialog } from '@/components/inventory/FulfillRequestDialog';
-import { SystemAdminApprovalDialog } from '@/components/inventory/SystemAdminApprovalDialog';
+  useInventoryItems, 
+  usePurchaseRequests, 
+  useInventoryIssues, 
+  useAddInventoryItem, 
+  useUpdateInventoryItem, 
+  useDeleteInventoryItem,
+  useApprovePurchaseRequest,
+  useRejectPurchaseRequest
+} from '@/hooks/useInventory';
+import { InventoryItem, PurchaseRequest, InventoryIssue } from '@/types/inventory';
 import { format } from 'date-fns';
 
-interface InstitutionInventorySummary {
-  institution_id: string;
-  institution_name: string;
-  total_items: number;
-  total_value: number;
-  missing_items: number;
-  damaged_items: number;
-  last_audit_date: string;
-  status: 'good' | 'needs_review' | 'critical';
-}
+const getStatusBadge = (status: string) => {
+  const variants: Record<string, { className: string; label: string }> = {
+    pending_institution: { className: 'bg-yellow-500/10 text-yellow-500', label: 'Pending Institution' },
+    approved_institution: { className: 'bg-blue-500/10 text-blue-500', label: 'Pending CEO' },
+    pending_ceo: { className: 'bg-purple-500/10 text-purple-500', label: 'Pending CEO' },
+    approved: { className: 'bg-green-500/10 text-green-500', label: 'Approved' },
+    rejected: { className: 'bg-red-500/10 text-red-500', label: 'Rejected' },
+    cancelled: { className: 'bg-gray-500/10 text-gray-500', label: 'Cancelled' },
+  };
+  return variants[status] || { className: 'bg-gray-500/10 text-gray-500', label: status };
+};
+
+const getIssueStatusBadge = (status: string) => {
+  const variants: Record<string, { className: string; label: string }> = {
+    reported: { className: 'bg-yellow-500/10 text-yellow-500', label: 'Reported' },
+    acknowledged: { className: 'bg-blue-500/10 text-blue-500', label: 'Acknowledged' },
+    in_progress: { className: 'bg-purple-500/10 text-purple-500', label: 'In Progress' },
+    resolved: { className: 'bg-green-500/10 text-green-500', label: 'Resolved' },
+    closed: { className: 'bg-gray-500/10 text-gray-500', label: 'Closed' },
+  };
+  return variants[status] || { className: 'bg-gray-500/10 text-gray-500', label: status };
+};
 
 export default function InventoryManagement() {
-  const navigate = useNavigate();
-  const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>([]);
-  const [inventorySummaries, setInventorySummaries] = useState<InstitutionInventorySummary[]>([]);
-  const [selectedRequest, setSelectedRequest] = useState<PurchaseRequest | null>(null);
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
-  const [fulfillDialogOpen, setFulfillDialogOpen] = useState(false);
-  const [fulfillMode, setFulfillMode] = useState<'in_progress' | 'fulfilled'>('in_progress');
-  const [actionRequest, setActionRequest] = useState<PurchaseRequest | null>(null);
-  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
-  const [approvalMode, setApprovalMode] = useState<'approve' | 'reject'>('approve');
-  
+  const { institutions = [] } = useInstitutions();
+  const [selectedInstitution, setSelectedInstitution] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [requestStatusFilter, setRequestStatusFilter] = useState<string>('all');
+  
+  // Get inventory data for selected institution
+  const { data: inventory = [], isLoading: inventoryLoading } = useInventoryItems(selectedInstitution);
+  const { data: requests = [], isLoading: requestsLoading } = usePurchaseRequests(selectedInstitution || undefined);
+  const { data: issues = [], isLoading: issuesLoading } = useInventoryIssues(selectedInstitution || undefined);
+  
+  const addItem = useAddInventoryItem();
+  const updateItem = useUpdateInventoryItem();
+  const deleteItem = useDeleteInventoryItem();
+  const approveRequest = useApprovePurchaseRequest();
+  const rejectRequest = useRejectPurchaseRequest();
+  
+  // Dialog states
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [actionRequest, setActionRequest] = useState<PurchaseRequest | null>(null);
+  const [editItem, setEditItem] = useState<InventoryItem | null>(null);
+  const [comments, setComments] = useState('');
+  
+  // Form state for add/edit
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    unit_price: 0,
+    units: 1,
+    category: 'general',
+  });
 
-  // Institution ID to name mapping
-  const institutionNames: Record<string, string> = {
-    'inst-msd-001': 'Modern School Vasant Vihar',
-    'inst-kga-001': 'Kikani Global Academy',
-  };
+  // Stats
+  const totalValue = inventory.reduce((sum, item) => sum + (item.total_value || 0), 0);
+  const totalItems = inventory.reduce((sum, item) => sum + (item.units || 0), 0);
+  const pendingRequests = requests.filter(r => r.status === 'pending_ceo' || r.status === 'approved_institution');
+  const openIssues = issues.filter(i => i.status !== 'resolved' && i.status !== 'closed');
 
-  // Load data on mount
-  useEffect(() => {
-    // Load purchase requests
-    setPurchaseRequests(loadPurchaseRequests());
-    
-    // Build inventory summaries from all institutions
-    const allInventory = loadInventoryItems();
-    const allAudits = loadAuditRecords();
-    
-    const summaries: InstitutionInventorySummary[] = Object.keys(institutionNames).map(instId => {
-      const inventory = allInventory[instId] || [];
-      const audits = allAudits[instId] || [];
-      const latestAudit = audits[0];
-      
-      const totalItems = inventory.reduce((sum, item) => sum + item.quantity, 0);
-      const totalValue = inventory.reduce((sum, item) => sum + item.total_value, 0);
-      const missingItems = latestAudit?.missing_items.length || 0;
-      const damagedItems = latestAudit?.damaged_items.length || 0;
-      
-      // Determine status based on audit results
-      let status: 'good' | 'needs_review' | 'critical' = 'good';
-      if (missingItems > 5 || damagedItems > 5) {
-        status = 'critical';
-      } else if (missingItems > 0 || damagedItems > 0) {
-        status = 'needs_review';
-      }
-      
-      return {
-        institution_id: instId,
-        institution_name: institutionNames[instId],
-        total_items: totalItems,
-        total_value: totalValue,
-        missing_items: missingItems,
-        damaged_items: damagedItems,
-        last_audit_date: latestAudit?.audit_date || 'No audit',
-        status,
-      };
+  const filteredInventory = inventory.filter(item => 
+    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleAddItem = () => {
+    if (!selectedInstitution) {
+      toast.error('Please select an institution first');
+      return;
+    }
+    if (!formData.name.trim()) {
+      toast.error('Please enter an item name');
+      return;
+    }
+
+    addItem.mutate({
+      institutionId: selectedInstitution,
+      itemData: {
+        name: formData.name,
+        description: formData.description || undefined,
+        unit_price: formData.unit_price,
+        units: formData.units,
+        category: formData.category,
+      },
+      userId: '',
+    }, {
+      onSuccess: () => {
+        toast.success('Item added successfully');
+        setAddDialogOpen(false);
+        setFormData({ name: '', description: '', unit_price: 0, units: 1, category: 'general' });
+      },
     });
+  };
+
+  const handleEditItem = () => {
+    if (!editItem) return;
     
-    setInventorySummaries(summaries);
-  }, []);
-
-  // Inventory Stats
-  const totalValue = inventorySummaries.reduce((sum, inv) => sum + inv.total_value, 0);
-  const totalItems = inventorySummaries.reduce((sum, inv) => sum + inv.total_items, 0);
-  const totalMissing = inventorySummaries.reduce((sum, inv) => sum + inv.missing_items, 0);
-  const totalDamaged = inventorySummaries.reduce((sum, inv) => sum + inv.damaged_items, 0);
-  const criticalCount = inventorySummaries.filter((inv) => inv.status === 'critical').length;
-  const needsReviewCount = inventorySummaries.filter((inv) => inv.status === 'needs_review').length;
-
-  // Purchase Request Stats
-  const pendingReviewRequests = purchaseRequests.filter(r => r.status === 'pending_system_admin').length;
-  const forwardedToInstitutions = purchaseRequests.filter(r => r.status === 'approved_by_system_admin' || r.status === 'pending_institution_approval').length;
-  const readyForProcessing = purchaseRequests.filter(r => r.status === 'approved_by_institution').length;
-  const inProgress = purchaseRequests.filter(r => r.status === 'in_progress').length;
-
-  // Filters
-  const filteredInventory = inventorySummaries.filter(inv => {
-    const matchesSearch = inv.institution_name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || inv.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  const filteredRequests = purchaseRequests.filter(req => {
-    const matchesStatus = requestStatusFilter === 'all' || req.status === requestStatusFilter;
-    return matchesStatus;
-  });
-
-  // Badge helpers
-  const getStatusBadge = (status: InstitutionInventorySummary['status']) => {
-    const config = {
-      good: { variant: 'default' as const, icon: <CheckCircle className="h-3 w-3" />, label: 'Good' },
-      needs_review: { variant: 'secondary' as const, icon: <AlertTriangle className="h-3 w-3" />, label: 'Needs Review' },
-      critical: { variant: 'destructive' as const, icon: <AlertCircleIcon className="h-3 w-3" />, label: 'Critical' },
-    };
-    const { variant, icon, label } = config[status];
-    return (
-      <Badge variant={variant} className="gap-1">
-        {icon}
-        {label}
-      </Badge>
-    );
+    updateItem.mutate({
+      itemId: editItem.id,
+      itemData: {
+        name: formData.name,
+        description: formData.description || undefined,
+        unit_price: formData.unit_price,
+        units: formData.units,
+        category: formData.category,
+      },
+    }, {
+      onSuccess: () => {
+        toast.success('Item updated successfully');
+        setEditDialogOpen(false);
+        setEditItem(null);
+        setFormData({ name: '', description: '', unit_price: 0, units: 1, category: 'general' });
+      },
+    });
   };
 
-  const getDaysSinceAudit = (date: string) => {
-    if (date === 'No audit') return 999;
-    const auditDate = new Date(date);
-    const today = new Date();
-    const diffTime = Math.abs(today.getTime() - auditDate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
-
-  // Purchase request handlers
-  const handleViewDetails = (request: PurchaseRequest) => {
-    // Get fresh data from localStorage
-    const allRequests = loadPurchaseRequests();
-    const freshRequest = allRequests.find(r => r.id === request.id);
-    setSelectedRequest(freshRequest || request);
-  };
-
-  const handleApproveRequest = (request: PurchaseRequest) => {
-    setActionRequest(request);
-    setApprovalMode('approve');
-    setApprovalDialogOpen(true);
-  };
-
-  const handleRejectInitialRequest = (request: PurchaseRequest) => {
-    setActionRequest(request);
-    setApprovalMode('reject');
-    setApprovalDialogOpen(true);
-  };
-
-  const confirmApproval = (comments: string) => {
-    if (actionRequest) {
-      const allRequests = loadPurchaseRequests();
-      const index = allRequests.findIndex(r => r.id === actionRequest.id);
-      if (index !== -1) {
-        allRequests[index] = {
-          ...allRequests[index],
-          status: 'approved_by_system_admin',
-          system_admin_reviewed_by: 'sysadmin-001',
-          system_admin_reviewed_by_name: 'System Admin',
-          system_admin_reviewed_at: new Date().toISOString(),
-          system_admin_review_comments: comments,
-          updated_at: new Date().toISOString(),
-        };
-        savePurchaseRequests(allRequests);
-        setPurchaseRequests(allRequests);
-        toast.success(`Request ${actionRequest.request_code} approved and forwarded to institution`);
-      }
-      setActionRequest(null);
+  const handleDeleteItem = (item: InventoryItem) => {
+    if (confirm(`Delete "${item.name}"?`)) {
+      deleteItem.mutate(item.id, {
+        onSuccess: () => toast.success('Item deleted'),
+      });
     }
   };
 
-  const confirmInitialRejection = (reason: string) => {
-    if (actionRequest) {
-      const allRequests = loadPurchaseRequests();
-      const index = allRequests.findIndex(r => r.id === actionRequest.id);
-      if (index !== -1) {
-        allRequests[index] = {
-          ...allRequests[index],
-          status: 'rejected_by_system_admin',
-          system_admin_reviewed_by: 'sysadmin-001',
-          system_admin_reviewed_by_name: 'System Admin',
-          system_admin_reviewed_at: new Date().toISOString(),
-          system_admin_rejection_reason: reason,
-          updated_at: new Date().toISOString(),
-        };
-        savePurchaseRequests(allRequests);
-        setPurchaseRequests(allRequests);
-        toast.error(`Request ${actionRequest.request_code} rejected`);
-      }
-      setActionRequest(null);
-    }
+  const openEditDialog = (item: InventoryItem) => {
+    setEditItem(item);
+    setFormData({
+      name: item.name,
+      description: item.description || '',
+      unit_price: item.unit_price,
+      units: item.units,
+      category: item.category || 'general',
+    });
+    setEditDialogOpen(true);
   };
 
-  const handleMarkInProgress = (request: PurchaseRequest) => {
+  const handleApprove = (request: PurchaseRequest) => {
     setActionRequest(request);
-    setFulfillMode('in_progress');
-    setFulfillDialogOpen(true);
-  };
-
-  const handleMarkFulfilled = (request: PurchaseRequest) => {
-    setActionRequest(request);
-    setFulfillMode('fulfilled');
-    setFulfillDialogOpen(true);
+    setComments('');
+    setApproveDialogOpen(true);
   };
 
   const handleReject = (request: PurchaseRequest) => {
     setActionRequest(request);
+    setComments('');
     setRejectDialogOpen(true);
   };
 
-  const confirmFulfill = (data: { comments: string; deliveryDate?: string }) => {
+  const confirmApprove = () => {
     if (actionRequest) {
-      const allRequests = loadPurchaseRequests();
-      const index = allRequests.findIndex(r => r.id === actionRequest.id);
-      if (index !== -1) {
-        if (fulfillMode === 'in_progress') {
-          allRequests[index] = {
-            ...allRequests[index],
-            status: 'in_progress',
-            system_admin_processed_by: 'sysadmin-001',
-            system_admin_processed_by_name: 'System Admin',
-            system_admin_processed_at: new Date().toISOString(),
-            system_admin_processing_comments: data.comments,
-            updated_at: new Date().toISOString(),
-          };
-          toast.success(`Request ${actionRequest.request_code} marked as in progress`);
-        } else {
-          allRequests[index] = {
-            ...allRequests[index],
-            status: 'fulfilled',
-            fulfillment_details: data.comments,
-            fulfillment_date: data.deliveryDate,
-            updated_at: new Date().toISOString(),
-          };
-          toast.success(`Request ${actionRequest.request_code} fulfilled`);
-        }
-        savePurchaseRequests(allRequests);
-        setPurchaseRequests(allRequests);
-      }
-      setActionRequest(null);
+      approveRequest.mutate({
+        requestId: actionRequest.id,
+        approverType: 'ceo',
+        comments: comments || undefined,
+      }, {
+        onSuccess: () => {
+          toast.success(`Request ${actionRequest.request_code} approved`);
+          setApproveDialogOpen(false);
+          setActionRequest(null);
+        },
+      });
     }
   };
 
-  const confirmReject = (reason: string) => {
-    if (actionRequest) {
-      const allRequests = loadPurchaseRequests();
-      const index = allRequests.findIndex(r => r.id === actionRequest.id);
-      if (index !== -1) {
-        allRequests[index] = {
-          ...allRequests[index],
-          status: 'rejected_by_system_admin',
-          system_admin_processed_by: 'sysadmin-001',
-          system_admin_processed_by_name: 'System Admin',
-          system_admin_processed_at: new Date().toISOString(),
-          system_admin_rejection_reason: reason,
-          updated_at: new Date().toISOString(),
-        };
-        savePurchaseRequests(allRequests);
-        setPurchaseRequests(allRequests);
-        toast.error(`Request ${actionRequest.request_code} rejected`);
-      }
-      setActionRequest(null);
+  const confirmReject = () => {
+    if (actionRequest && comments.trim()) {
+      rejectRequest.mutate({
+        requestId: actionRequest.id,
+        reason: comments,
+      }, {
+        onSuccess: () => {
+          toast.error(`Request ${actionRequest.request_code} rejected`);
+          setRejectDialogOpen(false);
+          setActionRequest(null);
+        },
+      });
     }
   };
 
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Inventory Management</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage institution inventory and purchase requests
-          </p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold">Inventory Management</h1>
+            <p className="text-muted-foreground mt-1">Manage institution inventory and purchase requests</p>
+          </div>
+          <Select value={selectedInstitution} onValueChange={setSelectedInstitution}>
+            <SelectTrigger className="w-[280px]">
+              <SelectValue placeholder="Select Institution" />
+            </SelectTrigger>
+            <SelectContent>
+              {institutions.map((inst) => (
+                <SelectItem key={inst.id} value={inst.id}>{inst.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="overview">Inventory Overview</TabsTrigger>
-            <TabsTrigger value="purchases">Purchase Requests ({pendingReviewRequests + readyForProcessing})</TabsTrigger>
-          </TabsList>
+        {!selectedInstitution ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground">Select an institution to view and manage inventory</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Tabs defaultValue="inventory" className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="inventory">Inventory</TabsTrigger>
+              <TabsTrigger value="requests">
+                Purchase Requests
+                {pendingRequests.length > 0 && (
+                  <Badge className="ml-2" variant="secondary">{pendingRequests.length}</Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="issues">
+                Issues
+                {openIssues.length > 0 && (
+                  <Badge className="ml-2" variant="destructive">{openIssues.length}</Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Inventory Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Inventory Value</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">₹{(totalValue / 100000).toFixed(1)}L</div>
-                  <p className="text-xs text-muted-foreground">Across all institutions</p>
-                </CardContent>
-              </Card>
+            {/* Inventory Tab */}
+            <TabsContent value="inventory" className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Total Items</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{inventory.length}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Total Units</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{totalItems}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Active Items</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-green-500">
+                      {inventory.filter(i => i.status === 'active').length}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">₹{totalValue.toLocaleString()}</div>
+                  </CardContent>
+                </Card>
+              </div>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Items</CardTitle>
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{totalItems}</div>
-                  <p className="text-xs text-muted-foreground">Tracked assets</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Missing Items</CardTitle>
-                  <XCircle className="h-4 w-4 text-orange-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{totalMissing}</div>
-                  <p className="text-xs text-muted-foreground">Need tracking</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Damaged Items</CardTitle>
-                  <AlertTriangle className="h-4 w-4 text-red-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{totalDamaged}</div>
-                  <p className="text-xs text-muted-foreground">Need replacement</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Needs Review</CardTitle>
-                  <AlertTriangle className="h-4 w-4 text-orange-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{needsReviewCount}</div>
-                  <p className="text-xs text-muted-foreground">Institutions</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Critical Audits</CardTitle>
-                  <AlertTriangle className="h-4 w-4 text-red-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{criticalCount}</div>
-                  <p className="text-xs text-muted-foreground">Urgent attention</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Institution Inventory Status</CardTitle>
-                <CardDescription>Detailed inventory audit information</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-4 mb-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      placeholder="Search institutions..." 
-                      value={searchTerm} 
-                      onChange={(e) => setSearchTerm(e.target.value)} 
-                      className="pl-8" 
-                    />
-                  </div>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="good">Good</SelectItem>
-                      <SelectItem value="needs_review">Needs Review</SelectItem>
-                      <SelectItem value="critical">Critical</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <div className="flex gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Search items..." 
+                    value={searchTerm} 
+                    onChange={(e) => setSearchTerm(e.target.value)} 
+                    className="pl-8" 
+                  />
                 </div>
+                <Button onClick={() => setAddDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Item
+                </Button>
+              </div>
 
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Institution</TableHead>
-                      <TableHead className="text-right">Total Items</TableHead>
-                      <TableHead className="text-right">Missing</TableHead>
-                      <TableHead className="text-right">Damaged</TableHead>
-                      <TableHead className="text-right">Total Value</TableHead>
-                      <TableHead>Last Audit</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredInventory.map((inv) => {
-                      const daysSinceAudit = getDaysSinceAudit(inv.last_audit_date);
-                      return (
-                        <TableRow 
-                          key={inv.institution_id}
-                          className="cursor-pointer hover:bg-accent/50 transition-colors"
-                          onClick={() => navigate(`/system-admin/inventory-management/${inv.institution_id}`)}
-                        >
-                          <TableCell className="font-medium">{inv.institution_name}</TableCell>
-                          <TableCell className="text-right">{inv.total_items}</TableCell>
-                          <TableCell className="text-right">
-                            <span className={inv.missing_items > 0 ? "text-orange-500 font-semibold" : ""}>
-                              {inv.missing_items}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <span className={inv.damaged_items > 0 ? "text-red-500 font-semibold" : ""}>
-                              {inv.damaged_items}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            ₹{inv.total_value.toLocaleString()}
-                          </TableCell>
+              {inventoryLoading ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <p className="text-muted-foreground">Loading inventory...</p>
+                  </CardContent>
+                </Card>
+              ) : filteredInventory.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">No inventory items found</p>
+                    <Button className="mt-4" onClick={() => setAddDialogOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add First Item
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Sl.No</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-right">Unit Price</TableHead>
+                        <TableHead className="text-right">Units</TableHead>
+                        <TableHead className="text-right">Total Value</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredInventory.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.sl_no}</TableCell>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell className="max-w-[200px] truncate">{item.description || '-'}</TableCell>
+                          <TableCell className="text-right">₹{item.unit_price.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">{item.units}</TableCell>
+                          <TableCell className="text-right">₹{item.total_value.toLocaleString()}</TableCell>
                           <TableCell>
-                            <div>
-                              {inv.last_audit_date !== 'No audit' 
-                                ? new Date(inv.last_audit_date).toLocaleDateString()
-                                : 'No audit'
-                              }
-                              {inv.last_audit_date !== 'No audit' && (
-                                <div className="text-xs text-muted-foreground">
-                                  {daysSinceAudit} days ago
-                                </div>
-                              )}
+                            <Badge className={item.status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-gray-500/10 text-gray-500'}>
+                              {item.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="icon" onClick={() => openEditDialog(item)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleDeleteItem(item)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
-                          </TableCell>
-                          <TableCell>{getStatusBadge(inv.status)}</TableCell>
-                          <TableCell>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/system-admin/inventory-management/${inv.institution_id}`);
-                              }}
-                            >
-                              View Details
-                            </Button>
                           </TableCell>
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Purchase Requests Tab */}
-          <TabsContent value="purchases" className="space-y-6">
-            {/* Stats Cards */}
-            <div className="grid gap-4 md:grid-cols-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-yellow-500">{pendingReviewRequests}</div>
-                  <p className="text-xs text-muted-foreground">Awaiting your approval</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Forwarded to Institutions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-blue-500">{forwardedToInstitutions}</div>
-                  <p className="text-xs text-muted-foreground">Pending institution approval</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Ready for Processing</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-green-500">{readyForProcessing}</div>
-                  <p className="text-xs text-muted-foreground">Institution approved</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-purple-500">{inProgress}</div>
-                  <p className="text-xs text-muted-foreground">Being processed</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Pending System Admin Review Section */}
-            {purchaseRequests.filter(r => r.status === 'pending_system_admin').length > 0 && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-yellow-500" />
-                  <h3 className="text-lg font-semibold">
-                    Pending Your Review ({purchaseRequests.filter(r => r.status === 'pending_system_admin').length})
-                  </h3>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
+              )}
+            </TabsContent>
 
-                {purchaseRequests.filter(r => r.status === 'pending_system_admin').map((request) => (
-                  <Card key={request.id}>
-                    <CardContent className="pt-6">
-                      <div className="space-y-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold">{request.request_code}</h3>
-                              <PurchaseRequestStatusBadge status={request.status} size="sm" />
-                              {request.priority === 'urgent' && (
-                                <Badge variant="destructive" className="text-xs">🚨 URGENT</Badge>
-                              )}
-                            </div>
-                            <p className="text-sm text-muted-foreground mb-1">
-                              {request.officer_name} • {request.institution_name}
-                            </p>
-                            
-                            <div className="space-y-2 mt-3">
-                              <p className="text-sm font-medium">Items Requested:</p>
-                              <div className="flex flex-wrap gap-2">
+            {/* Purchase Requests Tab */}
+            <TabsContent value="requests" className="space-y-6">
+              {pendingRequests.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                    <h3 className="text-lg font-semibold">Pending Final Approval ({pendingRequests.length})</h3>
+                  </div>
+
+                  {pendingRequests.map((request) => {
+                    const statusInfo = getStatusBadge(request.status);
+                    return (
+                      <Card key={request.id}>
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-semibold">{request.request_code}</h3>
+                                <Badge className={statusInfo.className}>{statusInfo.label}</Badge>
+                                {request.priority === 'urgent' && (
+                                  <Badge variant="destructive" className="text-xs">URGENT</Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {request.institution_name} • {request.requester_name}
+                              </p>
+                              <div className="flex flex-wrap gap-2 mt-2">
                                 {request.items.map((item, idx) => (
                                   <Badge key={idx} variant="outline">
-                                    {item.item_name} ({item.quantity} {item.unit})
+                                    {item.name} ({item.quantity})
                                   </Badge>
                                 ))}
                               </div>
+                              {request.institution_comments && (
+                                <p className="text-xs text-muted-foreground mt-2">
+                                  Institution: {request.institution_comments}
+                                </p>
+                              )}
                             </div>
-
-                            <div className="mt-3 p-3 bg-muted rounded-lg">
-                              <p className="text-sm font-medium mb-1">Justification:</p>
-                              <p className="text-sm text-muted-foreground">{request.justification}</p>
-                            </div>
-
-                            <p className="text-xs text-muted-foreground mt-3">
-                              Requested {format(new Date(request.created_at), 'MMM dd, yyyy • hh:mm a')}
-                            </p>
-                          </div>
-
-                          <div className="text-right ml-4">
-                            <p className="text-sm text-muted-foreground mb-1">Total Cost</p>
-                            <p className="text-2xl font-bold">₹{request.total_estimated_cost.toLocaleString()}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2 pt-2 border-t">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleViewDetails(request)}
-                          >
-                            View Details
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="default"
-                            onClick={() => handleApproveRequest(request)}
-                          >
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Approve & Forward
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="destructive"
-                            onClick={() => handleRejectInitialRequest(request)}
-                          >
-                            Reject
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-
-            {/* Approved by Institution - Ready for Processing */}
-            {purchaseRequests.filter(r => r.status === 'approved_by_institution').length > 0 && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <h3 className="text-lg font-semibold">
-                    Ready for Processing ({purchaseRequests.filter(r => r.status === 'approved_by_institution').length})
-                  </h3>
-                </div>
-
-                {purchaseRequests.filter(r => r.status === 'approved_by_institution').map((request) => (
-                  <Card key={request.id}>
-                    <CardContent className="pt-6">
-                      <div className="space-y-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold">{request.request_code}</h3>
-                              <PurchaseRequestStatusBadge status={request.status} size="sm" />
-                              <Badge variant="default" className="text-xs bg-green-500">✓ Institution Approved</Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {request.officer_name} • {request.institution_name}
-                            </p>
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {request.items.map((item, idx) => (
-                                <Badge key={idx} variant="outline" className="text-xs">
-                                  {item.item_name} ({item.quantity})
-                                </Badge>
-                              ))}
-                            </div>
-                            {request.institution_comments && (
-                              <div className="mt-2 p-2 bg-green-50 dark:bg-green-950 rounded text-sm">
-                                <span className="font-medium">Institution Comment: </span>
-                                {request.institution_comments}
+                            <div className="text-right">
+                              <p className="text-xl font-bold">₹{request.total_estimated_cost.toLocaleString()}</p>
+                              <div className="flex gap-2 mt-2">
+                                <Button size="sm" onClick={() => handleApprove(request)}>
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Approve
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => handleReject(request)}>
+                                  <XCircle className="h-4 w-4 mr-1" />
+                                  Reject
+                                </Button>
                               </div>
-                            )}
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-xl font-bold">₹{request.total_estimated_cost.toLocaleString()}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2 pt-2 border-t">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleViewDetails(request)}
-                          >
-                            View Details
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="default"
-                            onClick={() => handleMarkInProgress(request)}
-                          >
-                            <Clock className="h-4 w-4 mr-1" />
-                            Mark In Progress
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="secondary"
-                            onClick={() => handleMarkFulfilled(request)}
-                          >
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Mark Fulfilled
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-
-            {/* In Progress */}
-            {purchaseRequests.filter(r => r.status === 'in_progress').length > 0 && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-purple-500" />
-                  <h3 className="text-lg font-semibold">
-                    In Progress ({purchaseRequests.filter(r => r.status === 'in_progress').length})
-                  </h3>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
+              )}
 
-                {purchaseRequests.filter(r => r.status === 'in_progress').map((request) => (
-                  <Card key={request.id} className="cursor-pointer hover:bg-accent/50" onClick={() => handleViewDetails(request)}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h3 className="font-semibold">{request.request_code}</h3>
-                            <PurchaseRequestStatusBadge status={request.status} size="sm" />
+              {requests.filter(r => r.status === 'approved' || r.status === 'rejected').length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Processed Requests</h3>
+                  {requests.filter(r => r.status === 'approved' || r.status === 'rejected').map((request) => {
+                    const statusInfo = getStatusBadge(request.status);
+                    return (
+                      <Card key={request.id}>
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold">{request.request_code}</h3>
+                                <Badge className={statusInfo.className}>{statusInfo.label}</Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {request.institution_name} • {request.requester_name}
+                              </p>
+                            </div>
+                            <p className="font-bold">₹{request.total_estimated_cost.toLocaleString()}</p>
                           </div>
-                          <p className="text-sm text-muted-foreground">
-                            {request.officer_name} • {request.institution_name}
-                          </p>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {request.items.map((item, idx) => (
-                              <Badge key={idx} variant="outline" className="text-xs">
-                                {item.item_name} ({item.quantity})
-                              </Badge>
-                            ))}
-                          </div>
-                          {request.system_admin_processing_comments && (
-                            <p className="text-xs text-muted-foreground mt-2">
-                              {request.system_admin_processing_comments}
-                            </p>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xl font-bold">₹{request.total_estimated_cost.toLocaleString()}</p>
-                          <Button 
-                            size="sm" 
-                            variant="default"
-                            className="mt-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleMarkFulfilled(request);
-                            }}
-                          >
-                            Mark Fulfilled
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
 
-            {/* Request History */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Request History</h3>
-              <div className="flex gap-4 mb-4">
-                <Select value={requestStatusFilter} onValueChange={setRequestStatusFilter}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Requests</SelectItem>
-                    <SelectItem value="pending_system_admin">Pending Review</SelectItem>
-                    <SelectItem value="pending_institution_approval">Pending Institution</SelectItem>
-                    <SelectItem value="approved_by_institution">Approved</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="fulfilled">Fulfilled</SelectItem>
-                    <SelectItem value="rejected_by_system_admin">Rejected by Admin</SelectItem>
-                    <SelectItem value="rejected_by_institution">Rejected by Institution</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {requests.length === 0 && !requestsLoading && (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">No purchase requests</p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
 
-              <div className="grid gap-4">
-                {filteredRequests.map((request) => (
-                  <Card key={request.id} className="cursor-pointer hover:bg-accent/50" onClick={() => handleViewDetails(request)}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold">{request.request_code}</h3>
-                            <PurchaseRequestStatusBadge status={request.status} size="sm" />
+            {/* Issues Tab */}
+            <TabsContent value="issues" className="space-y-6">
+              {issuesLoading ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <p className="text-muted-foreground">Loading issues...</p>
+                  </CardContent>
+                </Card>
+              ) : issues.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">No issues reported</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {issues.map((issue) => {
+                    const statusInfo = getIssueStatusBadge(issue.status);
+                    return (
+                      <Card key={issue.id}>
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-semibold">{issue.issue_code}</h3>
+                                <Badge className={statusInfo.className}>{statusInfo.label}</Badge>
+                                <Badge variant="outline">{issue.issue_type}</Badge>
+                                <Badge variant={issue.severity === 'critical' ? 'destructive' : 'secondary'}>
+                                  {issue.severity}
+                                </Badge>
+                              </div>
+                              <p className="font-medium">{issue.item_name}</p>
+                              <p className="text-sm text-muted-foreground mt-1">{issue.description}</p>
+                              <p className="text-xs text-muted-foreground mt-2">
+                                {issue.institution_name} • Reported by: {issue.reporter_name} • {format(new Date(issue.created_at), 'MMM dd, yyyy')}
+                              </p>
+                            </div>
                           </div>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {request.officer_name} • {request.institution_name} • ₹{request.total_estimated_cost.toLocaleString()}
-                          </p>
-                        </div>
-                        <Button variant="outline" size="sm">View Details</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
 
-      {/* Dialogs */}
-      <PurchaseRequestDetailDialog
-        isOpen={!!selectedRequest}
-        onOpenChange={(open) => !open && setSelectedRequest(null)}
-        request={selectedRequest}
-      />
+      {/* Add Item Dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Inventory Item</DialogTitle>
+            <DialogDescription>Add a new item to the inventory</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Name *</Label>
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Item name"
+              />
+            </div>
+            <div>
+              <Label>Description</Label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Item description"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Unit Price (₹)</Label>
+                <Input
+                  type="number"
+                  value={formData.unit_price}
+                  onChange={(e) => setFormData({ ...formData, unit_price: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div>
+                <Label>Units</Label>
+                <Input
+                  type="number"
+                  value={formData.units}
+                  onChange={(e) => setFormData({ ...formData, units: parseInt(e.target.value) || 1 })}
+                />
+              </div>
+            </div>
+            <div className="text-right font-bold">
+              Total Value: ₹{(formData.unit_price * formData.units).toLocaleString()}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddItem} disabled={addItem.isPending}>Add Item</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      <SystemAdminApprovalDialog
-        isOpen={approvalDialogOpen}
-        onOpenChange={setApprovalDialogOpen}
-        mode={approvalMode}
-        onApprove={confirmApproval}
-        onReject={confirmInitialRejection}
-      />
+      {/* Edit Item Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Inventory Item</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Name *</Label>
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>Description</Label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Unit Price (₹)</Label>
+                <Input
+                  type="number"
+                  value={formData.unit_price}
+                  onChange={(e) => setFormData({ ...formData, unit_price: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div>
+                <Label>Units</Label>
+                <Input
+                  type="number"
+                  value={formData.units}
+                  onChange={(e) => setFormData({ ...formData, units: parseInt(e.target.value) || 1 })}
+                />
+              </div>
+            </div>
+            <div className="text-right font-bold">
+              Total Value: ₹{(formData.unit_price * formData.units).toLocaleString()}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleEditItem} disabled={updateItem.isPending}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      <ApproveRejectDialog
-        isOpen={rejectDialogOpen}
-        onOpenChange={setRejectDialogOpen}
-        request={actionRequest}
-        mode="reject"
-        onConfirm={confirmReject}
-      />
+      {/* Approve Dialog */}
+      <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve Request</DialogTitle>
+            <DialogDescription>
+              Approve {actionRequest?.request_code}?
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="Comments (optional)"
+            value={comments}
+            onChange={(e) => setComments(e.target.value)}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setApproveDialogOpen(false)}>Cancel</Button>
+            <Button onClick={confirmApprove} disabled={approveRequest.isPending}>Approve</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      <FulfillRequestDialog
-        isOpen={fulfillDialogOpen}
-        onOpenChange={setFulfillDialogOpen}
-        request={actionRequest}
-        mode={fulfillMode}
-        onConfirm={confirmFulfill}
-      />
+      {/* Reject Dialog */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Request</DialogTitle>
+            <DialogDescription>
+              Provide a reason for rejecting {actionRequest?.request_code}.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="Rejection reason (required)"
+            value={comments}
+            onChange={(e) => setComments(e.target.value)}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>Cancel</Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmReject}
+              disabled={!comments.trim() || rejectRequest.isPending}
+            >
+              Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
