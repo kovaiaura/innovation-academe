@@ -125,7 +125,14 @@ function EventCard({ event, getEventTypeColor, onViewDetails }: EventCardProps) 
   const expressInterest = useExpressInterest();
   const removeInterest = useRemoveInterest();
 
+  const isRegistrationOpen = () => {
+    if (!event.registration_end) return false; // Registration end is required
+    return new Date(event.registration_end) >= new Date();
+  };
+
   const handleToggleInterest = async () => {
+    if (!isRegistrationOpen()) return;
+    
     if (hasInterest) {
       await removeInterest.mutateAsync(event.id);
     } else {
@@ -134,6 +141,7 @@ function EventCard({ event, getEventTypeColor, onViewDetails }: EventCardProps) 
   };
 
   const isToggling = expressInterest.isPending || removeInterest.isPending;
+  const registrationClosed = !isRegistrationOpen();
 
   return (
     <Card className="flex flex-col">
@@ -142,19 +150,23 @@ function EventCard({ event, getEventTypeColor, onViewDetails }: EventCardProps) 
           <Badge variant="outline" className={getEventTypeColor(event.event_type)}>
             {EVENT_TYPE_LABELS[event.event_type]}
           </Badge>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={handleToggleInterest}
-            disabled={isToggling || checkingInterest}
-          >
-            {hasInterest ? (
-              <HeartOff className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <Heart className="h-4 w-4 text-primary" />
-            )}
-          </Button>
+          {registrationClosed ? (
+            <Badge variant="secondary" className="text-xs">Registration Closed</Badge>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={handleToggleInterest}
+              disabled={isToggling || checkingInterest}
+            >
+              {hasInterest ? (
+                <HeartOff className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <Heart className="h-4 w-4 text-primary" />
+              )}
+            </Button>
+          )}
         </div>
         <CardTitle className="text-lg">{event.title}</CardTitle>
         <CardDescription className="line-clamp-2">
@@ -202,7 +214,14 @@ function EventDetailsContent({ event, getEventTypeColor }: EventDetailsContentPr
   const expressInterest = useExpressInterest();
   const removeInterest = useRemoveInterest();
 
+  const isRegistrationOpen = () => {
+    if (!event.registration_end) return false;
+    return new Date(event.registration_end) >= new Date();
+  };
+
   const handleToggleInterest = async () => {
+    if (!isRegistrationOpen()) return;
+    
     if (hasInterest) {
       await removeInterest.mutateAsync(event.id);
     } else {
@@ -210,29 +229,35 @@ function EventDetailsContent({ event, getEventTypeColor }: EventDetailsContentPr
     }
   };
 
+  const registrationClosed = !isRegistrationOpen();
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <Badge variant="outline" className={getEventTypeColor(event.event_type)}>
           {EVENT_TYPE_LABELS[event.event_type]}
         </Badge>
-        <Button
-          variant={hasInterest ? 'outline' : 'default'}
-          onClick={handleToggleInterest}
-          disabled={expressInterest.isPending || removeInterest.isPending}
-        >
-          {hasInterest ? (
-            <>
-              <HeartOff className="h-4 w-4 mr-2" />
-              Remove Interest
-            </>
-          ) : (
-            <>
-              <Heart className="h-4 w-4 mr-2" />
-              Express Interest
-            </>
-          )}
-        </Button>
+        {registrationClosed ? (
+          <Badge variant="secondary">Registration Closed</Badge>
+        ) : (
+          <Button
+            variant={hasInterest ? 'outline' : 'default'}
+            onClick={handleToggleInterest}
+            disabled={expressInterest.isPending || removeInterest.isPending}
+          >
+            {hasInterest ? (
+              <>
+                <HeartOff className="h-4 w-4 mr-2" />
+                Remove Interest
+              </>
+            ) : (
+              <>
+                <Heart className="h-4 w-4 mr-2" />
+                Express Interest
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">

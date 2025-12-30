@@ -36,12 +36,11 @@ export function InterestedStudentsDialog({
 
   const handleExport = () => {
     const csvContent = [
-      ['Student Name', 'Email', 'Class', 'Section', 'Student ID', 'Registered At'].join(','),
+      ['Student Name', 'Email', 'Class', 'Student ID', 'Registered At'].join(','),
       ...filteredInterests.map(i => [
         i.student_name || 'N/A',
         i.email || 'N/A',
         i.class_name || 'N/A',
-        i.section || 'N/A',
         i.student_id,
         format(new Date(i.registered_at), 'yyyy-MM-dd HH:mm')
       ].join(','))
@@ -113,14 +112,13 @@ export function InterestedStudentsDialog({
                     <TableHead>Student Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Class</TableHead>
-                    <TableHead>Section</TableHead>
                     <TableHead>Registered At</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredInterests.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                         {(interests?.length || 0) === 0 
                           ? 'No students have expressed interest yet.' 
                           : 'No students match your search.'}
@@ -145,13 +143,6 @@ export function InterestedStudentsDialog({
                             <Badge variant="outline">{interest.class_name}</Badge>
                           ) : (
                             <span className="text-muted-foreground">N/A</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {interest.section ? (
-                            <Badge variant="secondary">{interest.section}</Badge>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
                           )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">

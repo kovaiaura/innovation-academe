@@ -170,27 +170,31 @@ class EventService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Get student profile info including email
+    // Check registration deadline
+    const event = await this.getEventById(eventId);
+    if (event?.registration_end) {
+      const regEnd = new Date(event.registration_end);
+      if (regEnd < new Date()) {
+        throw new Error('Registration deadline has passed');
+      }
+    }
+
+    // Get student profile info
     const { data: profile } = await supabase
       .from('profiles')
-      .select(`
-        name,
-        email,
-        institution_id,
-        class_id
-      `)
+      .select('name, institution_id, class_id')
       .eq('id', user.id)
       .single();
 
     // Get class info separately if class_id exists
-    let classData: { class_name: string; section?: string } | null = null;
+    let className: string | undefined;
     if (profile?.class_id) {
       const { data: classInfo } = await supabase
         .from('classes')
-        .select('class_name, section')
+        .select('class_name')
         .eq('id', profile.class_id)
         .single();
-      classData = classInfo;
+      className = classInfo?.class_name;
     }
 
     // Get institution info
@@ -210,12 +214,11 @@ class EventService {
         event_id: eventId,
         student_id: user.id,
         student_name: profile?.name,
-        email: profile?.email,
+        email: user.email, // Get email from auth user
         institution_id: profile?.institution_id,
         institution_name: institutionName,
         class_id: profile?.class_id,
-        class_name: classData?.class_name,
-        section: classData?.section
+        class_name: className,
       })
       .select()
       .single();
@@ -242,6 +245,15 @@ class EventService {
   async removeInterest(eventId: string): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
+
+    // Check registration deadline
+    const event = await this.getEventById(eventId);
+    if (event?.registration_end) {
+      const regEnd = new Date(event.registration_end);
+      if (regEnd < new Date()) {
+        throw new Error('Cannot remove interest after registration deadline');
+      }
+    }
 
     const { error } = await supabase
       .from('event_interests')

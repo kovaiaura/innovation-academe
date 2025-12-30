@@ -179,7 +179,7 @@ export function InstitutionParticipationTab() {
                       <TableCell className="font-medium">{interest.student_name}</TableCell>
                       <TableCell className="text-sm">{getEventName(interest.event_id)}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{interest.class_name} - {interest.section}</Badge>
+                        <Badge variant="outline">{interest.class_name}</Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {format(new Date(interest.registered_at), 'MMM dd, yyyy')}

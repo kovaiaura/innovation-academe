@@ -313,8 +313,7 @@ export const mockEventInterests: EventInterest[] = [
     event_id: 'evt-001',
     student_id: 'MSD-2024-0001',
     student_name: 'Arjun Sharma',
-    class_name: 'Grade 10',
-    section: 'A',
+    class_name: 'Grade 10-A',
     institution_id: 'inst-msd-001',
     institution_name: 'Modern School Vasant Vihar',
     registered_at: '2025-02-10T15:30:00Z'
@@ -324,8 +323,7 @@ export const mockEventInterests: EventInterest[] = [
     event_id: 'evt-001',
     student_id: 'MSD-2024-0015',
     student_name: 'Priya Kapoor',
-    class_name: 'Grade 11',
-    section: 'B',
+    class_name: 'Grade 11-B',
     institution_id: 'inst-msd-001',
     institution_name: 'Modern School Vasant Vihar',
     registered_at: '2025-02-11T09:15:00Z'
@@ -335,8 +333,7 @@ export const mockEventInterests: EventInterest[] = [
     event_id: 'evt-003',
     student_id: 'MSD-2024-0022',
     student_name: 'Rahul Verma',
-    class_name: 'Grade 9',
-    section: 'A',
+    class_name: 'Grade 9-A',
     institution_id: 'inst-msd-001',
     institution_name: 'Modern School Vasant Vihar',
     registered_at: '2025-02-20T11:00:00Z'
@@ -346,8 +343,7 @@ export const mockEventInterests: EventInterest[] = [
     event_id: 'evt-004',
     student_id: 'MSD-2024-0008',
     student_name: 'Sneha Reddy',
-    class_name: 'Grade 12',
-    section: 'A',
+    class_name: 'Grade 12-A',
     institution_id: 'inst-msd-001',
     institution_name: 'Modern School Vasant Vihar',
     registered_at: '2025-03-05T14:20:00Z'
@@ -357,8 +353,7 @@ export const mockEventInterests: EventInterest[] = [
     event_id: 'evt-005',
     student_id: 'MSD-2024-0030',
     student_name: 'Aditya Mehta',
-    class_name: 'Grade 10',
-    section: 'B',
+    class_name: 'Grade 10-B',
     institution_id: 'inst-msd-001',
     institution_name: 'Modern School Vasant Vihar',
     registered_at: '2025-02-08T10:45:00Z'
@@ -369,8 +364,7 @@ export const mockEventInterests: EventInterest[] = [
     event_id: 'evt-001',
     student_id: 'KGA-2024-0012',
     student_name: 'Karthik Subramaniam',
-    class_name: 'Grade 11',
-    section: 'A',
+    class_name: 'Grade 11-A',
     institution_id: 'inst-kga-001',
     institution_name: 'Kikani Global Academy',
     registered_at: '2025-02-12T08:30:00Z'
@@ -380,8 +374,7 @@ export const mockEventInterests: EventInterest[] = [
     event_id: 'evt-001',
     student_id: 'KGA-2024-0025',
     student_name: 'Lakshmi Narayanan',
-    class_name: 'Grade 10',
-    section: 'B',
+    class_name: 'Grade 10-B',
     institution_id: 'inst-kga-001',
     institution_name: 'Kikani Global Academy',
     registered_at: '2025-02-13T16:00:00Z'
@@ -391,8 +384,7 @@ export const mockEventInterests: EventInterest[] = [
     event_id: 'evt-eureka-2025',
     student_id: 'KGA-2024-0033',
     student_name: 'Ananya Krishnan',
-    class_name: 'Grade 9',
-    section: 'C',
+    class_name: 'Grade 9-C',
     institution_id: 'inst-kga-001',
     institution_name: 'Kikani Global Academy',
     registered_at: '2025-06-15T11:20:00Z'
@@ -402,8 +394,7 @@ export const mockEventInterests: EventInterest[] = [
     event_id: 'evt-003',
     student_id: 'KGA-2024-0018',
     student_name: 'Vijay Kumar',
-    class_name: 'Grade 8',
-    section: 'A',
+    class_name: 'Grade 8-A',
     institution_id: 'inst-kga-001',
     institution_name: 'Kikani Global Academy',
     registered_at: '2025-02-22T09:45:00Z'
@@ -413,8 +404,7 @@ export const mockEventInterests: EventInterest[] = [
     event_id: 'evt-005',
     student_id: 'KGA-2024-0041',
     student_name: 'Divya Raman',
-    class_name: 'Grade 11',
-    section: 'B',
+    class_name: 'Grade 11-B',
     institution_id: 'inst-kga-001',
     institution_name: 'Kikani Global Academy',
     registered_at: '2025-02-09T13:30:00Z'
