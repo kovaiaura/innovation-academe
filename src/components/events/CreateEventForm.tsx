@@ -23,6 +23,8 @@ export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
   const [description, setDescription] = useState('');
   const [eventType, setEventType] = useState<ActivityEventType>('competition');
   const [venue, setVenue] = useState('');
+  const [registrationStart, setRegistrationStart] = useState<Date>();
+  const [registrationEnd, setRegistrationEnd] = useState<Date>();
   const [eventStart, setEventStart] = useState<Date>();
   const [eventEnd, setEventEnd] = useState<Date>();
   const [brochureFile, setBrochureFile] = useState<File | null>(null);
@@ -85,6 +87,8 @@ export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
         description,
         event_type: eventType,
         venue: venue || undefined,
+        registration_start: registrationStart?.toISOString(),
+        registration_end: registrationEnd?.toISOString(),
         event_start: eventStart.toISOString(),
         event_end: eventEnd?.toISOString(),
         brochure_url: brochureUrl || undefined,
@@ -96,6 +100,8 @@ export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
       setDescription('');
       setEventType('competition');
       setVenue('');
+      setRegistrationStart(undefined);
+      setRegistrationEnd(undefined);
       setEventStart(undefined);
       setEventEnd(undefined);
       setBrochureFile(null);
@@ -167,8 +173,66 @@ export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
 
           {/* Important Dates */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Important Dates *</h3>
+            <h3 className="text-lg font-semibold">Important Dates</h3>
             
+            {/* Registration Dates */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Registration Start (Optional)</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !registrationStart && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {registrationStart ? format(registrationStart, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={registrationStart}
+                      onSelect={setRegistrationStart}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Registration End (Optional)</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !registrationEnd && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {registrationEnd ? format(registrationEnd, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={registrationEnd}
+                      onSelect={setRegistrationEnd}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {/* Event Dates */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Event Start *</Label>
