@@ -125,19 +125,20 @@ export function useApprovePurchaseRequestByInstitution() {
   });
 }
 
-// Alias for simpler usage
+// Alias for simpler usage - now requires approverId
 export function useApprovePurchaseRequest() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ requestId, approverType, comments }: {
+    mutationFn: ({ requestId, approverId, approverType, comments }: {
       requestId: string;
+      approverId: string;
       approverType: 'institution' | 'ceo';
       comments?: string;
     }) => approverType === 'institution' 
-      ? inventoryService.approvePurchaseRequestByInstitution(requestId, '', comments)
-      : inventoryService.approvePurchaseRequestFinal(requestId, '', comments),
+      ? inventoryService.approvePurchaseRequestByInstitution(requestId, approverId, comments)
+      : inventoryService.approvePurchaseRequestFinal(requestId, approverId, comments),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchase-requests'] });
       toast({ title: "Request approved" });
@@ -192,9 +193,9 @@ export function useRejectPurchaseRequest() {
   return useMutation({
     mutationFn: ({ requestId, rejectorId, reason }: {
       requestId: string;
-      rejectorId?: string;
+      rejectorId: string;
       reason: string;
-    }) => inventoryService.rejectPurchaseRequest(requestId, rejectorId || '', reason),
+    }) => inventoryService.rejectPurchaseRequest(requestId, rejectorId, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchase-requests'] });
       toast({ title: "Request rejected" });

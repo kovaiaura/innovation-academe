@@ -95,6 +95,7 @@ export default function InventoryManagement() {
   const totalValue = inventory.reduce((sum, item) => sum + (item.total_value || 0), 0);
   const totalItems = inventory.reduce((sum, item) => sum + (item.units || 0), 0);
   const pendingRequests = requests.filter(r => r.status === 'pending_ceo' || r.status === 'approved_institution');
+  const waitingForManagement = requests.filter(r => r.status === 'pending_institution');
   const openIssues = issues.filter(i => i.status !== 'resolved' && i.status !== 'closed');
 
   const filteredInventory = inventory.filter(item => 
@@ -186,9 +187,10 @@ export default function InventoryManagement() {
   };
 
   const confirmApprove = () => {
-    if (actionRequest) {
+    if (actionRequest && user?.id) {
       approveRequest.mutate({
         requestId: actionRequest.id,
+        approverId: user.id,
         approverType: 'ceo',
         comments: comments || undefined,
       }, {
@@ -202,9 +204,10 @@ export default function InventoryManagement() {
   };
 
   const confirmReject = () => {
-    if (actionRequest && comments.trim()) {
+    if (actionRequest && comments.trim() && user?.id) {
       rejectRequest.mutate({
         requestId: actionRequest.id,
+        rejectorId: user.id,
         reason: comments,
       }, {
         onSuccess: () => {
@@ -432,6 +435,55 @@ export default function InventoryManagement() {
                                   Reject
                                 </Button>
                               </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+
+              {waitingForManagement.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-5 w-5 text-blue-500" />
+                    <h3 className="text-lg font-semibold">Waiting for Management Approval ({waitingForManagement.length})</h3>
+                  </div>
+
+                  {waitingForManagement.map((request) => {
+                    const statusInfo = getStatusBadge(request.status);
+                    return (
+                      <Card key={request.id} className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-semibold">{request.request_code}</h3>
+                                <Badge className="bg-blue-500/10 text-blue-500">Waiting for Management</Badge>
+                                {request.priority === 'urgent' && (
+                                  <Badge variant="destructive" className="text-xs">URGENT</Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {request.institution_name} • {request.requester_name}
+                              </p>
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {request.items.map((item, idx) => (
+                                  <Badge key={idx} variant="outline">
+                                    {item.name} ({item.quantity})
+                                  </Badge>
+                                ))}
+                              </div>
+                              <p className="text-sm text-blue-600 dark:text-blue-400 mt-3">
+                                This request is pending approval from institution management before it reaches you.
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xl font-bold">₹{request.total_estimated_cost.toLocaleString()}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {format(new Date(request.created_at), 'MMM dd, yyyy')}
+                              </p>
                             </div>
                           </div>
                         </CardContent>

@@ -83,9 +83,10 @@ export default function InventoryAndPurchase() {
   };
 
   const confirmApprove = () => {
-    if (actionRequest) {
+    if (actionRequest && user?.id) {
       approveRequest.mutate({
         requestId: actionRequest.id,
+        approverId: user.id,
         approverType: 'institution',
         comments: comments || undefined,
       }, {
@@ -100,9 +101,10 @@ export default function InventoryAndPurchase() {
   };
 
   const confirmReject = () => {
-    if (actionRequest && comments.trim()) {
+    if (actionRequest && comments.trim() && user?.id) {
       rejectRequest.mutate({
         requestId: actionRequest.id,
+        rejectorId: user.id,
         reason: comments,
       }, {
         onSuccess: () => {
