@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Plus, Shield, Users, Key, Trash2, Crown, Search, Info, RefreshCw } from 'lucide-react';
+import { Plus, Shield, Users, Key, Trash2, Crown, Search, Info, RefreshCw, Pencil } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -56,6 +56,22 @@ export default function PositionManagement() {
     casual_leave: '12',
     sick_leave: '10',
     earned_leave: '15',
+    // Salary fields
+    annual_salary: '',
+    hourly_rate: '',
+    overtime_rate_multiplier: '1.5',
+    normal_working_hours: '8',
+  });
+  
+  // Edit user state
+  const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editUserData, setEditUserData] = useState({
+    name: '',
+    annual_salary: '',
+    hourly_rate: '',
+    overtime_rate_multiplier: '1.5',
+    normal_working_hours: '8',
   });
   const [credentialsDialog, setCredentialsDialog] = useState<{
     open: boolean;
@@ -202,6 +218,10 @@ export default function PositionManagement() {
         sick_leave: parseInt(newUserData.sick_leave) || 10,
         earned_leave: parseInt(newUserData.earned_leave) || 15,
         join_date: newUserData.join_date || undefined,
+        annual_salary: parseFloat(newUserData.annual_salary) || undefined,
+        hourly_rate: parseFloat(newUserData.hourly_rate) || undefined,
+        overtime_rate_multiplier: parseFloat(newUserData.overtime_rate_multiplier) || 1.5,
+        normal_working_hours: parseFloat(newUserData.normal_working_hours) || 8,
       });
       toast.success('User added successfully');
       setIsAddUserDialogOpen(false);
@@ -214,7 +234,11 @@ export default function PositionManagement() {
         join_date: new Date().toISOString().split('T')[0],
         casual_leave: '12', 
         sick_leave: '10', 
-        earned_leave: '15' 
+        earned_leave: '15',
+        annual_salary: '',
+        hourly_rate: '',
+        overtime_rate_multiplier: '1.5',
+        normal_working_hours: '8',
       });
 
       setCredentialsDialog({
@@ -400,9 +424,30 @@ export default function PositionManagement() {
                             <div>
                               <p className="font-medium">{metaUser.name}</p>
                               <p className="text-sm text-muted-foreground">{metaUser.email}</p>
+                              {metaUser.hourly_rate && (
+                                <p className="text-xs text-muted-foreground">₹{metaUser.hourly_rate}/hr</p>
+                              )}
                             </div>
                           </div>
                           <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditingUser(metaUser);
+                                setEditUserData({
+                                  name: metaUser.name,
+                                  annual_salary: '',
+                                  hourly_rate: metaUser.hourly_rate?.toString() || '',
+                                  overtime_rate_multiplier: metaUser.overtime_rate_multiplier?.toString() || '1.5',
+                                  normal_working_hours: metaUser.normal_working_hours?.toString() || '8',
+                                });
+                                setIsEditUserDialogOpen(true);
+                              }}
+                              title="Edit User"
+                            >
+                              <Pencil className="h-4 w-4 text-blue-500" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -551,6 +596,68 @@ export default function PositionManagement() {
               </div>
             )}
 
+            {/* Salary Section */}
+            <div className="border-t pt-4 mt-4">
+              <Label className="text-sm font-medium mb-3 block">Salary Details</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="annual-salary" className="text-xs text-muted-foreground">Annual Salary (₹)</Label>
+                  <Input
+                    id="annual-salary"
+                    type="number"
+                    min="0"
+                    value={newUserData.annual_salary}
+                    onChange={(e) => {
+                      const annual = parseFloat(e.target.value) || 0;
+                      const hourly = annual > 0 ? (annual / 12 / 22 / 8).toFixed(2) : '';
+                      setNewUserData({ ...newUserData, annual_salary: e.target.value, hourly_rate: hourly });
+                    }}
+                    className="mt-1"
+                    placeholder="e.g., 600000"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="hourly-rate" className="text-xs text-muted-foreground">Hourly Rate (₹)</Label>
+                  <Input
+                    id="hourly-rate"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={newUserData.hourly_rate}
+                    onChange={(e) => setNewUserData({ ...newUserData, hourly_rate: e.target.value })}
+                    className="mt-1"
+                    placeholder="Auto-calculated or manual"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="overtime-rate" className="text-xs text-muted-foreground">Overtime Multiplier</Label>
+                  <Input
+                    id="overtime-rate"
+                    type="number"
+                    min="1"
+                    step="0.1"
+                    value={newUserData.overtime_rate_multiplier}
+                    onChange={(e) => setNewUserData({ ...newUserData, overtime_rate_multiplier: e.target.value })}
+                    className="mt-1"
+                    placeholder="e.g., 1.5"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="working-hours" className="text-xs text-muted-foreground">Daily Working Hours</Label>
+                  <Input
+                    id="working-hours"
+                    type="number"
+                    min="1"
+                    max="24"
+                    value={newUserData.normal_working_hours}
+                    onChange={(e) => setNewUserData({ ...newUserData, normal_working_hours: e.target.value })}
+                    className="mt-1"
+                    placeholder="e.g., 8"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Leave Allowances Section */}
             <div className="border-t pt-4 mt-4">
               <Label className="text-sm font-medium mb-3 block">Leave Allowances (Days per Year)</Label>
@@ -655,6 +762,110 @@ export default function PositionManagement() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit User Profile</DialogTitle>
+            <DialogDescription>Update salary and work details for {editingUser?.name}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-name">Name</Label>
+              <Input
+                id="edit-name"
+                value={editUserData.name}
+                onChange={(e) => setEditUserData({ ...editUserData, name: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="edit-hourly-rate" className="text-xs text-muted-foreground">Hourly Rate (₹)</Label>
+                <Input
+                  id="edit-hourly-rate"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editUserData.hourly_rate}
+                  onChange={(e) => setEditUserData({ ...editUserData, hourly_rate: e.target.value })}
+                  placeholder="e.g., 500"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-annual-salary" className="text-xs text-muted-foreground">Annual Salary (₹)</Label>
+                <Input
+                  id="edit-annual-salary"
+                  type="number"
+                  min="0"
+                  value={editUserData.annual_salary}
+                  onChange={(e) => {
+                    const annual = parseFloat(e.target.value) || 0;
+                    const hourly = annual > 0 ? (annual / 12 / 22 / 8).toFixed(2) : editUserData.hourly_rate;
+                    setEditUserData({ ...editUserData, annual_salary: e.target.value, hourly_rate: hourly });
+                  }}
+                  placeholder="e.g., 600000"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-overtime-rate" className="text-xs text-muted-foreground">Overtime Multiplier</Label>
+                <Input
+                  id="edit-overtime-rate"
+                  type="number"
+                  min="1"
+                  step="0.1"
+                  value={editUserData.overtime_rate_multiplier}
+                  onChange={(e) => setEditUserData({ ...editUserData, overtime_rate_multiplier: e.target.value })}
+                  placeholder="e.g., 1.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-working-hours" className="text-xs text-muted-foreground">Daily Working Hours</Label>
+                <Input
+                  id="edit-working-hours"
+                  type="number"
+                  min="1"
+                  max="24"
+                  value={editUserData.normal_working_hours}
+                  onChange={(e) => setEditUserData({ ...editUserData, normal_working_hours: e.target.value })}
+                  placeholder="e.g., 8"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditUserDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={async () => {
+                if (!editingUser) return;
+                setIsLoading(true);
+                try {
+                  await metaStaffService.updateMetaStaffProfile(editingUser.id, {
+                    name: editUserData.name,
+                    hourly_rate: parseFloat(editUserData.hourly_rate) || undefined,
+                    overtime_rate_multiplier: parseFloat(editUserData.overtime_rate_multiplier) || 1.5,
+                    normal_working_hours: parseFloat(editUserData.normal_working_hours) || 8,
+                  });
+                  toast.success('User profile updated');
+                  setIsEditUserDialogOpen(false);
+                  if (selectedPosition) {
+                    loadPositionUsers(selectedPosition.id);
+                  }
+                } catch (error) {
+                  toast.error('Failed to update user');
+                } finally {
+                  setIsLoading(false);
+                }
+              }} 
+              disabled={isLoading}
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </Layout>

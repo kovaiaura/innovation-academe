@@ -31,6 +31,10 @@ export default function TakeAssessment() {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showTimeWarning, setShowTimeWarning] = useState(false);
+  
+  // Time tracking per question
+  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
+  const [questionTimeSpent, setQuestionTimeSpent] = useState<Map<string, number>>(new Map());
 
   // Refs for stable references in callbacks
   const attemptRef = useRef<AssessmentAttempt | null>(null);
@@ -214,6 +218,19 @@ export default function TakeAssessment() {
   const handleAnswerSelect = async (optionId: string) => {
     if (!attempt || !currentQuestion) return;
 
+    // Calculate time spent on this question
+    const timeSpentOnQuestion = Math.floor((Date.now() - questionStartTime) / 1000);
+    const existingTime = questionTimeSpent.get(currentQuestion.id) || 0;
+    const totalTimeSpent = existingTime + timeSpentOnQuestion;
+    
+    // Update the time spent map
+    const newTimeSpent = new Map(questionTimeSpent);
+    newTimeSpent.set(currentQuestion.id, totalTimeSpent);
+    setQuestionTimeSpent(newTimeSpent);
+    
+    // Reset timer for next interaction on this question
+    setQuestionStartTime(Date.now());
+
     const newAnswers = new Map(answers);
     newAnswers.set(currentQuestion.id, optionId);
     setAnswers(newAnswers);
@@ -228,24 +245,51 @@ export default function TakeAssessment() {
       optionId,
       isCorrect,
       pointsEarned,
-      0 // Time spent tracking would require more complex implementation
+      totalTimeSpent
     );
   };
 
   const handleNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
+      // Save time spent on current question before navigating
+      if (currentQuestion) {
+        const timeSpentOnQuestion = Math.floor((Date.now() - questionStartTime) / 1000);
+        const existingTime = questionTimeSpent.get(currentQuestion.id) || 0;
+        const newTimeSpent = new Map(questionTimeSpent);
+        newTimeSpent.set(currentQuestion.id, existingTime + timeSpentOnQuestion);
+        setQuestionTimeSpent(newTimeSpent);
+      }
       setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setQuestionStartTime(Date.now());
     }
   };
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
+      // Save time spent on current question before navigating
+      if (currentQuestion) {
+        const timeSpentOnQuestion = Math.floor((Date.now() - questionStartTime) / 1000);
+        const existingTime = questionTimeSpent.get(currentQuestion.id) || 0;
+        const newTimeSpent = new Map(questionTimeSpent);
+        newTimeSpent.set(currentQuestion.id, existingTime + timeSpentOnQuestion);
+        setQuestionTimeSpent(newTimeSpent);
+      }
       setCurrentQuestionIndex(currentQuestionIndex - 1);
+      setQuestionStartTime(Date.now());
     }
   };
 
   const handleQuestionJump = (index: number) => {
+    // Save time spent on current question before jumping
+    if (currentQuestion) {
+      const timeSpentOnQuestion = Math.floor((Date.now() - questionStartTime) / 1000);
+      const existingTime = questionTimeSpent.get(currentQuestion.id) || 0;
+      const newTimeSpent = new Map(questionTimeSpent);
+      newTimeSpent.set(currentQuestion.id, existingTime + timeSpentOnQuestion);
+      setQuestionTimeSpent(newTimeSpent);
+    }
     setCurrentQuestionIndex(index);
+    setQuestionStartTime(Date.now());
   };
 
   const handleSubmit = async (isAutoSubmit: boolean = false) => {
@@ -390,6 +434,20 @@ export default function TakeAssessment() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <p className="text-lg">{currentQuestion.question_text}</p>
+
+                {/* Display question image if available */}
+                {currentQuestion.image_url && (
+                  <div className="my-4">
+                    <img 
+                      src={currentQuestion.image_url} 
+                      alt="Question image"
+                      className="max-w-full max-h-96 object-contain rounded-lg border"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
 
                 {currentQuestion.code_snippet && (
                   <pre className="bg-muted p-4 rounded-lg overflow-x-auto">
