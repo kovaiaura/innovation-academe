@@ -294,22 +294,39 @@ export const fetchAllEmployees = async (month?: number, year?: number): Promise<
           currentYear
         );
         
-        // Calculate working days from join date
+        // Calculate prorated salary using 30-day standard (calendar days from join date)
+        const perDaySalary = calculatePerDaySalary(monthlySalary);
+        let proratedSalary = monthlySalary;
+        
+        if (joinDate) {
+          const monthStart = new Date(currentYear, currentMonth - 1, 1);
+          const monthEnd = new Date(currentYear, currentMonth, 0);
+          
+          if (joinDate > monthEnd) {
+            proratedSalary = 0; // Joined after this month
+          } else if (joinDate > monthStart) {
+            // Prorate from join date to end of month using calendar days
+            const daysInMonth = monthEnd.getDate();
+            const daysWorked = daysInMonth - joinDate.getDate() + 1;
+            proratedSalary = perDaySalary * daysWorked;
+          }
+        }
+        
+        // Calculate working days from join date for tracking not marked days
         const workingDays = getWorkingDaysInMonth(currentYear, currentMonth, joinDate);
         const workingDaysExcludingHolidays = workingDays.filter(d => !holidays.has(d));
         
-        // Calculate LOP: Working days - Present days - Leave days - Holidays
+        // Days Not Marked = Working days - Present days - Leave days
         const coveredDays = new Set([...attendanceDates, ...leaveDates]);
         const uncoveredWorkingDays = workingDaysExcludingHolidays.filter(d => !coveredDays.has(d));
-        const lopDays = uncoveredWorkingDays.length;
-        
-        // Days not marked = uncovered days (same as LOP for now, but could differ if we track differently)
         const daysNotMarked = uncoveredWorkingDays.length;
         
-        // Calculate net pay
-        const perDaySalary = calculatePerDaySalary(monthlySalary);
-        const proratedSalary = perDaySalary * workingDaysExcludingHolidays.length;
-        const lopDeduction = perDaySalary * lopDays;
+        // Days LOP = 0 by default (CEO/HR marks LOP manually)
+        // For now, we'll consider uncovered working days as LOP candidates
+        const daysLop = 0; // Will be marked manually by CEO/HR
+        
+        // LOP Deduction = Days Not Marked × Per Day Salary (since days_lop is 0 initially)
+        const lopDeduction = perDaySalary * daysNotMarked;
         const netPay = proratedSalary - lopDeduction;
         
         employees.push({
@@ -324,11 +341,11 @@ export const fetchAllEmployees = async (month?: number, year?: number): Promise<
           monthly_salary: monthlySalary,
           per_day_salary: perDaySalary,
           days_present: daysPresent,
-          days_absent: lopDays,
+          days_absent: daysNotMarked,
           days_leave: leaveDays,
-          days_lop: lopDays,
+          days_lop: daysLop,
           days_not_marked: daysNotMarked,
-          uninformed_leave_days: lopDays,
+          uninformed_leave_days: daysNotMarked,
           overtime_hours: 0,
           overtime_pending_approval: 0,
           total_hours_worked: totalHours,
@@ -391,22 +408,38 @@ export const fetchAllEmployees = async (month?: number, year?: number): Promise<
         // Get approved leave
         const { leaveDays, leaveDates } = await getApprovedLeaveDays(profile.id, currentMonth, currentYear);
         
-        // Calculate working days from join date
+        // Calculate prorated salary using 30-day standard (calendar days from join date)
+        const perDaySalary = calculatePerDaySalary(monthlySalary);
+        let proratedSalary = monthlySalary;
+        
+        if (joinDate) {
+          const monthStart = new Date(currentYear, currentMonth - 1, 1);
+          const monthEnd = new Date(currentYear, currentMonth, 0);
+          
+          if (joinDate > monthEnd) {
+            proratedSalary = 0; // Joined after this month
+          } else if (joinDate > monthStart) {
+            // Prorate from join date to end of month using calendar days
+            const daysInMonth = monthEnd.getDate();
+            const daysWorked = daysInMonth - joinDate.getDate() + 1;
+            proratedSalary = perDaySalary * daysWorked;
+          }
+        }
+        
+        // Calculate working days from join date for tracking not marked days
         const workingDays = getWorkingDaysInMonth(currentYear, currentMonth, joinDate);
         const workingDaysExcludingHolidays = workingDays.filter(d => !holidays.has(d));
         
-        // Calculate LOP
+        // Days Not Marked = Working days - Present days - Leave days
         const coveredDays = new Set([...attendanceDates, ...leaveDates]);
         const uncoveredWorkingDays = workingDaysExcludingHolidays.filter(d => !coveredDays.has(d));
-        const lopDays = uncoveredWorkingDays.length;
-        
-        // Days not marked = uncovered days
         const daysNotMarked = uncoveredWorkingDays.length;
         
-        // Calculate net pay
-        const perDaySalary = calculatePerDaySalary(monthlySalary);
-        const proratedSalary = perDaySalary * workingDaysExcludingHolidays.length;
-        const lopDeduction = perDaySalary * lopDays;
+        // Days LOP = 0 by default (CEO/HR marks LOP manually)
+        const daysLop = 0;
+        
+        // LOP Deduction = Days Not Marked × Per Day Salary
+        const lopDeduction = perDaySalary * daysNotMarked;
         const netPay = proratedSalary - lopDeduction;
         
         employees.push({
@@ -421,11 +454,11 @@ export const fetchAllEmployees = async (month?: number, year?: number): Promise<
           monthly_salary: monthlySalary,
           per_day_salary: perDaySalary,
           days_present: daysPresent,
-          days_absent: lopDays,
+          days_absent: daysNotMarked,
           days_leave: leaveDays,
-          days_lop: lopDays,
+          days_lop: daysLop,
           days_not_marked: daysNotMarked,
-          uninformed_leave_days: lopDays,
+          uninformed_leave_days: daysNotMarked,
           overtime_hours: 0,
           overtime_pending_approval: 0,
           total_hours_worked: totalHours,
