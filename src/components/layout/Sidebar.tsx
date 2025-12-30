@@ -28,6 +28,27 @@ import { NotificationBell } from './NotificationBell';
 import { SidebarProfileCard } from './SidebarProfileCard';
 import { useUserProfilePhoto } from '@/hooks/useUserProfilePhoto';
 import { supabase } from '@/integrations/supabase/client';
+import { useNotificationCategories, NotificationCategoryCounts } from '@/hooks/useNotificationCategories';
+
+// Map menu item labels to notification categories
+const MENU_NOTIFICATION_MAP: Record<string, keyof Omit<NotificationCategoryCounts, 'total'>> = {
+  'Assessment Management': 'assessments',
+  'Assessments': 'assessments',
+  'Project Management': 'projects',
+  'Projects': 'projects',
+  'My Projects': 'projects',
+  'Events': 'events',
+  'Inventory Management': 'inventory',
+  'Inventory & Purchase': 'inventory',
+  'Lab Inventory': 'inventory',
+  'Leave Approval': 'leave',
+  'Leave Management': 'leave',
+  'Leave': 'leave',
+  'Course Management': 'courses',
+  'My Courses': 'courses',
+  'Courses & Sessions': 'courses',
+  'Certificates': 'certificates',
+};
 
 interface MenuItem {
   label: string;
@@ -147,6 +168,9 @@ export function Sidebar() {
   const [agmLeaveCount, setAgmLeaveCount] = useState(0);
   const [ceoLeaveCount, setCeoLeaveCount] = useState(0);
   const [isApprover, setIsApprover] = useState(false);
+  
+  // Fetch notification category counts for sidebar indicators
+  const { counts: notificationCounts } = useNotificationCategories(user?.id);
   
   // Fetch profile photo for sidebar display
   const { photoUrl } = useUserProfilePhoto(user?.id);
@@ -363,17 +387,27 @@ export function Sidebar() {
               item.label === 'AGM Approvals' ? agmLeaveCount :
               item.label === 'CEO Approvals' ? ceoLeaveCount : 0;
             
+            // Check if this menu item has unread notifications
+            const notificationCategory = MENU_NOTIFICATION_MAP[item.label];
+            const hasUnreadNotifications = notificationCategory && notificationCounts[notificationCategory] > 0;
+            
             return (
               <Link key={`${item.path}-${itemRole}`} to={fullPath}>
                 <Button
                   variant="ghost"
                   className={cn(
-                    'w-full justify-start text-white hover:bg-meta-dark-lighter hover:text-meta-accent',
+                    'w-full justify-start text-white hover:bg-meta-dark-lighter hover:text-meta-accent relative',
                     isActive && 'bg-meta-accent text-meta-dark hover:bg-meta-accent hover:text-meta-dark',
                     collapsed && 'justify-center px-2'
                   )}
                 >
-                  {item.icon}
+                  <div className="relative">
+                    {item.icon}
+                    {/* Notification indicator dot */}
+                    {hasUnreadNotifications && (
+                      <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500" />
+                    )}
+                  </div>
                   {!collapsed && (
                     <>
                       <span className="ml-3">{item.label}</span>
@@ -381,6 +415,10 @@ export function Sidebar() {
                         <Badge variant="destructive" className="ml-auto">
                           {badgeCount}
                         </Badge>
+                      )}
+                      {/* Show notification dot on the right when not collapsed */}
+                      {hasUnreadNotifications && !showBadge && (
+                        <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />
                       )}
                     </>
                   )}
