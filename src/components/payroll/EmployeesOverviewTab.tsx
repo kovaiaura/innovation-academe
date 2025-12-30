@@ -114,11 +114,18 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
     return (employee.monthly_salary / STANDARD_DAYS_PER_MONTH) * daysWorked;
   };
 
+  // LOP Deduction = (Days LOP + Days Not Marked) × Per Day Salary
+  const calculateTotalLopDeduction = (employee: EmployeePayrollSummary): number => {
+    const totalLopDays = employee.days_lop + (employee.days_not_marked ?? 0);
+    return employee.per_day_salary * totalLopDays;
+  };
+
   const exportToCSV = () => {
-    const headers = ['Name', 'Email', 'Type', 'Position', 'Join Date', 'Monthly Salary', 'Per Day Salary', 'Days LOP', 'LOP Deduction', 'Net Pay', 'Status'];
+    const headers = ['Name', 'Email', 'Type', 'Position', 'Join Date', 'Monthly Salary', 'Per Day Salary', 'Days Present', 'Days Leave', 'Days LOP', 'Not Marked', 'LOP Deduction', 'Net Pay', 'Status'];
     const rows = filteredEmployees.map(e => {
       const proratedSalary = calculateProratedSalary(e);
-      const lopDeduction = calculateLOPDeduction(proratedSalary, e.days_lop);
+      const daysNotMarked = e.days_not_marked ?? 0;
+      const lopDeduction = calculateTotalLopDeduction(e);
       const netPay = proratedSalary - lopDeduction;
       
       return [
@@ -129,7 +136,10 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
         e.join_date || '-',
         proratedSalary.toFixed(2),
         e.per_day_salary.toFixed(2),
+        e.days_present,
+        e.days_leave,
         e.days_lop,
+        daysNotMarked,
         lopDeduction.toFixed(2),
         netPay.toFixed(2),
         e.payroll_status
@@ -220,12 +230,11 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
                 ) : (
                   filteredEmployees.map((employee) => {
                     const proratedSalary = calculateProratedSalary(employee);
-                    const lopDeduction = calculateLOPDeduction(proratedSalary, employee.days_lop);
+                    const daysNotMarked = employee.days_not_marked ?? 0;
+                    // LOP Deduction = (Days LOP + Days Not Marked) × Per Day Salary
+                    const lopDeduction = calculateTotalLopDeduction(employee);
                     const netPay = proratedSalary - lopDeduction;
                     const isProrated = proratedSalary !== employee.monthly_salary;
-                    // Calculate not marked days = days_absent - days_lop (if uninformed leave is tracked differently)
-                    // For now, not_marked = total working days - present - leave - lop
-                    const daysNotMarked = employee.days_not_marked ?? 0;
                     
                     return (
                       <TableRow key={employee.user_id}>
@@ -324,7 +333,7 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
               <p className="text-lg font-bold">
                 {formatCurrency(filteredEmployees.reduce((sum, e) => {
                   const proratedSalary = calculateProratedSalary(e);
-                  const lopDeduction = calculateLOPDeduction(proratedSalary, e.days_lop);
+                  const lopDeduction = calculateTotalLopDeduction(e);
                   return sum + (proratedSalary - lopDeduction);
                 }, 0))}
               </p>

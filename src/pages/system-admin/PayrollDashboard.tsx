@@ -17,7 +17,7 @@ import { EmployeesOverviewTab } from '@/components/payroll/EmployeesOverviewTab'
 import { DailyAttendanceTab } from '@/components/payroll/DailyAttendanceTab';
 import { LeaveAbsenceTab } from '@/components/payroll/LeaveAbsenceTab';
 import { OvertimeManagementTab } from '@/components/payroll/OvertimeManagementTab';
-import { PayrollProcessingTab } from '@/components/payroll/PayrollProcessingTab';
+import { PayrollAnalyticsTab } from '@/components/payroll/PayrollAnalyticsTab';
 import { 
   fetchPayrollDashboardStats, 
   PayrollDashboardStats,
@@ -159,7 +159,7 @@ export default function PayrollDashboard() {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-4 w-full max-w-3xl">
+          <TabsList className="grid grid-cols-5 w-full max-w-4xl">
             <TabsTrigger value="employees" className="gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Employees</span>
@@ -175,6 +175,10 @@ export default function PayrollDashboard() {
             <TabsTrigger value="overtime" className="gap-2">
               <Clock className="h-4 w-4" />
               <span className="hidden sm:inline">Overtime</span>
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-2">
+              <TrendingUp className="h-4 w-4" />
+              <span className="hidden sm:inline">Analytics</span>
             </TabsTrigger>
           </TabsList>
 
@@ -192,6 +196,10 @@ export default function PayrollDashboard() {
 
           <TabsContent value="overtime">
             <OvertimeManagementTab month={month} year={year} />
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <PayrollAnalyticsTab month={month} year={year} />
           </TabsContent>
         </Tabs>
       </div>
