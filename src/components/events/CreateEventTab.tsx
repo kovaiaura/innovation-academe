@@ -12,7 +12,7 @@ import { addEvent } from '@/data/mockEventsData';
 import { format } from 'date-fns';
 import { CalendarIcon, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ActivityEventType, ActivityEvent } from '@/types/events';
+import { ActivityEventType, ActivityEvent, EVENT_TYPE_LABELS } from '@/types/events';
 import { useToast } from '@/hooks/use-toast';
 
 export function CreateEventTab() {
@@ -113,17 +113,7 @@ export function CreateEventTab() {
     setCertificateTemplateId(undefined);
   };
 
-  const eventTypeLabels: Record<ActivityEventType, string> = {
-    competition: 'Competition',
-    hackathon: 'Hackathon',
-    science_fair: 'Science Fair',
-    exhibition: 'Exhibition',
-    workshop: 'Workshop',
-    seminar: 'Seminar',
-    cultural: 'Cultural',
-    sports: 'Sports',
-    other: 'Other'
-  };
+  const eventTypeLabels = EVENT_TYPE_LABELS;
 
   return (
     <Card>

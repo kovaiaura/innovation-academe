@@ -1,7 +1,9 @@
 export type ActivityEventType = 
+  | 'webinar'
   | 'competition'
   | 'hackathon'
   | 'science_fair'
+  | 'science_expo'
   | 'exhibition'
   | 'workshop'
   | 'seminar'
@@ -22,6 +24,63 @@ export type ApplicationStatus =
   | 'rejected'
   | 'shortlisted';
 
+export const EVENT_TYPE_LABELS: Record<ActivityEventType, string> = {
+  webinar: 'Webinar',
+  competition: 'Competition',
+  hackathon: 'Hackathon',
+  science_fair: 'Science Fair',
+  science_expo: 'Science Expo',
+  exhibition: 'Exhibition',
+  workshop: 'Workshop',
+  seminar: 'Seminar',
+  cultural: 'Cultural',
+  sports: 'Sports',
+  other: 'Other'
+};
+
+export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
+  draft: 'Draft',
+  published: 'Published',
+  ongoing: 'Ongoing',
+  completed: 'Completed',
+  cancelled: 'Cancelled'
+};
+
+// New database-backed Event type
+export interface Event {
+  id: string;
+  title: string;
+  description?: string;
+  event_type: ActivityEventType;
+  venue?: string;
+  
+  // Dates
+  registration_start?: string;
+  registration_end?: string;
+  event_start: string;
+  event_end?: string;
+  
+  // Status
+  status: EventStatus;
+  
+  // Attachments
+  brochure_url?: string;
+  attachments?: { name: string; url: string }[];
+  
+  // Metadata
+  max_participants?: number;
+  current_participants: number;
+  eligibility_criteria?: string;
+  rules?: string;
+  prizes?: string[];
+  
+  // Creator info
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Legacy type for backward compatibility with existing components
 export interface ActivityEvent {
   id: string;
   title: string;
@@ -95,15 +154,69 @@ export interface EventApplication {
   is_team_application: boolean;
 }
 
-// Simplified Event Interest type for bidirectional sync
+export interface EventClassAssignment {
+  id: string;
+  event_id: string;
+  institution_id: string;
+  class_id: string;
+  assigned_by?: string;
+  assigned_at: string;
+  // Joined data
+  institution?: {
+    id: string;
+    name: string;
+  };
+  class?: {
+    id: string;
+    class_name: string;
+    section?: string;
+  };
+}
+
+export interface EventUpdate {
+  id: string;
+  event_id: string;
+  title: string;
+  content?: string;
+  link_url?: string;
+  created_by?: string;
+  created_at: string;
+}
+
 export interface EventInterest {
   id: string;
   event_id: string;
   student_id: string;
-  student_name: string;
-  class_name: string;
-  section: string;
+  student_name?: string;
+  class_name?: string;
+  section?: string;
   institution_id: string;
-  institution_name: string;
+  institution_name?: string;
+  class_id?: string;
   registered_at: string;
+}
+
+export interface CreateEventData {
+  title: string;
+  description?: string;
+  event_type: ActivityEventType;
+  venue?: string;
+  event_start: string;
+  event_end?: string;
+  registration_start?: string;
+  registration_end?: string;
+  brochure_url?: string;
+  attachments?: { name: string; url: string }[];
+  max_participants?: number;
+  eligibility_criteria?: string;
+  rules?: string;
+  prizes?: string[];
+}
+
+export interface PublishEventData {
+  event_id: string;
+  assignments: {
+    institution_id: string;
+    class_id: string;
+  }[];
 }

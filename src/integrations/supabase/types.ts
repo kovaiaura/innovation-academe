@@ -1006,6 +1006,220 @@ export type Database = {
           },
         ]
       }
+      event_class_assignments: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          class_id: string
+          event_id: string
+          id: string
+          institution_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          class_id: string
+          event_id: string
+          id?: string
+          institution_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          class_id?: string
+          event_id?: string
+          id?: string
+          institution_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_class_assignments_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_class_assignments_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_class_assignments_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_interests: {
+        Row: {
+          class_id: string | null
+          class_name: string | null
+          event_id: string
+          id: string
+          institution_id: string
+          registered_at: string | null
+          section: string | null
+          student_id: string
+          student_name: string | null
+        }
+        Insert: {
+          class_id?: string | null
+          class_name?: string | null
+          event_id: string
+          id?: string
+          institution_id: string
+          registered_at?: string | null
+          section?: string | null
+          student_id: string
+          student_name?: string | null
+        }
+        Update: {
+          class_id?: string | null
+          class_name?: string | null
+          event_id?: string
+          id?: string
+          institution_id?: string
+          registered_at?: string | null
+          section?: string | null
+          student_id?: string
+          student_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_interests_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_interests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_interests_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_updates: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          created_by: string | null
+          event_id: string
+          id: string
+          link_url: string | null
+          title: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          event_id: string
+          id?: string
+          link_url?: string | null
+          title: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          event_id?: string
+          id?: string
+          link_url?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_updates_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          attachments: Json | null
+          brochure_url: string | null
+          created_at: string | null
+          created_by: string | null
+          current_participants: number | null
+          description: string | null
+          eligibility_criteria: string | null
+          event_end: string | null
+          event_start: string
+          event_type: string
+          id: string
+          max_participants: number | null
+          prizes: Json | null
+          registration_end: string | null
+          registration_start: string | null
+          rules: string | null
+          status: string
+          title: string
+          updated_at: string | null
+          venue: string | null
+        }
+        Insert: {
+          attachments?: Json | null
+          brochure_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          current_participants?: number | null
+          description?: string | null
+          eligibility_criteria?: string | null
+          event_end?: string | null
+          event_start: string
+          event_type: string
+          id?: string
+          max_participants?: number | null
+          prizes?: Json | null
+          registration_end?: string | null
+          registration_start?: string | null
+          rules?: string | null
+          status?: string
+          title: string
+          updated_at?: string | null
+          venue?: string | null
+        }
+        Update: {
+          attachments?: Json | null
+          brochure_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          current_participants?: number | null
+          description?: string | null
+          eligibility_criteria?: string | null
+          event_end?: string | null
+          event_start?: string
+          event_type?: string
+          id?: string
+          max_participants?: number | null
+          prizes?: Json | null
+          registration_end?: string | null
+          registration_start?: string | null
+          rules?: string | null
+          status?: string
+          title?: string
+          updated_at?: string | null
+          venue?: string | null
+        }
+        Relationships: []
+      }
       id_counters: {
         Row: {
           counter_padding: number | null
@@ -2800,6 +3014,7 @@ export type Database = {
         Args: { p_class_module_assignment_id: string }
         Returns: undefined
       }
+      can_manage_events: { Args: { _user_id: string }; Returns: boolean }
       get_leave_balance: {
         Args: { p_month: number; p_user_id: string; p_year: number }
         Returns: {

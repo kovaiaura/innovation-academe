@@ -10,7 +10,7 @@ import { EditEventDialog } from './EditEventDialog';
 import { EventDetailDialog } from './EventDetailDialog';
 import { Search, Pencil, Eye, Trash2, Upload } from 'lucide-react';
 import { format } from 'date-fns';
-import { ActivityEventType, EventStatus, ActivityEvent } from '@/types/events';
+import { ActivityEventType, EventStatus, ActivityEvent, EVENT_TYPE_LABELS } from '@/types/events';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -72,17 +72,7 @@ export function EventsListTab() {
     });
   };
 
-  const eventTypeLabels: Record<ActivityEventType, string> = {
-    competition: 'Competition',
-    hackathon: 'Hackathon',
-    science_fair: 'Science Fair',
-    exhibition: 'Exhibition',
-    workshop: 'Workshop',
-    seminar: 'Seminar',
-    cultural: 'Cultural',
-    sports: 'Sports',
-    other: 'Other'
-  };
+  const eventTypeLabels = EVENT_TYPE_LABELS;
 
   return (
     <Card>
