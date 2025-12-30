@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { SDG_GOALS, sdgService, getSDGByNumber } from "@/services/sdg.service";
 import { SDGAnalytics } from "@/types/sdg";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
-import { Target, BookOpen, FolderKanban, Building2, Loader2 } from "lucide-react";
+import { Target, BookOpen, FolderKanban, Building2, Loader2, Users } from "lucide-react";
 
 export default function SDGDashboard() {
   const [loading, setLoading] = useState(true);
@@ -36,6 +36,7 @@ export default function SDGDashboard() {
   
   const totalCoursesWithSDG = activeSDGs.reduce((sum, a) => sum + a.course_count, 0);
   const totalProjectsWithSDG = activeSDGs.reduce((sum, a) => sum + a.project_count, 0);
+  const totalStudentsImpacted = activeSDGs.reduce((sum, a) => sum + a.total_students_impacted, 0);
   const totalSDGsInUse = activeSDGs.length;
 
   // Prepare chart data
@@ -57,7 +58,7 @@ export default function SDGDashboard() {
   return (
     <div className="space-y-6">
       {/* Overview Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Courses with SDGs</CardTitle>
@@ -88,6 +89,17 @@ export default function SDGDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{totalSDGsInUse}</div>
             <p className="text-xs text-muted-foreground">Out of 17 goals</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Students Impacted</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalStudentsImpacted}</div>
+            <p className="text-xs text-muted-foreground">In SDG projects</p>
           </CardContent>
         </Card>
 

@@ -21,12 +21,22 @@ export default function SDGContribution() {
       setLoading(true);
 
       try {
-        // Get all projects
-        const { data: allProjects } = await supabase
-          .from('projects')
-          .select('id, title, sdg_goals, status, progress, category');
+        // Get projects where student is a member
+        const { data: memberProjects } = await supabase
+          .from('project_members')
+          .select('project_id')
+          .eq('student_id', user.id);
 
-        const studentProjects = allProjects || [];
+        const projectIds = memberProjects?.map(m => m.project_id) || [];
+
+        let studentProjects: any[] = [];
+        if (projectIds.length > 0) {
+          const { data } = await supabase
+            .from('projects')
+            .select('id, title, sdg_goals, status, progress, category')
+            .in('id', projectIds);
+          studentProjects = data || [];
+        }
 
         // Get courses assigned to student's class
         const { data: profile } = await supabase
