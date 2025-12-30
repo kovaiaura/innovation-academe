@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Package, AlertTriangle, CheckCircle, TrendingUp, Search, Plus, Edit, Trash2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useInstitutions } from '@/hooks/useInstitutions';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   useInventoryItems, 
   usePurchaseRequests, 
@@ -50,6 +51,7 @@ const getIssueStatusBadge = (status: string) => {
 };
 
 export default function InventoryManagement() {
+  const { user } = useAuth();
   const { institutions = [] } = useInstitutions();
   const [selectedInstitution, setSelectedInstitution] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -113,7 +115,7 @@ export default function InventoryManagement() {
         units: formData.units,
         category: formData.category,
       },
-      userId: '',
+      userId: user?.id || '',
     }, {
       onSuccess: () => {
         toast.success('Item added successfully');
