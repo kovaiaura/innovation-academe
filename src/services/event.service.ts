@@ -281,7 +281,11 @@ class EventService {
   async getEventInterests(eventId: string, institutionId?: string): Promise<EventInterest[]> {
     let query = supabase
       .from('event_interests')
-      .select('*')
+      .select(`
+        *,
+        classes:class_id (class_name),
+        institutions:institution_id (name)
+      `)
       .eq('event_id', eventId)
       .order('registered_at', { ascending: false });
 
@@ -291,19 +295,37 @@ class EventService {
 
     const { data, error } = await query;
     if (error) throw error;
-    return (data || []) as EventInterest[];
+
+    const mapped = (data || []).map((row: any) => ({
+      ...row,
+      class_name: row.class_name ?? row.classes?.class_name ?? null,
+      institution_name: row.institution_name ?? row.institutions?.name ?? null,
+    }));
+
+    return mapped as EventInterest[];
   }
 
   // Get all interests for an event (CEO view - all institutions)
   async getAllEventInterests(eventId: string): Promise<EventInterest[]> {
     const { data, error } = await supabase
       .from('event_interests')
-      .select('*')
+      .select(`
+        *,
+        classes:class_id (class_name),
+        institutions:institution_id (name)
+      `)
       .eq('event_id', eventId)
       .order('registered_at', { ascending: false });
 
     if (error) throw error;
-    return (data || []) as EventInterest[];
+
+    const mapped = (data || []).map((row: any) => ({
+      ...row,
+      class_name: row.class_name ?? row.classes?.class_name ?? null,
+      institution_name: row.institution_name ?? row.institutions?.name ?? null,
+    }));
+
+    return mapped as EventInterest[];
   }
 
   async hasExpressedInterest(eventId: string): Promise<boolean> {
