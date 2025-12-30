@@ -9,10 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Package, Plus, ShoppingCart, AlertTriangle } from 'lucide-react';
+import { Package, Plus, ShoppingCart, AlertTriangle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Layout } from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOfficerByUserId } from '@/hooks/useOfficerProfile';
 import { 
   useInventoryItems, 
   usePurchaseRequests, 
@@ -49,7 +50,10 @@ const getIssueStatusBadge = (status: string) => {
 export default function Inventory() {
   const { user } = useAuth();
   const institutionId = user?.institution_id || '';
-  const officerId = user?.id || '';
+  
+  // Get the actual officer record ID (not auth user id)
+  const { data: officer } = useOfficerByUserId(user?.id || '');
+  const officerId = officer?.id || ''; // This is the officers table ID needed for RLS
   
   const { data: inventory = [], isLoading: inventoryLoading } = useInventoryItems(institutionId);
   const { data: allRequests = [], isLoading: requestsLoading } = usePurchaseRequests(institutionId);
@@ -409,6 +413,14 @@ export default function Inventory() {
           <div className="space-y-4">
             <div className="space-y-3">
               <Label>Items</Label>
+              {/* Column headers */}
+              <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground font-medium">
+                <div className="col-span-4">Item Name</div>
+                <div className="col-span-2">Quantity</div>
+                <div className="col-span-3">Unit Price (₹)</div>
+                <div className="col-span-2 text-right">Total</div>
+                <div className="col-span-1"></div>
+              </div>
               {requestItems.map((item, index) => (
                 <div key={index} className="grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-4">
@@ -439,7 +451,9 @@ export default function Inventory() {
                   </div>
                   <div className="col-span-1">
                     {requestItems.length > 1 && (
-                      <Button variant="ghost" size="sm" onClick={() => removeRequestItem(index)}>×</Button>
+                      <Button variant="ghost" size="icon" onClick={() => removeRequestItem(index)}>
+                        <Trash2 className="h-4 w-4 text-muted-foreground" />
+                      </Button>
                     )}
                   </div>
                 </div>

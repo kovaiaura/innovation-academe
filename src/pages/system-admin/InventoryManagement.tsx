@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Package, AlertTriangle, CheckCircle, TrendingUp, Search, Plus, Edit, Trash2, XCircle } from 'lucide-react';
+import { Package, AlertTriangle, CheckCircle, TrendingUp, Search, Plus, Edit, Trash2, XCircle, Settings, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useInstitutions } from '@/hooks/useInstitutions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,7 +22,10 @@ import {
   useUpdateInventoryItem, 
   useDeleteInventoryItem,
   useApprovePurchaseRequest,
-  useRejectPurchaseRequest
+  useRejectPurchaseRequest,
+  useApprovalChain,
+  useAssignApprover,
+  useRemoveApprover
 } from '@/hooks/useInventory';
 import { InventoryItem, PurchaseRequest, InventoryIssue } from '@/types/inventory';
 import { format } from 'date-fns';
@@ -60,12 +63,15 @@ export default function InventoryManagement() {
   const { data: inventory = [], isLoading: inventoryLoading } = useInventoryItems(selectedInstitution);
   const { data: requests = [], isLoading: requestsLoading } = usePurchaseRequests(selectedInstitution || undefined);
   const { data: issues = [], isLoading: issuesLoading } = useInventoryIssues(selectedInstitution || undefined);
+  const { data: approvalChain = [], isLoading: approvalChainLoading } = useApprovalChain(selectedInstitution || undefined);
   
   const addItem = useAddInventoryItem();
   const updateItem = useUpdateInventoryItem();
   const deleteItem = useDeleteInventoryItem();
   const approveRequest = useApprovePurchaseRequest();
   const rejectRequest = useRejectPurchaseRequest();
+  const assignApprover = useAssignApprover();
+  const removeApprover = useRemoveApprover();
   
   // Dialog states
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -253,6 +259,7 @@ export default function InventoryManagement() {
                   <Badge className="ml-2" variant="destructive">{openIssues.length}</Badge>
                 )}
               </TabsTrigger>
+              <TabsTrigger value="approval-settings">Approval Settings</TabsTrigger>
             </TabsList>
 
             {/* Inventory Tab */}
@@ -516,6 +523,121 @@ export default function InventoryManagement() {
                   })}
                 </div>
               )}
+            </TabsContent>
+
+            {/* Approval Settings Tab */}
+            <TabsContent value="approval-settings" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    Purchase Request Approval Chain
+                  </CardTitle>
+                  <CardDescription>
+                    Configure the approval workflow for purchase requests. Requests go through two levels:
+                    Institution Management → CEO/System Admin.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Approval Flow Diagram */}
+                  <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+                    <div className="flex flex-col items-center">
+                      <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                        <span className="text-yellow-500 font-bold">1</span>
+                      </div>
+                      <span className="text-xs mt-1 text-center">Officer<br/>Submits</span>
+                    </div>
+                    <div className="flex-1 h-0.5 bg-muted-foreground/30" />
+                    <div className="flex flex-col items-center">
+                      <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
+                        <span className="text-blue-500 font-bold">2</span>
+                      </div>
+                      <span className="text-xs mt-1 text-center">Institution<br/>Management</span>
+                    </div>
+                    <div className="flex-1 h-0.5 bg-muted-foreground/30" />
+                    <div className="flex flex-col items-center">
+                      <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
+                        <span className="text-purple-500 font-bold">3</span>
+                      </div>
+                      <span className="text-xs mt-1 text-center">CEO/System<br/>Admin</span>
+                    </div>
+                    <div className="flex-1 h-0.5 bg-muted-foreground/30" />
+                    <div className="flex flex-col items-center">
+                      <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      </div>
+                      <span className="text-xs mt-1 text-center">Approved</span>
+                    </div>
+                  </div>
+
+                  {/* Current Approvers for Selected Institution */}
+                  <div className="space-y-4">
+                    <h4 className="font-semibold">Configured Approvers</h4>
+                    {approvalChainLoading ? (
+                      <p className="text-muted-foreground text-sm">Loading approval chain...</p>
+                    ) : approvalChain.length === 0 ? (
+                      <div className="text-center py-6 border border-dashed rounded-lg">
+                        <UserPlus className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-muted-foreground text-sm">
+                          No specific approvers configured for this institution.<br/>
+                          Using default workflow: Institution Management → CEO.
+                        </p>
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Approver</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {approvalChain.map((chain) => (
+                            <TableRow key={chain.id}>
+                              <TableCell className="font-medium">{chain.approver_name || 'Unknown'}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline">
+                                  {chain.approver_type === 'ceo' ? 'CEO' : 'Position-based'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">{chain.approver_email || '-'}</TableCell>
+                              <TableCell>
+                                <Badge className={chain.is_active ? 'bg-green-500/10 text-green-500' : 'bg-gray-500/10 text-gray-500'}>
+                                  {chain.is_active ? 'Active' : 'Inactive'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeApprover.mutate(chain.id)}
+                                  disabled={removeApprover.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </div>
+
+                  {/* Info Box */}
+                  <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                    <h4 className="font-medium text-blue-500 mb-2">How Approval Works</h4>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• <strong>Level 1 - Institution:</strong> Management role users from the same institution can approve.</li>
+                      <li>• <strong>Level 2 - CEO:</strong> System Admin or users marked as CEO can give final approval.</li>
+                      <li>• Requests can be rejected at any level with a reason.</li>
+                      <li>• Officers are notified when their requests are approved or rejected.</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         )}
