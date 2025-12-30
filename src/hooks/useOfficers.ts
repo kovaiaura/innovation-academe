@@ -49,9 +49,8 @@ export interface CreateOfficerData {
   annual_salary: number;
   hourly_rate?: number;
   overtime_rate_multiplier?: number;
-  sick_leave_allowance?: number;
-  casual_leave_allowance?: number;
   join_date?: string;
+  institution_id?: string;
 }
 
 export function useOfficers() {
