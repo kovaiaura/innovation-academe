@@ -1,57 +1,249 @@
+import { useEffect, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Target, Trophy, TrendingUp, Flame, Medal, Award, Lock, ArrowRight } from 'lucide-react';
+import { BookOpen, Target, Trophy, TrendingUp, Flame, Award, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getProjectsByStudent } from '@/data/mockProjectData';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { gamificationDbService } from '@/services/gamification-db.service';
 
-// Mock gamification data
-const mockGamification = {
-  total_points: 1250,
-  current_rank: 12,
-  streak_days: 15,
-  badges_earned: [
-    { id: '1', name: 'Early Bird', description: 'Attended 10 sessions on time', icon: '🌅', earned_at: '2024-03-01' },
-    { id: '2', name: 'Team Player', description: 'Completed 3 group projects', icon: '🤝', earned_at: '2024-02-15' },
-    { id: '3', name: 'Quick Learner', description: 'Completed 5 courses', icon: '⚡', earned_at: '2024-03-10' },
-    { id: '4', name: 'High Achiever', description: 'Scored 90%+ in 5 assessments', icon: '🎯', earned_at: '2024-03-15' },
-    { id: '5', name: 'Knowledge Seeker', description: 'Read 20 course materials', icon: '📚', earned_at: '2024-03-20' }
-  ],
-  badges_locked: [
-    { id: '6', name: 'Innovation Champion', description: 'Complete 5 projects', icon: '🚀', points_required: 2000, progress: 40 },
-    { id: '7', name: 'Perfect Attendance', description: 'Attend all sessions for a month', icon: '✨', points_required: 1500, progress: 83 }
-  ],
+interface StudentGamification {
+  total_points: number;
+  current_rank: number;
+  streak_days: number;
+  badges_earned: Array<{
+    id: string;
+    name: string;
+    description: string;
+    icon: string;
+    earned_at: string;
+  }>;
+  badges_locked: Array<{
+    id: string;
+    name: string;
+    description: string;
+    icon: string;
+    points_required: number;
+    progress: number;
+  }>;
   points_breakdown: {
-    sessions: 450,
-    projects: 500,
-    attendance: 200,
-    assessments: 100
-  }
-};
+    sessions: number;
+    projects: number;
+    attendance: number;
+    assessments: number;
+  };
+  weekly_points: number;
+}
 
-const mockLeaderboard = [
-  { rank: 1, name: 'Alice Johnson', points: 2450, badges: 12 },
-  { rank: 2, name: 'Bob Wilson', points: 2200, badges: 10 },
-  { rank: 3, name: 'Carol Martinez', points: 1980, badges: 11 },
-  { rank: 12, name: 'You', points: 1250, badges: 5, isCurrentUser: true }
-];
+interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  points: number;
+  badges: number;
+  isCurrentUser?: boolean;
+}
 
 export default function StudentDashboard() {
   const { user } = useAuth();
-  
-  // Get real projects for current student
-  const studentProjects = user ? getProjectsByStudent(user.id) : [];
-  const activeProjects = studentProjects.filter(p => 
-    p.status === 'in_progress' || p.status === 'approved'
-  ).length;
-  const completedProjects = studentProjects.filter(p => 
-    p.status === 'completed'
-  ).length;
+  const [loading, setLoading] = useState(true);
+  const [gamification, setGamification] = useState<StudentGamification | null>(null);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [coursesEnrolled, setCoursesEnrolled] = useState(0);
+  const [activeProjects, setActiveProjects] = useState(0);
+  const [completedProjects, setCompletedProjects] = useState(0);
 
-  const totalBreakdown = Object.values(mockGamification.points_breakdown).reduce((a, b) => a + b, 0);
+  useEffect(() => {
+    if (user?.id) {
+      loadDashboardData();
+      // Update streak on login
+      gamificationDbService.updateStreak(user.id).catch(console.error);
+    }
+  }, [user?.id]);
+
+  const loadDashboardData = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setLoading(true);
+      
+      // Get student profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, institution_id, class_id')
+        .eq('id', user.id)
+        .single();
+      
+      const studentId = profile?.id || user.id;
+      const institutionId = profile?.institution_id;
+      
+      // Parallel data fetching
+      const [
+        totalXP,
+        xpBreakdown,
+        studentBadges,
+        streak,
+        allBadges,
+        leaderboardData,
+        projectData,
+        courseData
+      ] = await Promise.all([
+        gamificationDbService.getStudentTotalXP(studentId),
+        gamificationDbService.getStudentXPBreakdown(studentId),
+        gamificationDbService.getStudentBadges(studentId),
+        gamificationDbService.getStudentStreak(studentId),
+        gamificationDbService.getBadges(),
+        gamificationDbService.getLeaderboard(institutionId, 20),
+        loadProjectData(studentId),
+        loadCourseData(studentId)
+      ]);
+      
+      // Calculate weekly points (last 7 days)
+      const weeklyPoints = await getWeeklyPoints(studentId);
+      
+      // Calculate rank
+      const myRank = leaderboardData.findIndex(s => s.student_id === studentId) + 1 || leaderboardData.length + 1;
+      
+      // Get earned badge IDs
+      const earnedBadgeIds = new Set(studentBadges.map(b => b.badge?.id));
+      
+      // Calculate locked badges with progress
+      const lockedBadges = allBadges
+        .filter(b => b.is_active && !earnedBadgeIds.has(b.id))
+        .slice(0, 5)
+        .map(b => {
+          const criteria = b.unlock_criteria as any;
+          const threshold = criteria?.threshold || 100;
+          let progress = 0;
+          
+          if (criteria?.type === 'points') {
+            progress = Math.min(100, Math.round((totalXP / threshold) * 100));
+          } else if (criteria?.type === 'streak') {
+            progress = Math.min(100, Math.round(((streak?.current_streak || 0) / threshold) * 100));
+          }
+          
+          return {
+            id: b.id,
+            name: b.name,
+            description: b.description || '',
+            icon: b.icon,
+            points_required: threshold,
+            progress
+          };
+        });
+      
+      setGamification({
+        total_points: totalXP,
+        current_rank: myRank,
+        streak_days: streak?.current_streak || 0,
+        badges_earned: studentBadges.map(b => ({
+          id: b.badge?.id || '',
+          name: b.badge?.name || '',
+          description: b.badge?.description || '',
+          icon: b.badge?.icon || '🏆',
+          earned_at: b.earned_at
+        })),
+        badges_locked: lockedBadges,
+        points_breakdown: {
+          sessions: xpBreakdown['session_attendance'] || 0,
+          projects: xpBreakdown['project_submission'] || 0,
+          attendance: xpBreakdown['session_attendance'] || 0,
+          assessments: xpBreakdown['assessment_completion'] || 0
+        },
+        weekly_points: weeklyPoints
+      });
+      
+      // Build leaderboard for display
+      const displayLeaderboard: LeaderboardEntry[] = leaderboardData.slice(0, 3).map((s, idx) => ({
+        rank: idx + 1,
+        name: s.student_name,
+        points: s.total_points,
+        badges: s.badges_earned,
+        isCurrentUser: s.student_id === studentId
+      }));
+      
+      // Add current user if not in top 3
+      if (myRank > 3) {
+        const myEntry = leaderboardData.find(s => s.student_id === studentId);
+        displayLeaderboard.push({
+          rank: myRank,
+          name: 'You',
+          points: totalXP,
+          badges: studentBadges.length,
+          isCurrentUser: true
+        });
+      }
+      
+      setLeaderboard(displayLeaderboard);
+      setActiveProjects(projectData.active);
+      setCompletedProjects(projectData.completed);
+      setCoursesEnrolled(courseData);
+      
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getWeeklyPoints = async (studentId: string): Promise<number> => {
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    const { data } = await supabase
+      .from('student_xp_transactions')
+      .select('points_earned')
+      .eq('student_id', studentId)
+      .gte('earned_at', weekAgo.toISOString());
+    
+    return data?.reduce((sum, t) => sum + t.points_earned, 0) || 0;
+  };
+
+  const loadProjectData = async (studentId: string) => {
+    const { data } = await supabase
+      .from('project_members')
+      .select('project_id, projects(status)')
+      .eq('student_id', studentId);
+    
+    const projects = data || [];
+    return {
+      active: projects.filter(p => (p.projects as any)?.status === 'in_progress' || (p.projects as any)?.status === 'approved').length,
+      completed: projects.filter(p => (p.projects as any)?.status === 'completed').length
+    };
+  };
+
+  const loadCourseData = async (studentId: string) => {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('class_id')
+      .eq('id', studentId)
+      .single();
+    
+    if (!profile?.class_id) return 0;
+    
+    const { count } = await supabase
+      .from('course_class_assignments')
+      .select('*', { count: 'exact', head: true })
+      .eq('class_id', profile.class_id);
+    
+    return count || 0;
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
+  }
+
+  const totalBreakdown = gamification 
+    ? Object.values(gamification.points_breakdown).reduce((a, b) => a + b, 0) || 1
+    : 1;
 
   return (
     <Layout>
@@ -68,8 +260,8 @@ export default function StudentDashboard() {
               <BookOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">6</div>
-              <p className="text-xs text-muted-foreground">4 in progress</p>
+              <div className="text-2xl font-bold">{coursesEnrolled}</div>
+              <p className="text-xs text-muted-foreground">Active courses</p>
             </CardContent>
           </Card>
 
@@ -90,8 +282,8 @@ export default function StudentDashboard() {
               <Trophy className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">1,250</div>
-              <p className="text-xs text-muted-foreground">+120 this week</p>
+              <div className="text-2xl font-bold">{(gamification?.total_points || 0).toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">+{gamification?.weekly_points || 0} this week</p>
             </CardContent>
           </Card>
 
@@ -101,7 +293,7 @@ export default function StudentDashboard() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">#12</div>
+              <div className="text-2xl font-bold">#{gamification?.current_rank || '-'}</div>
               <p className="text-xs text-muted-foreground">In your class</p>
             </CardContent>
           </Card>
@@ -115,7 +307,7 @@ export default function StudentDashboard() {
               <Flame className="h-4 w-4 text-orange-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{mockGamification.streak_days} days</div>
+              <div className="text-2xl font-bold">{gamification?.streak_days || 0} days</div>
               <p className="text-xs text-muted-foreground">Keep it going!</p>
             </CardContent>
           </Card>
@@ -126,7 +318,7 @@ export default function StudentDashboard() {
               <Trophy className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">+120</div>
+              <div className="text-2xl font-bold">+{gamification?.weekly_points || 0}</div>
               <p className="text-xs text-muted-foreground">This week</p>
             </CardContent>
           </Card>
@@ -137,8 +329,8 @@ export default function StudentDashboard() {
               <Award className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{mockGamification.badges_earned.length}</div>
-              <p className="text-xs text-muted-foreground">{mockGamification.badges_locked.length} more to unlock</p>
+              <div className="text-2xl font-bold">{gamification?.badges_earned.length || 0}</div>
+              <p className="text-xs text-muted-foreground">{gamification?.badges_locked.length || 0} more to unlock</p>
             </CardContent>
           </Card>
         </div>
@@ -157,18 +349,25 @@ export default function StudentDashboard() {
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-4 overflow-x-auto pb-2">
-              {mockGamification.badges_earned.map((badge) => (
-                <div
-                  key={badge.id}
-                  className="flex-shrink-0 w-32 rounded-lg border-2 border-primary/20 bg-gradient-to-br from-primary/10 to-transparent p-4 text-center hover:border-primary/40 transition-colors"
-                >
-                  <div className="text-4xl mb-2">{badge.icon}</div>
-                  <div className="font-semibold text-sm">{badge.name}</div>
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{badge.description}</p>
-                </div>
-              ))}
-            </div>
+            {gamification?.badges_earned.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Award className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No badges earned yet. Keep learning to unlock achievements!</p>
+              </div>
+            ) : (
+              <div className="flex gap-4 overflow-x-auto pb-2">
+                {gamification?.badges_earned.slice(0, 5).map((badge) => (
+                  <div
+                    key={badge.id}
+                    className="flex-shrink-0 w-32 rounded-lg border-2 border-primary/20 bg-gradient-to-br from-primary/10 to-transparent p-4 text-center hover:border-primary/40 transition-colors"
+                  >
+                    <div className="text-4xl mb-2">{badge.icon}</div>
+                    <div className="font-semibold text-sm">{badge.name}</div>
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{badge.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -187,42 +386,49 @@ export default function StudentDashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {mockLeaderboard.map((entry) => (
-                  <div
-                    key={entry.rank}
-                    className={`flex items-center justify-between rounded-lg p-3 transition-colors ${
-                      entry.isCurrentUser 
-                        ? 'bg-primary/10 border-2 border-primary/30' 
-                        : 'bg-muted hover:bg-muted/80'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${
-                        entry.rank === 1 ? 'bg-yellow-500 text-white' :
-                        entry.rank === 2 ? 'bg-gray-400 text-white' :
-                        entry.rank === 3 ? 'bg-orange-600 text-white' :
-                        'bg-gray-200 text-gray-700'
-                      }`}>
-                        {entry.rank}
+              {leaderboard.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Trophy className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>No leaderboard data yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {leaderboard.map((entry) => (
+                    <div
+                      key={entry.rank}
+                      className={`flex items-center justify-between rounded-lg p-3 transition-colors ${
+                        entry.isCurrentUser 
+                          ? 'bg-primary/10 border-2 border-primary/30' 
+                          : 'bg-muted hover:bg-muted/80'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${
+                          entry.rank === 1 ? 'bg-yellow-500 text-white' :
+                          entry.rank === 2 ? 'bg-gray-400 text-white' :
+                          entry.rank === 3 ? 'bg-orange-600 text-white' :
+                          'bg-gray-200 text-gray-700'
+                        }`}>
+                          {entry.rank}
+                        </div>
+                        <div>
+                          <div className="font-semibold flex items-center gap-2 text-sm">
+                            {entry.name}
+                            {entry.isCurrentUser && <Badge variant="secondary" className="text-xs">You</Badge>}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {entry.badges} badges
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-semibold flex items-center gap-2 text-sm">
-                          {entry.name}
-                          {entry.isCurrentUser && <Badge variant="secondary" className="text-xs">You</Badge>}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {entry.badges} badges
-                        </div>
+                      <div className="text-right">
+                        <div className="font-bold text-primary">{entry.points}</div>
+                        <div className="text-xs text-muted-foreground">points</div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-bold text-primary">{entry.points}</div>
-                      <div className="text-xs text-muted-foreground">points</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -232,7 +438,7 @@ export default function StudentDashboard() {
               <CardDescription>See where your points come from</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {Object.entries(mockGamification.points_breakdown).map(([category, points]) => {
+              {gamification && Object.entries(gamification.points_breakdown).map(([category, points]) => {
                 const percentage = (points / totalBreakdown) * 100;
                 return (
                   <div key={category}>
@@ -252,36 +458,38 @@ export default function StudentDashboard() {
         </div>
 
         {/* Locked Badges */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Locked Badges - Keep Working!</CardTitle>
-            <CardDescription>Complete these goals to unlock achievements</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              {mockGamification.badges_locked.map((badge) => (
-                <div key={badge.id} className="rounded-lg border p-4 hover:border-primary/40 transition-colors">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-2xl opacity-60">
-                      <Lock className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-semibold">{badge.name}</div>
-                        <Badge variant="outline">{badge.progress}%</Badge>
+        {gamification?.badges_locked && gamification.badges_locked.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Locked Badges - Keep Working!</CardTitle>
+              <CardDescription>Complete these goals to unlock achievements</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                {gamification.badges_locked.map((badge) => (
+                  <div key={badge.id} className="rounded-lg border p-4 hover:border-primary/40 transition-colors">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-2xl opacity-60">
+                        <Lock className="h-6 w-6 text-muted-foreground" />
                       </div>
-                      <p className="text-sm text-muted-foreground mb-3">{badge.description}</p>
-                      <Progress value={badge.progress} className="h-2" />
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {badge.points_required} points required
-                      </p>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="font-semibold">{badge.name}</div>
+                          <Badge variant="outline">{badge.progress}%</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-3">{badge.description}</p>
+                        <Progress value={badge.progress} className="h-2" />
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {badge.points_required} points required
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </Layout>
   );
