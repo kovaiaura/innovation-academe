@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import type {
   InventoryItem,
   PurchaseRequest,
@@ -114,7 +115,7 @@ export async function getPurchaseRequests(institutionId?: string, officerId?: st
 
   return (data || []).map(req => ({
     ...req,
-    items: req.items as PurchaseRequestItem[],
+    items: req.items as unknown as PurchaseRequestItem[],
     institution_name: req.institutions?.name
   })) as PurchaseRequest[];
 }
@@ -135,11 +136,11 @@ export async function createPurchaseRequest(
   const { data, error } = await supabase
     .from('purchase_requests')
     .insert({
-      request_code: codeData,
+      request_code: codeData as string,
       institution_id: requestData.institution_id,
       officer_id: officerId,
       requester_name: requesterName,
-      items: requestData.items,
+      items: requestData.items as unknown as Json,
       total_estimated_cost: totalCost,
       justification: requestData.justification || null,
       priority: requestData.priority || 'normal',
@@ -161,7 +162,7 @@ export async function createPurchaseRequest(
     metadata: { request_id: data.id, request_code: codeData }
   });
 
-  return { ...data, items: data.items as PurchaseRequestItem[] } as PurchaseRequest;
+  return { ...data, items: data.items as unknown as PurchaseRequestItem[] } as PurchaseRequest;
 }
 
 export async function approvePurchaseRequestByInstitution(
@@ -410,7 +411,6 @@ export async function getApprovalChain(institutionId?: string): Promise<Purchase
     .select(`
       *,
       institutions!inner(name),
-      profiles!purchase_approval_chain_approver_user_id_fkey(name, email),
       positions(display_name)
     `)
     .eq('is_active', true);
@@ -423,11 +423,20 @@ export async function getApprovalChain(institutionId?: string): Promise<Purchase
 
   if (error) throw error;
 
+  // Fetch approver profiles separately since there's no direct FK
+  const approverIds = (data || []).map(chain => chain.approver_user_id).filter(Boolean);
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, name, email')
+    .in('id', approverIds);
+
+  const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+
   return (data || []).map(chain => ({
     ...chain,
     institution_name: chain.institutions?.name,
-    approver_name: chain.profiles?.name,
-    approver_email: chain.profiles?.email,
+    approver_name: profileMap.get(chain.approver_user_id)?.name,
+    approver_email: profileMap.get(chain.approver_user_id)?.email,
     position_name: chain.positions?.display_name
   })) as PurchaseApprovalChain[];
 }
@@ -479,6 +488,8 @@ interface NotificationData {
 
 async function createNotification(data: NotificationData): Promise<void> {
   try {
+    const metadata = data.metadata ? (data.metadata as Json) : null;
+    
     if (data.recipientId) {
       // Direct notification to a specific user
       await supabase.from('notifications').insert({
@@ -487,8 +498,8 @@ async function createNotification(data: NotificationData): Promise<void> {
         type: data.type,
         title: data.title,
         message: data.message,
-        link: data.link,
-        metadata: data.metadata
+        link: data.link || null,
+        metadata
       });
     } else {
       // Get users by role and optionally institution
@@ -507,8 +518,8 @@ async function createNotification(data: NotificationData): Promise<void> {
           type: data.type,
           title: data.title,
           message: data.message,
-          link: data.link,
-          metadata: data.metadata
+          link: data.link || null,
+          metadata
         }));
 
         await supabase.from('notifications').insert(notifications);
