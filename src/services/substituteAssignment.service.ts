@@ -188,13 +188,18 @@ export const substituteAssignmentService = {
 
     const excludeUserId = applyingOfficer?.user_id;
 
-    // 2. Get management role user IDs to exclude
-    const { data: managementRoles } = await supabase
+    // 2. Get roles to exclude (management and students)
+    const { data: excludedRoles } = await supabase
       .from('user_roles')
-      .select('user_id')
-      .eq('role', 'management');
+      .select('user_id, role')
+      .in('role', ['management', 'student']);
 
-    const managementUserIds = new Set(managementRoles?.map(r => r.user_id) || []);
+    const managementUserIds = new Set(
+      excludedRoles?.filter(r => r.role === 'management').map(r => r.user_id) || []
+    );
+    const studentUserIds = new Set(
+      excludedRoles?.filter(r => r.role === 'student').map(r => r.user_id) || []
+    );
 
     // 3. Get officers assigned to this institution (excluding the applying officer)
     const { data: officers, error: officerError } = await supabase
@@ -255,6 +260,8 @@ export const substituteAssignmentService = {
         if (seenUserIds.has(profile.id)) continue;
         // Skip management users
         if (managementUserIds.has(profile.id)) continue;
+        // Skip students
+        if (studentUserIds.has(profile.id)) continue;
 
         const position = profile.positions as unknown as { id: string; display_name: string; position_name: string } | null;
         const role = roleMap.get(profile.id);
