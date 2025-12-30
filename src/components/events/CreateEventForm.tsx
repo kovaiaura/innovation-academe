@@ -194,8 +194,8 @@ export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
   };
 
   const handleSubmit = async () => {
-    if (!title || !description || !eventType || !eventStart) {
-      toast.error('Please fill in all required fields');
+    if (!title || !description || !eventType || !eventStart || !registrationEnd) {
+      toast.error('Please fill in all required fields including Registration End date');
       return;
     }
 
@@ -334,7 +334,7 @@ export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
               </div>
 
               <div className="space-y-2">
-                <Label>Registration End (Optional)</Label>
+                <Label>Registration End *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button

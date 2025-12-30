@@ -1063,6 +1063,7 @@ export type Database = {
           event_id: string
           id: string
           institution_id: string
+          institution_name: string | null
           registered_at: string | null
           section: string | null
           student_id: string
@@ -1075,6 +1076,7 @@ export type Database = {
           event_id: string
           id?: string
           institution_id: string
+          institution_name?: string | null
           registered_at?: string | null
           section?: string | null
           student_id: string
@@ -1087,6 +1089,7 @@ export type Database = {
           event_id?: string
           id?: string
           institution_id?: string
+          institution_name?: string | null
           registered_at?: string | null
           section?: string | null
           student_id?: string

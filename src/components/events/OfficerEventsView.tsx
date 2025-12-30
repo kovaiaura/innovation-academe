@@ -188,7 +188,7 @@ function EventInterestsContent({ event, institutionId }: { event: Event; institu
                 {interest.email || 'N/A'}
               </TableCell>
               <TableCell>
-                {interest.class_name || 'N/A'} {interest.section ? `- ${interest.section}` : ''}
+                {interest.class_name || 'N/A'}
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
                 {format(new Date(interest.registered_at), 'PPP')}

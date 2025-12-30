@@ -190,7 +190,6 @@ export interface EventInterest {
   student_name?: string;
   email?: string;
   class_name?: string;
-  section?: string;
   institution_id: string;
   institution_name?: string;
   class_id?: string;
