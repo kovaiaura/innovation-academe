@@ -5,8 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Plus, Trash2, Image as ImageIcon, Code } from 'lucide-react';
+import { Plus, Trash2, Image as ImageIcon, Code, Upload, Loader2 } from 'lucide-react';
 import { AssessmentQuestion, MCQOption } from '@/types/assessment';
+import { supabase } from '@/integrations/supabase/client';
 
 interface QuestionBuilderProps {
   question?: Partial<AssessmentQuestion>;
@@ -32,6 +33,33 @@ export const QuestionBuilder = ({ question, questionNumber, onSave, onCancel }: 
   const [codeSnippet, setCodeSnippet] = useState(question?.code_snippet || '');
   const [showImageInput, setShowImageInput] = useState(!!question?.image_url);
   const [showCodeInput, setShowCodeInput] = useState(!!question?.code_snippet);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    try {
+      const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      const { data, error } = await supabase.storage
+        .from('assessment-images')
+        .upload(fileName, file);
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('assessment-images')
+        .getPublicUrl(fileName);
+
+      setImageUrl(publicUrl);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Failed to upload image');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
 
   const updateOption = (index: number, text: string) => {
     const newOptions = [...options];
@@ -119,17 +147,26 @@ export const QuestionBuilder = ({ question, questionNumber, onSave, onCancel }: 
           </Button>
         </div>
 
-        {/* Image URL */}
+        {/* Image Upload */}
         {showImageInput && (
           <div className="space-y-2">
-            <Label htmlFor="image-url">Image URL</Label>
-            <Input
-              id="image-url"
-              type="url"
-              placeholder="https://example.com/image.png"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-            />
+            <Label>Question Image</Label>
+            <div className="flex items-center gap-4">
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={isUploadingImage}
+                className="flex-1"
+              />
+              {isUploadingImage && <Loader2 className="h-4 w-4 animate-spin" />}
+            </div>
+            {imageUrl && (
+              <div className="mt-2">
+                <img src={imageUrl} alt="Preview" className="max-h-40 rounded-lg border" />
+                <p className="text-xs text-muted-foreground mt-1 truncate">{imageUrl}</p>
+              </div>
+            )}
           </div>
         )}
 

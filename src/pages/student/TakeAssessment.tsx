@@ -456,7 +456,8 @@ export default function TakeAssessment() {
                 )}
 
                 <RadioGroup
-                  value={answers.get(currentQuestion.id)}
+                  key={currentQuestion.id}
+                  value={answers.get(currentQuestion.id) || ''}
                   onValueChange={handleAnswerSelect}
                   className="space-y-3"
                 >

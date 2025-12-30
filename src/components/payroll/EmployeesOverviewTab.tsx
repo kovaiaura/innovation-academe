@@ -193,7 +193,7 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
         ) : (
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader>
+                <TableHeader>
                 <TableRow>
                   <TableHead>Employee</TableHead>
                   <TableHead>Type</TableHead>
@@ -202,7 +202,9 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
                   <TableHead className="text-right">Monthly Salary</TableHead>
                   <TableHead className="text-right">Per Day (÷30)</TableHead>
                   <TableHead className="text-center">Days Present</TableHead>
+                  <TableHead className="text-center">Days Leave</TableHead>
                   <TableHead className="text-center">Days LOP</TableHead>
+                  <TableHead className="text-center text-orange-600">Not Marked</TableHead>
                   <TableHead className="text-right">LOP Deduction</TableHead>
                   <TableHead className="text-right">Net Pay</TableHead>
                   <TableHead className="text-center">Status</TableHead>
@@ -211,7 +213,7 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
               <TableBody>
                 {filteredEmployees.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">
                       No employees found
                     </TableCell>
                   </TableRow>
@@ -221,6 +223,9 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
                     const lopDeduction = calculateLOPDeduction(proratedSalary, employee.days_lop);
                     const netPay = proratedSalary - lopDeduction;
                     const isProrated = proratedSalary !== employee.monthly_salary;
+                    // Calculate not marked days = days_absent - days_lop (if uninformed leave is tracked differently)
+                    // For now, not_marked = total working days - present - leave - lop
+                    const daysNotMarked = employee.days_not_marked ?? 0;
                     
                     return (
                       <TableRow key={employee.user_id}>
@@ -267,8 +272,22 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
                           <span className="text-green-600 font-medium">{employee.days_present}</span>
                         </TableCell>
                         <TableCell className="text-center">
+                          {employee.days_leave > 0 ? (
+                            <span className="text-blue-600 font-medium">{employee.days_leave}</span>
+                          ) : (
+                            <span className="text-muted-foreground">0</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
                           {employee.days_lop > 0 ? (
                             <span className="text-red-600 font-medium">{employee.days_lop}</span>
+                          ) : (
+                            <span className="text-muted-foreground">0</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {daysNotMarked > 0 ? (
+                            <span className="text-orange-600 font-medium">{daysNotMarked}</span>
                           ) : (
                             <span className="text-muted-foreground">0</span>
                           )}
