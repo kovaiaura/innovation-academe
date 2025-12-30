@@ -502,18 +502,69 @@ async function createNotification(data: NotificationData): Promise<void> {
         metadata
       });
     } else {
-      // Get users by role and optionally institution
-      let query = supabase.from('profiles').select('id');
+      // Get users by role from user_roles table - this ensures only users with the correct role receive notifications
+      type AppRole = 'management' | 'officer' | 'student' | 'super_admin' | 'system_admin' | 'teacher';
+      let roleFilter: AppRole;
       
-      if (data.recipientRole === 'management' && data.institutionId) {
-        query = query.eq('institution_id', data.institutionId);
+      // Map our notification roles to actual database roles
+      switch (data.recipientRole) {
+        case 'management':
+          roleFilter = 'management';
+          break;
+        case 'system_admin':
+          roleFilter = 'system_admin';
+          break;
+        case 'officer':
+          roleFilter = 'officer';
+          break;
+        default:
+          console.warn(`Unknown recipient role: ${data.recipientRole}`);
+          return;
       }
 
-      const { data: users } = await query;
+      // Query user_roles to get only users with the correct role
+      const { data: roleUsers, error: roleError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', roleFilter);
 
-      if (users && users.length > 0) {
-        const notifications = users.map(user => ({
-          recipient_id: user.id,
+      if (roleError) {
+        console.error('Error fetching users by role:', roleError);
+        return;
+      }
+
+      if (!roleUsers || roleUsers.length === 0) {
+        console.log(`No users found with role: ${roleFilter}`);
+        return;
+      }
+
+      const userIds = roleUsers.map(u => u.user_id);
+
+      // For management role, also filter by institution
+      if (data.recipientRole === 'management' && data.institutionId) {
+        const { data: institutionProfiles } = await supabase
+          .from('profiles')
+          .select('id')
+          .in('id', userIds)
+          .eq('institution_id', data.institutionId);
+
+        if (institutionProfiles && institutionProfiles.length > 0) {
+          const notifications = institutionProfiles.map(profile => ({
+            recipient_id: profile.id,
+            recipient_role: data.recipientRole,
+            type: data.type,
+            title: data.title,
+            message: data.message,
+            link: data.link || null,
+            metadata
+          }));
+
+          await supabase.from('notifications').insert(notifications);
+        }
+      } else {
+        // For system_admin and officer roles, send to all users with that role
+        const notifications = userIds.map(userId => ({
+          recipient_id: userId,
           recipient_role: data.recipientRole,
           type: data.type,
           title: data.title,

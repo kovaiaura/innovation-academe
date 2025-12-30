@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, CheckCheck, Calendar, CheckCircle, XCircle, Ban, Clock, Users, UserPlus, Archive, ExternalLink } from 'lucide-react';
+import { Bell, CheckCheck, Calendar, CheckCircle, XCircle, Ban, Clock, Users, UserPlus, Archive, ExternalLink, ShoppingCart, Package, FileText, Target, Trophy, Award } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { useDbNotifications } from '@/hooks/useDbNotifications';
@@ -39,6 +39,22 @@ const getNotificationIcon = (type: string) => {
       return <Users className="h-4 w-4 text-purple-500" />;
     case 'substitute_assigned':
       return <UserPlus className="h-4 w-4 text-teal-500" />;
+    case 'purchase_request':
+      return <ShoppingCart className="h-4 w-4 text-blue-500" />;
+    case 'inventory_issue':
+      return <Package className="h-4 w-4 text-orange-500" />;
+    case 'assignment_submission':
+      return <FileText className="h-4 w-4 text-indigo-500" />;
+    case 'project_update':
+      return <Target className="h-4 w-4 text-purple-500" />;
+    case 'event_published':
+    case 'event_application_submitted':
+    case 'event_application_reviewed':
+    case 'event_reminder':
+      return <Trophy className="h-4 w-4 text-yellow-500" />;
+    case 'certificate_issued':
+    case 'grade_received':
+      return <Award className="h-4 w-4 text-green-500" />;
     default:
       return <Bell className="h-4 w-4 text-muted-foreground" />;
   }
