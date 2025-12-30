@@ -10,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Plus, Upload, FileText, Search, Filter, Edit, Trash2, BarChart3, Users, TrendingUp, Award, Eye, Layers, Loader2 } from 'lucide-react';
+import { BookOpen, Plus, Upload, FileText, Search, Filter, Edit, Trash2, BarChart3, Users, TrendingUp, Award, Eye, Layers, Loader2, Target } from 'lucide-react';
+import { SDGGoalSelector } from '@/components/project/SDGGoalSelector';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { uploadCourseThumbnail } from '@/services/courseStorage.service';
@@ -43,6 +44,7 @@ export default function CourseManagement() {
     thumbnail_url: '',
     prerequisites: '',
     learning_outcomes: [''],
+    sdg_goals: [] as number[],
   });
 
   const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
@@ -93,6 +95,7 @@ export default function CourseManagement() {
         thumbnail_url: thumbnailPath || null,
         prerequisites: newCourse.prerequisites || null,
         learning_outcomes: newCourse.learning_outcomes.filter(o => o.trim()),
+        sdg_goals: newCourse.sdg_goals.length > 0 ? newCourse.sdg_goals : null,
         status: isDraft ? 'draft' : 'active',
         created_by: user?.id || null
       });
@@ -105,6 +108,7 @@ export default function CourseManagement() {
         thumbnail_url: '',
         prerequisites: '',
         learning_outcomes: [''],
+        sdg_goals: [],
       });
       setThumbnailPreview('');
       setThumbnailFile(null);
