@@ -175,6 +175,7 @@ function EventInterestsContent({ event, institutionId }: { event: Event; institu
         <TableHeader>
           <TableRow>
             <TableHead>Student Name</TableHead>
+            <TableHead>Email</TableHead>
             <TableHead>Class</TableHead>
             <TableHead>Registered At</TableHead>
           </TableRow>
@@ -183,10 +184,15 @@ function EventInterestsContent({ event, institutionId }: { event: Event; institu
           {interests.map((interest) => (
             <TableRow key={interest.id}>
               <TableCell className="font-medium">{interest.student_name || 'Unknown'}</TableCell>
-              <TableCell>
-                {interest.class_name} {interest.section ? `- ${interest.section}` : ''}
+              <TableCell className="text-sm text-muted-foreground">
+                {interest.email || 'N/A'}
               </TableCell>
-              <TableCell>{format(new Date(interest.registered_at), 'PPP')}</TableCell>
+              <TableCell>
+                {interest.class_name || 'N/A'} {interest.section ? `- ${interest.section}` : ''}
+              </TableCell>
+              <TableCell className="text-sm text-muted-foreground">
+                {format(new Date(interest.registered_at), 'PPP')}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>

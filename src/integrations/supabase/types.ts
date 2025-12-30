@@ -1059,6 +1059,7 @@ export type Database = {
         Row: {
           class_id: string | null
           class_name: string | null
+          email: string | null
           event_id: string
           id: string
           institution_id: string
@@ -1070,6 +1071,7 @@ export type Database = {
         Insert: {
           class_id?: string | null
           class_name?: string | null
+          email?: string | null
           event_id: string
           id?: string
           institution_id: string
@@ -1081,6 +1083,7 @@ export type Database = {
         Update: {
           class_id?: string | null
           class_name?: string | null
+          email?: string | null
           event_id?: string
           id?: string
           institution_id?: string

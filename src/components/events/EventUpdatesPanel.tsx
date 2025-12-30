@@ -5,14 +5,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Trash2, ExternalLink, Loader2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Trash2, ExternalLink, Loader2, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { useEventUpdates, useAddEventUpdate, useDeleteEventUpdate } from '@/hooks/useEvents';
-import { Event } from '@/types/events';
+import { Event, EventUpdate } from '@/types/events';
 
 interface EventUpdatesPanelProps {
   event: Event;
   canEdit?: boolean;
+}
+
+// Extended type for updates with targeting info
+interface ExtendedEventUpdate extends EventUpdate {
+  for_interested_only?: boolean;
 }
 
 export function EventUpdatesPanel({ event, canEdit = false }: EventUpdatesPanelProps) {
@@ -20,6 +27,7 @@ export function EventUpdatesPanel({ event, canEdit = false }: EventUpdatesPanelP
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
   const [newLink, setNewLink] = useState('');
+  const [forInterestedOnly, setForInterestedOnly] = useState(false);
 
   const { data: updates, isLoading } = useEventUpdates(event.id);
   const addUpdate = useAddEventUpdate();
@@ -28,11 +36,16 @@ export function EventUpdatesPanel({ event, canEdit = false }: EventUpdatesPanelP
   const handleAddUpdate = async () => {
     if (!newTitle.trim()) return;
 
+    // Include targeting info in content if for interested students only
+    const contentWithMeta = forInterestedOnly 
+      ? `[FOR_INTERESTED_ONLY]\n${newContent || ''}`
+      : newContent;
+
     await addUpdate.mutateAsync({
       eventId: event.id,
       update: {
         title: newTitle,
-        content: newContent || undefined,
+        content: contentWithMeta || undefined,
         link_url: newLink || undefined,
       },
     });
@@ -40,11 +53,23 @@ export function EventUpdatesPanel({ event, canEdit = false }: EventUpdatesPanelP
     setNewTitle('');
     setNewContent('');
     setNewLink('');
+    setForInterestedOnly(false);
     setShowAddForm(false);
   };
 
   const handleDeleteUpdate = async (updateId: string) => {
     await deleteUpdate.mutateAsync({ updateId, eventId: event.id });
+  };
+
+  // Check if update is for interested students only
+  const isForInterestedOnly = (update: EventUpdate): boolean => {
+    return update.content?.startsWith('[FOR_INTERESTED_ONLY]') || false;
+  };
+
+  // Get clean content without the meta tag
+  const getCleanContent = (update: EventUpdate): string | undefined => {
+    if (!update.content) return undefined;
+    return update.content.replace('[FOR_INTERESTED_ONLY]\n', '').replace('[FOR_INTERESTED_ONLY]', '');
   };
 
   return (
@@ -86,6 +111,17 @@ export function EventUpdatesPanel({ event, canEdit = false }: EventUpdatesPanelP
                 onChange={(e) => setNewLink(e.target.value)}
               />
             </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="forInterestedOnly"
+                checked={forInterestedOnly}
+                onCheckedChange={(checked) => setForInterestedOnly(checked === true)}
+              />
+              <Label htmlFor="forInterestedOnly" className="text-sm font-normal cursor-pointer flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Send to interested students only
+              </Label>
+            </div>
             <div className="flex gap-2">
               <Button
                 size="sm"
@@ -115,12 +151,20 @@ export function EventUpdatesPanel({ event, canEdit = false }: EventUpdatesPanelP
                 <div key={update.id} className="p-4 border rounded-lg">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="font-medium">{update.title}</h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-medium">{update.title}</h4>
+                        {isForInterestedOnly(update) && (
+                          <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            Interested Only
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground mt-1">
                         {format(new Date(update.created_at), 'PPP p')}
                       </p>
-                      {update.content && (
-                        <p className="text-sm text-muted-foreground mt-2">{update.content}</p>
+                      {getCleanContent(update) && (
+                        <p className="text-sm text-muted-foreground mt-2">{getCleanContent(update)}</p>
                       )}
                       {update.link_url && (
                         <a

@@ -188,6 +188,7 @@ export interface EventInterest {
   event_id: string;
   student_id: string;
   student_name?: string;
+  email?: string;
   class_name?: string;
   section?: string;
   institution_id: string;

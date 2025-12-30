@@ -5,12 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, Eye, Trash2, Send, FileText, ExternalLink, Loader2 } from 'lucide-react';
+import { Search, Eye, Trash2, Send, FileText, ExternalLink, Loader2, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { Event, ActivityEventType, EventStatus, EVENT_TYPE_LABELS, EVENT_STATUS_LABELS } from '@/types/events';
 import { useEvents, useDeleteEvent } from '@/hooks/useEvents';
 import { PublishEventDialog } from './PublishEventDialog';
 import { EventUpdatesPanel } from './EventUpdatesPanel';
+import { CEOInterestedStudentsDialog } from './CEOInterestedStudentsDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +36,7 @@ export function EventsListDB() {
   const [deleteEventId, setDeleteEventId] = useState<string | null>(null);
   const [publishEvent, setPublishEvent] = useState<Event | null>(null);
   const [viewEvent, setViewEvent] = useState<Event | null>(null);
+  const [viewInterestsEventId, setViewInterestsEventId] = useState<string | null>(null);
 
   const { data: events, isLoading } = useEvents();
   const deleteEventMutation = useDeleteEvent();
@@ -184,9 +186,20 @@ export function EventsListDB() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => setViewEvent(event)}
+                                title="View Details"
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
+                              {event.status === 'published' && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setViewInterestsEventId(event.id)}
+                                  title="View Interested Students"
+                                >
+                                  <Users className="h-4 w-4" />
+                                </Button>
+                              )}
                               {event.status === 'draft' && (
                                 <Button
                                   variant="ghost"
@@ -201,6 +214,7 @@ export function EventsListDB() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => setDeleteEventId(event.id)}
+                                title="Delete Event"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -307,6 +321,13 @@ export function EventsListDB() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* CEO Interested Students Dialog */}
+      <CEOInterestedStudentsDialog
+        eventId={viewInterestsEventId || ''}
+        open={!!viewInterestsEventId}
+        onOpenChange={(open) => !open && setViewInterestsEventId(null)}
+      />
     </>
   );
 }

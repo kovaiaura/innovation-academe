@@ -42,6 +42,14 @@ export function useEventInterests(eventId: string | undefined, institutionId?: s
   });
 }
 
+export function useAllEventInterests(eventId: string | undefined) {
+  return useQuery({
+    queryKey: ['event-interests-all', eventId],
+    queryFn: () => eventService.getAllEventInterests(eventId!),
+    enabled: !!eventId,
+  });
+}
+
 export function useHasExpressedInterest(eventId: string | undefined) {
   return useQuery({
     queryKey: ['event-interest-check', eventId],

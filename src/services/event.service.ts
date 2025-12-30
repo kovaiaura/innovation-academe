@@ -170,11 +170,12 @@ class EventService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Get student profile info
+    // Get student profile info including email
     const { data: profile } = await supabase
       .from('profiles')
       .select(`
         name,
+        email,
         institution_id,
         class_id
       `)
@@ -209,7 +210,9 @@ class EventService {
         event_id: eventId,
         student_id: user.id,
         student_name: profile?.name,
+        email: profile?.email,
         institution_id: profile?.institution_id,
+        institution_name: institutionName,
         class_id: profile?.class_id,
         class_name: classData?.class_name,
         section: classData?.section
@@ -275,6 +278,18 @@ class EventService {
     }
 
     const { data, error } = await query;
+    if (error) throw error;
+    return (data || []) as EventInterest[];
+  }
+
+  // Get all interests for an event (CEO view - all institutions)
+  async getAllEventInterests(eventId: string): Promise<EventInterest[]> {
+    const { data, error } = await supabase
+      .from('event_interests')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('registered_at', { ascending: false });
+
     if (error) throw error;
     return (data || []) as EventInterest[];
   }
