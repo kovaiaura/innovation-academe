@@ -3015,6 +3015,14 @@ export type Database = {
         Returns: undefined
       }
       can_manage_events: { Args: { _user_id: string }; Returns: boolean }
+      can_view_event: {
+        Args: { _event_id: string; _status: string; _user_id: string }
+        Returns: boolean
+      }
+      can_view_event_updates: {
+        Args: { _event_id: string; _user_id: string }
+        Returns: boolean
+      }
       get_leave_balance: {
         Args: { p_month: number; p_user_id: string; p_year: number }
         Returns: {
@@ -3057,6 +3065,14 @@ export type Database = {
           p_year: number
         }
         Returns: string
+      }
+      is_event_assigned_to_user_institution: {
+        Args: { _event_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_event_owner: {
+        Args: { _event_id: string; _user_id: string }
+        Returns: boolean
       }
       is_project_member: {
         Args: { _project_id: string; _user_id: string }
