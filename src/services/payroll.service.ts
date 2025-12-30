@@ -22,6 +22,7 @@ export interface EmployeePayrollSummary {
   days_absent: number;
   days_leave: number;
   days_lop: number;
+  days_not_marked: number;
   uninformed_leave_days: number;
   overtime_hours: number;
   overtime_pending_approval: number;
@@ -299,7 +300,11 @@ export const fetchAllEmployees = async (month?: number, year?: number): Promise<
         
         // Calculate LOP: Working days - Present days - Leave days - Holidays
         const coveredDays = new Set([...attendanceDates, ...leaveDates]);
-        const lopDays = workingDaysExcludingHolidays.filter(d => !coveredDays.has(d)).length;
+        const uncoveredWorkingDays = workingDaysExcludingHolidays.filter(d => !coveredDays.has(d));
+        const lopDays = uncoveredWorkingDays.length;
+        
+        // Days not marked = uncovered days (same as LOP for now, but could differ if we track differently)
+        const daysNotMarked = uncoveredWorkingDays.length;
         
         // Calculate net pay
         const perDaySalary = calculatePerDaySalary(monthlySalary);
@@ -322,6 +327,7 @@ export const fetchAllEmployees = async (month?: number, year?: number): Promise<
           days_absent: lopDays,
           days_leave: leaveDays,
           days_lop: lopDays,
+          days_not_marked: daysNotMarked,
           uninformed_leave_days: lopDays,
           overtime_hours: 0,
           overtime_pending_approval: 0,
@@ -391,7 +397,11 @@ export const fetchAllEmployees = async (month?: number, year?: number): Promise<
         
         // Calculate LOP
         const coveredDays = new Set([...attendanceDates, ...leaveDates]);
-        const lopDays = workingDaysExcludingHolidays.filter(d => !coveredDays.has(d)).length;
+        const uncoveredWorkingDays = workingDaysExcludingHolidays.filter(d => !coveredDays.has(d));
+        const lopDays = uncoveredWorkingDays.length;
+        
+        // Days not marked = uncovered days
+        const daysNotMarked = uncoveredWorkingDays.length;
         
         // Calculate net pay
         const perDaySalary = calculatePerDaySalary(monthlySalary);
@@ -414,6 +424,7 @@ export const fetchAllEmployees = async (month?: number, year?: number): Promise<
           days_absent: lopDays,
           days_leave: leaveDays,
           days_lop: lopDays,
+          days_not_marked: daysNotMarked,
           uninformed_leave_days: lopDays,
           overtime_hours: 0,
           overtime_pending_approval: 0,

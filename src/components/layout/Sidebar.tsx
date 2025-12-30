@@ -8,7 +8,7 @@ import {
   Home, Users, User, Settings, LogOut, ChevronLeft, ChevronDown,
   BookOpen, Target, Calendar, Award, BarChart,
   Building2, FileText, Trophy, Package, UserCheck, GraduationCap,
-  MessageSquare, MessageCircle,
+  MessageSquare, MessageCircle, Bell,
   Shield, Phone, Clock, ShoppingCart, PieChart, Briefcase, CalendarCheck,
   LayoutDashboard, CheckSquare, ListTodo, Key, Star, History, CalendarDays
 } from 'lucide-react';
@@ -158,6 +158,8 @@ const menuItems: MenuItem[] = [
   { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['student'] },
   // Teacher My Profile
   { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['teacher'] },
+  // Notifications for all roles
+  { label: 'Notifications', icon: <Bell className="h-5 w-5" />, path: '/notifications', roles: ['super_admin', 'system_admin', 'management', 'officer', 'teacher', 'student'] },
 ];
 
 export function Sidebar() {
@@ -353,14 +355,6 @@ export function Sidebar() {
             </div>
             <span className="text-xl font-bold">Meta-INNOVA</span>
           </div>
-        )}
-        {/* Notification Bell - show for all authenticated users */}
-        {user && (
-          <NotificationBell 
-            userId={user.id} 
-            userRole={user.role} 
-            notificationsPath={getFullPath('/notifications')}
-          />
         )}
         <Button
           variant="ghost"

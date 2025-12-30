@@ -159,7 +159,7 @@ export default function PayrollDashboard() {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-5 w-full max-w-4xl">
+          <TabsList className="grid grid-cols-4 w-full max-w-3xl">
             <TabsTrigger value="employees" className="gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Employees</span>
@@ -175,10 +175,6 @@ export default function PayrollDashboard() {
             <TabsTrigger value="overtime" className="gap-2">
               <Clock className="h-4 w-4" />
               <span className="hidden sm:inline">Overtime</span>
-            </TabsTrigger>
-            <TabsTrigger value="payroll" className="gap-2">
-              <DollarSign className="h-4 w-4" />
-              <span className="hidden sm:inline">Payroll</span>
             </TabsTrigger>
           </TabsList>
 
@@ -196,10 +192,6 @@ export default function PayrollDashboard() {
 
           <TabsContent value="overtime">
             <OvertimeManagementTab month={month} year={year} />
-          </TabsContent>
-
-          <TabsContent value="payroll">
-            <PayrollProcessingTab month={month} year={year} />
           </TabsContent>
         </Tabs>
       </div>
