@@ -21,7 +21,6 @@ import OfficerManagement from "./pages/system-admin/OfficerManagement";
 import SystemAdminOfficerAttendance from "./pages/system-admin/OfficerAttendance";
 import StaffAttendancePayroll from "./pages/system-admin/StaffAttendancePayroll";
 import InventoryManagement from "./pages/system-admin/InventoryManagement";
-import InstitutionInventoryDetail from "./pages/system-admin/InstitutionInventoryDetail";
 import CredentialManagement from "./pages/system-admin/CredentialManagement";
 import StudentDashboard from "./pages/student/Dashboard";
 import StudentCourses from "./pages/student/Courses";
@@ -341,14 +340,6 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="inventory_management">
                   <InventoryManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/system-admin/inventory-management/:institutionId"
-              element={
-                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="inventory_management">
-                  <InstitutionInventoryDetail />
                 </ProtectedRoute>
               }
             />

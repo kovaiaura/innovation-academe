@@ -125,6 +125,46 @@ export function useApprovePurchaseRequestByInstitution() {
   });
 }
 
+// Alias for simpler usage
+export function useApprovePurchaseRequest() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ requestId, approverType, comments }: {
+      requestId: string;
+      approverType: 'institution' | 'ceo';
+      comments?: string;
+    }) => approverType === 'institution' 
+      ? inventoryService.approvePurchaseRequestByInstitution(requestId, '', comments)
+      : inventoryService.approvePurchaseRequestFinal(requestId, '', comments),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['purchase-requests'] });
+      toast({ title: "Request approved" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to approve", description: error.message, variant: "destructive" });
+    }
+  });
+}
+
+export function useReportIssue() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (issueData: ReportIssueData) => 
+      inventoryService.reportInventoryIssue(issueData, '', ''),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['inventory-issues'] });
+      toast({ title: "Issue reported", description: `Issue ${data.issue_code} submitted` });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to report issue", description: error.message, variant: "destructive" });
+    }
+  });
+}
+
 export function useApprovePurchaseRequestFinal() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -152,9 +192,9 @@ export function useRejectPurchaseRequest() {
   return useMutation({
     mutationFn: ({ requestId, rejectorId, reason }: {
       requestId: string;
-      rejectorId: string;
+      rejectorId?: string;
       reason: string;
-    }) => inventoryService.rejectPurchaseRequest(requestId, rejectorId, reason),
+    }) => inventoryService.rejectPurchaseRequest(requestId, rejectorId || '', reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchase-requests'] });
       toast({ title: "Request rejected" });

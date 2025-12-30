@@ -1,792 +1,567 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Package, Plus, Edit, Trash2, MapPin, Calendar, ShoppingCart, Cpu, Lightbulb, CheckCircle, ClipboardList } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Package, Plus, ShoppingCart, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Layout } from '@/components/layout/Layout';
-import { CreatePurchaseRequestDialog } from '@/components/inventory/CreatePurchaseRequestDialog';
-import { PurchaseRequestDetailDialog } from '@/components/inventory/PurchaseRequestDetailDialog';
-import { PurchaseRequestStatusBadge } from '@/components/inventory/PurchaseRequestStatusBadge';
-import { AddItemDialog } from '@/components/inventory/AddItemDialog';
-import { AddComponentDialog } from '@/components/inventory/AddComponentDialog';
-import { ComponentStatusBadge } from '@/components/inventory/ComponentStatusBadge';
-import { CreateAuditReportDialog } from '@/components/inventory/CreateAuditReportDialog';
-import { 
-  loadInventoryItems, 
-  saveInventoryItems,
-  loadPurchaseRequests,
-  savePurchaseRequests,
-  loadProjectComponents,
-  saveProjectComponents,
-  addAuditRecord,
-  getInventoryByInstitution,
-  addInventoryItem,
-  deleteInventoryItem,
-} from '@/data/mockInventoryData';
-import { getProjectsByOfficer } from '@/data/mockProjectData';
-import { PurchaseRequest, InventoryItem, ProjectComponent, AuditRecord } from '@/types/inventory';
-import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
+import { 
+  useInventoryItems, 
+  usePurchaseRequests, 
+  useInventoryIssues, 
+  useCreatePurchaseRequest,
+  useReportInventoryIssue
+} from '@/hooks/useInventory';
+import { PurchaseRequest, InventoryIssue, PurchaseRequestItem } from '@/types/inventory';
+import { format } from 'date-fns';
+
+const getStatusBadge = (status: string) => {
+  const variants: Record<string, { className: string; label: string }> = {
+    pending_institution: { className: 'bg-yellow-500/10 text-yellow-500', label: 'Pending Institution' },
+    approved_institution: { className: 'bg-blue-500/10 text-blue-500', label: 'Pending CEO' },
+    pending_ceo: { className: 'bg-blue-500/10 text-blue-500', label: 'Pending CEO' },
+    approved: { className: 'bg-green-500/10 text-green-500', label: 'Approved' },
+    rejected: { className: 'bg-red-500/10 text-red-500', label: 'Rejected' },
+    cancelled: { className: 'bg-gray-500/10 text-gray-500', label: 'Cancelled' },
+  };
+  return variants[status] || { className: 'bg-gray-500/10 text-gray-500', label: status };
+};
+
+const getIssueStatusBadge = (status: string) => {
+  const variants: Record<string, { className: string; label: string }> = {
+    reported: { className: 'bg-yellow-500/10 text-yellow-500', label: 'Reported' },
+    acknowledged: { className: 'bg-blue-500/10 text-blue-500', label: 'Acknowledged' },
+    in_progress: { className: 'bg-purple-500/10 text-purple-500', label: 'In Progress' },
+    resolved: { className: 'bg-green-500/10 text-green-500', label: 'Resolved' },
+    closed: { className: 'bg-gray-500/10 text-gray-500', label: 'Closed' },
+  };
+  return variants[status] || { className: 'bg-gray-500/10 text-gray-500', label: status };
+};
 
 export default function Inventory() {
   const { user } = useAuth();
+  const institutionId = user?.institution_id || '';
+  const officerId = user?.id || '';
   
-  // Get officer context from useAuth
-  const institutionId = user?.institution_id || user?.tenant_id || 'inst-msd-001';
-  const officerId = user?.id || 'off-msd-001';
-  const officerName = user?.name || 'Innovation Officer';
-  const institutionName = (user as any)?.institution_name || 'Institution';
-
-  // State for inventory
-  const [equipment, setEquipment] = useState<InventoryItem[]>([]);
-  const [filterCategory, setFilterCategory] = useState('all');
-  const [isAddEquipmentOpen, setIsAddEquipmentOpen] = useState(false);
+  const { data: inventory = [], isLoading: inventoryLoading } = useInventoryItems(institutionId);
+  const { data: allRequests = [], isLoading: requestsLoading } = usePurchaseRequests(institutionId);
+  const { data: allIssues = [], isLoading: issuesLoading } = useInventoryIssues(institutionId);
   
-  // State for purchase requests
-  const [isCreateRequestOpen, setIsCreateRequestOpen] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<PurchaseRequest | null>(null);
-  const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>([]);
-  const [requestFilter, setRequestFilter] = useState('all');
+  const createRequest = useCreatePurchaseRequest();
+  const reportIssue = useReportInventoryIssue();
   
-  // State for components
-  const [components, setComponents] = useState<ProjectComponent[]>([]);
-  const [componentFilter, setComponentFilter] = useState<'all' | ProjectComponent['status']>('all');
-  const [projectFilter, setProjectFilter] = useState('all');
-  const [isAddComponentOpen, setIsAddComponentOpen] = useState(false);
-  const [projects, setProjects] = useState<any[]>([]);
+  // Filter to only show officer's own requests and issues
+  const myRequests = allRequests.filter(r => r.officer_id === officerId);
+  const myIssues = allIssues.filter(i => i.reported_by === officerId);
   
-  // State for audit
-  const [isCreateAuditOpen, setIsCreateAuditOpen] = useState(false);
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const [issueDialogOpen, setIssueDialogOpen] = useState(false);
+  
+  // Purchase request form
+  const [requestItems, setRequestItems] = useState<PurchaseRequestItem[]>([{ name: '', description: '', quantity: 1, estimated_unit_price: 0, estimated_total: 0 }]);
+  const [requestJustification, setRequestJustification] = useState('');
+  const [requestPriority, setRequestPriority] = useState<'low' | 'normal' | 'urgent'>('normal');
+  
+  // Issue report form
+  const [issueItemName, setIssueItemName] = useState('');
+  const [issueType, setIssueType] = useState<'damaged' | 'missing' | 'malfunction' | 'other'>('damaged');
+  const [issueDescription, setIssueDescription] = useState('');
+  const [issueQuantity, setIssueQuantity] = useState(1);
+  const [issueSeverity, setIssueSeverity] = useState<'low' | 'medium' | 'high' | 'critical'>('medium');
 
-  // Load data on mount and when institutionId/officerId changes
-  useEffect(() => {
-    // Load inventory for this institution
-    const allInventory = loadInventoryItems();
-    setEquipment(allInventory[institutionId] || []);
-    
-    // Load purchase requests for this officer
-    const allRequests = loadPurchaseRequests();
-    setPurchaseRequests(allRequests.filter(r => r.officer_id === officerId));
-    
-    // Load components for this officer
-    const allComponents = loadProjectComponents();
-    setComponents(allComponents.filter(c => c.added_by_officer_id === officerId));
-    
-    // Load projects for this officer using helper function
-    setProjects(getProjectsByOfficer(officerId));
-  }, [institutionId, officerId]);
+  const totalValue = inventory.reduce((sum, item) => sum + (item.total_value || 0), 0);
+  const totalUnits = inventory.reduce((sum, item) => sum + (item.units || 0), 0);
 
-  const handleAddEquipment = (data: any) => {
-    const newItem: InventoryItem = {
-      id: `item-${Date.now()}`,
-      item_code: data.item_code || `ITEM-${Date.now()}`,
-      name: data.name,
-      category: data.category,
-      description: data.description || '',
-      manufacturer: data.manufacturer,
-      model_number: data.model_number,
-      serial_number: data.serial_number,
-      quantity: parseInt(data.quantity),
-      unit: data.unit,
-      location: data.location,
-      condition: data.condition,
-      unit_price: parseFloat(data.unit_price),
-      total_value: parseInt(data.quantity) * parseFloat(data.unit_price),
-      purchase_date: data.purchase_date || new Date().toISOString().split('T')[0],
-      warranty_expiry: data.warranty_expiry,
-      last_audited: new Date().toISOString().split('T')[0],
-      assigned_to: officerName,
-      status: 'active',
-    };
+  const pendingRequests = myRequests.filter(r => r.status === 'pending_institution' || r.status === 'pending_ceo' || r.status === 'approved_institution');
 
-    addInventoryItem(institutionId, newItem);
-    
-    // Refresh equipment list
-    const allInventory = loadInventoryItems();
-    setEquipment(allInventory[institutionId] || []);
-    
-    toast.success(`Equipment "${newItem.name}" added successfully!`);
+  const updateRequestItem = (index: number, field: keyof PurchaseRequestItem, value: any) => {
+    const updated = [...requestItems];
+    updated[index] = { ...updated[index], [field]: value };
+    if (field === 'quantity' || field === 'estimated_unit_price') {
+      updated[index].estimated_total = updated[index].quantity * updated[index].estimated_unit_price;
+    }
+    setRequestItems(updated);
   };
 
-  const handleDeleteEquipment = (id: string) => {
-    const item = equipment.find(e => e.id === id);
-    deleteInventoryItem(institutionId, id);
-    
-    // Refresh equipment list
-    const allInventory = loadInventoryItems();
-    setEquipment(allInventory[institutionId] || []);
-    
-    toast.success(`Equipment "${item?.name}" deleted successfully!`);
+  const addRequestItem = () => {
+    setRequestItems([...requestItems, { name: '', description: '', quantity: 1, estimated_unit_price: 0, estimated_total: 0 }]);
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, { className: string; label: string }> = {
-      active: { className: 'bg-green-500/10 text-green-500', label: 'Active' },
-      under_maintenance: { className: 'bg-yellow-500/10 text-yellow-500', label: 'Maintenance' },
-      damaged: { className: 'bg-red-500/10 text-red-500', label: 'Damaged' },
-      retired: { className: 'bg-gray-500/10 text-gray-500', label: 'Retired' },
-    };
-    return variants[status] || variants.active;
-  };
-
-  const handleCreatePurchaseRequest = (data: any) => {
-    const allRequests = loadPurchaseRequests();
-    const newRequestCode = `PR-${new Date().getFullYear()}-${String(allRequests.length + 1).padStart(3, '0')}`;
-    
-    const newRequest: PurchaseRequest = {
-      id: `pr-${Date.now()}`,
-      request_code: newRequestCode,
-      officer_id: officerId,
-      officer_name: officerName,
-      institution_id: institutionId,
-      institution_name: institutionName,
-      items: data.items,
-      total_estimated_cost: data.items.reduce((sum: number, item: any) => sum + item.estimated_total, 0),
-      justification: data.justification,
-      priority: data.priority,
-      status: 'pending_system_admin',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    allRequests.push(newRequest);
-    savePurchaseRequests(allRequests);
-    
-    // Refresh purchase requests
-    setPurchaseRequests(allRequests.filter(r => r.officer_id === officerId));
-    
-    setIsCreateRequestOpen(false);
-    toast.success('Purchase request submitted to System Admin for review!');
-  };
-
-  // Component handlers
-  const handleAddComponent = (data: Partial<ProjectComponent>) => {
-    const allComponents = loadProjectComponents();
-    
-    const newComponent: ProjectComponent = {
-      id: `comp-${Date.now()}`,
-      component_code: `COMP-${institutionId.split('-')[1]?.toUpperCase() || 'XX'}-${String(allComponents.length + 1).padStart(3, '0')}`,
-      ...data as ProjectComponent,
-      added_by_officer_id: officerId,
-      added_by_officer_name: officerName,
-      status: 'needed',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-
-    allComponents.push(newComponent);
-    saveProjectComponents(allComponents);
-    
-    // Refresh components
-    setComponents(allComponents.filter(c => c.added_by_officer_id === officerId));
-    
-    toast.success(`Component "${newComponent.name}" added successfully!`);
-  };
-
-  const handleEditComponent = (component: ProjectComponent) => {
-    toast.info('Edit component functionality - coming soon!');
-  };
-
-  const handleDeleteComponent = (id: string) => {
-    const allComponents = loadProjectComponents();
-    const index = allComponents.findIndex(c => c.id === id);
-    if (index !== -1) {
-      allComponents.splice(index, 1);
-      saveProjectComponents(allComponents);
-      setComponents(allComponents.filter(c => c.added_by_officer_id === officerId));
-      toast.success('Component deleted successfully!');
+  const removeRequestItem = (index: number) => {
+    if (requestItems.length > 1) {
+      setRequestItems(requestItems.filter((_, i) => i !== index));
     }
   };
 
-  const handleCreatePurchaseRequestFromComponent = (component: ProjectComponent) => {
-    const requestData = {
-      items: [{
-        item_name: component.name,
-        category: 'technology' as const,
-        quantity: component.required_quantity,
-        unit: component.unit,
-        estimated_unit_price: component.estimated_unit_price,
-        estimated_total: component.estimated_total,
-        justification: component.justification || `Required for project: ${component.project_name || 'General'}`
-      }],
-      justification: component.justification || `Components needed for ${component.project_name || 'lab activities'}`,
-      priority: component.priority === 'urgent' ? 'urgent' as const : 'normal' as const
-    };
-    
-    handleCreatePurchaseRequest(requestData);
-    
-    // Update component status
-    const allComponents = loadProjectComponents();
-    const allRequests = loadPurchaseRequests();
-    const newRequestCode = `PR-${new Date().getFullYear()}-${String(allRequests.length).padStart(3, '0')}`;
-    
-    const compIndex = allComponents.findIndex(c => c.id === component.id);
-    if (compIndex !== -1) {
-      allComponents[compIndex] = {
-        ...allComponents[compIndex],
-        status: 'requested',
-        purchase_request_code: newRequestCode,
-        updated_at: new Date().toISOString()
-      };
-      saveProjectComponents(allComponents);
-      setComponents(allComponents.filter(c => c.added_by_officer_id === officerId));
+  const handleSubmitRequest = () => {
+    const validItems = requestItems.filter(item => item.name.trim());
+    if (validItems.length === 0) {
+      toast.error('Please add at least one item');
+      return;
     }
-    
-    toast.success(`Purchase request created from component "${component.name}"!`);
+
+    createRequest.mutate({
+      requestData: {
+        institution_id: institutionId,
+        items: validItems,
+        justification: requestJustification || undefined,
+        priority: requestPriority,
+      },
+      officerId: officerId,
+      requesterName: user?.name || 'Officer',
+    }, {
+      onSuccess: () => {
+        toast.success('Purchase request submitted');
+        setRequestDialogOpen(false);
+        setRequestItems([{ name: '', description: '', quantity: 1, estimated_unit_price: 0, estimated_total: 0 }]);
+        setRequestJustification('');
+        setRequestPriority('normal');
+      },
+    });
   };
 
-  const handleAuditCreated = (record: AuditRecord) => {
-    addAuditRecord(institutionId, record);
-    toast.success('Audit report submitted successfully!');
+  const handleSubmitIssue = () => {
+    if (!issueItemName.trim() || !issueDescription.trim()) {
+      toast.error('Please fill in required fields');
+      return;
+    }
+
+    reportIssue.mutate({
+      issueData: {
+        institution_id: institutionId,
+        item_name: issueItemName,
+        issue_type: issueType,
+        description: issueDescription,
+        quantity_affected: issueQuantity,
+        severity: issueSeverity,
+      },
+      reporterId: officerId,
+      reporterName: user?.name || 'Officer',
+    }, {
+      onSuccess: () => {
+        toast.success('Issue reported successfully');
+        setIssueDialogOpen(false);
+        setIssueItemName('');
+        setIssueType('damaged');
+        setIssueDescription('');
+        setIssueQuantity(1);
+        setIssueSeverity('medium');
+      },
+    });
   };
-
-  const categories = ['all', ...new Set(equipment.map((e) => e.category))];
-  const filteredEquipment = filterCategory === 'all' 
-    ? equipment 
-    : equipment.filter(e => e.category === filterCategory);
-
-  const totalQuantity = equipment.reduce((sum, e) => sum + e.quantity, 0);
-  const activeItems = equipment.filter(e => e.status === 'active').length;
-  const maintenanceItems = equipment.filter(e => e.status === 'under_maintenance').length;
-
-  const filteredRequests = requestFilter === 'all'
-    ? purchaseRequests
-    : purchaseRequests.filter(req => req.status === requestFilter);
-
-  const pendingCount = purchaseRequests.filter(r => r.status === 'pending_institution_approval').length;
-  const approvedCount = purchaseRequests.filter(r => r.status === 'approved_by_institution' || r.status === 'in_progress').length;
-
-  // Component filtering
-  const filteredComponents = components.filter(c => {
-    const statusMatch = componentFilter === 'all' || c.status === componentFilter;
-    const projectMatch = projectFilter === 'all' || c.project_id === projectFilter;
-    return statusMatch && projectMatch;
-  });
-
-  const componentsNeeded = components.filter(c => c.status === 'needed').length;
-  const componentsRequested = components.filter(c => c.status === 'requested').length;
-  const componentsTotalCost = components.reduce((sum, c) => sum + c.estimated_total, 0);
 
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Lab Inventory & Purchases</h1>
-          <p className="text-muted-foreground">Manage lab equipment and request new supplies</p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold">Lab Inventory</h1>
+            <p className="text-muted-foreground">View inventory and manage requests</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIssueDialogOpen(true)}>
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              Report Issue
+            </Button>
+            <Button onClick={() => setRequestDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Request Purchase
+            </Button>
+          </div>
         </div>
 
         <Tabs defaultValue="inventory" className="w-full">
           <TabsList>
-            <TabsTrigger value="inventory">My Lab Inventory</TabsTrigger>
-            <TabsTrigger value="components">
-              Components
-              {componentsNeeded > 0 && (
-                <Badge className="ml-2" variant="secondary">{componentsNeeded}</Badge>
+            <TabsTrigger value="inventory">Inventory</TabsTrigger>
+            <TabsTrigger value="requests">
+              My Requests
+              {pendingRequests.length > 0 && (
+                <Badge className="ml-2" variant="secondary">{pendingRequests.length}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="requests">
-              Purchase Requests
-              {(pendingCount + approvedCount > 0) && (
-                <Badge className="ml-2" variant="secondary">{pendingCount + approvedCount}</Badge>
+            <TabsTrigger value="issues">
+              My Issues
+              {myIssues.filter(i => i.status !== 'resolved' && i.status !== 'closed').length > 0 && (
+                <Badge className="ml-2" variant="secondary">
+                  {myIssues.filter(i => i.status !== 'resolved' && i.status !== 'closed').length}
+                </Badge>
               )}
             </TabsTrigger>
           </TabsList>
 
-          {/* Lab Inventory Tab */}
+          {/* Inventory Tab */}
           <TabsContent value="inventory" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <Select value={filterCategory} onValueChange={setFilterCategory}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Filter by category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat === 'all' ? 'All Categories' : cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsCreateAuditOpen(true)}>
-                  <ClipboardList className="h-4 w-4 mr-2" />
-                  Create Audit Report
-                </Button>
-                <Button onClick={() => setIsAddEquipmentOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Equipment
-                </Button>
-              </div>
-            </div>
-
-            {/* Summary Cards */}
             <div className="grid gap-4 md:grid-cols-4">
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium">Total Items</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{equipment.length}</div>
+                  <div className="text-2xl font-bold">{inventory.length}</div>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Total Quantity</CardTitle>
+                  <CardTitle className="text-sm font-medium">Total Units</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{totalQuantity}</div>
+                  <div className="text-2xl font-bold">{totalUnits}</div>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Active</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-green-500">{activeItems}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Under Maintenance</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-yellow-500">{maintenanceItems}</div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Equipment Grid */}
-            <div className="grid gap-4 md:grid-cols-2">
-              {filteredEquipment.map((item) => {
-                const statusInfo = getStatusBadge(item.status);
-                
-                return (
-                  <Card key={item.id}>
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1 flex-1">
-                          <div className="flex items-center gap-2">
-                            <Package className="h-5 w-5 text-muted-foreground" />
-                            <CardTitle className="text-lg">{item.name}</CardTitle>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">{item.category}</Badge>
-                            <Badge className={statusInfo.className}>{statusInfo.label}</Badge>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => toast.info('Edit functionality')}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => handleDeleteEquipment(item.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">Quantity</p>
-                          <p className="font-medium">{item.quantity} {item.unit}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Condition</p>
-                          <p className="font-medium capitalize">{item.condition}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span>{item.location}</span>
-                      </div>
-                      {item.last_audited && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span>Last audited: {new Date(item.last_audited).toLocaleDateString()}</span>
-                        </div>
-                      )}
-                      {item.description && (
-                        <p className="text-sm text-muted-foreground">{item.description}</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-
-            {filteredEquipment.length === 0 && (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground mb-4">No equipment found in your lab inventory</p>
-                  <Button onClick={() => setIsAddEquipmentOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Your First Equipment
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Components Tab */}
-          <TabsContent value="components" className="space-y-6">
-            {/* Header with filters */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                {/* Status Filter */}
-                <Select value={componentFilter} onValueChange={(val: any) => setComponentFilter(val)}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Components</SelectItem>
-                    <SelectItem value="needed">Needed</SelectItem>
-                    <SelectItem value="requested">Requested</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="purchased">Purchased</SelectItem>
-                    <SelectItem value="received">Received</SelectItem>
-                  </SelectContent>
-                </Select>
-                
-                {/* Project Filter */}
-                <Select value={projectFilter} onValueChange={setProjectFilter}>
-                  <SelectTrigger className="w-[250px]">
-                    <SelectValue placeholder="All Projects" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Projects</SelectItem>
-                    {projects.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <Button onClick={() => setIsAddComponentOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Component
-              </Button>
-            </div>
-
-            {/* Summary Cards */}
-            <div className="grid gap-4 md:grid-cols-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Total Components</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{components.length}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Needed</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gray-600">{componentsNeeded}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Requested</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-blue-600">{componentsRequested}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Total Estimated Cost</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-primary">
-                    ₹{componentsTotalCost.toLocaleString()}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Components Grid */}
-            <div className="grid gap-4 md:grid-cols-2">
-              {filteredComponents.map((component) => (
-                <Card key={component.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1 flex-1">
-                        <div className="flex items-center gap-2">
-                          <Cpu className="h-5 w-5 text-muted-foreground" />
-                          <CardTitle className="text-lg">{component.name}</CardTitle>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="outline">{component.category}</Badge>
-                          <ComponentStatusBadge status={component.status} />
-                          {component.priority === 'urgent' && (
-                            <Badge variant="destructive" className="text-xs">URGENT</Badge>
-                          )}
-                          {component.priority === 'high' && (
-                            <Badge className="text-xs bg-orange-500">HIGH</Badge>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => handleEditComponent(component)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => handleDeleteComponent(component.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {component.project_name && (
-                      <div className="flex items-center gap-2 text-sm bg-blue-50 dark:bg-blue-950 p-2 rounded">
-                        <Lightbulb className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                        <span className="font-medium text-blue-700 dark:text-blue-300">
-                          {component.project_name}
-                        </span>
-                      </div>
-                    )}
-                    
-                    <p className="text-sm text-muted-foreground">{component.description}</p>
-                    
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Quantity</p>
-                        <p className="font-medium">{component.required_quantity} {component.unit}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Unit Price</p>
-                        <p className="font-medium">₹{component.estimated_unit_price}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-primary/5 p-3 rounded">
-                      <p className="text-sm text-muted-foreground">Total Estimated Cost</p>
-                      <p className="text-xl font-bold text-primary">
-                        ₹{component.estimated_total.toLocaleString()}
-                      </p>
-                    </div>
-                    
-                    {component.specifications && (
-                      <div className="text-sm">
-                        <p className="text-muted-foreground">Specifications</p>
-                        <p className="font-mono text-xs bg-muted p-2 rounded">{component.specifications}</p>
-                      </div>
-                    )}
-                    
-                    {component.manufacturer && (
-                      <div className="text-sm">
-                        <p className="text-muted-foreground">Manufacturer</p>
-                        <p className="font-medium">{component.manufacturer} {component.part_number && `(${component.part_number})`}</p>
-                      </div>
-                    )}
-                    
-                    {component.purchase_request_code && (
-                      <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 dark:bg-green-950 p-2 rounded">
-                        <CheckCircle className="h-4 w-4" />
-                        <span>Included in {component.purchase_request_code}</span>
-                      </div>
-                    )}
-                    
-                    {component.status === 'needed' && (
-                      <Button 
-                        className="w-full" 
-                        size="sm"
-                        onClick={() => handleCreatePurchaseRequestFromComponent(component)}
-                      >
-                        <ShoppingCart className="h-4 w-4 mr-2" />
-                        Create Purchase Request
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {filteredComponents.length === 0 && (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Cpu className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground mb-2">No components found</p>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {componentFilter !== 'all' || projectFilter !== 'all' 
-                      ? 'Try adjusting your filters' 
-                      : 'Start adding components for your innovation projects'}
-                  </p>
-                  <Button onClick={() => setIsAddComponentOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Your First Component
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Purchase Requests Tab */}
-          <TabsContent value="requests" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Select value={requestFilter} onValueChange={setRequestFilter}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Requests</SelectItem>
-                    <SelectItem value="pending_system_admin">Pending Review</SelectItem>
-                    <SelectItem value="pending_institution_approval">Pending Approval</SelectItem>
-                    <SelectItem value="approved_by_institution">Approved</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="fulfilled">Fulfilled</SelectItem>
-                    <SelectItem value="rejected_by_institution">Rejected</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={() => setIsCreateRequestOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Purchase Request
-              </Button>
-            </div>
-
-            {/* Stats Cards */}
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Pending Approval</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{pendingCount}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-blue-500">{approvedCount}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Fulfilled</CardTitle>
+                  <CardTitle className="text-sm font-medium">Active Items</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-500">
-                    {purchaseRequests.filter(r => r.status === 'fulfilled').length}
+                    {inventory.filter(i => i.status === 'active').length}
                   </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">₹{totalValue.toLocaleString()}</div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Requests List */}
-            <div className="grid gap-4">
-              {filteredRequests.map((request) => (
-                <Card key={request.id} className="cursor-pointer hover:bg-accent/50" onClick={() => setSelectedRequest(request)}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold">{request.request_code}</h3>
-                          <PurchaseRequestStatusBadge status={request.status} size="sm" />
-                          {request.priority === 'urgent' && (
-                            <Badge variant="destructive" className="text-xs">URGENT</Badge>
+            {inventoryLoading ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-muted-foreground">Loading inventory...</p>
+                </CardContent>
+              </Card>
+            ) : inventory.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground">No inventory items found</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Sl.No</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Unit Price</TableHead>
+                      <TableHead className="text-right">Units</TableHead>
+                      <TableHead className="text-right">Total Value</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {inventory.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>{item.sl_no}</TableCell>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">{item.description || '-'}</TableCell>
+                        <TableCell className="text-right">₹{item.unit_price.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{item.units}</TableCell>
+                        <TableCell className="text-right">₹{item.total_value.toLocaleString()}</TableCell>
+                        <TableCell>
+                          <Badge className={item.status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-gray-500/10 text-gray-500'}>
+                            {item.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* My Requests Tab */}
+          <TabsContent value="requests" className="space-y-6">
+            {requestsLoading ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-muted-foreground">Loading requests...</p>
+                </CardContent>
+              </Card>
+            ) : myRequests.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground">No purchase requests yet</p>
+                  <Button className="mt-4" onClick={() => setRequestDialogOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create First Request
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {myRequests.map((request) => {
+                  const statusInfo = getStatusBadge(request.status);
+                  return (
+                    <Card key={request.id}>
+                      <CardContent className="pt-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h3 className="font-semibold">{request.request_code}</h3>
+                              <Badge className={statusInfo.className}>{statusInfo.label}</Badge>
+                              {request.priority === 'urgent' && (
+                                <Badge variant="destructive" className="text-xs">URGENT</Badge>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {request.items.map((item, idx) => (
+                                <Badge key={idx} variant="outline">
+                                  {item.name} ({item.quantity})
+                                </Badge>
+                              ))}
+                            </div>
+                            {request.justification && (
+                              <p className="text-sm text-muted-foreground mt-2">{request.justification}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-2">
+                              {format(new Date(request.created_at), 'MMM dd, yyyy • hh:mm a')}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xl font-bold">₹{request.total_estimated_cost.toLocaleString()}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* My Issues Tab */}
+          <TabsContent value="issues" className="space-y-6">
+            {issuesLoading ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-muted-foreground">Loading issues...</p>
+                </CardContent>
+              </Card>
+            ) : myIssues.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground">No issues reported</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {myIssues.map((issue) => {
+                  const statusInfo = getIssueStatusBadge(issue.status);
+                  return (
+                    <Card key={issue.id}>
+                      <CardContent className="pt-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h3 className="font-semibold">{issue.issue_code}</h3>
+                              <Badge className={statusInfo.className}>{statusInfo.label}</Badge>
+                              <Badge variant="outline">{issue.issue_type}</Badge>
+                            </div>
+                            <p className="font-medium">{issue.item_name}</p>
+                            <p className="text-sm text-muted-foreground mt-1">{issue.description}</p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              {format(new Date(issue.created_at), 'MMM dd, yyyy')}
+                            </p>
+                          </div>
+                          {issue.resolution_notes && (
+                            <div className="text-right max-w-[200px]">
+                              <p className="text-xs text-muted-foreground">Resolution:</p>
+                              <p className="text-sm">{issue.resolution_notes}</p>
+                            </div>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {request.items.length} item{request.items.length > 1 ? 's' : ''} • 
-                          Created {format(new Date(request.created_at), 'MMM dd, yyyy')}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold">₹{request.total_estimated_cost.toLocaleString()}</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Items:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {request.items.map((item, idx) => (
-                          <Badge key={idx} variant="outline">
-                            {item.item_name} ({item.quantity})
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-
-              {filteredRequests.length === 0 && (
-                <Card>
-                  <CardContent className="py-12 text-center">
-                    <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground">No purchase requests found</p>
-                    <Button className="mt-4" onClick={() => setIsCreateRequestOpen(true)}>
-                      Create Your First Request
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
 
-      {/* Dialogs */}
-      <AddItemDialog
-        isOpen={isAddEquipmentOpen}
-        onOpenChange={setIsAddEquipmentOpen}
-        onItemAdded={handleAddEquipment}
-      />
+      {/* Create Purchase Request Dialog */}
+      <Dialog open={requestDialogOpen} onOpenChange={setRequestDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Purchase Request</DialogTitle>
+            <DialogDescription>Request new items for the lab</DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <Label>Items</Label>
+              {requestItems.map((item, index) => (
+                <div key={index} className="grid grid-cols-12 gap-2 items-end">
+                  <div className="col-span-4">
+                    <Input
+                      placeholder="Item name"
+                      value={item.name}
+                      onChange={(e) => updateRequestItem(index, 'name', e.target.value)}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Input
+                      type="number"
+                      placeholder="Qty"
+                      value={item.quantity}
+                      onChange={(e) => updateRequestItem(index, 'quantity', parseInt(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <Input
+                      type="number"
+                      placeholder="Unit price"
+                      value={item.estimated_unit_price}
+                      onChange={(e) => updateRequestItem(index, 'estimated_unit_price', parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div className="col-span-2 text-right">
+                    <span className="text-sm font-medium">₹{item.estimated_total.toLocaleString()}</span>
+                  </div>
+                  <div className="col-span-1">
+                    {requestItems.length > 1 && (
+                      <Button variant="ghost" size="sm" onClick={() => removeRequestItem(index)}>×</Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <Button variant="outline" size="sm" onClick={addRequestItem}>
+                <Plus className="h-4 w-4 mr-1" /> Add Item
+              </Button>
+            </div>
 
-      <CreatePurchaseRequestDialog
-        isOpen={isCreateRequestOpen}
-        onOpenChange={setIsCreateRequestOpen}
-        onSubmit={handleCreatePurchaseRequest}
-      />
+            <div>
+              <Label>Priority</Label>
+              <Select value={requestPriority} onValueChange={(v) => setRequestPriority(v as any)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-      <PurchaseRequestDetailDialog
-        isOpen={!!selectedRequest}
-        onOpenChange={(open) => !open && setSelectedRequest(null)}
-        request={selectedRequest}
-      />
+            <div>
+              <Label>Justification</Label>
+              <Textarea
+                placeholder="Why do you need these items?"
+                value={requestJustification}
+                onChange={(e) => setRequestJustification(e.target.value)}
+              />
+            </div>
 
-      <AddComponentDialog
-        isOpen={isAddComponentOpen}
-        onOpenChange={setIsAddComponentOpen}
-        onSubmit={handleAddComponent}
-        projects={projects}
-      />
+            <div className="text-right font-bold">
+              Total: ₹{requestItems.reduce((sum, item) => sum + item.estimated_total, 0).toLocaleString()}
+            </div>
+          </div>
 
-      <CreateAuditReportDialog
-        isOpen={isCreateAuditOpen}
-        onOpenChange={setIsCreateAuditOpen}
-        institutionId={institutionId}
-        officerId={officerId}
-        officerName={officerName}
-        inventoryItems={equipment}
-        onAuditCreated={handleAuditCreated}
-      />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRequestDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSubmitRequest} disabled={createRequest.isPending}>
+              Submit Request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Report Issue Dialog */}
+      <Dialog open={issueDialogOpen} onOpenChange={setIssueDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Report Issue</DialogTitle>
+            <DialogDescription>Report damaged, missing, or malfunctioning equipment</DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label>Item Name *</Label>
+              <Input
+                placeholder="Name of the item"
+                value={issueItemName}
+                onChange={(e) => setIssueItemName(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Issue Type</Label>
+                <Select value={issueType} onValueChange={(v) => setIssueType(v as any)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="damaged">Damaged</SelectItem>
+                    <SelectItem value="missing">Missing</SelectItem>
+                    <SelectItem value="malfunction">Malfunction</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Severity</Label>
+                <Select value={issueSeverity} onValueChange={(v) => setIssueSeverity(v as any)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label>Quantity Affected</Label>
+              <Input
+                type="number"
+                value={issueQuantity}
+                onChange={(e) => setIssueQuantity(parseInt(e.target.value) || 1)}
+              />
+            </div>
+
+            <div>
+              <Label>Description *</Label>
+              <Textarea
+                placeholder="Describe the issue in detail..."
+                value={issueDescription}
+                onChange={(e) => setIssueDescription(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIssueDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSubmitIssue} disabled={reportIssue.isPending}>
+              Submit Report
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
