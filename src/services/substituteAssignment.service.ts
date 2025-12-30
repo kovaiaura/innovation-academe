@@ -188,20 +188,27 @@ export const substituteAssignmentService = {
 
     const excludeUserId = applyingOfficer?.user_id;
 
-    // 2. Get roles to exclude (management and students)
-    const { data: excludedRoles } = await supabase
+    // 2. Get management users to exclude (via user_roles)
+    const { data: managementRoles } = await supabase
       .from('user_roles')
-      .select('user_id, role')
-      .in('role', ['management', 'student']);
+      .select('user_id')
+      .eq('role', 'management');
 
     const managementUserIds = new Set(
-      excludedRoles?.filter(r => r.role === 'management').map(r => r.user_id) || []
-    );
-    const studentUserIds = new Set(
-      excludedRoles?.filter(r => r.role === 'student').map(r => r.user_id) || []
+      managementRoles?.map(r => r.user_id) || []
     );
 
-    // 3. Get officers assigned to this institution (excluding the applying officer)
+    // 3. Get students from students table directly (more reliable than user_roles)
+    const { data: studentUsers } = await supabase
+      .from('students')
+      .select('user_id')
+      .not('user_id', 'is', null);
+
+    const studentUserIds = new Set(
+      studentUsers?.map(s => s.user_id).filter(Boolean) || []
+    );
+
+    // 4. Get officers assigned to this institution (excluding the applying officer)
     const { data: officers, error: officerError } = await supabase
       .from('officers')
       .select('id, full_name, user_id, skills')
@@ -227,7 +234,7 @@ export const substituteAssignmentService = {
       }
     }
 
-    // 4. Get ALL profiles from this institution (not just those with positions)
+    // 5. Get ALL profiles from this institution (not just those with positions)
     const { data: staffProfiles, error: profileError } = await supabase
       .from('profiles')
       .select(`
@@ -243,7 +250,7 @@ export const substituteAssignmentService = {
       `)
       .eq('institution_id', institutionId);
 
-    // 5. Get user roles for these profiles to show in dropdown
+    // 6. Get user roles for these profiles to show in dropdown
     const profileIds = staffProfiles?.map(p => p.id) || [];
     const { data: userRoles } = await supabase
       .from('user_roles')
@@ -287,7 +294,7 @@ export const substituteAssignmentService = {
       }
     }
 
-    // 6. Check availability based on timetable conflicts
+    // 7. Check availability based on timetable conflicts
     const normalizedDay = normalizeDay(day);
 
     const { data: conflictingAssignments } = await supabase

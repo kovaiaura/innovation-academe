@@ -326,9 +326,8 @@ export const leaveApplicationService = {
     try {
       await leaveNotificationService.notifyApproverOnSubmission(result);
       
-      // Notify substitutes about their assignment
+      // Notify approvers about substitute assignments (NOT the substitutes yet - wait for approval)
       if (result.substitute_assignments && result.substitute_assignments.length > 0) {
-        await leaveNotificationService.notifySubstitutesOnAssignment(result);
         await leaveNotificationService.notifyApproversAboutSubstitutes(result);
       }
     } catch (notifError) {
@@ -465,6 +464,11 @@ export const leaveApplicationService = {
       if (isFinalApproval) {
         // Notify management when leave is finally approved
         await leaveNotificationService.notifyManagementOnOfficerLeave(result);
+        
+        // Notify substitutes about their assignment (only after final approval)
+        if (result.substitute_assignments && result.substitute_assignments.length > 0) {
+          await leaveNotificationService.notifySubstitutesOnAssignment(result);
+        }
       } else {
         // Notify next approver
         await leaveNotificationService.notifyNextApprover(result, currentLevel);
