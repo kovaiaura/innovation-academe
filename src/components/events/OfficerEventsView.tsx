@@ -89,51 +89,17 @@ export function OfficerEventsView() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredEvents.map((event) => (
-              <Card key={event.id} className="flex flex-col">
-                <CardHeader>
-                  <Badge variant="outline" className={getEventTypeColor(event.event_type)}>
-                    {EVENT_TYPE_LABELS[event.event_type]}
-                  </Badge>
-                  <CardTitle className="text-lg">{event.title}</CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    {event.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1">
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      {format(new Date(event.event_start), 'PPP')}
-                    </div>
-                    {event.venue && (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <MapPin className="h-4 w-4" />
-                        {event.venue}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Users className="h-4 w-4" />
-                      {event.current_participants} interested
-                    </div>
-                  </div>
-                </CardContent>
-                <div className="p-4 pt-0 flex gap-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setSelectedEvent(event)}>
-                    View Interests
-                  </Button>
-                  {event.brochure_url && (
-                    <Button variant="ghost" size="icon" asChild>
-                      <a href={event.brochure_url} target="_blank" rel="noopener noreferrer">
-                        <FileText className="h-4 w-4" />
-                      </a>
-                    </Button>
-                  )}
-                </div>
-              </Card>
-            ))}
-          </div>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {filteredEvents.map((event) => (
+                <OfficerEventCard
+                  key={event.id}
+                  event={event}
+                  getEventTypeColor={getEventTypeColor}
+                  onViewInterests={() => setSelectedEvent(event)}
+                  institutionId={user?.institution_id}
+                />
+              ))}
+            </div>
         )}
       </div>
 
@@ -147,6 +113,72 @@ export function OfficerEventsView() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function OfficerEventCard({
+  event,
+  getEventTypeColor,
+  onViewInterests,
+  institutionId,
+}: {
+  event: Event;
+  getEventTypeColor: (type: ActivityEventType) => string;
+  onViewInterests: () => void;
+  institutionId?: string;
+}) {
+  const { data: interests, isLoading } = useEventInterests(event.id, institutionId);
+  const interestedCount = interests?.length ?? 0;
+
+  return (
+    <Card className="flex flex-col">
+      <CardHeader>
+        <Badge variant="outline" className={getEventTypeColor(event.event_type)}>
+          {EVENT_TYPE_LABELS[event.event_type]}
+        </Badge>
+        <CardTitle className="text-lg">{event.title}</CardTitle>
+        <CardDescription className="line-clamp-2">
+          {event.description}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex-1">
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Calendar className="h-4 w-4" />
+            {format(new Date(event.event_start), 'PPP')}
+          </div>
+          {event.venue && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <MapPin className="h-4 w-4" />
+              {event.venue}
+            </div>
+          )}
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Users className="h-4 w-4" />
+            {isLoading ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Loading...
+              </span>
+            ) : (
+              <span>{interestedCount} interested</span>
+            )}
+          </div>
+        </div>
+      </CardContent>
+      <div className="p-4 pt-0 flex gap-2">
+        <Button variant="outline" className="flex-1" onClick={onViewInterests}>
+          View Interests
+        </Button>
+        {event.brochure_url && (
+          <Button variant="ghost" size="icon" asChild>
+            <a href={event.brochure_url} target="_blank" rel="noopener noreferrer">
+              <FileText className="h-4 w-4" />
+            </a>
+          </Button>
+        )}
+      </div>
+    </Card>
   );
 }
 
