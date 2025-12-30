@@ -11,7 +11,6 @@ import { format, parseISO, isValid } from 'date-fns';
 import { 
   fetchAllEmployees, 
   EmployeePayrollSummary,
-  calculateLOPDeduction,
   STANDARD_DAYS_PER_MONTH
 } from '@/services/payroll.service';
 
@@ -91,33 +90,15 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
     }
   };
 
-  // Calculate prorated salary based on join date
+  // Use pre-calculated prorated salary from service (gross_salary)
   const calculateProratedSalary = (employee: EmployeePayrollSummary): number => {
-    if (!employee.join_date) return employee.monthly_salary;
-    
-    const joinDate = parseISO(employee.join_date);
-    if (!isValid(joinDate)) return employee.monthly_salary;
-    
-    const currentMonthStart = new Date(year, month - 1, 1);
-    const currentMonthEnd = new Date(year, month, 0);
-    
-    // If join date is after the month end, no salary
-    if (joinDate > currentMonthEnd) return 0;
-    
-    // If join date is before or on the month start, full salary
-    if (joinDate <= currentMonthStart) return employee.monthly_salary;
-    
-    // Prorate: calculate days from join date to end of month
-    const daysInMonth = currentMonthEnd.getDate();
-    const daysWorked = daysInMonth - joinDate.getDate() + 1;
-    
-    return (employee.monthly_salary / STANDARD_DAYS_PER_MONTH) * daysWorked;
+    return employee.gross_salary;
   };
 
   // LOP Deduction = (Days LOP + Days Not Marked) × Per Day Salary
+  // Now uses pre-calculated values from service
   const calculateTotalLopDeduction = (employee: EmployeePayrollSummary): number => {
-    const totalLopDays = employee.days_lop + (employee.days_not_marked ?? 0);
-    return employee.per_day_salary * totalLopDays;
+    return employee.total_deductions;
   };
 
   const exportToCSV = () => {
