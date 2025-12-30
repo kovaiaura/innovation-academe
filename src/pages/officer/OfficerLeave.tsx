@@ -252,16 +252,25 @@ export default function OfficerLeave() {
 
   const handleSubstituteSelect = (index: number, officerId: string, officerName: string) => {
     const updated = [...substituteAssignments];
-    updated[index].substitute_officer_id = officerId;
-    updated[index].substitute_officer_name = officerName;
+    // Handle "no_substitution" special case
+    if (officerId === 'no_substitution') {
+      updated[index].substitute_officer_id = '';
+      updated[index].substitute_officer_name = 'No Substitution Required';
+    } else {
+      updated[index].substitute_officer_id = officerId;
+      updated[index].substitute_officer_name = officerName;
+    }
     setSubstituteAssignments(updated);
   };
 
-  const allSubstitutesSelected = substituteAssignments.every(a => a.substitute_officer_id !== '');
+  // Check that all slots have a selection (either a substitute or explicitly "no substitution")
+  const allSubstitutesSelected = substituteAssignments.every(
+    a => a.substitute_officer_id !== '' || a.substitute_officer_name === 'No Substitution Required'
+  );
 
   const handleProceedToReview = () => {
     if (!allSubstitutesSelected) {
-      toast.error('Please select substitutes for all affected classes');
+      toast.error('Please select substitutes for all affected classes or mark as "No Substitution Required"');
       return;
     }
     setCurrentStep(3);
@@ -552,18 +561,25 @@ export default function OfficerLeave() {
                                     </p>
                                   </div>
                                   <Select
-                                    value={assignment?.substitute_officer_id || ''}
+                                    value={assignment?.substitute_officer_name === 'No Substitution Required' ? 'no_substitution' : (assignment?.substitute_officer_id || '')}
                                     onValueChange={(v) => {
-                                      const sub = subs.find(s => s.officer_id === v);
-                                      if (sub) {
-                                        handleSubstituteSelect(index, sub.officer_id, sub.officer_name);
+                                      if (v === 'no_substitution') {
+                                        handleSubstituteSelect(index, 'no_substitution', 'No Substitution Required');
+                                      } else {
+                                        const sub = subs.find(s => s.officer_id === v);
+                                        if (sub) {
+                                          handleSubstituteSelect(index, sub.officer_id, sub.officer_name);
+                                        }
                                       }
                                     }}
                                   >
-                                    <SelectTrigger className="w-[200px]">
+                                    <SelectTrigger className="w-[220px]">
                                       <SelectValue placeholder="Select substitute" />
                                     </SelectTrigger>
                                     <SelectContent>
+                                      <SelectItem value="no_substitution" className="text-muted-foreground">
+                                        No Substitution Required
+                                      </SelectItem>
                                       {subs.map(sub => (
                                         <SelectItem 
                                           key={sub.officer_id} 
