@@ -1,30 +1,59 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { mockProjects } from "@/data/mockProjectData";
-import { sdgGoals } from "@/data/mockSDGData";
-import { Search, Target, Users, Building2, Calendar, TrendingUp } from "lucide-react";
+import { SDG_GOALS, sdgService, getSDGByNumber } from "@/services/sdg.service";
+import { Search, Target, Users, Building2, Calendar, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function SDGProjectListing() {
+  const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [institutions, setInstitutions] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSDG, setFilterSDG] = useState<string>("all");
   const [filterInstitution, setFilterInstitution] = useState<string>("all");
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
-  // Flatten projects from all institutions
-  const allProjects = Object.values(mockProjects).flat();
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        // Get all projects with institution data
+        const { data: projectsData } = await supabase
+          .from('projects')
+          .select('*, institutions(id, name)');
+
+        // Get unique institutions
+        const { data: institutionsData } = await supabase
+          .from('institutions')
+          .select('id, name');
+
+        setProjects(projectsData || []);
+        setInstitutions(institutionsData || []);
+      } catch (error) {
+        console.error('Error loading projects:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   // Filter projects
-  const filteredProjects = allProjects.filter(project => {
-    const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         project.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSDG = filterSDG === "all" || project.sdg_goals.includes(filterSDG);
+  const filteredProjects = projects.filter(project => {
+    const matchesSearch = project.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         project.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const projectSDGs = (project.sdg_goals as number[]) || [];
+    const matchesSDG = filterSDG === "all" || projectSDGs.includes(parseInt(filterSDG));
+    
     const matchesInstitution = filterInstitution === "all" || project.institution_id === filterInstitution;
     
     return matchesSearch && matchesSDG && matchesInstitution;
@@ -35,28 +64,24 @@ export default function SDGProjectListing() {
     setDetailsOpen(true);
   };
 
-  const getSDGInfo = (sdgId: string) => {
-    return sdgGoals.find(s => s.id === sdgId);
-  };
-
   const getStatusColor = (status: string) => {
-    const colors = {
+    const colors: Record<string, string> = {
       proposal: 'bg-yellow-500',
       approved: 'bg-blue-500',
       in_progress: 'bg-purple-500',
       completed: 'bg-green-500',
       rejected: 'bg-red-500'
     };
-    return colors[status as keyof typeof colors] || 'bg-gray-500';
+    return colors[status] || 'bg-gray-500';
   };
 
-  const getInstitutionName = (instId: string) => {
-    const names: Record<string, string> = {
-      'inst-msd-001': 'Modern School Vasant Vihar',
-      'inst-kga-001': 'Kikani Global Academy'
-    };
-    return names[instId] || instId;
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -83,8 +108,8 @@ export default function SDGProjectListing() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All SDGs</SelectItem>
-                {sdgGoals.map(sdg => (
-                  <SelectItem key={sdg.id} value={sdg.id}>
+                {SDG_GOALS.map(sdg => (
+                  <SelectItem key={sdg.number} value={sdg.number.toString()}>
                     SDG {sdg.number}: {sdg.title}
                   </SelectItem>
                 ))}
@@ -97,8 +122,11 @@ export default function SDGProjectListing() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Institutions</SelectItem>
-                <SelectItem value="inst-msd-001">Modern School Vasant Vihar</SelectItem>
-                <SelectItem value="inst-kga-001">Kikani Global Academy</SelectItem>
+                {institutions.map(inst => (
+                  <SelectItem key={inst.id} value={inst.id}>
+                    {inst.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -106,82 +134,85 @@ export default function SDGProjectListing() {
       </Card>
 
       {/* Project Cards */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {filteredProjects.map((project) => (
-          <Card key={project.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="flex-1 space-y-1">
-                  <CardTitle className="text-lg">{project.title}</CardTitle>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Building2 className="h-3 w-3" />
-                    {getInstitutionName(project.institution_id)}
-                  </div>
-                </div>
-                <Badge className={getStatusColor(project.status)}>
-                  {project.status.replace('_', ' ')}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {project.description}
-              </p>
-
-              {/* SDG Badges */}
-              <div className="flex flex-wrap gap-1">
-                {project.sdg_goals.map(sdgId => {
-                  const sdgInfo = getSDGInfo(sdgId);
-                  return sdgInfo ? (
-                    <Badge 
-                      key={sdgId}
-                      style={{ 
-                        backgroundColor: sdgInfo.color,
-                        color: '#ffffff',
-                        borderColor: sdgInfo.color
-                      }}
-                      className="text-xs font-semibold"
-                    >
-                      SDG {sdgInfo.number}
-                    </Badge>
-                  ) : null;
-                })}
-              </div>
-
-              {/* Progress */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Progress</span>
-                  <span className="font-semibold">{project.progress}%</span>
-                </div>
-                <Progress value={project.progress} className="h-2" />
-              </div>
-
-              {/* Team Info */}
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Users className="h-4 w-4" />
-                <span>{project.team_members.length} team members</span>
-              </div>
-
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={() => handleViewDetails(project)}
-              >
-                View Details
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {filteredProjects.length === 0 && (
+      {filteredProjects.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Target className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">No projects found matching your filters</p>
           </CardContent>
         </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {filteredProjects.map((project) => (
+            <Card key={project.id} className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 space-y-1">
+                    <CardTitle className="text-lg">{project.title}</CardTitle>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Building2 className="h-3 w-3" />
+                      {project.institutions?.name || 'Unknown Institution'}
+                    </div>
+                  </div>
+                  <Badge className={getStatusColor(project.status)}>
+                    {project.status?.replace('_', ' ')}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground line-clamp-2">
+                  {project.description}
+                </p>
+
+                {/* SDG Badges */}
+                <div className="flex flex-wrap gap-1">
+                  {((project.sdg_goals as number[]) || []).map(sdgNum => {
+                    const sdgInfo = getSDGByNumber(sdgNum);
+                    return sdgInfo ? (
+                      <Badge 
+                        key={sdgNum}
+                        style={{ 
+                          backgroundColor: sdgInfo.color,
+                          color: '#ffffff',
+                          borderColor: sdgInfo.color
+                        }}
+                        className="text-xs font-semibold"
+                      >
+                        SDG {sdgInfo.number}
+                      </Badge>
+                    ) : null;
+                  })}
+                  {(!project.sdg_goals || project.sdg_goals.length === 0) && (
+                    <span className="text-xs text-muted-foreground italic">No SDGs assigned</span>
+                  )}
+                </div>
+
+                {/* Progress */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Progress</span>
+                    <span className="font-semibold">{project.progress || 0}%</span>
+                  </div>
+                  <Progress value={project.progress || 0} className="h-2" />
+                </div>
+
+                {/* Team Info */}
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Users className="h-4 w-4" />
+                  <span>{(project.team_members as any[])?.length || 0} team members</span>
+                </div>
+
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => handleViewDetails(project)}
+                >
+                  View Details
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
 
       {/* Project Details Dialog */}
@@ -200,11 +231,11 @@ export default function SDGProjectListing() {
               <div className="space-y-2">
                 <h4 className="font-semibold text-sm">SDG Goals</h4>
                 <div className="flex flex-wrap gap-2">
-                  {selectedProject.sdg_goals.map((sdgId: string) => {
-                    const sdgInfo = getSDGInfo(sdgId);
+                  {((selectedProject.sdg_goals as number[]) || []).map((sdgNum: number) => {
+                    const sdgInfo = getSDGByNumber(sdgNum);
                     return sdgInfo ? (
                       <div 
-                        key={sdgId}
+                        key={sdgNum}
                         className="flex items-center gap-2 p-2 border rounded-lg"
                       >
                         <div 
@@ -227,7 +258,7 @@ export default function SDGProjectListing() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Institution</p>
-                  <p className="font-medium">{getInstitutionName(selectedProject.institution_id)}</p>
+                  <p className="font-medium">{selectedProject.institutions?.name || 'Unknown'}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Category</p>
@@ -236,12 +267,12 @@ export default function SDGProjectListing() {
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Status</p>
                   <Badge className={getStatusColor(selectedProject.status)}>
-                    {selectedProject.status.replace('_', ' ')}
+                    {selectedProject.status?.replace('_', ' ')}
                   </Badge>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Progress</p>
-                  <p className="font-medium">{selectedProject.progress}%</p>
+                  <p className="font-medium">{selectedProject.progress || 0}%</p>
                 </div>
               </div>
 
@@ -252,37 +283,25 @@ export default function SDGProjectListing() {
               </div>
 
               {/* Team Members */}
-              <div className="space-y-2">
-                <h4 className="font-semibold text-sm">Team Members</h4>
+              {selectedProject.team_members && selectedProject.team_members.length > 0 && (
                 <div className="space-y-2">
-                  {selectedProject.team_members.map((member: any) => (
-                    <div key={member.id} className="flex items-center justify-between p-2 border rounded">
-                      <span className="text-sm">{member.name}</span>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={member.role === 'leader' ? 'default' : 'secondary'}>
-                          {member.role}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {member.class} {member.section}
-                        </span>
+                  <h4 className="font-semibold text-sm">Team Members</h4>
+                  <div className="space-y-2">
+                    {(selectedProject.team_members as any[]).map((member: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between p-2 border rounded">
+                        <span className="text-sm">{member.name || member.student_name}</span>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={member.role === 'leader' ? 'default' : 'secondary'}>
+                            {member.role}
+                          </Badge>
+                          {member.class && (
+                            <span className="text-xs text-muted-foreground">
+                              {member.class} {member.section}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Progress Updates */}
-              {selectedProject.progress_updates && selectedProject.progress_updates.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm">Latest Update</h4>
-                  <div className="p-3 border rounded-lg bg-accent/50">
-                    <p className="text-sm">{selectedProject.progress_updates[0].notes}</p>
-                    <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      {selectedProject.progress_updates[0].date}
-                      <span>•</span>
-                      {selectedProject.progress_updates[0].updated_by}
-                    </div>
+                    ))}
                   </div>
                 </div>
               )}
