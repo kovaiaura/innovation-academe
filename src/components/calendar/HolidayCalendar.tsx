@@ -34,6 +34,7 @@ interface Props {
   allowedTypes?: HolidayType[];
   title?: string;
   isMutating?: boolean;
+  onYearChange?: (year: number) => void;
 }
 
 const HOLIDAY_COLORS: Record<HolidayType, { bg: string; text: string; border: string }> = {
@@ -53,7 +54,8 @@ export function HolidayCalendar({
   onDeleteHoliday,
   allowedTypes = ['company', 'national', 'optional'],
   title = 'Holiday Calendar',
-  isMutating = false
+  isMutating = false,
+  onYearChange
 }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -96,9 +98,31 @@ export function HolidayCalendar({
       .slice(0, 5);
   }, [holidays]);
 
-  const handlePrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
-  const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-  const handleToday = () => setCurrentDate(new Date());
+  const handlePrevMonth = () => {
+    const newDate = subMonths(currentDate, 1);
+    setCurrentDate(newDate);
+    // Notify parent if year changed
+    if (onYearChange && newDate.getFullYear() !== currentDate.getFullYear()) {
+      onYearChange(newDate.getFullYear());
+    }
+  };
+  
+  const handleNextMonth = () => {
+    const newDate = addMonths(currentDate, 1);
+    setCurrentDate(newDate);
+    // Notify parent if year changed
+    if (onYearChange && newDate.getFullYear() !== currentDate.getFullYear()) {
+      onYearChange(newDate.getFullYear());
+    }
+  };
+  
+  const handleToday = () => {
+    const today = new Date();
+    if (onYearChange && today.getFullYear() !== currentDate.getFullYear()) {
+      onYearChange(today.getFullYear());
+    }
+    setCurrentDate(today);
+  };
 
   const handleDayClick = (day: Date) => {
     setSelectedDate(day);

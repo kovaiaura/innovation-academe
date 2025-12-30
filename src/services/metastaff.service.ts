@@ -81,6 +81,10 @@ export const metaStaffService = {
     sick_leave?: number;
     earned_leave?: number;
     join_date?: string;
+    annual_salary?: number;
+    hourly_rate?: number;
+    overtime_rate_multiplier?: number;
+    normal_working_hours?: number;
   }): Promise<{ user: User; password: string }> => {
     // Get position details
     const position = await positionService.getPositionById(data.position_id);
@@ -100,7 +104,10 @@ export const metaStaffService = {
         position_id: data.position_id,
         position_name: position.position_name,
         is_ceo: position.is_ceo_position || false,
-        join_date: data.join_date || null
+        join_date: data.join_date || null,
+        hourly_rate: data.hourly_rate || null,
+        overtime_rate_multiplier: data.overtime_rate_multiplier || 1.5,
+        normal_working_hours: data.normal_working_hours || 8
       },
       headers: {
         Authorization: `Bearer ${token}`
@@ -128,7 +135,10 @@ export const metaStaffService = {
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.name}`,
       created_at: new Date().toISOString(),
       must_change_password: true,
-      password_changed: false
+      password_changed: false,
+      hourly_rate: data.hourly_rate,
+      overtime_rate_multiplier: data.overtime_rate_multiplier,
+      normal_working_hours: data.normal_working_hours
     };
 
     return { user, password: tempPassword };
@@ -291,5 +301,25 @@ export const metaStaffService = {
 
     if (error) throw error;
     if (data?.error) throw new Error(data.error);
+  },
+
+  // Update meta staff profile with salary details
+  updateMetaStaffProfile: async (userId: string, updates: {
+    name?: string;
+    hourly_rate?: number;
+    overtime_rate_multiplier?: number;
+    normal_working_hours?: number;
+  }): Promise<void> => {
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        name: updates.name,
+        hourly_rate: updates.hourly_rate,
+        overtime_rate_multiplier: updates.overtime_rate_multiplier,
+        normal_working_hours: updates.normal_working_hours
+      })
+      .eq('id', userId);
+
+    if (error) throw error;
   },
 };
