@@ -12,7 +12,7 @@ import { EventDetailDialog } from '../EventDetailDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { Search, MapPin, Calendar, Trophy, Heart, HeartOff } from 'lucide-react';
 import { format } from 'date-fns';
-import { ActivityEventType, ActivityEvent } from '@/types/events';
+import { ActivityEventType, ActivityEvent, EVENT_TYPE_LABELS } from '@/types/events';
 import { useToast } from '@/hooks/use-toast';
 
 export function AvailableEventsTab() {
@@ -104,17 +104,7 @@ export function AvailableEventsTab() {
     return matchesSearch && matchesType;
   });
 
-  const eventTypeLabels: Record<ActivityEventType, string> = {
-    competition: 'Competition',
-    hackathon: 'Hackathon',
-    science_fair: 'Science Fair',
-    exhibition: 'Exhibition',
-    workshop: 'Workshop',
-    seminar: 'Seminar',
-    cultural: 'Cultural',
-    sports: 'Sports',
-    other: 'Other'
-  };
+  const eventTypeLabels = EVENT_TYPE_LABELS;
 
   const getEventTypeColor = (type: ActivityEventType) => {
     const colors = {
