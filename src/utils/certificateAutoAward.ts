@@ -1,7 +1,6 @@
 import { certificateService } from '@/services/certificate.service';
 import { Student } from '@/types/student';
 import { Course } from '@/types/course';
-import { StandaloneAssignment } from '@/types/assignment-management';
 import { Assessment } from '@/types/assessment';
 import { ActivityEvent } from '@/types/events';
 import { mockCertificateTemplates } from '@/data/mockCertificateTemplates';
@@ -38,48 +37,6 @@ export async function awardCourseCompletionCertificate(
     console.log(`Certificate awarded to ${student.student_name} for course: ${course.title}`);
   } catch (error) {
     console.error('Failed to award course certificate:', error);
-  }
-}
-
-/**
- * Auto-award certificate when a student completes an assignment with passing grade
- */
-export async function awardAssignmentCompletionCertificate(
-  student: Student,
-  assignment: StandaloneAssignment,
-  institutionName: string,
-  completionDate: string,
-  grade: number
-): Promise<void> {
-  if (!assignment.certificate_template_id) return;
-
-  // Only award certificate if grade is passing (>= 60%)
-  const percentage = (grade / assignment.total_points) * 100;
-  if (percentage < 60) {
-    console.log(`Grade ${percentage}% is below passing threshold, certificate not awarded`);
-    return;
-  }
-
-  const template = mockCertificateTemplates.find(t => t.id === assignment.certificate_template_id);
-  if (!template || !template.is_active) {
-    console.warn('Certificate template not found or inactive:', assignment.certificate_template_id);
-    return;
-  }
-
-  try {
-    await certificateService.awardCertificate(
-      student,
-      'assignment',
-      assignment.id,
-      assignment.title,
-      assignment.certificate_template_id,
-      institutionName,
-      completionDate,
-      `${percentage.toFixed(0)}%`
-    );
-    console.log(`Certificate awarded to ${student.student_name} for assignment: ${assignment.title}`);
-  } catch (error) {
-    console.error('Failed to award assignment certificate:', error);
   }
 }
 
@@ -179,4 +136,37 @@ export async function batchAwardEventCertificates(
   const failed = results.filter(r => r.status === 'rejected').length;
 
   console.log(`Event certificates awarded: ${successful} successful, ${failed} failed`);
+}
+
+/**
+ * Auto-award certificate when a student completes a module (all sessions at 100%)
+ */
+export async function awardModuleCompletionCertificate(
+  student: Student,
+  moduleId: string,
+  moduleName: string,
+  templateId: string,
+  institutionName: string,
+  completionDate: string
+): Promise<void> {
+  const template = mockCertificateTemplates.find(t => t.id === templateId);
+  if (!template || !template.is_active) {
+    console.warn('Certificate template not found or inactive:', templateId);
+    return;
+  }
+
+  try {
+    await certificateService.awardCertificate(
+      student,
+      'course', // Use 'course' type for modules as well
+      moduleId,
+      moduleName,
+      templateId,
+      institutionName,
+      completionDate
+    );
+    console.log(`Certificate awarded to ${student.student_name} for module: ${moduleName}`);
+  } catch (error) {
+    console.error('Failed to award module certificate:', error);
+  }
 }
