@@ -76,11 +76,14 @@ export const sdgService = {
 
   // Get SDG analytics from real data
   async getSDGAnalytics(): Promise<SDGAnalytics[]> {
-    // Fetch courses and projects
-    const [courses, projects] = await Promise.all([
+    // Fetch courses, projects, and project members
+    const [courses, projects, projectMembersRes] = await Promise.all([
       this.getCoursesWithSDGs(),
-      this.getProjectsWithSDGs()
+      this.getProjectsWithSDGs(),
+      supabase.from('project_members').select('project_id, student_id')
     ]);
+
+    const projectMembers = projectMembersRes.data || [];
 
     // Calculate analytics for each SDG
     return SDG_GOALS.map(sdg => {
@@ -89,21 +92,21 @@ export const sdgService = {
         return goals?.includes(sdg.number);
       }).length;
 
-      const projectsWithSDG = projects.filter(p => {
+      // Get projects with this SDG
+      const projectsWithThisSDG = projects.filter(p => {
         const goals = p.sdg_goals as number[] | null;
         return goals?.includes(sdg.number);
-      }).length;
+      });
+      const projectsWithSDG = projectsWithThisSDG.length;
 
-      // Calculate students impacted (sum of team members in projects with this SDG)
-      const studentsImpacted = projects
-        .filter(p => {
-          const goals = p.sdg_goals as number[] | null;
-          return goals?.includes(sdg.number);
-        })
-        .reduce((sum, p) => {
-          const members = p.team_members as any[] | null;
-          return sum + (members?.length || 0);
-        }, 0);
+      // Calculate unique students impacted (from project_members table)
+      const projectIdsWithSDG = projectsWithThisSDG.map(p => p.id);
+      const studentsInSDGProjects = new Set(
+        projectMembers
+          .filter(m => projectIdsWithSDG.includes(m.project_id))
+          .map(m => m.student_id)
+      );
+      const studentsImpacted = studentsInSDGProjects.size;
 
       return {
         sdg_goal: sdg.id as any,
@@ -143,14 +146,24 @@ export const sdgService = {
 
   // Get student's SDG contribution
   async getStudentSDGContribution(studentId: string) {
-    // Get all projects
-    const { data: projectsData } = await supabase
-      .from('projects')
-      .select('id, title, sdg_goals, status, progress, category');
+    // Get projects where student is a member
+    const { data: memberProjects } = await supabase
+      .from('project_members')
+      .select('project_id')
+      .eq('student_id', studentId);
 
-    const studentProjects = projectsData || [];
+    const projectIds = memberProjects?.map(m => m.project_id) || [];
 
-    // Aggregate all SDGs
+    let studentProjects: any[] = [];
+    if (projectIds.length > 0) {
+      const { data } = await supabase
+        .from('projects')
+        .select('id, title, sdg_goals, status, progress, category')
+        .in('id', projectIds);
+      studentProjects = data || [];
+    }
+
+    // Aggregate all SDGs from student's projects
     const sdgSet = new Set<number>();
     
     studentProjects.forEach(p => {

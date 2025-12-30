@@ -40,15 +40,29 @@ export default function ManagementSDGDashboard() {
           });
         });
 
-        // Count students in institution
-        const { count: studentCount } = await supabase
-          .from('students')
-          .select('id', { count: 'exact', head: true })
-          .eq('institution_id', user.tenant_id);
+        // Get project IDs that have SDGs assigned
+        const sdgProjectIds = institutionProjects
+          .filter(p => {
+            const goals = p.sdg_goals as number[] | null;
+            return goals && goals.length > 0;
+          })
+          .map(p => p.id);
+
+        // Count unique students in SDG-aligned projects
+        let studentsInSDGProjects = 0;
+        if (sdgProjectIds.length > 0) {
+          const { data: members } = await supabase
+            .from('project_members')
+            .select('student_id')
+            .in('project_id', sdgProjectIds);
+          
+          const uniqueStudents = new Set(members?.map(m => m.student_id) || []);
+          studentsInSDGProjects = uniqueStudents.size;
+        }
 
         setProjects(institutionProjects);
         setSDGCounts(counts);
-        setTotalStudents(studentCount || 0);
+        setTotalStudents(studentsInSDGProjects);
       } catch (error) {
         console.error('Error loading SDG data:', error);
       } finally {
@@ -250,10 +264,6 @@ export default function ManagementSDGDashboard() {
                     </div>
                     
                     <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                      <span className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        {(project.team_members as any[])?.length || 0} members
-                      </span>
                       <span>{project.progress || 0}% complete</span>
                     </div>
 

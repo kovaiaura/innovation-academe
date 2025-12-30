@@ -18,6 +18,7 @@ export default function SDGProjectListing() {
   const [filterSDG, setFilterSDG] = useState<string>("all");
   const [filterInstitution, setFilterInstitution] = useState<string>("all");
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
+  const [projectMembers, setProjectMembers] = useState<any[]>([]);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
@@ -29,12 +30,29 @@ export default function SDGProjectListing() {
           .from('projects')
           .select('*, institutions(id, name)');
 
+        // Get project members to count team size
+        const { data: membersData } = await supabase
+          .from('project_members')
+          .select('project_id, student_id');
+
+        // Create a map of project_id to member count
+        const memberCounts = (membersData || []).reduce((acc: Record<string, number>, m) => {
+          acc[m.project_id] = (acc[m.project_id] || 0) + 1;
+          return acc;
+        }, {});
+
+        // Add member counts to projects
+        const projectsWithCounts = (projectsData || []).map(p => ({
+          ...p,
+          member_count: memberCounts[p.id] || 0
+        }));
+
         // Get unique institutions
         const { data: institutionsData } = await supabase
           .from('institutions')
           .select('id, name');
 
-        setProjects(projectsData || []);
+        setProjects(projectsWithCounts);
         setInstitutions(institutionsData || []);
       } catch (error) {
         console.error('Error loading projects:', error);
@@ -59,9 +77,20 @@ export default function SDGProjectListing() {
     return matchesSearch && matchesSDG && matchesInstitution;
   });
 
-  const handleViewDetails = (project: any) => {
+  const handleViewDetails = async (project: any) => {
     setSelectedProject(project);
     setDetailsOpen(true);
+    
+    // Fetch team members for this project
+    const { data: members } = await supabase
+      .from('project_members')
+      .select(`
+        id, role, student_id,
+        students(id, full_name, email, admission_number)
+      `)
+      .eq('project_id', project.id);
+    
+    setProjectMembers(members || []);
   };
 
   const getStatusColor = (status: string) => {
@@ -199,7 +228,7 @@ export default function SDGProjectListing() {
                 {/* Team Info */}
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Users className="h-4 w-4" />
-                  <span>{(project.team_members as any[])?.length || 0} team members</span>
+                  <span>{project.member_count || 0} team members</span>
                 </div>
 
                 <Button 
@@ -283,26 +312,24 @@ export default function SDGProjectListing() {
               </div>
 
               {/* Team Members */}
-              {selectedProject.team_members && selectedProject.team_members.length > 0 && (
+              {projectMembers.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="font-semibold text-sm">Team Members</h4>
+                  <h4 className="font-semibold text-sm">Team Members ({projectMembers.length})</h4>
                   <div className="space-y-2">
-                    {(selectedProject.team_members as any[]).map((member: any, idx: number) => (
-                      <div key={idx} className="flex items-center justify-between p-2 border rounded">
-                        <span className="text-sm">{member.name || member.student_name}</span>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={member.role === 'leader' ? 'default' : 'secondary'}>
-                            {member.role}
-                          </Badge>
-                          {member.class && (
-                            <span className="text-xs text-muted-foreground">
-                              {member.class} {member.section}
-                            </span>
-                          )}
-                        </div>
+                    {projectMembers.map((member: any) => (
+                      <div key={member.id} className="flex items-center justify-between p-2 border rounded">
+                        <span className="text-sm">{member.students?.full_name || 'Unknown Student'}</span>
+                        <Badge variant={member.role === 'leader' ? 'default' : 'secondary'}>
+                          {member.role}
+                        </Badge>
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+              {projectMembers.length === 0 && (
+                <div className="text-sm text-muted-foreground text-center py-4">
+                  No team members assigned to this project
                 </div>
               )}
             </div>
