@@ -1512,6 +1512,150 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_issues: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          created_at: string | null
+          description: string
+          id: string
+          institution_id: string
+          inventory_item_id: string | null
+          issue_code: string
+          issue_type: string
+          item_name: string
+          quantity_affected: number | null
+          reported_by: string
+          reporter_name: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string | null
+          description: string
+          id?: string
+          institution_id: string
+          inventory_item_id?: string | null
+          issue_code: string
+          issue_type: string
+          item_name: string
+          quantity_affected?: number | null
+          reported_by: string
+          reporter_name: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string | null
+          description?: string
+          id?: string
+          institution_id?: string
+          inventory_item_id?: string | null
+          issue_code?: string
+          issue_type?: string
+          item_name?: string
+          quantity_affected?: number | null
+          reported_by?: string
+          reporter_name?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_issues_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_issues_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_issues_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_items: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          institution_id: string
+          name: string
+          sl_no: number
+          status: string | null
+          total_value: number | null
+          unit_price: number
+          units: number
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          institution_id: string
+          name: string
+          sl_no?: number
+          status?: string | null
+          total_value?: number | null
+          unit_price?: number
+          units?: number
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          institution_id?: string
+          name?: string
+          sl_no?: number
+          status?: string | null
+          total_value?: number | null
+          unit_price?: number
+          units?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leave_applications: {
         Row: {
           applicant_id: string
@@ -2758,6 +2902,141 @@ export type Database = {
           },
         ]
       }
+      purchase_approval_chain: {
+        Row: {
+          approver_type: string
+          approver_user_id: string
+          assigned_at: string | null
+          assigned_by: string | null
+          id: string
+          institution_id: string
+          is_active: boolean | null
+          position_id: string | null
+        }
+        Insert: {
+          approver_type: string
+          approver_user_id: string
+          assigned_at?: string | null
+          assigned_by?: string | null
+          id?: string
+          institution_id: string
+          is_active?: boolean | null
+          position_id?: string | null
+        }
+        Update: {
+          approver_type?: string
+          approver_user_id?: string
+          assigned_at?: string | null
+          assigned_by?: string | null
+          id?: string
+          institution_id?: string
+          is_active?: boolean | null
+          position_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_approval_chain_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_approval_chain_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_requests: {
+        Row: {
+          created_at: string | null
+          final_approved_at: string | null
+          final_approved_by: string | null
+          final_comments: string | null
+          id: string
+          institution_approved_at: string | null
+          institution_approved_by: string | null
+          institution_comments: string | null
+          institution_id: string
+          items: Json
+          justification: string | null
+          officer_id: string
+          priority: string | null
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          request_code: string
+          requester_name: string
+          status: string | null
+          total_estimated_cost: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          final_approved_at?: string | null
+          final_approved_by?: string | null
+          final_comments?: string | null
+          id?: string
+          institution_approved_at?: string | null
+          institution_approved_by?: string | null
+          institution_comments?: string | null
+          institution_id: string
+          items?: Json
+          justification?: string | null
+          officer_id: string
+          priority?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          request_code: string
+          requester_name: string
+          status?: string | null
+          total_estimated_cost?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          final_approved_at?: string | null
+          final_approved_by?: string | null
+          final_comments?: string | null
+          id?: string
+          institution_approved_at?: string | null
+          institution_approved_by?: string | null
+          institution_comments?: string | null
+          institution_id?: string
+          items?: Json
+          justification?: string | null
+          officer_id?: string
+          priority?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          request_code?: string
+          requester_name?: string
+          status?: string | null
+          total_estimated_cost?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_requests_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requests_officer_id_fkey"
+            columns: ["officer_id"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_attendance: {
         Row: {
           check_in_address: string | null
@@ -3028,6 +3307,10 @@ export type Database = {
       can_view_event_updates: {
         Args: { _event_id: string; _user_id: string }
         Returns: boolean
+      }
+      generate_request_code: {
+        Args: { prefix: string; table_name: string }
+        Returns: string
       }
       get_leave_balance: {
         Args: { p_month: number; p_user_id: string; p_year: number }
