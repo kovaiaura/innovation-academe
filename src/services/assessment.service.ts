@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Assessment, AssessmentQuestion, AssessmentAttempt, AssessmentAnswer, AssessmentPublishing } from '@/types/assessment';
+import { gamificationDbService } from '@/services/gamification-db.service';
 
 // Types for database operations
 interface DbAssessment {
@@ -717,6 +718,28 @@ export const assessmentService = {
     if (error) {
       console.error('Error submitting attempt:', error);
       return false;
+    }
+
+    // Award XP for assessment completion
+    try {
+      const { data: attemptData } = await supabase
+        .from('assessment_attempts')
+        .select('student_id, institution_id, assessment_id')
+        .eq('id', attemptId)
+        .single();
+      
+      if (attemptData) {
+        await gamificationDbService.awardAssessmentXP(
+          attemptData.student_id,
+          attemptData.institution_id,
+          attemptData.assessment_id,
+          passed,
+          percentage
+        );
+      }
+    } catch (xpError) {
+      console.error('Error awarding assessment XP:', xpError);
+      // Don't fail the submission if XP awarding fails
     }
 
     return true;
