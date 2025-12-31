@@ -5,12 +5,12 @@ import { TaskStatsCards } from '@/components/task/TaskStatsCards';
 import { TaskFilters } from '@/components/task/TaskFilters';
 import { TaskCard } from '@/components/task/TaskCard';
 import { TaskDetailDialog } from '@/components/task/TaskDetailDialog';
-import { loadTasks, updateTask, getTasksByAssignee, getTaskStats } from '@/data/mockTaskData';
+import { fetchTasksByAssignee, updateTaskInDb, addTaskComment, getTaskStatistics } from '@/services/task.service';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { canAccessFeature } from '@/utils/permissionHelpers';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
 export default function Tasks() {
   const { user } = useAuth();
@@ -31,28 +31,51 @@ export default function Tasks() {
       </Layout>
     );
   }
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [loading, setLoading] = useState(true);
   
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const [stats, setStats] = useState({ total: 0, pending: 0, in_progress: 0, completed: 0, overdue: 0 });
 
   // Load user's tasks
   useEffect(() => {
-    refreshTasks();
+    if (user?.id) {
+      refreshTasks();
+      loadStats();
+    }
   }, [user?.id]);
 
-  const refreshTasks = () => {
-    if (user?.id) {
-      const userTasks = getTasksByAssignee(user.id);
+  const refreshTasks = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setLoading(true);
+      const userTasks = await fetchTasksByAssignee(user.id);
       setTasks(userTasks);
       setFilteredTasks(userTasks);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      toast.error('Failed to load tasks');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const stats = getTaskStats(user?.id);
+  const loadStats = async () => {
+    if (!user?.id) return;
+    try {
+      const statsData = await getTaskStatistics(user.id);
+      setStats(statsData);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
 
   // Apply filters
   useEffect(() => {
@@ -77,60 +100,61 @@ export default function Tasks() {
     setFilteredTasks(filtered);
   }, [tasks, statusFilter, priorityFilter, searchQuery]);
 
-  const handleUpdateStatus = (taskId: string, status: TaskStatus, progress?: number) => {
-    updateTask(taskId, {
-      status,
-      progress_percentage: progress !== undefined ? progress : undefined,
-      completed_at: status === 'completed' ? new Date().toISOString() : undefined,
-    });
-    
-    refreshTasks();
-    
-    if (selectedTask?.id === taskId) {
-      const updatedTasks = loadTasks();
-      const updated = updatedTasks.find(t => t.id === taskId);
-      if (updated) setSelectedTask(updated);
-    }
-  };
-
-  const handleAddComment = (taskId: string, comment: string) => {
-    const newComment = {
-      id: `comment-${Date.now()}`,
-      task_id: taskId,
-      user_id: user?.id || '',
-      user_name: user?.name || '',
-      comment,
-      created_at: new Date().toISOString(),
-    };
-
-    const task = loadTasks().find(t => t.id === taskId);
-    if (task) {
-      updateTask(taskId, {
-        comments: [...(task.comments || []), newComment],
+  const handleUpdateStatus = async (taskId: string, status: TaskStatus, progress?: number) => {
+    try {
+      await updateTaskInDb(taskId, {
+        status,
+        progress_percentage: progress !== undefined ? progress : undefined,
+        completed_at: status === 'completed' ? new Date().toISOString() : undefined,
       });
-      refreshTasks();
+      
+      await refreshTasks();
+      await loadStats();
       
       if (selectedTask?.id === taskId) {
-        const updatedTasks = loadTasks();
-        const updated = updatedTasks.find(t => t.id === taskId);
-        if (updated) setSelectedTask(updated);
+        const updated = tasks.find(t => t.id === taskId);
+        if (updated) setSelectedTask({ ...updated, status, progress_percentage: progress });
       }
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast.error('Failed to update task');
     }
   };
 
-  const handleSubmitForApproval = (taskId: string) => {
-    updateTask(taskId, {
-      status: 'submitted_for_approval',
-      submitted_at: new Date().toISOString(),
-      progress_percentage: 100,
-    });
-    refreshTasks();
-    if (selectedTask?.id === taskId) {
-      const updatedTasks = loadTasks();
-      const updated = updatedTasks.find(t => t.id === taskId);
-      if (updated) setSelectedTask(updated);
+  const handleAddComment = async (taskId: string, comment: string) => {
+    try {
+      await addTaskComment(taskId, user?.id || '', user?.name || '', comment);
+      await refreshTasks();
+      
+      if (selectedTask?.id === taskId) {
+        const updated = tasks.find(t => t.id === taskId);
+        if (updated) setSelectedTask(updated);
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast.error('Failed to add comment');
     }
-    toast.success('Task submitted for approval');
+  };
+
+  const handleSubmitForApproval = async (taskId: string) => {
+    try {
+      await updateTaskInDb(taskId, {
+        status: 'submitted_for_approval',
+        submitted_at: new Date().toISOString(),
+        progress_percentage: 100,
+      });
+      await refreshTasks();
+      await loadStats();
+      
+      if (selectedTask?.id === taskId) {
+        const updated = tasks.find(t => t.id === taskId);
+        if (updated) setSelectedTask(updated);
+      }
+      toast.success('Task submitted for approval');
+    } catch (error) {
+      console.error('Error submitting task:', error);
+      toast.error('Failed to submit task');
+    }
   };
 
   return (
@@ -154,26 +178,32 @@ export default function Tasks() {
           onSearchChange={setSearchQuery}
         />
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredTasks.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <p className="text-muted-foreground">
-                {tasks.length === 0 
-                  ? 'No tasks assigned to you yet'
-                  : 'No tasks found matching your filters'
-                }
-              </p>
-            </div>
-          ) : (
-            filteredTasks.map(task => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onClick={() => setSelectedTask(task)}
-              />
-            ))
-          )}
-        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredTasks.length === 0 ? (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground">
+                  {tasks.length === 0 
+                    ? 'No tasks assigned to you yet'
+                    : 'No tasks found matching your filters'
+                  }
+                </p>
+              </div>
+            ) : (
+              filteredTasks.map(task => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onClick={() => setSelectedTask(task)}
+                />
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {selectedTask && (
