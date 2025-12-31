@@ -3823,6 +3823,48 @@ export type Database = {
         }
         Relationships: []
       }
+      webinars: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          guest_details: string | null
+          guest_name: string | null
+          id: string
+          is_active: boolean
+          title: string
+          updated_at: string
+          webinar_date: string | null
+          youtube_url: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          guest_details?: string | null
+          guest_name?: string | null
+          id?: string
+          is_active?: boolean
+          title: string
+          updated_at?: string
+          webinar_date?: string | null
+          youtube_url: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          guest_details?: string | null
+          guest_name?: string | null
+          id?: string
+          is_active?: boolean
+          title?: string
+          updated_at?: string
+          webinar_date?: string | null
+          youtube_url?: string
+        }
+        Relationships: []
+      }
       xp_rules: {
         Row: {
           activity: string
