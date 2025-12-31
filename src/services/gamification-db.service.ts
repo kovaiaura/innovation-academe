@@ -397,7 +397,7 @@ export const gamificationDbService = {
   },
 
   // ============ LEADERBOARD ============
-  async getLeaderboard(institutionId?: string, limit: number = 10): Promise<StudentPerformance[]> {
+  async getLeaderboard(institutionId?: string, limit: number = 10, classId?: string): Promise<StudentPerformance[]> {
     // Get all XP transactions grouped by student
     let query = supabase
       .from('student_xp_transactions')
@@ -430,6 +430,11 @@ export const gamificationDbService = {
     
     transactions?.forEach(t => {
       const studentId = t.student_id;
+      const studentClassId = (t.profiles as any)?.class_id;
+      
+      // Filter by class if classId is provided
+      if (classId && studentClassId !== classId) return;
+      
       const existing = studentMap.get(studentId);
       
       if (existing) {
@@ -441,7 +446,7 @@ export const gamificationDbService = {
           student_name: (t.profiles as any)?.name || 'Unknown',
           institution_id: t.institution_id || '',
           institution_name: (t.institutions as any)?.name || 'Unknown',
-          class_id: (t.profiles as any)?.class_id,
+          class_id: studentClassId,
           total_points: t.points_earned,
           points_breakdown: { [t.activity_type]: t.points_earned }
         });
@@ -455,6 +460,8 @@ export const gamificationDbService = {
     
     // Get badges count for each student
     const studentIds = sorted.map(s => s.student_id);
+    if (studentIds.length === 0) return [];
+    
     const { data: badgesData } = await supabase
       .from('student_badges')
       .select('student_id')
@@ -475,6 +482,19 @@ export const gamificationDbService = {
     streaksData?.forEach(s => {
       streakMap[s.student_id] = s.current_streak;
     });
+
+    // Get class names
+    const classIds = [...new Set(sorted.map(s => s.class_id).filter(Boolean))] as string[];
+    const classNameMap: Record<string, string> = {};
+    if (classIds.length > 0) {
+      const { data: classesData } = await supabase
+        .from('classes')
+        .select('id, class_name')
+        .in('id', classIds);
+      classesData?.forEach(c => {
+        classNameMap[c.id] = c.class_name;
+      });
+    }
     
     return sorted.map((s, index) => ({
       student_id: s.student_id,
@@ -482,7 +502,7 @@ export const gamificationDbService = {
       institution_id: s.institution_id,
       institution_name: s.institution_name,
       class_id: s.class_id || '',
-      class_name: '',
+      class_name: s.class_id ? classNameMap[s.class_id] || '' : '',
       total_points: s.total_points,
       rank: index + 1,
       badges_earned: badgeCounts[s.student_id] || 0,
@@ -496,6 +516,16 @@ export const gamificationDbService = {
         levels: s.points_breakdown['level_completion'] || 0
       }
     }));
+  },
+
+  // Get class-specific leaderboard
+  async getClassLeaderboard(institutionId: string, classId: string, limit: number = 10): Promise<StudentPerformance[]> {
+    return this.getLeaderboard(institutionId, limit, classId);
+  },
+
+  // Get institution-wide leaderboard  
+  async getInstitutionLeaderboard(institutionId: string, limit: number = 10): Promise<StudentPerformance[]> {
+    return this.getLeaderboard(institutionId, limit);
   },
 
   // ============ STATS ============
