@@ -83,6 +83,7 @@ import OfficerAssessmentManagement from "./pages/officer/AssessmentManagement";
 import OfficerAskMetova from "./pages/officer/AskMetova";
 import StudentCourseDetail from "./pages/student/CourseDetail";
 import StudentAssessments from "./pages/student/Assessments";
+import StudentAssignments from "./pages/student/Assignments";
 
 import TakeAssessment from "./pages/student/TakeAssessment";
 import InstitutionalCalendar from "./pages/system-admin/InstitutionalCalendar";
@@ -127,6 +128,8 @@ import SystemAdminWebinarManagement from "./pages/system-admin/WebinarManagement
 import StudentWebinars from "./pages/student/Webinars";
 import OfficerWebinars from "./pages/officer/Webinars";
 import ManagementWebinars from "./pages/management/Webinars";
+import OfficerAssignments from "./pages/officer/Assignments";
+import ManagementAssignments from "./pages/management/Assignments";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -674,6 +677,14 @@ const App = () => (
               }
             />
             <Route
+              path="/tenant/:tenantId/officer/assignments"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <OfficerAssignments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/tenant/:tenantId/officer/ask-metova"
               element={
                 <ProtectedRoute allowedRoles={['officer']}>
@@ -835,6 +846,14 @@ const App = () => (
               }
             />
             <Route
+              path="/tenant/:tenantId/management/assignments"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <ManagementAssignments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/tenant/:tenantId/management/assessments"
               element={
                 <ProtectedRoute allowedRoles={['management']}>
@@ -945,6 +964,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['student']}>
                   <StudentAssessments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/assignments"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentAssignments />
                 </ProtectedRoute>
               }
             />

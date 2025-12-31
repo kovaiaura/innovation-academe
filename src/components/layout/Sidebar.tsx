@@ -117,6 +117,7 @@ const menuItems: MenuItem[] = [
   { label: 'Task', icon: <CheckSquare className="h-5 w-5" />, path: '/tasks', roles: ['officer'] },
   { label: 'My Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['officer'] },
   { label: 'Assessments', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['officer'] },
+  { label: 'Assignments', icon: <FileText className="h-5 w-5" />, path: '/assignments', roles: ['officer'] },
   { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['officer'] },
   { label: 'Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['officer'] },
   { label: 'Lab Inventory', icon: <Package className="h-5 w-5" />, path: '/inventory', roles: ['officer'] },
@@ -129,6 +130,7 @@ const menuItems: MenuItem[] = [
   // Student menu items
   { label: 'My Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['student'] },
   { label: 'Assessments', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['student'] },
+  { label: 'Assignments', icon: <FileText className="h-5 w-5" />, path: '/assignments', roles: ['student'] },
   
   { label: 'My Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['student'] },
   { label: 'Events', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['student'] },
@@ -148,6 +150,7 @@ const menuItems: MenuItem[] = [
   { label: 'Innovation Officers', icon: <UserCheck className="h-5 w-5" />, path: '/officers', roles: ['management'] },
   { label: 'Courses & Sessions', icon: <BookOpen className="h-5 w-5" />, path: '/courses-sessions', roles: ['management'] },
   { label: 'Assessments', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['management'] },
+  { label: 'Assignments', icon: <FileText className="h-5 w-5" />, path: '/assignments', roles: ['management'] },
   { label: 'Inventory & Purchase', icon: <Package className="h-5 w-5" />, path: '/inventory-purchase', roles: ['management'] },
   { label: 'Projects & Awards', icon: <Target className="h-5 w-5" />, path: '/projects-certificates', roles: ['management'] },
   { label: 'SDG Dashboard', icon: <Target className="h-5 w-5" />, path: '/sdg-dashboard', roles: ['management'] },

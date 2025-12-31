@@ -334,13 +334,12 @@ export const gamificationDbService = {
           last_activity_date: today
         });
       
-      // Award XP for first streak day
+      // Award XP for first streak day (no activityId for daily_streak - handled by date check)
       if (institutionId) {
         await this.awardXP({
           studentId,
           institutionId,
           activityType: 'daily_streak',
-          activityId: today,
           points: 2,
           description: 'Daily streak bonus (Day 1)'
         });
@@ -371,13 +370,12 @@ export const gamificationDbService = {
       })
       .eq('student_id', studentId);
     
-    // Award XP for streak
+    // Award XP for streak (no activityId for daily_streak - duplicate prevention via date check above)
     if (institutionId) {
       await this.awardXP({
         studentId,
         institutionId,
         activityType: 'daily_streak',
-        activityId: today,
         points: 2,
         description: `Daily streak bonus (Day ${newStreak})`
       });
