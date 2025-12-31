@@ -5,7 +5,8 @@ import { TaskStatsCards } from '@/components/task/TaskStatsCards';
 import { TaskFilters } from '@/components/task/TaskFilters';
 import { TaskCard } from '@/components/task/TaskCard';
 import { TaskDetailDialog } from '@/components/task/TaskDetailDialog';
-import { fetchTasksByAssignee, updateTaskInDb, addTaskComment, getTaskStatistics } from '@/services/task.service';
+import { updateTaskInDb, addTaskComment, getTaskStatistics } from '@/services/task.service';
+import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { canAccessFeature } from '@/utils/permissionHelpers';
@@ -15,7 +16,6 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 export default function Tasks() {
   const { user } = useAuth();
 
-  // Check if user has task_allotment feature
   if (!canAccessFeature(user, 'task_allotment')) {
     return (
       <Layout>
@@ -32,10 +32,9 @@ export default function Tasks() {
     );
   }
 
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const { tasks, loading } = useRealtimeTasks(user?.id || '', 'assigned');
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [loading, setLoading] = useState(true);
   
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'all'>('all');
@@ -43,29 +42,9 @@ export default function Tasks() {
   
   const [stats, setStats] = useState({ total: 0, pending: 0, in_progress: 0, completed: 0, overdue: 0 });
 
-  // Load user's tasks
   useEffect(() => {
-    if (user?.id) {
-      refreshTasks();
-      loadStats();
-    }
-  }, [user?.id]);
-
-  const refreshTasks = async () => {
-    if (!user?.id) return;
-    
-    try {
-      setLoading(true);
-      const userTasks = await fetchTasksByAssignee(user.id);
-      setTasks(userTasks);
-      setFilteredTasks(userTasks);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-      toast.error('Failed to load tasks');
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (user?.id) loadStats();
+  }, [user?.id, tasks]);
 
   const loadStats = async () => {
     if (!user?.id) return;
@@ -77,26 +56,16 @@ export default function Tasks() {
     }
   };
 
-  // Apply filters
   useEffect(() => {
     let filtered = tasks;
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(task => task.status === statusFilter);
-    }
-
-    if (priorityFilter !== 'all') {
-      filtered = filtered.filter(task => task.priority === priorityFilter);
-    }
-
+    if (statusFilter !== 'all') filtered = filtered.filter(task => task.status === statusFilter);
+    if (priorityFilter !== 'all') filtered = filtered.filter(task => task.priority === priorityFilter);
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(task =>
-        task.title.toLowerCase().includes(query) ||
-        task.description.toLowerCase().includes(query)
+        task.title.toLowerCase().includes(query) || task.description.toLowerCase().includes(query)
       );
     }
-
     setFilteredTasks(filtered);
   }, [tasks, statusFilter, priorityFilter, searchQuery]);
 
@@ -106,15 +75,9 @@ export default function Tasks() {
         status,
         progress_percentage: progress !== undefined ? progress : undefined,
         completed_at: status === 'completed' ? new Date().toISOString() : undefined,
-      });
-      
-      await refreshTasks();
+      }, { changedByName: user?.name || '' });
       await loadStats();
-      
-      if (selectedTask?.id === taskId) {
-        const updated = tasks.find(t => t.id === taskId);
-        if (updated) setSelectedTask({ ...updated, status, progress_percentage: progress });
-      }
+      if (selectedTask?.id === taskId) setSelectedTask(prev => prev ? { ...prev, status, progress_percentage: progress } : null);
     } catch (error) {
       console.error('Error updating task:', error);
       toast.error('Failed to update task');
@@ -124,12 +87,6 @@ export default function Tasks() {
   const handleAddComment = async (taskId: string, comment: string) => {
     try {
       await addTaskComment(taskId, user?.id || '', user?.name || '', comment);
-      await refreshTasks();
-      
-      if (selectedTask?.id === taskId) {
-        const updated = tasks.find(t => t.id === taskId);
-        if (updated) setSelectedTask(updated);
-      }
     } catch (error) {
       console.error('Error adding comment:', error);
       toast.error('Failed to add comment');
@@ -142,14 +99,9 @@ export default function Tasks() {
         status: 'submitted_for_approval',
         submitted_at: new Date().toISOString(),
         progress_percentage: 100,
-      });
-      await refreshTasks();
+      }, { submitterName: user?.name || '' });
       await loadStats();
-      
-      if (selectedTask?.id === taskId) {
-        const updated = tasks.find(t => t.id === taskId);
-        if (updated) setSelectedTask(updated);
-      }
+      if (selectedTask?.id === taskId) setSelectedTask(prev => prev ? { ...prev, status: 'submitted_for_approval' } : null);
       toast.success('Task submitted for approval');
     } catch (error) {
       console.error('Error submitting task:', error);
