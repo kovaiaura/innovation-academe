@@ -5,13 +5,33 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Task, TaskPriority, TaskCategory } from '@/types/task';
+import { TaskPriority, TaskCategory } from '@/types/task';
+import { AssigneeSelector } from './AssigneeSelector';
 import { toast } from 'sonner';
+
+interface Assignee {
+  id: string;
+  userId?: string;
+  name: string;
+  position: string;
+  avatar?: string;
+  type: 'meta_employee' | 'officer';
+}
 
 interface CreateTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateTask: (taskData: Omit<Task, 'id' | 'created_at' | 'status' | 'comments'>) => void;
+  onCreateTask: (taskData: {
+    title: string;
+    description: string;
+    category: TaskCategory;
+    priority: TaskPriority;
+    assigned_to_id: string;
+    assigned_to_name: string;
+    assigned_to_position: string;
+    assigned_to_role: string;
+    due_date: string;
+  }) => void;
   currentUser: {
     id: string;
     name: string;
@@ -19,30 +39,15 @@ interface CreateTaskDialogProps {
   };
 }
 
-// Mock assignees - in real app, fetch from API
-const mockAssignees = [
-  { id: '7', name: 'Managing Director', position_name: 'Managing Director', role: 'system_admin', group: 'Meta Employees' },
-  { id: '8', name: 'Operations Manager', position_name: 'Manager', role: 'system_admin', group: 'Meta Employees' },
-  { id: '9', name: 'AGM Operations', position_name: 'AGM', role: 'system_admin', group: 'Meta Employees' },
-  { id: '10', name: 'General Manager', position_name: 'GM', role: 'system_admin', group: 'Meta Employees' },
-  { id: '11', name: 'Admin Staff', position_name: 'Admin Staff', role: 'system_admin', group: 'Meta Employees' },
-  { id: 'off-msd-001', name: 'Mr. Atif Ansari', position_name: 'Innovation Officer', role: 'officer', group: 'Innovation Officers' },
-  { id: 'off-kga-001', name: 'Mr. Saran T', position_name: 'Sr. Innovation Officer', role: 'officer', group: 'Innovation Officers' },
-  { id: 'off-kga-002', name: 'Mr. Sreeram R', position_name: 'Innovation Officer', role: 'officer', group: 'Innovation Officers' },
-];
-
-const metaEmployees = mockAssignees.filter(a => a.group === 'Meta Employees');
-const innovationOfficers = mockAssignees.filter(a => a.group === 'Innovation Officers');
-
 export function CreateTaskDialog({ open, onOpenChange, onCreateTask, currentUser }: CreateTaskDialogProps) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: 'administrative' as TaskCategory,
     priority: 'medium' as TaskPriority,
-    assigned_to_id: '',
     due_date: '',
   });
+  const [selectedAssignee, setSelectedAssignee] = useState<Assignee | null>(null);
 
   const handleSubmit = () => {
     if (!formData.title.trim()) {
@@ -53,7 +58,7 @@ export function CreateTaskDialog({ open, onOpenChange, onCreateTask, currentUser
       toast.error('Please enter a task description');
       return;
     }
-    if (!formData.assigned_to_id) {
+    if (!selectedAssignee) {
       toast.error('Please select an assignee');
       return;
     }
@@ -62,26 +67,17 @@ export function CreateTaskDialog({ open, onOpenChange, onCreateTask, currentUser
       return;
     }
 
-    const assignee = mockAssignees.find(a => a.id === formData.assigned_to_id);
-    if (!assignee) return;
-
-    const taskData: Omit<Task, 'id' | 'created_at' | 'status' | 'comments'> = {
+    onCreateTask({
       title: formData.title.trim(),
       description: formData.description.trim(),
       category: formData.category,
       priority: formData.priority,
-      created_by_id: currentUser.id,
-      created_by_name: currentUser.name,
-      created_by_position: currentUser.position,
-      assigned_to_id: assignee.id,
-      assigned_to_name: assignee.name,
-      assigned_to_position: assignee.position_name || '',
-      assigned_to_role: assignee.role,
+      assigned_to_id: selectedAssignee.id,
+      assigned_to_name: selectedAssignee.name,
+      assigned_to_position: selectedAssignee.position,
+      assigned_to_role: selectedAssignee.type === 'officer' ? 'officer' : 'system_admin',
       due_date: new Date(formData.due_date).toISOString(),
-      progress_percentage: 0,
-    };
-
-    onCreateTask(taskData);
+    });
     
     // Reset form
     setFormData({
@@ -89,12 +85,11 @@ export function CreateTaskDialog({ open, onOpenChange, onCreateTask, currentUser
       description: '',
       category: 'administrative',
       priority: 'medium',
-      assigned_to_id: '',
       due_date: '',
     });
+    setSelectedAssignee(null);
     
     onOpenChange(false);
-    toast.success('Task created successfully');
   };
 
   return (
@@ -167,32 +162,10 @@ export function CreateTaskDialog({ open, onOpenChange, onCreateTask, currentUser
 
           <div className="space-y-2">
             <Label htmlFor="assignee">Assign To *</Label>
-            <Select
-              value={formData.assigned_to_id}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, assigned_to_id: value }))}
-            >
-              <SelectTrigger id="assignee">
-                <SelectValue placeholder="Select assignee" />
-              </SelectTrigger>
-              <SelectContent>
-                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                  Meta Employees
-                </div>
-                {metaEmployees.map((assignee) => (
-                  <SelectItem key={assignee.id} value={assignee.id}>
-                    {assignee.name} - {assignee.position_name}
-                  </SelectItem>
-                ))}
-                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">
-                  Innovation Officers
-                </div>
-                {innovationOfficers.map((assignee) => (
-                  <SelectItem key={assignee.id} value={assignee.id}>
-                    {assignee.name} - {assignee.position_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <AssigneeSelector
+              value={selectedAssignee?.id || ''}
+              onValueChange={setSelectedAssignee}
+            />
           </div>
 
           <div className="space-y-2">

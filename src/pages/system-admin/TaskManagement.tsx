@@ -8,8 +8,15 @@ import { TaskCard } from '@/components/task/TaskCard';
 import { CreateTaskDialog } from '@/components/task/CreateTaskDialog';
 import { TaskDetailDialog } from '@/components/task/TaskDetailDialog';
 import { Button } from '@/components/ui/button';
-import { Plus, AlertCircle } from 'lucide-react';
-import { loadTasks, saveTasks, addTask, updateTask, deleteTask, getTaskStats, getTasksByCreator, getTasksPendingApproval } from '@/data/mockTaskData';
+import { Plus, AlertCircle, Loader2 } from 'lucide-react';
+import { 
+  fetchAllTasks, 
+  createTask, 
+  updateTaskInDb, 
+  deleteTaskFromDb, 
+  addTaskComment,
+  getTaskStatistics 
+} from '@/services/task.service';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { canAccessFeature } from '@/utils/permissionHelpers';
@@ -34,28 +41,52 @@ export default function TaskManagement() {
       </Layout>
     );
   }
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'created' | 'pending'>('all');
+  const [loading, setLoading] = useState(true);
   
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'all'>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const [stats, setStats] = useState({ total: 0, pending: 0, in_progress: 0, completed: 0, overdue: 0 });
 
   // Load tasks on mount
   useEffect(() => {
     refreshTasks();
+    loadStats();
   }, []);
 
-  const refreshTasks = () => {
-    setTasks(loadTasks());
+  const refreshTasks = async () => {
+    try {
+      setLoading(true);
+      const data = await fetchAllTasks();
+      setTasks(data);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      toast.error('Failed to load tasks');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const stats = getTaskStats();
-  const pendingApprovalCount = user?.id ? getTasksPendingApproval(user.id).length : 0;
+  const loadStats = async () => {
+    try {
+      const statsData = await getTaskStatistics();
+      setStats(statsData);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  const pendingApprovalCount = tasks.filter(
+    t => t.created_by_id === user?.id && t.status === 'submitted_for_approval'
+  ).length;
 
   // Get unique assignees
   const assignees = Array.from(
@@ -98,93 +129,123 @@ export default function TaskManagement() {
     setFilteredTasks(filtered);
   }, [tasks, statusFilter, priorityFilter, assigneeFilter, searchQuery, activeTab, user?.id]);
 
-  const handleCreateTask = (taskData: Omit<Task, 'id' | 'created_at' | 'status' | 'comments'>) => {
-    const newTask: Task = {
-      ...taskData,
-      id: `task-${Date.now()}`,
-      created_at: new Date().toISOString(),
-      status: 'pending',
-      comments: [],
-    };
-    addTask(newTask);
-    refreshTasks();
-    toast.success('Task created successfully');
-  };
-
-  const handleUpdateStatus = (taskId: string, status: TaskStatus, progress?: number) => {
-    updateTask(taskId, {
-      status,
-      progress_percentage: progress !== undefined ? progress : undefined,
-      completed_at: status === 'completed' ? new Date().toISOString() : undefined,
-    });
-    
-    refreshTasks();
-    
-    if (selectedTask?.id === taskId) {
-      const updatedTasks = loadTasks();
-      const updated = updatedTasks.find(t => t.id === taskId);
-      if (updated) setSelectedTask(updated);
+  const handleCreateTask = async (taskData: {
+    title: string;
+    description: string;
+    category: any;
+    priority: any;
+    assigned_to_id: string;
+    assigned_to_name: string;
+    assigned_to_position: string;
+    assigned_to_role: string;
+    due_date: string;
+  }) => {
+    try {
+      await createTask({
+        ...taskData,
+        status: 'pending',
+        created_by_id: user?.id || '',
+        created_by_name: user?.name || '',
+        created_by_position: user?.position_name || 'CEO',
+        progress_percentage: 0,
+      });
+      await refreshTasks();
+      await loadStats();
+      toast.success('Task created successfully');
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast.error('Failed to create task');
     }
   };
 
-  const handleAddComment = (taskId: string, comment: string) => {
-    const newComment = {
-      id: `comment-${Date.now()}`,
-      task_id: taskId,
-      user_id: user?.id || '',
-      user_name: user?.name || '',
-      comment,
-      created_at: new Date().toISOString(),
-    };
-
-    const task = loadTasks().find(t => t.id === taskId);
-    if (task) {
-      updateTask(taskId, {
-        comments: [...(task.comments || []), newComment],
+  const handleUpdateStatus = async (taskId: string, status: TaskStatus, progress?: number) => {
+    try {
+      await updateTaskInDb(taskId, {
+        status,
+        progress_percentage: progress !== undefined ? progress : undefined,
+        completed_at: status === 'completed' ? new Date().toISOString() : undefined,
       });
-      refreshTasks();
+      
+      await refreshTasks();
+      await loadStats();
       
       if (selectedTask?.id === taskId) {
-        const updatedTasks = loadTasks();
-        const updated = updatedTasks.find(t => t.id === taskId);
+        const updated = tasks.find(t => t.id === taskId);
+        if (updated) setSelectedTask({ ...updated, status, progress_percentage: progress });
+      }
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast.error('Failed to update task');
+    }
+  };
+
+  const handleAddComment = async (taskId: string, comment: string) => {
+    try {
+      await addTaskComment(taskId, user?.id || '', user?.name || '', comment);
+      await refreshTasks();
+      
+      if (selectedTask?.id === taskId) {
+        const updated = tasks.find(t => t.id === taskId);
         if (updated) setSelectedTask(updated);
       }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast.error('Failed to add comment');
     }
   };
 
-  const handleDeleteTask = (taskId: string) => {
-    deleteTask(taskId);
-    refreshTasks();
-    toast.success('Task deleted successfully');
-  };
-
-  const handleApproveTask = (taskId: string, approvedById: string) => {
-    const approver = user;
-    updateTask(taskId, {
-      status: 'completed',
-      completed_at: new Date().toISOString(),
-      approved_by_id: approvedById,
-      approved_by_name: approver?.name || '',
-      approved_at: new Date().toISOString(),
-    });
-    refreshTasks();
-    if (selectedTask?.id === taskId) {
-      const updatedTasks = loadTasks();
-      const updated = updatedTasks.find(t => t.id === taskId);
-      if (updated) setSelectedTask(updated);
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await deleteTaskFromDb(taskId);
+      await refreshTasks();
+      await loadStats();
+      toast.success('Task deleted successfully');
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast.error('Failed to delete task');
     }
   };
 
-  const handleRejectTask = (taskId: string, reason: string) => {
-    updateTask(taskId, {
-      status: 'rejected',
-      rejection_reason: reason,
-    });
-    refreshTasks();
-    if (selectedTask?.id === taskId) {
-      const updatedTasks = loadTasks();
-      const updated = updatedTasks.find(t => t.id === taskId);
-      if (updated) setSelectedTask(updated);
+  const handleApproveTask = async (taskId: string, approvedById: string) => {
+    try {
+      await updateTaskInDb(taskId, {
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        approved_by_id: approvedById,
+        approved_by_name: user?.name || '',
+        approved_at: new Date().toISOString(),
+      });
+      await refreshTasks();
+      await loadStats();
+      
+      if (selectedTask?.id === taskId) {
+        const updated = tasks.find(t => t.id === taskId);
+        if (updated) setSelectedTask(updated);
+      }
+      toast.success('Task approved');
+    } catch (error) {
+      console.error('Error approving task:', error);
+      toast.error('Failed to approve task');
+    }
+  };
+
+  const handleRejectTask = async (taskId: string, reason: string) => {
+    try {
+      await updateTaskInDb(taskId, {
+        status: 'rejected',
+        rejection_reason: reason,
+      });
+      await refreshTasks();
+      await loadStats();
+      
+      if (selectedTask?.id === taskId) {
+        const updated = tasks.find(t => t.id === taskId);
+        if (updated) setSelectedTask(updated);
+      }
+      toast.success('Task rejected');
+    } catch (error) {
+      console.error('Error rejecting task:', error);
+      toast.error('Failed to reject task');
     }
   };
 
@@ -221,35 +282,40 @@ export default function TaskManagement() {
           </TabsList>
 
           <TabsContent value={activeTab} className="space-y-4">
+            <TaskFilters
+              statusFilter={statusFilter}
+              priorityFilter={priorityFilter}
+              searchQuery={searchQuery}
+              onStatusChange={setStatusFilter}
+              onPriorityChange={setPriorityFilter}
+              onSearchChange={setSearchQuery}
+              showAssigneeFilter
+              assigneeFilter={assigneeFilter}
+              onAssigneeChange={setAssigneeFilter}
+              assignees={assignees}
+            />
 
-        <TaskFilters
-          statusFilter={statusFilter}
-          priorityFilter={priorityFilter}
-          searchQuery={searchQuery}
-          onStatusChange={setStatusFilter}
-          onPriorityChange={setPriorityFilter}
-          onSearchChange={setSearchQuery}
-          showAssigneeFilter
-          assigneeFilter={assigneeFilter}
-          onAssigneeChange={setAssigneeFilter}
-          assignees={assignees}
-        />
-
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredTasks.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <p className="text-muted-foreground">No tasks found</p>
-            </div>
-          ) : (
-            filteredTasks.map(task => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onClick={() => setSelectedTask(task)}
-              />
-            ))
-          )}
-            </div>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredTasks.length === 0 ? (
+                  <div className="col-span-full text-center py-12">
+                    <p className="text-muted-foreground">No tasks found</p>
+                  </div>
+                ) : (
+                  filteredTasks.map(task => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onClick={() => setSelectedTask(task)}
+                    />
+                  ))
+                )}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

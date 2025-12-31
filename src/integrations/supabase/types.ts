@@ -3808,6 +3808,119 @@ export type Database = {
           },
         ]
       }
+      task_comments: {
+        Row: {
+          comment: string
+          created_at: string | null
+          id: string
+          task_id: string
+          user_id: string | null
+          user_name: string
+        }
+        Insert: {
+          comment: string
+          created_at?: string | null
+          id?: string
+          task_id: string
+          user_id?: string | null
+          user_name: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string | null
+          id?: string
+          task_id?: string
+          user_id?: string | null
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          approved_at: string | null
+          approved_by_id: string | null
+          approved_by_name: string | null
+          assigned_to_id: string
+          assigned_to_name: string
+          assigned_to_position: string | null
+          assigned_to_role: string | null
+          attachments: Json | null
+          category: string
+          completed_at: string | null
+          created_at: string | null
+          created_by_id: string | null
+          created_by_name: string
+          created_by_position: string | null
+          description: string
+          due_date: string
+          id: string
+          priority: string
+          progress_percentage: number | null
+          rejection_reason: string | null
+          status: string
+          submitted_at: string | null
+          title: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by_id?: string | null
+          approved_by_name?: string | null
+          assigned_to_id: string
+          assigned_to_name: string
+          assigned_to_position?: string | null
+          assigned_to_role?: string | null
+          attachments?: Json | null
+          category?: string
+          completed_at?: string | null
+          created_at?: string | null
+          created_by_id?: string | null
+          created_by_name: string
+          created_by_position?: string | null
+          description: string
+          due_date: string
+          id?: string
+          priority?: string
+          progress_percentage?: number | null
+          rejection_reason?: string | null
+          status?: string
+          submitted_at?: string | null
+          title: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by_id?: string | null
+          approved_by_name?: string | null
+          assigned_to_id?: string
+          assigned_to_name?: string
+          assigned_to_position?: string | null
+          assigned_to_role?: string | null
+          attachments?: Json | null
+          category?: string
+          completed_at?: string | null
+          created_at?: string | null
+          created_by_id?: string | null
+          created_by_name?: string
+          created_by_position?: string | null
+          description?: string
+          due_date?: string
+          id?: string
+          priority?: string
+          progress_percentage?: number | null
+          rejection_reason?: string | null
+          status?: string
+          submitted_at?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
