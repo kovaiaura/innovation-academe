@@ -84,6 +84,7 @@ import OfficerAskMetova from "./pages/officer/AskMetova";
 import StudentCourseDetail from "./pages/student/CourseDetail";
 import StudentAssessments from "./pages/student/Assessments";
 import StudentAssignments from "./pages/student/Assignments";
+import SystemAdminAssignmentManagement from "./pages/system-admin/AssignmentManagement";
 
 import TakeAssessment from "./pages/student/TakeAssessment";
 import InstitutionalCalendar from "./pages/system-admin/InstitutionalCalendar";
@@ -501,6 +502,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <SystemAdminWebinarManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/assignments"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminAssignmentManagement />
                 </ProtectedRoute>
               }
             />
