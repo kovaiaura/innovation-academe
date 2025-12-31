@@ -4,11 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Target, Trophy, TrendingUp, Flame, Award, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { BookOpen, Target, Trophy, TrendingUp, Flame, Award, Lock, ArrowRight, Loader2, FileText, CheckCircle, XCircle, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { gamificationDbService } from '@/services/gamification-db.service';
+import { format } from 'date-fns';
 
 interface StudentGamification {
   total_points: number;
@@ -47,6 +48,24 @@ interface LeaderboardEntry {
   isCurrentUser?: boolean;
 }
 
+interface RecentAssessment {
+  id: string;
+  title: string;
+  percentage: number;
+  passed: boolean;
+  submitted_at: string;
+}
+
+interface RecentAssignment {
+  id: string;
+  title: string;
+  marks_obtained: number | null;
+  total_marks: number;
+  passing_marks: number;
+  passed: boolean;
+  submitted_at: string;
+}
+
 export default function StudentDashboard() {
   const { user } = useAuth();
   const { tenantId } = useParams<{ tenantId: string }>();
@@ -56,6 +75,8 @@ export default function StudentDashboard() {
   const [coursesEnrolled, setCoursesEnrolled] = useState(0);
   const [activeProjects, setActiveProjects] = useState(0);
   const [completedProjects, setCompletedProjects] = useState(0);
+  const [recentAssessments, setRecentAssessments] = useState<RecentAssessment[]>([]);
+  const [recentAssignments, setRecentAssignments] = useState<RecentAssignment[]>([]);
 
   const gamificationPath = tenantId ? `/tenant/${tenantId}/student/gamification` : '/student/gamification';
 
@@ -235,10 +256,93 @@ export default function StudentDashboard() {
       setCompletedProjects(projectData.completed);
       setCoursesEnrolled(courseData);
       
+      // Fetch recent performance data
+      await loadPerformanceData(studentId);
+      
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const loadPerformanceData = async (studentId: string) => {
+    try {
+      // Fetch recent assessment attempts
+      const { data: assessmentAttempts } = await supabase
+        .from('assessment_attempts')
+        .select(`
+          id,
+          assessment_id,
+          percentage,
+          passed,
+          submitted_at
+        `)
+        .eq('student_id', studentId)
+        .in('status', ['submitted', 'auto_submitted', 'evaluated', 'completed'])
+        .order('submitted_at', { ascending: false })
+        .limit(5);
+      
+      // Get assessment titles
+      if (assessmentAttempts && assessmentAttempts.length > 0) {
+        const assessmentIds = assessmentAttempts.map(a => a.assessment_id);
+        const { data: assessments } = await supabase
+          .from('assessments')
+          .select('id, title')
+          .in('id', assessmentIds);
+        
+        const assessmentMap = new Map((assessments || []).map(a => [a.id, a.title]));
+        
+        setRecentAssessments(assessmentAttempts.map(a => ({
+          id: a.id,
+          title: assessmentMap.get(a.assessment_id) || 'Unknown Assessment',
+          percentage: a.percentage,
+          passed: a.passed,
+          submitted_at: a.submitted_at || '',
+        })));
+      }
+      
+      // Fetch recent assignment submissions
+      const { data: assignmentSubmissions } = await supabase
+        .from('assignment_submissions')
+        .select(`
+          id,
+          assignment_id,
+          marks_obtained,
+          submitted_at
+        `)
+        .eq('student_id', studentId)
+        .in('status', ['submitted', 'graded'])
+        .order('submitted_at', { ascending: false })
+        .limit(5);
+      
+      // Get assignment details
+      if (assignmentSubmissions && assignmentSubmissions.length > 0) {
+        const assignmentIds = assignmentSubmissions.map(s => s.assignment_id);
+        const { data: assignments } = await supabase
+          .from('assignments')
+          .select('id, title, total_marks, passing_marks')
+          .in('id', assignmentIds);
+        
+        const assignmentMap = new Map((assignments || []).map(a => [a.id, a]));
+        
+        setRecentAssignments(assignmentSubmissions.map(s => {
+          const assignment = assignmentMap.get(s.assignment_id);
+          const totalMarks = assignment?.total_marks || 100;
+          const passingMarks = assignment?.passing_marks || 40;
+          return {
+            id: s.id,
+            title: assignment?.title || 'Unknown Assignment',
+            marks_obtained: s.marks_obtained,
+            total_marks: totalMarks,
+            passing_marks: passingMarks,
+            passed: (s.marks_obtained || 0) >= passingMarks,
+            submitted_at: s.submitted_at || '',
+          };
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading performance data:', error);
     }
   };
 
@@ -397,6 +501,105 @@ export default function StudentDashboard() {
             <CardContent>
               <div className="text-2xl font-bold">{gamification?.badges_earned.length || 0}</div>
               <p className="text-xs text-muted-foreground">{gamification?.badges_locked.length || 0} more to unlock</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent Performance */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Recent Assessments */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <ClipboardCheck className="h-5 w-5" />
+                  Recent Assessments
+                </CardTitle>
+                <CardDescription>Your latest assessment results</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {recentAssessments.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <ClipboardCheck className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No assessments completed yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {recentAssessments.map((assessment) => (
+                    <div
+                      key={assessment.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{assessment.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {assessment.submitted_at ? format(new Date(assessment.submitted_at), 'PP') : '-'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-3">
+                        <Badge variant={assessment.passed ? 'default' : 'secondary'} className="shrink-0">
+                          {assessment.percentage.toFixed(0)}%
+                        </Badge>
+                        {assessment.passed ? (
+                          <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Recent Assignments */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Recent Assignments
+                </CardTitle>
+                <CardDescription>Your latest assignment grades</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {recentAssignments.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No assignments submitted yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {recentAssignments.map((assignment) => (
+                    <div
+                      key={assignment.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{assignment.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {assignment.submitted_at ? format(new Date(assignment.submitted_at), 'PP') : '-'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-3">
+                        <Badge variant={assignment.passed ? 'default' : 'secondary'} className="shrink-0">
+                          {assignment.marks_obtained !== null ? `${assignment.marks_obtained}/${assignment.total_marks}` : 'Pending'}
+                        </Badge>
+                        {assignment.marks_obtained !== null && (
+                          assignment.passed ? (
+                            <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                          )
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
