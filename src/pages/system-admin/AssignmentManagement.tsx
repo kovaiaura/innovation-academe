@@ -5,15 +5,29 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Search, Pencil, Trash2, FileText, Calendar, Clock } from 'lucide-react';
-import { assignmentService, AssignmentWithClasses } from '@/services/assignment.service';
+import { assignmentService, AssignmentWithClasses, AssignmentFormData } from '@/services/assignment.service';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AssignmentFormDialog } from '@/components/assignments/AssignmentFormDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function AssignmentManagement() {
   const [assignments, setAssignments] = useState<AssignmentWithClasses[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<AssignmentWithClasses | null>(null);
 
   useEffect(() => {
     loadAssignments();
@@ -29,6 +43,50 @@ export default function AssignmentManagement() {
       toast.error('Failed to load assignments');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreate = () => {
+    setSelectedAssignment(null);
+    setFormDialogOpen(true);
+  };
+
+  const handleEdit = (assignment: AssignmentWithClasses) => {
+    setSelectedAssignment(assignment);
+    setFormDialogOpen(true);
+  };
+
+  const handleDelete = (assignment: AssignmentWithClasses) => {
+    setSelectedAssignment(assignment);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleSubmit = async (data: AssignmentFormData) => {
+    try {
+      if (selectedAssignment) {
+        await assignmentService.updateAssignment(selectedAssignment.id, data);
+        toast.success('Assignment updated successfully');
+      } else {
+        await assignmentService.createAssignment(data);
+        toast.success('Assignment created successfully');
+      }
+      loadAssignments();
+    } catch (error) {
+      console.error('Error saving assignment:', error);
+      throw error;
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedAssignment) return;
+    try {
+      await assignmentService.deleteAssignment(selectedAssignment.id);
+      toast.success('Assignment deleted successfully');
+      setDeleteDialogOpen(false);
+      loadAssignments();
+    } catch (error) {
+      console.error('Error deleting assignment:', error);
+      toast.error('Failed to delete assignment');
     }
   };
 
@@ -68,7 +126,7 @@ export default function AssignmentManagement() {
             <h1 className="text-3xl font-bold">Assignment Management</h1>
             <p className="text-muted-foreground">Create and manage assignments for all institutions</p>
           </div>
-          <Button>
+          <Button onClick={handleCreate}>
             <Plus className="h-4 w-4 mr-2" />
             Create Assignment
           </Button>
@@ -107,10 +165,10 @@ export default function AssignmentManagement() {
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(assignment)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="destructive" size="sm">
+                      <Button variant="destructive" size="sm" onClick={() => handleDelete(assignment)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -139,6 +197,30 @@ export default function AssignmentManagement() {
           )}
         </div>
       </div>
+
+      <AssignmentFormDialog
+        open={formDialogOpen}
+        onOpenChange={setFormDialogOpen}
+        assignment={selectedAssignment}
+        onSubmit={handleSubmit}
+      />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Assignment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{selectedAssignment?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }
