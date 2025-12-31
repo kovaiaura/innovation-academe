@@ -66,6 +66,7 @@ import ManagementEvents from "./pages/management/Events";
 import ManagementCourseDetail from "./pages/management/CourseDetail";
 import ManagementProfile from "./pages/management/Profile";
 import ManagementAssessments from "./pages/management/Assessments";
+import ManagementAnalytics from "./pages/management/Analytics";
 import ManagementSDGDashboard from "./pages/management/SDGDashboard";
 import StudentSDGContribution from "./pages/student/SDGContribution";
 import StudentProfile from "./pages/student/Profile";
@@ -867,6 +868,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['management']}>
                   <ManagementAssessments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/management/analytics"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <ManagementAnalytics />
                 </ProtectedRoute>
               }
             />

@@ -3,29 +3,116 @@ import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { FileText, Calendar, Search, Users, BarChart } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FileText, Calendar, Search, Users, BarChart, Filter, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { assignmentService, AssignmentWithClasses } from '@/services/assignment.service';
+import { supabase } from '@/integrations/supabase/client';
 import { format, isPast, isFuture } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+
+interface AssignmentWithClasses {
+  id: string;
+  title: string;
+  description: string | null;
+  start_date: string;
+  submission_end_date: string;
+  status: string;
+  total_marks: number | null;
+  classes: { id: string; name: string }[];
+  submissions_count: number;
+  graded_count: number;
+}
 
 export default function ManagementAssignments() {
   const { user } = useAuth();
   const [assignments, setAssignments] = useState<AssignmentWithClasses[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedClass, setSelectedClass] = useState<string>('all');
+  const [availableClasses, setAvailableClasses] = useState<{ id: string; name: string }[]>([]);
+  const institutionId = user?.institution_id || user?.tenant_id;
 
   useEffect(() => {
-    if (user?.institution_id) {
+    if (institutionId) {
       loadAssignments();
     }
-  }, [user?.institution_id]);
+  }, [institutionId]);
 
   const loadAssignments = async () => {
     try {
       setLoading(true);
-      const data = await assignmentService.getAssignments(user?.institution_id);
-      setAssignments(data);
+      
+      // Fetch assignment class assignments
+      const { data: classAssignments } = await supabase
+        .from('assignment_class_assignments')
+        .select(`
+          assignment_id,
+          class_id,
+          classes:class_id (class_name, section)
+        `)
+        .eq('institution_id', institutionId);
+
+      if (!classAssignments || classAssignments.length === 0) {
+        setAssignments([]);
+        setLoading(false);
+        return;
+      }
+
+      // Extract unique classes
+      const classesMap = new Map<string, { id: string; name: string }>();
+      classAssignments.forEach(ca => {
+        const classInfo = ca.classes as any;
+        if (classInfo) {
+          const name = `${classInfo.class_name}${classInfo.section ? ' ' + classInfo.section : ''}`;
+          classesMap.set(ca.class_id, { id: ca.class_id, name });
+        }
+      });
+      setAvailableClasses(Array.from(classesMap.values()));
+
+      // Get unique assignment IDs
+      const assignmentIds = [...new Set(classAssignments.map(a => a.assignment_id))];
+
+      // Fetch assignment details
+      const { data: assignmentData } = await supabase
+        .from('assignments')
+        .select('*')
+        .in('id', assignmentIds);
+
+      // Fetch submission counts
+      const { data: submissions } = await supabase
+        .from('assignment_submissions')
+        .select('assignment_id, status')
+        .eq('institution_id', institutionId);
+
+      // Combine data
+      const assignmentsWithClasses: AssignmentWithClasses[] = (assignmentData || []).map(assignment => {
+        const assignedClassAssignments = classAssignments.filter(ca => ca.assignment_id === assignment.id);
+        const classes = assignedClassAssignments
+          .map(ca => {
+            const classInfo = ca.classes as any;
+            return classInfo ? { id: ca.class_id, name: `${classInfo.class_name}${classInfo.section ? ' ' + classInfo.section : ''}` } : null;
+          })
+          .filter(Boolean) as { id: string; name: string }[];
+
+        const assignmentSubmissions = submissions?.filter(s => s.assignment_id === assignment.id) || [];
+        const gradedSubmissions = assignmentSubmissions.filter(s => s.status === 'graded');
+
+        return {
+          id: assignment.id,
+          title: assignment.title,
+          description: assignment.description,
+          start_date: assignment.start_date,
+          submission_end_date: assignment.submission_end_date,
+          status: assignment.status,
+          total_marks: assignment.total_marks,
+          classes,
+          submissions_count: assignmentSubmissions.length,
+          graded_count: gradedSubmissions.length,
+        };
+      });
+
+      setAssignments(assignmentsWithClasses);
     } catch (error) {
       console.error('Error loading assignments:', error);
     } finally {
@@ -33,9 +120,11 @@ export default function ManagementAssignments() {
     }
   };
 
-  const filteredAssignments = assignments.filter(a =>
-    a.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredAssignments = assignments.filter(a => {
+    const matchesSearch = a.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesClass = selectedClass === 'all' || a.classes.some(c => c.id === selectedClass);
+    return matchesSearch && matchesClass;
+  });
 
   const getStatusBadge = (assignment: AssignmentWithClasses) => {
     if (assignment.status === 'draft') {
@@ -112,6 +201,20 @@ export default function ManagementAssignments() {
               className="pl-9"
             />
           </div>
+          <Select value={selectedClass} onValueChange={setSelectedClass}>
+            <SelectTrigger className="w-48">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Filter by class" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Classes</SelectItem>
+              {availableClasses.map((cls) => (
+                <SelectItem key={cls.id} value={cls.id}>
+                  {cls.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {loading ? (
@@ -163,9 +266,13 @@ export default function ManagementAssignments() {
                     <Users className="h-4 w-4" />
                     <span>{assignment.classes?.length || 0} classes assigned</span>
                   </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <FileText className="h-4 w-4" />
+                    <span>{assignment.submissions_count} submissions ({assignment.graded_count} graded)</span>
+                  </div>
                   {assignment.total_marks && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <FileText className="h-4 w-4" />
+                      <BarChart className="h-4 w-4" />
                       <span>Total marks: {assignment.total_marks}</span>
                     </div>
                   )}

@@ -6,7 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { FileText, Users, CheckCircle, Clock, Search, TrendingUp, Award, Eye } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FileText, Users, CheckCircle, Clock, Search, TrendingUp, Award, Eye, Filter } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -33,6 +34,8 @@ export default function ManagementAssessments() {
   const [loading, setLoading] = useState(true);
   const [assessments, setAssessments] = useState<AssessmentWithStats[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedClass, setSelectedClass] = useState<string>('all');
+  const [availableClasses, setAvailableClasses] = useState<{ id: string; name: string }[]>([]);
   const [selectedAssessment, setSelectedAssessment] = useState<AssessmentWithStats | null>(null);
   const [attemptsDialogOpen, setAttemptsDialogOpen] = useState(false);
   const institutionId = user?.institution_id || user?.tenant_id || '';
@@ -76,10 +79,21 @@ export default function ManagementAssessments() {
           .eq('institution_id', institutionId)
           .in('status', ['completed', 'submitted', 'auto_submitted']);
 
+        // Extract unique classes
+        const classesMap = new Map<string, { id: string; name: string }>();
+        classAssignments.forEach(ca => {
+          const classInfo = ca.classes as any;
+          if (classInfo) {
+            const name = `${classInfo.class_name}${classInfo.section ? ' ' + classInfo.section : ''}`;
+            classesMap.set(ca.class_id, { id: ca.class_id, name });
+          }
+        });
+        setAvailableClasses(Array.from(classesMap.values()));
+
         // Combine data
         const assessmentsWithStats: AssessmentWithStats[] = (assessmentData || []).map(assessment => {
-          const assignedClasses = classAssignments
-            .filter(ca => ca.assessment_id === assessment.id)
+          const assignedClassAssignments = classAssignments.filter(ca => ca.assessment_id === assessment.id);
+          const assignedClasses = assignedClassAssignments
             .map(ca => {
               const classInfo = ca.classes as any;
               return classInfo ? `${classInfo.class_name}${classInfo.section ? ' ' + classInfo.section : ''}` : '';
@@ -106,6 +120,7 @@ export default function ManagementAssessments() {
             passed_count: passedAttempts.length,
             average_score: avgScore,
             classes: assignedClasses,
+            class_ids: assignedClassAssignments.map(ca => ca.class_id),
           };
         });
 
@@ -120,9 +135,11 @@ export default function ManagementAssessments() {
     fetchAssessments();
   }, [user?.institution_id, user?.tenant_id]);
 
-  const filteredAssessments = assessments.filter(a =>
-    a.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredAssessments = assessments.filter(a => {
+    const matchesSearch = a.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesClass = selectedClass === 'all' || (a as any).class_ids?.includes(selectedClass);
+    return matchesSearch && matchesClass;
+  });
 
   const stats = {
     total: assessments.length,
@@ -213,15 +230,31 @@ export default function ManagementAssessments() {
           </Card>
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search assessments..."
-            className="pl-9"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        {/* Search and Filter */}
+        <div className="flex items-center gap-4">
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search assessments..."
+              className="pl-9"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <Select value={selectedClass} onValueChange={setSelectedClass}>
+            <SelectTrigger className="w-48">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Filter by class" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Classes</SelectItem>
+              {availableClasses.map((cls) => (
+                <SelectItem key={cls.id} value={cls.id}>
+                  {cls.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Assessments Table */}

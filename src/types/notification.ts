@@ -15,7 +15,11 @@ export type NotificationType =
   | 'leave_pending_approval'
   | 'leave_final_approved'
   | 'officer_on_leave'
-  | 'substitute_assigned';
+  | 'substitute_assigned'
+  | 'assignment_graded'
+  | 'assessment_graded'
+  | 'new_assignment_published'
+  | 'new_assessment_published';
 
 export interface Notification {
   id: string;
