@@ -4,11 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FileText, Calendar, Clock, Search, Upload, CheckCircle } from 'lucide-react';
+import { FileText, Calendar, Clock, Search, Upload, CheckCircle, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { assignmentService, AssignmentWithClasses, AssignmentSubmission } from '@/services/assignment.service';
 import { format, isPast, isFuture } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AssignmentSubmitDialog } from '@/components/assignments/AssignmentSubmitDialog';
+import { SubmissionViewDialog } from '@/components/assignments/SubmissionViewDialog';
 
 export default function StudentAssignments() {
   const { user } = useAuth();
@@ -16,6 +18,9 @@ export default function StudentAssignments() {
   const [submissions, setSubmissions] = useState<Record<string, AssignmentSubmission>>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<AssignmentWithClasses | null>(null);
 
   useEffect(() => {
     if (user?.institution_id) {
@@ -64,6 +69,16 @@ export default function StudentAssignments() {
       return { label: 'Upcoming', variant: 'outline' as const, color: '' };
     }
     return { label: 'Pending', variant: 'secondary' as const, color: 'bg-orange-500/10 text-orange-700' };
+  };
+
+  const handleSubmitClick = (assignment: AssignmentWithClasses) => {
+    setSelectedAssignment(assignment);
+    setSubmitDialogOpen(true);
+  };
+
+  const handleViewSubmission = (assignment: AssignmentWithClasses) => {
+    setSelectedAssignment(assignment);
+    setViewDialogOpen(true);
   };
 
   if (loading) {
@@ -157,15 +172,32 @@ export default function StudentAssignments() {
                             {format(new Date(submission.submitted_at), 'MMM d, yyyy HH:mm')}
                           </p>
                         </div>
-                        {submission.feedback && (
-                          <div className="ml-auto text-sm">
-                            <span className="text-muted-foreground">Feedback: </span>
-                            {submission.feedback}
-                          </div>
-                        )}
+                        <div className="ml-auto flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleViewSubmission(assignment)}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </Button>
+                          {!isPast(new Date(assignment.submission_end_date)) && (
+                            <Button 
+                              variant="secondary" 
+                              size="sm"
+                              onClick={() => handleSubmitClick(assignment)}
+                            >
+                              <Upload className="h-4 w-4 mr-2" />
+                              Resubmit
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     ) : (
-                      <Button disabled={isPast(new Date(assignment.submission_end_date))}>
+                      <Button 
+                        disabled={isPast(new Date(assignment.submission_end_date))}
+                        onClick={() => handleSubmitClick(assignment)}
+                      >
                         <Upload className="h-4 w-4 mr-2" />
                         Submit Assignment
                       </Button>
@@ -176,6 +208,29 @@ export default function StudentAssignments() {
             })
           )}
         </div>
+
+        {/* Submit Dialog */}
+        {selectedAssignment && user && (
+          <AssignmentSubmitDialog
+            open={submitDialogOpen}
+            onOpenChange={setSubmitDialogOpen}
+            assignment={selectedAssignment}
+            studentId={user.id}
+            institutionId={user.institution_id || ''}
+            classId={user.class_id || ''}
+            onSubmitSuccess={loadAssignments}
+          />
+        )}
+
+        {/* View Submission Dialog */}
+        {selectedAssignment && submissions[selectedAssignment.id] && (
+          <SubmissionViewDialog
+            open={viewDialogOpen}
+            onOpenChange={setViewDialogOpen}
+            assignment={selectedAssignment}
+            submission={submissions[selectedAssignment.id]}
+          />
+        )}
       </div>
     </Layout>
   );
