@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { AssignmentWithClasses, AssignmentFormData } from '@/services/assignment.service';
 import { toast } from 'sonner';
@@ -60,6 +61,7 @@ export function AssignmentFormDialog({
     start_date: '',
     submission_end_date: '',
     total_marks: 100,
+    allow_resubmit: true,
     status: 'draft' as 'draft' | 'published',
   });
 
@@ -75,6 +77,7 @@ export function AssignmentFormDialog({
           start_date: assignment.start_date.split('T')[0],
           submission_end_date: assignment.submission_end_date.split('T')[0],
           total_marks: assignment.total_marks || 100,
+          allow_resubmit: assignment.allow_resubmit !== false,
           status: assignment.status as 'draft' | 'published',
         });
         setSelectedInstitution(assignment.institution_id || '');
@@ -101,6 +104,7 @@ export function AssignmentFormDialog({
       start_date: '',
       submission_end_date: '',
       total_marks: 100,
+      allow_resubmit: true,
       status: 'draft',
     });
     setSelectedInstitution('');
@@ -178,6 +182,7 @@ export function AssignmentFormDialog({
         start_date: formData.start_date,
         submission_end_date: formData.submission_end_date,
         total_marks: formData.total_marks,
+        allow_resubmit: formData.allow_resubmit,
         status: formData.status,
       });
       onOpenChange(false);
@@ -323,6 +328,19 @@ export function AssignmentFormDialog({
               min={1}
               value={formData.total_marks}
               onChange={(e) => setFormData({ ...formData, total_marks: parseInt(e.target.value) || 100 })}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-3 border rounded-md">
+            <div>
+              <Label>Allow Resubmission</Label>
+              <p className="text-xs text-muted-foreground">
+                Students can resubmit their assignment before the deadline
+              </p>
+            </div>
+            <Switch
+              checked={formData.allow_resubmit}
+              onCheckedChange={(checked) => setFormData({ ...formData, allow_resubmit: checked })}
             />
           </div>
 

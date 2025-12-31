@@ -474,6 +474,7 @@ export type Database = {
       }
       assignments: {
         Row: {
+          allow_resubmit: boolean | null
           created_at: string | null
           created_by: string | null
           created_by_role: string
@@ -489,6 +490,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          allow_resubmit?: boolean | null
           created_at?: string | null
           created_by?: string | null
           created_by_role?: string
@@ -504,6 +506,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          allow_resubmit?: boolean | null
           created_at?: string | null
           created_by?: string | null
           created_by_role?: string
