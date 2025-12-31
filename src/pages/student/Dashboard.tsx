@@ -148,9 +148,9 @@ export default function StudentDashboard() {
         badges_locked: lockedBadges,
         points_breakdown: {
           sessions: xpBreakdown['session_attendance'] || 0,
-          projects: xpBreakdown['project_submission'] || 0,
+          projects: (xpBreakdown['project_membership'] || 0) + (xpBreakdown['project_award'] || 0),
           attendance: xpBreakdown['session_attendance'] || 0,
-          assessments: xpBreakdown['assessment_completion'] || 0
+          assessments: (xpBreakdown['assessment_completion'] || 0) + (xpBreakdown['assessment_pass'] || 0) + (xpBreakdown['assessment_perfect_score'] || 0)
         },
         weekly_points: weeklyPoints
       });

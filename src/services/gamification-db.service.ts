@@ -158,6 +158,22 @@ export const gamificationDbService = {
     points: number;
     description?: string;
   }): Promise<void> {
+    // Check for existing transaction to prevent duplicates
+    if (params.activityId) {
+      const { data: existing } = await supabase
+        .from('student_xp_transactions')
+        .select('id')
+        .eq('student_id', params.studentId)
+        .eq('activity_type', params.activityType)
+        .eq('activity_id', params.activityId)
+        .maybeSingle();
+
+      if (existing) {
+        console.log('XP already awarded for this activity:', params.activityType, params.activityId);
+        return;
+      }
+    }
+
     const { error } = await supabase
       .from('student_xp_transactions')
       .insert({
@@ -170,6 +186,90 @@ export const gamificationDbService = {
       });
     
     if (error) throw error;
+
+    // Check and award badges after XP transaction
+    await this.checkAndAwardBadges(params.studentId, params.institutionId);
+  },
+
+  // Check badge criteria and award badges
+  async checkAndAwardBadges(studentId: string, institutionId: string): Promise<void> {
+    try {
+      // Get all active badges
+      const badges = await this.getBadges();
+      
+      // Get student's current badges
+      const studentBadges = await this.getStudentBadges(studentId);
+      const earnedBadgeIds = new Set(studentBadges.map(b => b.badge?.id));
+      
+      // Get student's XP breakdown
+      const xpBreakdown = await this.getStudentXPBreakdown(studentId);
+      const totalXP = Object.values(xpBreakdown).reduce((sum: number, pts: number) => sum + pts, 0);
+      
+      // Get activity counts
+      const { data: xpTransactions } = await supabase
+        .from('student_xp_transactions')
+        .select('activity_type, activity_id')
+        .eq('student_id', studentId);
+      
+      const activityCounts: Record<string, number> = {};
+      const uniqueActivities: Record<string, Set<string>> = {};
+      
+      xpTransactions?.forEach(t => {
+        activityCounts[t.activity_type] = (activityCounts[t.activity_type] || 0) + 1;
+        if (!uniqueActivities[t.activity_type]) {
+          uniqueActivities[t.activity_type] = new Set();
+        }
+        if (t.activity_id) {
+          uniqueActivities[t.activity_type].add(t.activity_id);
+        }
+      });
+      
+      // Get streak
+      const streak = await this.getStudentStreak(studentId);
+      
+      for (const badge of badges) {
+        if (!badge.is_active || earnedBadgeIds.has(badge.id)) continue;
+        
+        const criteria = badge.unlock_criteria as any;
+        if (!criteria?.type) continue;
+        
+        let shouldAward = false;
+        const threshold = criteria.threshold || 1;
+        
+        switch (criteria.type) {
+          case 'points':
+            shouldAward = totalXP >= threshold;
+            break;
+          case 'assessments':
+            shouldAward = (activityCounts['assessment_completion'] || 0) >= threshold;
+            break;
+          case 'streak':
+            shouldAward = (streak?.current_streak || 0) >= threshold;
+            break;
+          case 'projects':
+            shouldAward = (uniqueActivities['project_membership']?.size || 0) >= threshold;
+            break;
+          case 'attendance':
+            shouldAward = (activityCounts['session_attendance'] || 0) >= threshold;
+            break;
+          case 'custom':
+            // Handle specific badge types
+            if (criteria.description?.includes('100%')) {
+              shouldAward = (activityCounts['assessment_perfect_score'] || 0) >= threshold;
+            } else if (criteria.description?.includes('award')) {
+              shouldAward = (activityCounts['project_award'] || 0) >= threshold;
+            }
+            break;
+        }
+        
+        if (shouldAward) {
+          await this.awardBadge(studentId, badge.id, institutionId);
+          console.log('Badge awarded:', badge.name, 'to student:', studentId);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking badges:', error);
+    }
   },
 
   // ============ STUDENT BADGES ============

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { gamificationDbService } from '@/services/gamification-db.service';
 
 export interface AddMemberInput {
   project_id: string;
@@ -12,6 +13,28 @@ export interface AddMemberInput {
 export interface UpdateMemberInput {
   id: string;
   role: 'leader' | 'member';
+}
+
+// Helper function to award project membership XP
+async function awardProjectXP(projectId: string, studentId: string) {
+  try {
+    // Get project's institution_id
+    const { data: project } = await supabase
+      .from('projects')
+      .select('institution_id')
+      .eq('id', projectId)
+      .single();
+    
+    if (project?.institution_id) {
+      await gamificationDbService.awardProjectMembershipXP(
+        studentId,
+        project.institution_id,
+        projectId
+      );
+    }
+  } catch (error) {
+    console.error('Error awarding project XP:', error);
+  }
 }
 
 // Add a student to a project
@@ -32,6 +55,10 @@ export function useAddProjectMember() {
         .single();
       
       if (error) throw error;
+      
+      // Award XP for joining project
+      await awardProjectXP(input.project_id, input.student_id);
+      
       return data;
     },
     onSuccess: () => {
@@ -66,6 +93,12 @@ export function useAddProjectMembers() {
         .select();
       
       if (error) throw error;
+      
+      // Award XP for each student joining project
+      for (const input of inputs) {
+        await awardProjectXP(input.project_id, input.student_id);
+      }
+      
       return data;
     },
     onSuccess: () => {
