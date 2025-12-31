@@ -4,20 +4,73 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CertificateCard } from '@/components/student/CertificateCard';
 import { CertificatePreviewDialog } from '@/components/student/CertificatePreviewDialog';
-import { mockStudentCertificates } from '@/data/mockStudentCertificates';
+import { gamificationDbService } from '@/services/gamification-db.service';
+import { useAuth } from '@/contexts/AuthContext';
 import { StudentCertificate } from '@/types/gamification';
-import { Award } from 'lucide-react';
+import { Award, Loader2 } from 'lucide-react';
+
+interface DBCertificate {
+  id: string;
+  student_id: string;
+  template_id: string;
+  activity_type: string;
+  activity_id: string | null;
+  activity_name: string;
+  institution_id: string;
+  issued_date: string;
+  verification_code: string;
+  grade: string | null;
+  certificate_templates?: {
+    name: string;
+    category: string;
+    template_image_url: string | null;
+  };
+}
 
 export default function Certificates() {
+  const { user } = useAuth();
   const [certificates, setCertificates] = useState<StudentCertificate[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCertificate, setSelectedCertificate] = useState<StudentCertificate | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
   useEffect(() => {
-    // In production, fetch from certificateService.getStudentCertificates(userId)
-    setCertificates(mockStudentCertificates);
-  }, []);
+    const loadCertificates = async () => {
+      if (!user?.id) return;
+      
+      try {
+        setLoading(true);
+        const data = await gamificationDbService.getStudentCertificates(user.id);
+        
+        // Transform DB data to StudentCertificate format
+        const transformedCerts: StudentCertificate[] = (data as DBCertificate[]).map(cert => ({
+          id: cert.id,
+          student_id: cert.student_id,
+          student_name: user.name || 'Student',
+          template_id: cert.template_id,
+          activity_type: cert.activity_type as 'course' | 'level' | 'assessment' | 'event',
+          activity_id: cert.activity_id || '',
+          activity_name: cert.activity_name,
+          institution_name: '',
+          issued_date: cert.issued_date,
+          completion_date: cert.issued_date,
+          certificate_url: '',
+          verification_code: cert.verification_code,
+          qr_code_url: '',
+          grade: cert.grade || undefined
+        }));
+        
+        setCertificates(transformedCerts);
+      } catch (error) {
+        console.error('Error loading certificates:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCertificates();
+  }, [user?.id]);
 
   const filteredCertificates = categoryFilter === 'all' 
     ? certificates 
@@ -35,6 +88,16 @@ export default function Certificates() {
     assessment: certificates.filter(c => c.activity_type === 'assessment').length,
     event: certificates.filter(c => c.activity_type === 'event').length
   };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

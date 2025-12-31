@@ -8,7 +8,7 @@ import {
   Home, Users, User, Settings, LogOut, ChevronLeft, ChevronDown,
   BookOpen, Target, Calendar, Award, BarChart,
   Building2, FileText, Trophy, Package, UserCheck, GraduationCap,
-  MessageSquare, MessageCircle, Bell,
+  MessageSquare, MessageCircle, Bell, Video,
   Shield, Phone, Clock, ShoppingCart, PieChart, Briefcase, CalendarCheck,
   LayoutDashboard, CheckSquare, ListTodo, Key, Star, History, CalendarDays
 } from 'lucide-react';
@@ -95,6 +95,7 @@ const menuItems: MenuItem[] = [
   { label: 'Task Allotment', icon: <ListTodo className="h-5 w-5" />, path: '/tasks', roles: ['system_admin'], feature: 'task_allotment' },
   // Gamification
   { label: 'Gamification', icon: <Trophy className="h-5 w-5" />, path: '/gamification', roles: ['system_admin'], feature: 'gamification' },
+  { label: 'Webinars', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['system_admin'] },
   // Reports & Invoice
   { label: 'Reports & Invoice', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['system_admin'], feature: 'reports_analytics' },
   // SDG Management
@@ -123,6 +124,7 @@ const menuItems: MenuItem[] = [
   { label: 'Leave Management', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-management', roles: ['officer'] },
   { label: 'Events', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['officer'] },
   { label: 'Ask Metova', icon: <MessageSquare className="h-5 w-5" />, path: '/ask-metova', roles: ['officer'] },
+  { label: 'Webinars', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['officer'] },
   // { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['officer'] }, // Temporarily hidden
   // Student menu items
   { label: 'My Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['student'] },
@@ -136,6 +138,7 @@ const menuItems: MenuItem[] = [
   { label: 'Resume', icon: <FileText className="h-5 w-5" />, path: '/resume', roles: ['student'] },
   // { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['student'] }, // Temporarily hidden
   { label: 'Ask Metova', icon: <MessageSquare className="h-5 w-5" />, path: '/ask-metova', roles: ['student'] },
+  { label: 'Webinars', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['student'] },
   { label: 'Feedback/Survey', icon: <MessageCircle className="h-5 w-5" />, path: '/feedback', roles: ['student'] },
   // System Admin - Configuration
   { label: 'ID Configuration', icon: <Settings className="h-5 w-5" />, path: '/id-configuration', roles: ['system_admin'], feature: 'id_configuration' },
@@ -150,6 +153,7 @@ const menuItems: MenuItem[] = [
   { label: 'SDG Dashboard', icon: <Target className="h-5 w-5" />, path: '/sdg-dashboard', roles: ['management'] },
   { label: 'Events', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['management'] },
   { label: 'Reports', icon: <FileText className="h-5 w-5" />, path: '/reports', roles: ['management'] },
+  { label: 'Webinars', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['management'] },
   { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['management'] },
   { label: 'Attendance', icon: <Clock className="h-5 w-5" />, path: '/attendance', roles: ['management'] },
   { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['management'] },
