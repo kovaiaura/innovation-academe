@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { BookOpen, Target, Trophy, TrendingUp, Flame, Award, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { gamificationDbService } from '@/services/gamification-db.service';
 
@@ -48,12 +48,15 @@ interface LeaderboardEntry {
 
 export default function StudentDashboard() {
   const { user } = useAuth();
+  const { tenantId } = useParams<{ tenantId: string }>();
   const [loading, setLoading] = useState(true);
   const [gamification, setGamification] = useState<StudentGamification | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [coursesEnrolled, setCoursesEnrolled] = useState(0);
   const [activeProjects, setActiveProjects] = useState(0);
   const [completedProjects, setCompletedProjects] = useState(0);
+
+  const gamificationPath = tenantId ? `/tenant/${tenantId}/student/gamification` : '/student/gamification';
 
   useEffect(() => {
     if (user?.id) {
@@ -391,7 +394,7 @@ export default function StudentDashboard() {
               <CardDescription>Your latest earned badges</CardDescription>
             </div>
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/student/gamification">
+              <Link to={gamificationPath}>
                 View All <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
@@ -428,7 +431,7 @@ export default function StudentDashboard() {
                 <CardDescription>Top performers this month</CardDescription>
               </div>
               <Button variant="ghost" size="sm" asChild>
-                <Link to="/student/gamification">
+                <Link to={gamificationPath}>
                   View All <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>

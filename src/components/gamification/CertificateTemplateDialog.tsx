@@ -10,6 +10,14 @@ import { Slider } from '@/components/ui/slider';
 import { Upload, X, FileImage } from 'lucide-react';
 import { toast } from 'sonner';
 
+interface PositionConfig {
+  x: number;
+  y: number;
+  fontSize: number;
+  color: string;
+  fontFamily: string;
+}
+
 interface CertificateTemplate {
   id?: string;
   name: string;
@@ -18,20 +26,10 @@ interface CertificateTemplate {
   template_image_url: string | null;
   default_width: number;
   default_height: number;
-  name_position: {
-    x: number;
-    y: number;
-    fontSize: number;
-    color: string;
-    fontFamily: string;
-  };
-  date_position?: {
-    x: number;
-    y: number;
-    fontSize: number;
-    color: string;
-    fontFamily: string;
-  } | null;
+  name_position: PositionConfig;
+  date_position?: PositionConfig | null;
+  course_name_position?: PositionConfig | null;
+  level_title_position?: PositionConfig | null;
   is_active: boolean;
 }
 
@@ -93,6 +91,16 @@ export function CertificateTemplateDialog({
   const [dateX, setDateX] = useState(600);
   const [dateY, setDateY] = useState(650);
   const [dateFontSize, setDateFontSize] = useState(24);
+  // Course name position
+  const [showCourseNamePosition, setShowCourseNamePosition] = useState(false);
+  const [courseNameX, setCourseNameX] = useState(600);
+  const [courseNameY, setCourseNameY] = useState(300);
+  const [courseNameFontSize, setCourseNameFontSize] = useState(32);
+  // Level title position
+  const [showLevelTitlePosition, setShowLevelTitlePosition] = useState(false);
+  const [levelTitleX, setLevelTitleX] = useState(600);
+  const [levelTitleY, setLevelTitleY] = useState(350);
+  const [levelTitleFontSize, setLevelTitleFontSize] = useState(28);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -116,6 +124,24 @@ export function CertificateTemplateDialog({
         setDateX(template.date_position.x);
         setDateY(template.date_position.y);
         setDateFontSize(template.date_position.fontSize);
+      } else {
+        setShowDatePosition(false);
+      }
+      if (template.course_name_position) {
+        setShowCourseNamePosition(true);
+        setCourseNameX(template.course_name_position.x);
+        setCourseNameY(template.course_name_position.y);
+        setCourseNameFontSize(template.course_name_position.fontSize);
+      } else {
+        setShowCourseNamePosition(false);
+      }
+      if (template.level_title_position) {
+        setShowLevelTitlePosition(true);
+        setLevelTitleX(template.level_title_position.x);
+        setLevelTitleY(template.level_title_position.y);
+        setLevelTitleFontSize(template.level_title_position.fontSize);
+      } else {
+        setShowLevelTitlePosition(false);
       }
     } else {
       // Reset form for new template
@@ -132,6 +158,8 @@ export function CertificateTemplateDialog({
       setFontFamily('serif');
       setIsActive(true);
       setShowDatePosition(false);
+      setShowCourseNamePosition(false);
+      setShowLevelTitlePosition(false);
     }
   }, [template, open]);
 
@@ -139,7 +167,7 @@ export function CertificateTemplateDialog({
     if (imageUrl && canvasRef.current) {
       drawPreview();
     }
-  }, [imageUrl, nameX, nameY, fontSize, fontColor, fontFamily, sampleName, defaultWidth, defaultHeight, showDatePosition, dateX, dateY, dateFontSize]);
+  }, [imageUrl, nameX, nameY, fontSize, fontColor, fontFamily, sampleName, defaultWidth, defaultHeight, showDatePosition, dateX, dateY, dateFontSize, showCourseNamePosition, courseNameX, courseNameY, courseNameFontSize, showLevelTitlePosition, levelTitleX, levelTitleY, levelTitleFontSize]);
 
   const drawPreview = () => {
     const canvas = canvasRef.current;
@@ -158,6 +186,26 @@ export function CertificateTemplateDialog({
       canvas.width = previewWidth;
       canvas.height = previewHeight;
       ctx.drawImage(img, 0, 0, previewWidth, previewHeight);
+      
+      // Draw course name if enabled
+      if (showCourseNamePosition) {
+        const scaledCourseNameFontSize = (courseNameFontSize * previewWidth) / defaultWidth;
+        ctx.font = `${scaledCourseNameFontSize}px ${fontFamily}`;
+        ctx.fillStyle = fontColor;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Sample Course Name', (courseNameX * previewWidth) / defaultWidth, (courseNameY * previewHeight) / defaultHeight);
+      }
+      
+      // Draw level title if enabled
+      if (showLevelTitlePosition) {
+        const scaledLevelTitleFontSize = (levelTitleFontSize * previewWidth) / defaultWidth;
+        ctx.font = `${scaledLevelTitleFontSize}px ${fontFamily}`;
+        ctx.fillStyle = fontColor;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Level 1 - Module Title', (levelTitleX * previewWidth) / defaultWidth, (levelTitleY * previewHeight) / defaultHeight);
+      }
       
       // Draw name
       const scaledFontSize = (fontSize * previewWidth) / defaultWidth;
@@ -201,6 +249,20 @@ export function CertificateTemplateDialog({
         x: dateX,
         y: dateY,
         fontSize: dateFontSize,
+        color: fontColor,
+        fontFamily
+      } : null,
+      course_name_position: showCourseNamePosition ? {
+        x: courseNameX,
+        y: courseNameY,
+        fontSize: courseNameFontSize,
+        color: fontColor,
+        fontFamily
+      } : null,
+      level_title_position: showLevelTitlePosition ? {
+        x: levelTitleX,
+        y: levelTitleY,
+        fontSize: levelTitleFontSize,
         color: fontColor,
         fontFamily
       } : null,
@@ -458,6 +520,58 @@ export function CertificateTemplateDialog({
                   Position: X={nameX}, Y={nameY} • Click on preview to reposition
                 </div>
 
+                {/* Course Name Position Toggle */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Show Course Name</Label>
+                    <p className="text-xs text-muted-foreground">Configure course name display position</p>
+                  </div>
+                  <Switch checked={showCourseNamePosition} onCheckedChange={setShowCourseNamePosition} />
+                </div>
+
+                {showCourseNamePosition && (
+                  <div className="grid grid-cols-3 gap-2 pl-4 border-l-2 border-primary/30">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Course X</Label>
+                      <Input type="number" value={courseNameX} onChange={(e) => setCourseNameX(Number(e.target.value))} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Course Y</Label>
+                      <Input type="number" value={courseNameY} onChange={(e) => setCourseNameY(Number(e.target.value))} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Course Font Size</Label>
+                      <Input type="number" value={courseNameFontSize} onChange={(e) => setCourseNameFontSize(Number(e.target.value))} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Level Title Position Toggle */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Show Level Title</Label>
+                    <p className="text-xs text-muted-foreground">Configure level/module title position</p>
+                  </div>
+                  <Switch checked={showLevelTitlePosition} onCheckedChange={setShowLevelTitlePosition} />
+                </div>
+
+                {showLevelTitlePosition && (
+                  <div className="grid grid-cols-3 gap-2 pl-4 border-l-2 border-primary/30">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Level X</Label>
+                      <Input type="number" value={levelTitleX} onChange={(e) => setLevelTitleX(Number(e.target.value))} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Level Y</Label>
+                      <Input type="number" value={levelTitleY} onChange={(e) => setLevelTitleY(Number(e.target.value))} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Level Font Size</Label>
+                      <Input type="number" value={levelTitleFontSize} onChange={(e) => setLevelTitleFontSize(Number(e.target.value))} />
+                    </div>
+                  </div>
+                )}
+
                 {/* Date Position Toggle */}
                 <div className="flex items-center justify-between">
                   <div>
@@ -468,7 +582,7 @@ export function CertificateTemplateDialog({
                 </div>
 
                 {showDatePosition && (
-                  <div className="grid grid-cols-3 gap-2 pl-4 border-l-2">
+                  <div className="grid grid-cols-3 gap-2 pl-4 border-l-2 border-primary/30">
                     <div className="space-y-1">
                       <Label className="text-xs">Date X</Label>
                       <Input type="number" value={dateX} onChange={(e) => setDateX(Number(e.target.value))} />
