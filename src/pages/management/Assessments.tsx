@@ -34,7 +34,8 @@ export default function ManagementAssessments() {
 
   useEffect(() => {
     const fetchAssessments = async () => {
-      if (!user?.tenant_id) return;
+      const institutionId = user?.institution_id || user?.tenant_id;
+      if (!institutionId) return;
       setLoading(true);
 
       try {
@@ -46,7 +47,7 @@ export default function ManagementAssessments() {
             class_id,
             classes:class_id (class_name, section)
           `)
-          .eq('institution_id', user.tenant_id);
+          .eq('institution_id', institutionId);
 
         if (!classAssignments || classAssignments.length === 0) {
           setAssessments([]);
@@ -67,8 +68,8 @@ export default function ManagementAssessments() {
         const { data: attempts } = await supabase
           .from('assessment_attempts')
           .select('assessment_id, score, percentage, passed, status')
-          .eq('institution_id', user.tenant_id)
-          .eq('status', 'completed');
+          .eq('institution_id', institutionId)
+          .in('status', ['completed', 'submitted', 'auto_submitted']);
 
         // Combine data
         const assessmentsWithStats: AssessmentWithStats[] = (assessmentData || []).map(assessment => {
@@ -112,7 +113,7 @@ export default function ManagementAssessments() {
     };
 
     fetchAssessments();
-  }, [user?.tenant_id]);
+  }, [user?.institution_id, user?.tenant_id]);
 
   const filteredAssessments = assessments.filter(a =>
     a.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -120,7 +121,7 @@ export default function ManagementAssessments() {
 
   const stats = {
     total: assessments.length,
-    active: assessments.filter(a => a.status === 'active').length,
+    active: assessments.filter(a => a.status === 'published').length,
     totalAttempts: assessments.reduce((sum, a) => sum + a.attempts_count, 0),
     avgPassRate: assessments.length > 0
       ? assessments.reduce((sum, a) => sum + (a.attempts_count > 0 ? (a.passed_count / a.attempts_count) * 100 : 0), 0) / assessments.filter(a => a.attempts_count > 0).length || 0
@@ -129,8 +130,8 @@ export default function ManagementAssessments() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'active':
-        return <Badge className="bg-green-500/10 text-green-700 border-green-500/20">Active</Badge>;
+      case 'published':
+        return <Badge className="bg-green-500/10 text-green-700 border-green-500/20">Published</Badge>;
       case 'completed':
         return <Badge className="bg-blue-500/10 text-blue-700 border-blue-500/20">Completed</Badge>;
       case 'draft':

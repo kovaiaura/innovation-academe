@@ -61,8 +61,6 @@ export default function StudentDashboard() {
   useEffect(() => {
     if (user?.id) {
       loadDashboardData();
-      // Update streak on login
-      gamificationDbService.updateStreak(user.id).catch(console.error);
     }
   }, [user?.id]);
 
@@ -105,9 +103,10 @@ export default function StudentDashboard() {
         classId 
           ? gamificationDbService.getClassLeaderboard(institutionId!, classId, 20)
           : gamificationDbService.getInstitutionLeaderboard(institutionId!, 20),
-        loadProjectData(studentId),
+        loadProjectData(user.id), // Pass auth user ID, function will get student record
         loadCourseData(studentId),
-        supabase.from('student_xp_transactions').select('activity_type, activity_id').eq('student_id', studentId)
+        supabase.from('student_xp_transactions').select('activity_type, activity_id').eq('student_id', studentId),
+        gamificationDbService.updateStreak(user.id, institutionId || undefined) // Update streak with XP
       ]);
       
       // Build activity counts for badge progress
@@ -252,15 +251,27 @@ export default function StudentDashboard() {
     return data?.reduce((sum, t) => sum + t.points_earned, 0) || 0;
   };
 
-  const loadProjectData = async (studentId: string) => {
+  const loadProjectData = async (authUserId: string) => {
+    // First get the student record ID from the students table
+    const { data: studentRecord } = await supabase
+      .from('students')
+      .select('id')
+      .eq('user_id', authUserId)
+      .single();
+    
+    const studentRecordId = studentRecord?.id;
+    if (!studentRecordId) {
+      return { active: 0, completed: 0 };
+    }
+    
     const { data } = await supabase
       .from('project_members')
       .select('project_id, projects(status)')
-      .eq('student_id', studentId);
+      .eq('student_id', studentRecordId);
     
     const projects = data || [];
     return {
-      active: projects.filter(p => (p.projects as any)?.status === 'in_progress' || (p.projects as any)?.status === 'approved').length,
+      active: projects.filter(p => (p.projects as any)?.status === 'ongoing' || (p.projects as any)?.status === 'yet_to_start').length,
       completed: projects.filter(p => (p.projects as any)?.status === 'completed').length
     };
   };
