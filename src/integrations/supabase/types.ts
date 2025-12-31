@@ -356,6 +356,178 @@ export type Database = {
           },
         ]
       }
+      assignment_class_assignments: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          assignment_id: string
+          class_id: string
+          id: string
+          institution_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assignment_id: string
+          class_id: string
+          id?: string
+          institution_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assignment_id?: string
+          class_id?: string
+          id?: string
+          institution_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_class_assignments_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_class_assignments_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_class_assignments_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assignment_submissions: {
+        Row: {
+          assignment_id: string
+          class_id: string
+          feedback: string | null
+          graded_at: string | null
+          graded_by: string | null
+          id: string
+          institution_id: string
+          marks_obtained: number | null
+          status: string
+          student_id: string
+          submission_pdf_url: string
+          submitted_at: string | null
+        }
+        Insert: {
+          assignment_id: string
+          class_id: string
+          feedback?: string | null
+          graded_at?: string | null
+          graded_by?: string | null
+          id?: string
+          institution_id: string
+          marks_obtained?: number | null
+          status?: string
+          student_id: string
+          submission_pdf_url: string
+          submitted_at?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          class_id?: string
+          feedback?: string | null
+          graded_at?: string | null
+          graded_by?: string | null
+          id?: string
+          institution_id?: string
+          marks_obtained?: number | null
+          status?: string
+          student_id?: string
+          submission_pdf_url?: string
+          submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_submissions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_submissions_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_submissions_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assignments: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          created_by_role: string
+          description: string | null
+          id: string
+          institution_id: string | null
+          question_doc_url: string | null
+          start_date: string
+          status: string
+          submission_end_date: string
+          title: string
+          total_marks: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          created_by_role?: string
+          description?: string | null
+          id?: string
+          institution_id?: string | null
+          question_doc_url?: string | null
+          start_date: string
+          status?: string
+          submission_end_date: string
+          title: string
+          total_marks?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          created_by_role?: string
+          description?: string | null
+          id?: string
+          institution_id?: string | null
+          question_doc_url?: string | null
+          start_date?: string
+          status?: string
+          submission_end_date?: string
+          title?: string
+          total_marks?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certificate_templates: {
         Row: {
           category: string

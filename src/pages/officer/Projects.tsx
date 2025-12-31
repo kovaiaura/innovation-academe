@@ -5,10 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Eye, Upload, Award, Users, Globe, ToggleLeft, ToggleRight } from "lucide-react";
+import { Plus, Eye, Upload, Award, Users, Globe, ToggleLeft, ToggleRight, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useInstitutionProjects, useUpdateProject, ProjectWithRelations } from "@/hooks/useProjects";
+import { useInstitutionProjects, useUpdateProject, useDeleteProject, ProjectWithRelations } from "@/hooks/useProjects";
 import { CreateProjectDialog } from "@/components/project/CreateProjectDialog";
+import { EditProjectDialog } from "@/components/project/EditProjectDialog";
 import { AddProgressDialog } from "@/components/project/AddProgressDialog";
 import { ProjectDetailsDialog } from "@/components/project/ProjectDetailsDialog";
 import { AddAchievementDialog } from "@/components/project/AddAchievementDialog";
@@ -16,6 +17,7 @@ import { ManageTeamDialog } from "@/components/project/ManageTeamDialog";
 import { SDGGoalBadges } from "@/components/project/SDGGoalSelector";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOfficerByUserId } from "@/hooks/useOfficerProfile";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const STATUS_CONFIG = {
   yet_to_start: { label: 'Yet to Start', className: 'bg-slate-500/10 text-slate-500 border-slate-500/20' },
@@ -33,13 +35,16 @@ export default function OfficerProjects() {
 
   const { data: projects = [], isLoading } = useInstitutionProjects(institutionId);
   const updateProject = useUpdateProject();
+  const deleteProject = useDeleteProject();
 
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isProgressDialogOpen, setIsProgressDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isAchievementDialogOpen, setIsAchievementDialogOpen] = useState(false);
   const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectWithRelations | null>(null);
 
   const filteredProjects = projects.filter(project => 
@@ -67,6 +72,14 @@ export default function OfficerProjects() {
       updates.actual_completion_date = new Date().toISOString().split('T')[0];
     }
     await updateProject.mutateAsync(updates);
+  };
+
+  const handleDeleteProject = async () => {
+    if (selectedProject) {
+      await deleteProject.mutateAsync(selectedProject.id);
+      setIsDeleteDialogOpen(false);
+      setSelectedProject(null);
+    }
   };
 
   const yetToStartCount = projects.filter(p => p.status === 'yet_to_start').length;
@@ -256,6 +269,18 @@ export default function OfficerProjects() {
                         size="sm"
                         onClick={() => {
                           setSelectedProject(project);
+                          setIsEditDialogOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedProject(project);
                           setIsTeamDialogOpen(true);
                         }}
                       >
@@ -309,6 +334,18 @@ export default function OfficerProjects() {
                           {project.is_showcase ? '★ Showcased' : '☆ Showcase'}
                         </Button>
                       )}
+
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedProject(project);
+                          setIsDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -343,6 +380,12 @@ export default function OfficerProjects() {
 
       {selectedProject && (
         <>
+          <EditProjectDialog
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            project={selectedProject}
+          />
+
           <AddProgressDialog
             open={isProgressDialogOpen}
             onOpenChange={setIsProgressDialogOpen}
@@ -377,6 +420,24 @@ export default function OfficerProjects() {
           )}
         </>
       )}
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Project</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{selectedProject?.title}"? This action cannot be undone.
+              All project members, achievements, and progress updates will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteProject} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }

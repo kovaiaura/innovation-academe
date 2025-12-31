@@ -313,7 +313,7 @@ export const gamificationDbService = {
     return data;
   },
 
-  async updateStreak(studentId: string): Promise<void> {
+  async updateStreak(studentId: string, institutionId?: string): Promise<void> {
     const today = new Date().toISOString().split('T')[0];
     
     // Get or create streak record
@@ -333,6 +333,18 @@ export const gamificationDbService = {
           longest_streak: 1,
           last_activity_date: today
         });
+      
+      // Award XP for first streak day
+      if (institutionId) {
+        await this.awardXP({
+          studentId,
+          institutionId,
+          activityType: 'daily_streak',
+          activityId: today,
+          points: 2,
+          description: 'Daily streak bonus (Day 1)'
+        });
+      }
       return;
     }
     
@@ -358,6 +370,18 @@ export const gamificationDbService = {
         last_activity_date: today
       })
       .eq('student_id', studentId);
+    
+    // Award XP for streak
+    if (institutionId) {
+      await this.awardXP({
+        studentId,
+        institutionId,
+        activityType: 'daily_streak',
+        activityId: today,
+        points: 2,
+        description: `Daily streak bonus (Day ${newStreak})`
+      });
+    }
   },
 
   // ============ ACTIVITY LOGS ============
