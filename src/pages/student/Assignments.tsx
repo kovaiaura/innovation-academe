@@ -181,7 +181,7 @@ export default function StudentAssignments() {
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                           </Button>
-                          {!isPast(new Date(assignment.submission_end_date)) && (
+                          {assignment.allow_resubmit !== false && !isPast(new Date(assignment.submission_end_date)) && (
                             <Button 
                               variant="secondary" 
                               size="sm"

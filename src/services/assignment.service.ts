@@ -12,6 +12,7 @@ export interface Assignment {
   institution_id: string | null;
   status: string;
   total_marks: number;
+  allow_resubmit: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -30,6 +31,7 @@ export interface AssignmentFormData {
   institution_id?: string;
   status?: string;
   total_marks?: number;
+  allow_resubmit?: boolean;
   class_ids?: string[];
 }
 
@@ -153,6 +155,7 @@ export const assignmentService = {
         institution_id: formData.institution_id,
         status: formData.status || 'draft',
         total_marks: formData.total_marks || 100,
+        allow_resubmit: formData.allow_resubmit !== false,
         created_by: userData?.user?.id,
         created_by_role: 'system_admin'
       })
@@ -189,6 +192,7 @@ export const assignmentService = {
         question_doc_url: formData.question_doc_url,
         status: formData.status,
         total_marks: formData.total_marks,
+        allow_resubmit: formData.allow_resubmit,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)

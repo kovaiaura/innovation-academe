@@ -4,12 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Pencil, Trash2, FileText, Calendar, Clock } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, FileText, Calendar, Clock, Eye, Users } from 'lucide-react';
 import { assignmentService, AssignmentWithClasses, AssignmentFormData } from '@/services/assignment.service';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AssignmentFormDialog } from '@/components/assignments/AssignmentFormDialog';
+import { AssignmentSubmissionsDialog } from '@/components/assignments/AssignmentSubmissionsDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +28,7 @@ export default function AssignmentManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [submissionsDialogOpen, setSubmissionsDialogOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentWithClasses | null>(null);
 
   useEffect(() => {
@@ -59,6 +61,11 @@ export default function AssignmentManagement() {
   const handleDelete = (assignment: AssignmentWithClasses) => {
     setSelectedAssignment(assignment);
     setDeleteDialogOpen(true);
+  };
+
+  const handleViewSubmissions = (assignment: AssignmentWithClasses) => {
+    setSelectedAssignment(assignment);
+    setSubmissionsDialogOpen(true);
   };
 
   const handleSubmit = async (data: AssignmentFormData) => {
@@ -154,25 +161,36 @@ export default function AssignmentManagement() {
             filteredAssignments.map((assignment) => (
               <Card key={assignment.id}>
                 <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        {assignment.title}
-                        {getStatusBadge(assignment.status)}
-                      </CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {assignment.description || 'No description'}
-                      </p>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          {assignment.title}
+                          {getStatusBadge(assignment.status)}
+                          {!assignment.allow_resubmit && (
+                            <Badge variant="outline" className="text-xs">No Resubmit</Badge>
+                          )}
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {assignment.description || 'No description'}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleViewSubmissions(assignment)}
+                        >
+                          <Users className="h-4 w-4 mr-1" />
+                          Submissions
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(assignment)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleDelete(assignment)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(assignment)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="destructive" size="sm" onClick={() => handleDelete(assignment)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-4 text-sm">
@@ -203,6 +221,12 @@ export default function AssignmentManagement() {
         onOpenChange={setFormDialogOpen}
         assignment={selectedAssignment}
         onSubmit={handleSubmit}
+      />
+
+      <AssignmentSubmissionsDialog
+        open={submissionsDialogOpen}
+        onOpenChange={setSubmissionsDialogOpen}
+        assignment={selectedAssignment}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
