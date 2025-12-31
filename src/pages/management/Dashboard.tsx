@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { authService } from "@/services/auth.service";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { CriticalActionsCard } from "@/components/management/CriticalActionsCard";
+import { LeaderboardSection } from "@/components/management/LeaderboardSection";
 import { mockCriticalActions } from "@/data/mockManagementData";
 import { getInstitutionBySlug } from "@/data/mockInstitutionData";
 import { useLocation } from "react-router-dom";
@@ -450,6 +451,11 @@ const Dashboard = () => {
             })}
           </div>
         </div>
+
+        {/* Student Leaderboards */}
+        {institution && (
+          <LeaderboardSection institutionId={institution.id} />
+        )}
 
         {/* Department Performance */}
         <Card>

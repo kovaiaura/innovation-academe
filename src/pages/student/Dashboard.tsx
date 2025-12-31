@@ -80,6 +80,9 @@ export default function StudentDashboard() {
       const institutionId = profile?.institution_id;
       
       // Parallel data fetching
+      // Use class-scoped leaderboard if student has a class
+      const classId = profile?.class_id;
+      
       const [
         totalXP,
         xpBreakdown,
@@ -88,17 +91,34 @@ export default function StudentDashboard() {
         allBadges,
         leaderboardData,
         projectData,
-        courseData
+        courseData,
+        xpTransactions
       ] = await Promise.all([
         gamificationDbService.getStudentTotalXP(studentId),
         gamificationDbService.getStudentXPBreakdown(studentId),
         gamificationDbService.getStudentBadges(studentId),
         gamificationDbService.getStudentStreak(studentId),
         gamificationDbService.getBadges(),
-        gamificationDbService.getLeaderboard(institutionId, 20),
+        classId 
+          ? gamificationDbService.getClassLeaderboard(institutionId!, classId, 20)
+          : gamificationDbService.getInstitutionLeaderboard(institutionId!, 20),
         loadProjectData(studentId),
-        loadCourseData(studentId)
+        loadCourseData(studentId),
+        supabase.from('student_xp_transactions').select('activity_type, activity_id').eq('student_id', studentId)
       ]);
+      
+      // Build activity counts for badge progress
+      const activityCounts: Record<string, number> = {};
+      const uniqueActivities: Record<string, Set<string>> = {};
+      xpTransactions.data?.forEach(t => {
+        activityCounts[t.activity_type] = (activityCounts[t.activity_type] || 0) + 1;
+        if (!uniqueActivities[t.activity_type]) {
+          uniqueActivities[t.activity_type] = new Set();
+        }
+        if (t.activity_id) {
+          uniqueActivities[t.activity_type].add(t.activity_id);
+        }
+      });
       
       // Calculate weekly points (last 7 days)
       const weeklyPoints = await getWeeklyPoints(studentId);
@@ -109,19 +129,47 @@ export default function StudentDashboard() {
       // Get earned badge IDs
       const earnedBadgeIds = new Set(studentBadges.map(b => b.badge?.id));
       
-      // Calculate locked badges with progress
+      // Calculate locked badges with progress based on all criteria types
       const lockedBadges = allBadges
         .filter(b => b.is_active && !earnedBadgeIds.has(b.id))
         .slice(0, 5)
         .map(b => {
           const criteria = b.unlock_criteria as any;
-          const threshold = criteria?.threshold || 100;
+          const threshold = criteria?.threshold || 1;
           let progress = 0;
+          let current = 0;
           
-          if (criteria?.type === 'points') {
-            progress = Math.min(100, Math.round((totalXP / threshold) * 100));
-          } else if (criteria?.type === 'streak') {
-            progress = Math.min(100, Math.round(((streak?.current_streak || 0) / threshold) * 100));
+          switch (criteria?.type) {
+            case 'points':
+              current = totalXP;
+              progress = Math.min(100, Math.round((current / threshold) * 100));
+              break;
+            case 'streak':
+              current = streak?.current_streak || 0;
+              progress = Math.min(100, Math.round((current / threshold) * 100));
+              break;
+            case 'assessments':
+              current = activityCounts['assessment_completion'] || 0;
+              progress = Math.min(100, Math.round((current / threshold) * 100));
+              break;
+            case 'projects':
+              current = uniqueActivities['project_membership']?.size || 0;
+              progress = Math.min(100, Math.round((current / threshold) * 100));
+              break;
+            case 'attendance':
+              current = activityCounts['session_attendance'] || 0;
+              progress = Math.min(100, Math.round((current / threshold) * 100));
+              break;
+            case 'custom':
+              if (criteria.description?.includes('100%')) {
+                current = activityCounts['assessment_perfect_score'] || 0;
+              } else if (criteria.description?.includes('award')) {
+                current = activityCounts['project_award'] || 0;
+              }
+              progress = Math.min(100, Math.round((current / threshold) * 100));
+              break;
+            default:
+              progress = 0;
           }
           
           return {

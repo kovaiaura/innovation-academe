@@ -1794,7 +1794,7 @@ export type Database = {
           {
             foreignKeyName: "leaderboard_configs_institution_id_fkey"
             columns: ["institution_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "institutions"
             referencedColumns: ["id"]
           },
