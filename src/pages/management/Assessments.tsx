@@ -5,10 +5,12 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
-import { FileText, Users, CheckCircle, Clock, Search, TrendingUp, Award } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { FileText, Users, CheckCircle, Clock, Search, TrendingUp, Award, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
+import { AssessmentAttemptsDialog } from '@/components/assessments/AssessmentAttemptsDialog';
 
 interface AssessmentWithStats {
   id: string;
@@ -31,6 +33,9 @@ export default function ManagementAssessments() {
   const [loading, setLoading] = useState(true);
   const [assessments, setAssessments] = useState<AssessmentWithStats[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedAssessment, setSelectedAssessment] = useState<AssessmentWithStats | null>(null);
+  const [attemptsDialogOpen, setAttemptsDialogOpen] = useState(false);
+  const institutionId = user?.institution_id || user?.tenant_id || '';
 
   useEffect(() => {
     const fetchAssessments = async () => {
@@ -242,6 +247,7 @@ export default function ManagementAssessments() {
                     <TableHead className="text-center">Pass Rate</TableHead>
                     <TableHead className="text-center">Avg Score</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -297,6 +303,19 @@ export default function ManagementAssessments() {
                         <TableCell>
                           {getStatusBadge(assessment.status)}
                         </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedAssessment(assessment);
+                              setAttemptsDialogOpen(true);
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -305,6 +324,14 @@ export default function ManagementAssessments() {
             )}
           </CardContent>
         </Card>
+
+        {/* Attempts Dialog */}
+        <AssessmentAttemptsDialog
+          open={attemptsDialogOpen}
+          onOpenChange={setAttemptsDialogOpen}
+          assessment={selectedAssessment}
+          institutionId={institutionId}
+        />
       </div>
     </Layout>
   );

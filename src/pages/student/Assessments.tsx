@@ -144,12 +144,23 @@ export default function StudentAssessments() {
               <div className="grid gap-4">
                 {completedAssessments.map(({ attempt, assessment }) => 
                   assessment && (
-                    <AssessmentCard 
-                      key={attempt.id} 
-                      assessment={assessment}
-                      attempt={attempt}
-                      mode="review"
-                    />
+                    <div key={attempt.id} className="relative">
+                      <AssessmentCard 
+                        assessment={assessment}
+                        attempt={attempt}
+                        mode="review"
+                      />
+                      {/* Performance Summary Badge */}
+                      <div className="absolute top-4 right-4 flex items-center gap-2">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          attempt.passed 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                        }`}>
+                          {attempt.passed ? 'Passed' : 'Failed'} • {attempt.percentage?.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
                   )
                 )}
               </div>
