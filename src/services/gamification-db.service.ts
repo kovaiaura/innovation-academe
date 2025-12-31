@@ -390,10 +390,10 @@ export const gamificationDbService = {
       last_activity: new Date().toISOString(),
       points_breakdown: {
         sessions: s.points_breakdown['session_attendance'] || 0,
-        projects: s.points_breakdown['project_submission'] || 0,
+        projects: (s.points_breakdown['project_membership'] || 0) + (s.points_breakdown['project_award'] || 0),
         attendance: s.points_breakdown['session_attendance'] || 0,
-        assessments: s.points_breakdown['assessment_completion'] || 0,
-        assignments: 0
+        assessments: (s.points_breakdown['assessment_completion'] || 0) + (s.points_breakdown['assessment_pass'] || 0) + (s.points_breakdown['assessment_perfect_score'] || 0),
+        levels: s.points_breakdown['level_completion'] || 0
       }
     }));
   },
@@ -615,5 +615,37 @@ export const gamificationDbService = {
       });
     
     if (error) throw error;
+  },
+
+  // ============ XP AWARDING HELPERS ============
+  async awardAssessmentXP(studentId: string, institutionId: string, assessmentId: string, passed: boolean, percentage: number): Promise<void> {
+    // Award 10 XP for completing
+    await this.awardXP({ studentId, institutionId, activityType: 'assessment_completion', activityId: assessmentId, points: 10, description: 'Assessment completed' });
+    
+    // Award 25 XP if passed
+    if (passed) {
+      await this.awardXP({ studentId, institutionId, activityType: 'assessment_pass', activityId: assessmentId, points: 25, description: 'Assessment passed' });
+    }
+    
+    // Award 25 XP for 100%
+    if (percentage === 100) {
+      await this.awardXP({ studentId, institutionId, activityType: 'assessment_perfect_score', activityId: assessmentId, points: 25, description: 'Perfect score!' });
+    }
+  },
+
+  async awardSessionAttendanceXP(studentId: string, institutionId: string, sessionId: string): Promise<void> {
+    await this.awardXP({ studentId, institutionId, activityType: 'session_attendance', activityId: sessionId, points: 5, description: 'Session attended' });
+  },
+
+  async awardLevelCompletionXP(studentId: string, institutionId: string, levelId: string, levelName: string): Promise<void> {
+    await this.awardXP({ studentId, institutionId, activityType: 'level_completion', activityId: levelId, points: 100, description: `Level completed: ${levelName}` });
+  },
+
+  async awardProjectMembershipXP(studentId: string, institutionId: string, projectId: string): Promise<void> {
+    await this.awardXP({ studentId, institutionId, activityType: 'project_membership', activityId: projectId, points: 100, description: 'Joined project team' });
+  },
+
+  async awardProjectAwardXP(studentId: string, institutionId: string, projectId: string, awardName: string): Promise<void> {
+    await this.awardXP({ studentId, institutionId, activityType: 'project_award', activityId: projectId, points: 150, description: `Project award: ${awardName}` });
   }
 };

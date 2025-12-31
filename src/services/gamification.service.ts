@@ -1,6 +1,6 @@
 import api from './api';
 import { ApiResponse } from '@/types';
-import { BadgeConfig, XPRule, RewardConfig, LeaderboardConfig, StudentPerformance, GamificationStats } from '@/types/gamification';
+import { BadgeConfig, XPRule, LeaderboardConfig, StudentPerformance, GamificationStats } from '@/types/gamification';
 
 export const gamificationService = {
   // Stats
@@ -38,27 +38,6 @@ export const gamificationService = {
 
   async updateXPRule(id: string, data: Partial<XPRule>): Promise<ApiResponse<XPRule>> {
     const response = await api.put(`/gamification/xp-rules/${id}`, data);
-    return response.data;
-  },
-
-  // Rewards
-  async getRewards(): Promise<ApiResponse<RewardConfig[]>> {
-    const response = await api.get('/gamification/rewards');
-    return response.data;
-  },
-
-  async createReward(data: Partial<RewardConfig>): Promise<ApiResponse<RewardConfig>> {
-    const response = await api.post('/gamification/rewards', data);
-    return response.data;
-  },
-
-  async updateReward(id: string, data: Partial<RewardConfig>): Promise<ApiResponse<RewardConfig>> {
-    const response = await api.put(`/gamification/rewards/${id}`, data);
-    return response.data;
-  },
-
-  async deleteReward(id: string): Promise<ApiResponse<void>> {
-    const response = await api.delete(`/gamification/rewards/${id}`);
     return response.data;
   },
 
