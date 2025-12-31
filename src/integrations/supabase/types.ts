@@ -3808,6 +3808,97 @@ export type Database = {
           },
         ]
       }
+      task_activity_log: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          description: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+          task_id: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          description: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          task_id: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          task_id?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_activity_log_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_attachments: {
+        Row: {
+          created_at: string | null
+          file_name: string
+          file_size: number
+          file_type: string
+          id: string
+          public_url: string
+          storage_path: string
+          task_id: string
+          uploaded_by_id: string
+          uploaded_by_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          file_name: string
+          file_size: number
+          file_type: string
+          id?: string
+          public_url: string
+          storage_path: string
+          task_id: string
+          uploaded_by_id: string
+          uploaded_by_name: string
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          public_url?: string
+          storage_path?: string
+          task_id?: string
+          uploaded_by_id?: string
+          uploaded_by_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_comments: {
         Row: {
           comment: string
@@ -3861,7 +3952,9 @@ export type Database = {
           created_by_position: string | null
           description: string
           due_date: string
+          due_soon_notified: boolean | null
           id: string
+          overdue_notified: boolean | null
           priority: string
           progress_percentage: number | null
           rejection_reason: string | null
@@ -3886,7 +3979,9 @@ export type Database = {
           created_by_position?: string | null
           description: string
           due_date: string
+          due_soon_notified?: boolean | null
           id?: string
+          overdue_notified?: boolean | null
           priority?: string
           progress_percentage?: number | null
           rejection_reason?: string | null
@@ -3911,7 +4006,9 @@ export type Database = {
           created_by_position?: string | null
           description?: string
           due_date?: string
+          due_soon_notified?: boolean | null
           id?: string
+          overdue_notified?: boolean | null
           priority?: string
           progress_percentage?: number | null
           rejection_reason?: string | null

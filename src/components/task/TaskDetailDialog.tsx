@@ -5,13 +5,17 @@ import { Task, TaskStatus } from '@/types/task';
 import { TaskStatusBadge } from './TaskStatusBadge';
 import { TaskPriorityBadge } from './TaskPriorityBadge';
 import { TaskCommentSection } from './TaskCommentSection';
+import { TaskActivityTimeline } from './TaskActivityTimeline';
+import { TaskAttachmentUploader } from './TaskAttachmentUploader';
+import { TaskAttachmentList } from './TaskAttachmentList';
 import { ApproveRejectDialog } from './ApproveRejectDialog';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, User, Building, Trash2, CheckCircle2, XCircle, Send } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Calendar, User, Building, Trash2, CheckCircle2, XCircle, Send, MessageSquare, Clock, Paperclip } from 'lucide-react';
 import { format } from 'date-fns';
 import { isTaskOverdue, canEditTask, canUpdateStatus, canSubmitForApproval, canApproveTask } from '@/utils/taskHelpers';
 import { toast } from 'sonner';
@@ -31,6 +35,7 @@ interface TaskDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   task: Task;
   currentUserId: string;
+  currentUserName?: string;
   onUpdateStatus: (taskId: string, status: TaskStatus, progress?: number) => void;
   onAddComment: (taskId: string, comment: string) => void;
   onDeleteTask?: (taskId: string) => void;
@@ -52,6 +57,7 @@ export function TaskDetailDialog({
   onOpenChange,
   task,
   currentUserId,
+  currentUserName = 'User',
   onUpdateStatus,
   onAddComment,
   onDeleteTask,
@@ -306,15 +312,49 @@ export function TaskDetailDialog({
 
             <Separator />
 
-            {/* Comments */}
+            {/* Attachments Section */}
             <div className="space-y-3">
-              <h3 className="font-semibold text-sm">Comments</h3>
-              <TaskCommentSection
+              <h3 className="font-semibold text-sm flex items-center gap-2">
+                <Paperclip className="h-4 w-4" />
+                Attachments
+              </h3>
+              <TaskAttachmentUploader
                 taskId={task.id}
-                comments={task.comments || []}
-                onAddComment={async (comment) => onAddComment(task.id, comment)}
+                userId={currentUserId}
+                userName={currentUserName}
+              />
+              <TaskAttachmentList
+                taskId={task.id}
+                userId={currentUserId}
+                userName={currentUserName}
               />
             </div>
+
+            <Separator />
+
+            {/* Tabs for Comments and Activity */}
+            <Tabs defaultValue="comments" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="comments" className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Comments
+                </TabsTrigger>
+                <TabsTrigger value="activity" className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Activity
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="comments" className="mt-4">
+                <TaskCommentSection
+                  taskId={task.id}
+                  comments={task.comments || []}
+                  onAddComment={async (comment) => onAddComment(task.id, comment)}
+                />
+              </TabsContent>
+              <TabsContent value="activity" className="mt-4">
+                <TaskActivityTimeline taskId={task.id} />
+              </TabsContent>
+            </Tabs>
           </div>
         </DialogContent>
       </Dialog>

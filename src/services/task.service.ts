@@ -8,6 +8,16 @@ import {
   sendTaskApprovedNotification,
   sendTaskRejectedNotification,
 } from './taskNotification.service';
+import {
+  logTaskCreated,
+  logStatusChanged,
+  logPriorityChanged,
+  logProgressUpdated,
+  logCommentAdded,
+  logTaskSubmitted,
+  logTaskApproved,
+  logTaskRejected,
+} from './taskActivity.service';
 
 export async function fetchAllTasks(): Promise<Task[]> {
   const { data, error } = await supabase
@@ -82,6 +92,9 @@ export async function createTask(taskData: Omit<Task, 'id' | 'created_at' | 'com
   
   const newTask = { ...data, comments: [] } as Task;
   
+  // Log activity
+  await logTaskCreated(newTask.id, taskData.created_by_id, taskData.created_by_name, newTask.title);
+  
   // Send notification to assignee
   await sendTaskAssignedNotification(newTask);
   
@@ -90,8 +103,11 @@ export async function createTask(taskData: Omit<Task, 'id' | 'created_at' | 'com
 
 export interface UpdateTaskOptions {
   changedByName?: string;
+  changedById?: string;
   approverName?: string;
+  approverId?: string;
   submitterName?: string;
+  submitterId?: string;
   rejectionReason?: string;
 }
 
@@ -100,7 +116,7 @@ export async function updateTaskInDb(
   updates: Partial<Task>,
   options?: UpdateTaskOptions
 ): Promise<Task> {
-  // Get current task to check for status changes
+  // Get current task to check for changes
   const { data: currentTask } = await supabase
     .from('tasks')
     .select('*')
@@ -108,6 +124,8 @@ export async function updateTaskInDb(
     .single();
 
   const oldStatus = currentTask?.status;
+  const oldPriority = currentTask?.priority;
+  const oldProgress = currentTask?.progress_percentage;
   
   const updateData = { ...updates };
   delete (updateData as any).comments;
@@ -129,18 +147,37 @@ export async function updateTaskInDb(
   
   const updatedTask = { ...data, comments: comments || [] } as Task;
 
-  // Send notifications based on what changed
+  // Log activity and send notifications based on what changed
   if (oldStatus && updates.status && oldStatus !== updates.status) {
+    const userId = options?.changedById || options?.submitterId || options?.approverId || '';
+    const userName = options?.changedByName || options?.submitterName || options?.approverName || 'System';
+    
+    // Log status change
+    await logStatusChanged(taskId, userId, userName, oldStatus, updates.status);
+    
     // Status changed - send appropriate notification
-    if (updates.status === 'submitted_for_approval' && options?.submitterName) {
+    if (updates.status === 'submitted_for_approval' && options?.submitterName && options?.submitterId) {
+      await logTaskSubmitted(taskId, options.submitterId, options.submitterName);
       await sendTaskSubmittedNotification(updatedTask, options.submitterName);
-    } else if (updates.status === 'completed' && options?.approverName) {
+    } else if (updates.status === 'completed' && options?.approverName && options?.approverId) {
+      await logTaskApproved(taskId, options.approverId, options.approverName);
       await sendTaskApprovedNotification(updatedTask, options.approverName);
-    } else if (updates.status === 'rejected' && options?.approverName && options?.rejectionReason) {
+    } else if (updates.status === 'rejected' && options?.approverName && options?.approverId && options?.rejectionReason) {
+      await logTaskRejected(taskId, options.approverId, options.approverName, options.rejectionReason);
       await sendTaskRejectedNotification(updatedTask, options.approverName, options.rejectionReason);
-    } else if (options?.changedByName) {
+    } else if (options?.changedByName && options?.changedById) {
       await sendTaskStatusChangeNotification(updatedTask, oldStatus, updates.status, options.changedByName);
     }
+  }
+
+  // Log priority change
+  if (oldPriority && updates.priority && oldPriority !== updates.priority && options?.changedById && options?.changedByName) {
+    await logPriorityChanged(taskId, options.changedById, options.changedByName, oldPriority, updates.priority);
+  }
+
+  // Log progress change
+  if (oldProgress !== undefined && updates.progress_percentage !== undefined && oldProgress !== updates.progress_percentage && options?.changedById && options?.changedByName) {
+    await logProgressUpdated(taskId, options.changedById, options.changedByName, oldProgress, updates.progress_percentage);
   }
   
   return updatedTask;
@@ -171,6 +208,9 @@ export async function addTaskComment(
     .single();
 
   if (error) throw error;
+  
+  // Log activity
+  await logCommentAdded(taskId, userId, userName);
   
   // Send notification to the other party
   if (task) {

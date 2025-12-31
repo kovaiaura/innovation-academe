@@ -2,6 +2,18 @@ export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type TaskStatus = 'pending' | 'in_progress' | 'submitted_for_approval' | 'completed' | 'rejected' | 'cancelled';
 export type TaskCategory = 'administrative' | 'operational' | 'strategic' | 'technical' | 'other';
 
+export type TaskActivityType = 
+  | 'created'
+  | 'status_changed'
+  | 'priority_changed'
+  | 'progress_updated'
+  | 'comment_added'
+  | 'attachment_added'
+  | 'attachment_removed'
+  | 'submitted'
+  | 'approved'
+  | 'rejected';
+
 export interface Task {
   id: string;
   title: string;
@@ -36,6 +48,10 @@ export interface Task {
   approved_by_name?: string;
   approved_at?: string;
   rejection_reason?: string;
+
+  // Reminder tracking
+  due_soon_notified?: boolean;
+  overdue_notified?: boolean;
 }
 
 export interface TaskComment {
@@ -44,6 +60,31 @@ export interface TaskComment {
   user_id: string;
   user_name: string;
   comment: string;
+  created_at: string;
+}
+
+export interface TaskActivity {
+  id: string;
+  task_id: string;
+  user_id: string;
+  user_name: string;
+  action_type: TaskActivityType;
+  old_value?: string;
+  new_value?: string;
+  description: string;
+  created_at: string;
+}
+
+export interface TaskAttachment {
+  id: string;
+  task_id: string;
+  uploaded_by_id: string;
+  uploaded_by_name: string;
+  file_name: string;
+  file_size: number;
+  file_type: string;
+  storage_path: string;
+  public_url: string;
   created_at: string;
 }
 
