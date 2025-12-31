@@ -151,6 +151,7 @@ const menuItems: MenuItem[] = [
   { label: 'Courses & Sessions', icon: <BookOpen className="h-5 w-5" />, path: '/courses-sessions', roles: ['management'] },
   { label: 'Assessments', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['management'] },
   { label: 'Assignments', icon: <FileText className="h-5 w-5" />, path: '/assignments', roles: ['management'] },
+  { label: 'Analytics', icon: <BarChart className="h-5 w-5" />, path: '/analytics', roles: ['management'] },
   { label: 'Inventory & Purchase', icon: <Package className="h-5 w-5" />, path: '/inventory-purchase', roles: ['management'] },
   { label: 'Projects & Awards', icon: <Target className="h-5 w-5" />, path: '/projects-certificates', roles: ['management'] },
   { label: 'SDG Dashboard', icon: <Target className="h-5 w-5" />, path: '/sdg-dashboard', roles: ['management'] },
