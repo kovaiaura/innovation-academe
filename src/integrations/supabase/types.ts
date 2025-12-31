@@ -2968,11 +2968,15 @@ export type Database = {
       projects: {
         Row: {
           actual_completion_date: string | null
+          award_date: string | null
+          award_description: string | null
+          award_name: string | null
           category: string
           created_at: string | null
           created_by_officer_id: string
           created_by_officer_name: string
           description: string | null
+          has_award: boolean | null
           id: string
           institution_id: string
           is_published: boolean | null
@@ -2989,11 +2993,15 @@ export type Database = {
         }
         Insert: {
           actual_completion_date?: string | null
+          award_date?: string | null
+          award_description?: string | null
+          award_name?: string | null
           category?: string
           created_at?: string | null
           created_by_officer_id: string
           created_by_officer_name: string
           description?: string | null
+          has_award?: boolean | null
           id?: string
           institution_id: string
           is_published?: boolean | null
@@ -3010,11 +3018,15 @@ export type Database = {
         }
         Update: {
           actual_completion_date?: string | null
+          award_date?: string | null
+          award_description?: string | null
+          award_name?: string | null
           category?: string
           created_at?: string | null
           created_by_officer_id?: string
           created_by_officer_name?: string
           description?: string | null
+          has_award?: boolean | null
           id?: string
           institution_id?: string
           is_published?: boolean | null

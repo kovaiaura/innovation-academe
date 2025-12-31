@@ -47,7 +47,7 @@ export const StudentPerformanceModal = ({
     { label: 'Projects', value: student.points_breakdown.projects, icon: Trophy },
     { label: 'Attendance', value: student.points_breakdown.attendance, icon: Flame },
     { label: 'Assessments', value: student.points_breakdown.assessments, icon: Award },
-    { label: 'Assignments', value: student.points_breakdown.assignments, icon: Coins },
+    { label: 'Levels', value: student.points_breakdown.levels, icon: Coins },
   ];
 
   return (

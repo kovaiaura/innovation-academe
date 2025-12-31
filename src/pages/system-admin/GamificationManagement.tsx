@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { 
   Trophy, 
   Award, 
-  Gift, 
   TrendingUp, 
   Plus, 
   Pencil, 
@@ -213,7 +212,7 @@ export default function GamificationManagement() {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">
               <BarChart3 className="h-4 w-4 mr-2" />
               Overview
@@ -221,10 +220,6 @@ export default function GamificationManagement() {
             <TabsTrigger value="badges">
               <Award className="h-4 w-4 mr-2" />
               Badges & XP
-            </TabsTrigger>
-            <TabsTrigger value="rewards">
-              <Gift className="h-4 w-4 mr-2" />
-              Rewards
             </TabsTrigger>
             <TabsTrigger value="certificates">
               <FileText className="h-4 w-4 mr-2" />
@@ -372,18 +367,7 @@ export default function GamificationManagement() {
             </Card>
           </TabsContent>
 
-          {/* Tab 3: Rewards - Coming Soon */}
-          <TabsContent value="rewards" className="space-y-6">
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Gift className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium">Rewards System Coming Soon</h3>
-                <p className="text-muted-foreground">Configure redeemable rewards for students</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Tab 4: Certificates */}
+          {/* Tab 3: Certificates */}
           <TabsContent value="certificates" className="space-y-6">
             <CertificateTemplateManager />
           </TabsContent>

@@ -17,24 +17,12 @@ export interface BadgeConfig {
 
 export interface XPRule {
   id: string;
-  activity: 'session_attendance' | 'assessment_completion' | 'project_submission' | 
-            'assignment_submission' | 'daily_login' | 'perfect_score' | 'early_submission';
+  activity: 'assessment_completion' | 'assessment_pass' | 'assessment_perfect_score' | 
+            'level_completion' | 'project_membership' | 'project_award' | 'session_attendance';
   points: number;
   multiplier?: number;
   description: string;
   is_active: boolean;
-}
-
-export interface RewardConfig {
-  id: string;
-  name: string;
-  description: string;
-  type: 'certificate' | 'badge' | 'physical_reward' | 'recognition';
-  points_required: number;
-  quantity_available?: number;
-  quantity_claimed: number;
-  is_active: boolean;
-  image?: string;
 }
 
 export interface LeaderboardConfig {
@@ -65,7 +53,7 @@ export interface StudentPerformance {
     projects: number;
     attendance: number;
     assessments: number;
-    assignments: number;
+    levels: number;
   };
 }
 
@@ -96,14 +84,22 @@ export interface CertificateTemplate {
   id: string;
   name: string;
   description: string;
-  category: 'course' | 'assignment' | 'assessment' | 'event';
+  category: 'course' | 'level' | 'assessment' | 'event';
   template_image_url: string;
+  default_width: number;
+  default_height: number;
   name_position: {
     x: number;
     y: number;
     fontSize: number;
     color: string;
     fontFamily: string;
+  };
+  date_position: {
+    x: number;
+    y: number;
+    fontSize: number;
+    color: string;
   };
   created_by: string;
   created_at: string;
@@ -115,7 +111,7 @@ export interface StudentCertificate {
   student_id: string;
   student_name: string;
   template_id: string;
-  activity_type: 'course' | 'assignment' | 'assessment' | 'event';
+  activity_type: 'course' | 'level' | 'assessment' | 'event';
   activity_id: string;
   activity_name: string;
   institution_name: string;

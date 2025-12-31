@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { CertificateCard } from '@/components/student/CertificateCard';
 import { CertificatePreviewDialog } from '@/components/student/CertificatePreviewDialog';
 import { mockStudentCertificates } from '@/data/mockStudentCertificates';
@@ -32,7 +31,7 @@ export default function Certificates() {
   const categoryCounts = {
     all: certificates.length,
     course: certificates.filter(c => c.activity_type === 'course').length,
-    assignment: certificates.filter(c => c.activity_type === 'assignment').length,
+    level: certificates.filter(c => c.activity_type === 'level').length,
     assessment: certificates.filter(c => c.activity_type === 'assessment').length,
     event: certificates.filter(c => c.activity_type === 'event').length
   };
@@ -62,11 +61,11 @@ export default function Certificates() {
             Courses ({categoryCounts.course})
           </Button>
           <Button
-            variant={categoryFilter === 'assignment' ? 'default' : 'outline'}
+            variant={categoryFilter === 'level' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setCategoryFilter('assignment')}
+            onClick={() => setCategoryFilter('level')}
           >
-            Assignments ({categoryCounts.assignment})
+            Levels ({categoryCounts.level})
           </Button>
           <Button
             variant={categoryFilter === 'assessment' ? 'default' : 'outline'}
@@ -101,7 +100,7 @@ export default function Certificates() {
               <Award className="h-16 w-16 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">No Certificates Yet</h3>
               <p className="text-muted-foreground">
-                Complete courses, assignments, assessments, and events to earn certificates
+                Complete courses, levels, assessments, and events to earn certificates
               </p>
             </CardContent>
           </Card>

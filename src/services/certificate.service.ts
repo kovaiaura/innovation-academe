@@ -9,8 +9,8 @@ export const certificateService = {
   ): Promise<string> => {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
-      canvas.width = 1200;
-      canvas.height = 900;
+      canvas.width = template.default_width || 1200;
+      canvas.height = template.default_height || 900;
       const ctx = canvas.getContext('2d');
       
       if (!ctx) {
@@ -22,7 +22,7 @@ export const certificateService = {
       img.crossOrigin = 'anonymous';
       img.onload = () => {
         // Draw template image
-        ctx.drawImage(img, 0, 0, 1200, 900);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         
         // Draw student name
         ctx.font = `${template.name_position.fontSize}px ${template.name_position.fontFamily}`;
@@ -30,6 +30,18 @@ export const certificateService = {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(studentName, template.name_position.x, template.name_position.y);
+        
+        // Draw date if date_position exists
+        if (template.date_position) {
+          const dateStr = new Date().toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          });
+          ctx.font = `${template.date_position.fontSize}px sans-serif`;
+          ctx.fillStyle = template.date_position.color;
+          ctx.fillText(dateStr, template.date_position.x, template.date_position.y);
+        }
         
         // Convert to data URL
         resolve(canvas.toDataURL('image/png'));
@@ -73,7 +85,7 @@ export const certificateService = {
   // Generate and save certificate
   awardCertificate: async (
     student: Student,
-    activityType: 'course' | 'assignment' | 'assessment' | 'event',
+    activityType: 'course' | 'level' | 'assessment' | 'event',
     activityId: string,
     activityName: string,
     templateId: string,

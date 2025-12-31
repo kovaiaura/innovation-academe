@@ -18,13 +18,13 @@ export const XPRuleEditor = ({ rules, onUpdate }: XPRuleEditorProps) => {
   const [editData, setEditData] = useState<Partial<XPRule>>({});
 
   const activityLabels: Record<string, string> = {
-    session_attendance: 'Session Attendance',
     assessment_completion: 'Assessment Completion',
-    project_submission: 'Project Submission',
-    assignment_submission: 'Assignment Submission',
-    daily_login: 'Daily Login',
-    perfect_score: 'Perfect Score',
-    early_submission: 'Early Submission'
+    assessment_pass: 'Assessment Pass',
+    assessment_perfect_score: 'Scoring 100% in Assessment',
+    level_completion: 'Level Completion (Certificate)',
+    project_membership: 'Project Team Membership',
+    project_award: 'Project Award/Achievement',
+    session_attendance: 'Session Attendance'
   };
 
   const handleEdit = (rule: XPRule) => {
@@ -53,7 +53,6 @@ export const XPRuleEditor = ({ rules, onUpdate }: XPRuleEditorProps) => {
           <TableRow>
             <TableHead>Activity</TableHead>
             <TableHead>Points</TableHead>
-            <TableHead>Multiplier</TableHead>
             <TableHead>Description</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
@@ -66,7 +65,7 @@ export const XPRuleEditor = ({ rules, onUpdate }: XPRuleEditorProps) => {
             return (
               <TableRow key={rule.id}>
                 <TableCell className="font-medium">
-                  {activityLabels[rule.activity]}
+                  {activityLabels[rule.activity] || rule.activity}
                 </TableCell>
                 <TableCell>
                   {isEditing ? (
@@ -78,20 +77,6 @@ export const XPRuleEditor = ({ rules, onUpdate }: XPRuleEditorProps) => {
                     />
                   ) : (
                     <span className="text-primary font-semibold">{rule.points} XP</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {isEditing ? (
-                    <Input
-                      type="number"
-                      step="0.1"
-                      value={editData.multiplier || ''}
-                      onChange={(e) => setEditData({ ...editData, multiplier: parseFloat(e.target.value) })}
-                      className="w-20"
-                      placeholder="1.0"
-                    />
-                  ) : (
-                    rule.multiplier ? `${rule.multiplier}x` : '-'
                   )}
                 </TableCell>
                 <TableCell>
