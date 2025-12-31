@@ -123,7 +123,10 @@ import TeacherSettings from "./pages/teacher/Settings";
 import NotificationsPage from "./pages/common/NotificationsPage";
 import { TimetableRedirect } from "./components/TimetableRedirect";
 import PayrollDashboard from "./pages/system-admin/PayrollDashboard";
-
+import SystemAdminWebinarManagement from "./pages/system-admin/WebinarManagement";
+import StudentWebinars from "./pages/student/Webinars";
+import OfficerWebinars from "./pages/officer/Webinars";
+import ManagementWebinars from "./pages/management/Webinars";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -490,6 +493,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/system-admin/webinars"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <SystemAdminWebinarManagement />
+                </ProtectedRoute>
+              }
+            />
             {/* Teacher Routes (path-based multi-tenancy) */}
             <Route
               path="/tenant/:tenantId/teacher/dashboard"
@@ -696,6 +707,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/tenant/:tenantId/officer/webinars"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <OfficerWebinars />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Management Routes (path-based multi-tenancy) - Merged with institution admin */}
             <Route
@@ -839,6 +858,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/tenant/:tenantId/management/webinars"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <ManagementWebinars />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Student Routes (path-based multi-tenancy) */}
             <Route
@@ -976,6 +1003,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['student']}>
                   <FeedbackSurvey />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/webinars"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentWebinars />
                 </ProtectedRoute>
               }
             />
