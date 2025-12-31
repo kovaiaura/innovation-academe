@@ -359,6 +359,7 @@ export type Database = {
       certificate_templates: {
         Row: {
           category: string
+          course_name_position: Json | null
           created_at: string | null
           created_by: string | null
           date_position: Json | null
@@ -367,12 +368,14 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean | null
+          level_title_position: Json | null
           name: string
           name_position: Json | null
           template_image_url: string | null
         }
         Insert: {
           category?: string
+          course_name_position?: Json | null
           created_at?: string | null
           created_by?: string | null
           date_position?: Json | null
@@ -381,12 +384,14 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          level_title_position?: Json | null
           name: string
           name_position?: Json | null
           template_image_url?: string | null
         }
         Update: {
           category?: string
+          course_name_position?: Json | null
           created_at?: string | null
           created_by?: string | null
           date_position?: Json | null
@@ -395,6 +400,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          level_title_position?: Json | null
           name?: string
           name_position?: Json | null
           template_image_url?: string | null

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { gamificationDbService } from '@/services/gamification-db.service';
 
 export interface AddAchievementInput {
   project_id: string;
@@ -21,6 +22,48 @@ export interface UpdateAchievementInput {
   event_date?: string;
   description?: string;
   certificate_url?: string;
+}
+
+// Helper function to award XP to project members when an award is added
+async function awardProjectAwardXPToMembers(projectId: string, achievementTitle: string) {
+  try {
+    // Get project's institution_id
+    const { data: project } = await supabase
+      .from('projects')
+      .select('institution_id')
+      .eq('id', projectId)
+      .single();
+    
+    if (!project?.institution_id) {
+      console.error('Could not find project institution_id');
+      return;
+    }
+    
+    // Get all project members
+    const { data: members } = await supabase
+      .from('project_members')
+      .select('student_id')
+      .eq('project_id', projectId);
+    
+    if (!members || members.length === 0) {
+      console.log('No project members found');
+      return;
+    }
+    
+    // Award XP to each member
+    for (const member of members) {
+      await gamificationDbService.awardProjectAwardXP(
+        member.student_id,
+        project.institution_id,
+        projectId,
+        achievementTitle
+      );
+    }
+    
+    console.log(`Awarded project award XP to ${members.length} members`);
+  } catch (error) {
+    console.error('Error awarding project award XP:', error);
+  }
 }
 
 // Add an achievement to a project
@@ -45,6 +88,12 @@ export function useAddProjectAchievement() {
         .single();
       
       if (error) throw error;
+      
+      // Award XP to team members if this is an 'award' type achievement
+      if (input.type === 'award') {
+        await awardProjectAwardXPToMembers(input.project_id, input.title);
+      }
+      
       return data;
     },
     onSuccess: () => {
