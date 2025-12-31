@@ -103,11 +103,13 @@ export default function StudentDashboard() {
         classId 
           ? gamificationDbService.getClassLeaderboard(institutionId!, classId, 20)
           : gamificationDbService.getInstitutionLeaderboard(institutionId!, 20),
-        loadProjectData(user.id), // Pass auth user ID, function will get student record
+        loadProjectData(user.id),
         loadCourseData(studentId),
-        supabase.from('student_xp_transactions').select('activity_type, activity_id').eq('student_id', studentId),
-        gamificationDbService.updateStreak(user.id, institutionId || undefined) // Update streak with XP
+        supabase.from('student_xp_transactions').select('activity_type, activity_id').eq('student_id', studentId)
       ]);
+      
+      // Update streak separately (side effect, not data we need)
+      gamificationDbService.updateStreak(user.id, institutionId || undefined);
       
       // Build activity counts for badge progress
       const activityCounts: Record<string, number> = {};
