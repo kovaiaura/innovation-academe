@@ -120,10 +120,8 @@ export function AssignmentSubmissionsDialog({
   };
 
   const openPDF = (url: string) => {
-    const { data } = supabase.storage
-      .from('assignment-submissions')
-      .getPublicUrl(url);
-    window.open(data.publicUrl, '_blank');
+    // URL is already a full public URL, open directly
+    window.open(url, '_blank');
   };
 
   if (!assignment) return null;

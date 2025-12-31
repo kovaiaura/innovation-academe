@@ -481,6 +481,7 @@ export type Database = {
           description: string | null
           id: string
           institution_id: string | null
+          passing_marks: number | null
           question_doc_url: string | null
           start_date: string
           status: string
@@ -497,6 +498,7 @@ export type Database = {
           description?: string | null
           id?: string
           institution_id?: string | null
+          passing_marks?: number | null
           question_doc_url?: string | null
           start_date: string
           status?: string
@@ -513,6 +515,7 @@ export type Database = {
           description?: string | null
           id?: string
           institution_id?: string | null
+          passing_marks?: number | null
           question_doc_url?: string | null
           start_date?: string
           status?: string

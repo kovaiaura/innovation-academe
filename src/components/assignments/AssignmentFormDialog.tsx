@@ -61,6 +61,7 @@ export function AssignmentFormDialog({
     start_date: '',
     submission_end_date: '',
     total_marks: 100,
+    passing_marks: 40,
     allow_resubmit: true,
     status: 'draft' as 'draft' | 'published',
   });
@@ -77,6 +78,7 @@ export function AssignmentFormDialog({
           start_date: assignment.start_date.split('T')[0],
           submission_end_date: assignment.submission_end_date.split('T')[0],
           total_marks: assignment.total_marks || 100,
+          passing_marks: assignment.passing_marks || 40,
           allow_resubmit: assignment.allow_resubmit !== false,
           status: assignment.status as 'draft' | 'published',
         });
@@ -104,6 +106,7 @@ export function AssignmentFormDialog({
       start_date: '',
       submission_end_date: '',
       total_marks: 100,
+      passing_marks: 40,
       allow_resubmit: true,
       status: 'draft',
     });
@@ -320,15 +323,28 @@ export function AssignmentFormDialog({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="total_marks">Total Marks</Label>
-            <Input
-              id="total_marks"
-              type="number"
-              min={1}
-              value={formData.total_marks}
-              onChange={(e) => setFormData({ ...formData, total_marks: parseInt(e.target.value) || 100 })}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="total_marks">Total Marks</Label>
+              <Input
+                id="total_marks"
+                type="number"
+                min={1}
+                value={formData.total_marks}
+                onChange={(e) => setFormData({ ...formData, total_marks: parseInt(e.target.value) || 100 })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="passing_marks">Passing Marks</Label>
+              <Input
+                id="passing_marks"
+                type="number"
+                min={0}
+                max={formData.total_marks}
+                value={formData.passing_marks}
+                onChange={(e) => setFormData({ ...formData, passing_marks: parseInt(e.target.value) || 40 })}
+              />
+            </div>
           </div>
 
           <div className="flex items-center justify-between p-3 border rounded-md">
