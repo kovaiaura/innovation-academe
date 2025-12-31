@@ -4,12 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FileText, Calendar, Clock, Search, Plus, Users, Eye } from 'lucide-react';
+import { FileText, Calendar, Clock, Search, Users, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { assignmentService, AssignmentWithClasses } from '@/services/assignment.service';
 import { format, isPast, isFuture } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNavigate } from 'react-router-dom';
+import { AssignmentSubmissionsDialog } from '@/components/assignments/AssignmentSubmissionsDialog';
 
 export default function OfficerAssignments() {
   const { user } = useAuth();
@@ -17,6 +18,8 @@ export default function OfficerAssignments() {
   const [assignments, setAssignments] = useState<AssignmentWithClasses[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [submissionsDialogOpen, setSubmissionsDialogOpen] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<AssignmentWithClasses | null>(null);
 
   useEffect(() => {
     if (user?.institution_id) {
@@ -57,6 +60,10 @@ export default function OfficerAssignments() {
     }
   };
 
+  const handleViewSubmissions = (assignment: AssignmentWithClasses) => {
+    setSelectedAssignment(assignment);
+    setSubmissionsDialogOpen(true);
+  };
   return (
     <Layout>
       <div className="space-y-6">
@@ -134,11 +141,26 @@ export default function OfficerAssignments() {
                       <span>Total marks: {assignment.total_marks}</span>
                     </div>
                   )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-2"
+                    onClick={() => handleViewSubmissions(assignment)}
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Submissions
+                  </Button>
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
+
+        <AssignmentSubmissionsDialog
+          open={submissionsDialogOpen}
+          onOpenChange={setSubmissionsDialogOpen}
+          assignment={selectedAssignment}
+        />
       </div>
     </Layout>
   );

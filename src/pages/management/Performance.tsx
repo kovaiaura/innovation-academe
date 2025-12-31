@@ -1,6 +1,7 @@
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, Minus, Target, Award, Users } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Target, Award, Users, FileText, ClipboardCheck, Trophy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -10,111 +11,186 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { getInstitutionBySlug } from "@/data/mockInstitutionData";
 import { useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
+
+interface PerformanceData {
+  assignments: {
+    total: number;
+    submitted: number;
+    graded: number;
+    avgScore: number;
+    passRate: number;
+  };
+  assessments: {
+    total: number;
+    completed: number;
+    avgScore: number;
+    passRate: number;
+  };
+  topStudents: Array<{
+    id: string;
+    name: string;
+    avgScore: number;
+    completedCount: number;
+  }>;
+}
 
 const Performance = () => {
   const [period, setPeriod] = useState("monthly");
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [performanceData, setPerformanceData] = useState<PerformanceData | null>(null);
   
-  // Extract institution from URL
   const location = useLocation();
   const institutionSlug = location.pathname.split('/')[2];
   const institution = getInstitutionBySlug(institutionSlug);
+  const institutionId = user?.institution_id;
 
-  const performanceMetrics = [
-    {
-      id: "1",
-      metricName: "Student Pass Rate",
-      category: "academic" as const,
-      currentValue: 87,
-      targetValue: 90,
-      trend: "up" as const,
-      period: "January 2024",
-    },
-    {
-      id: "2",
-      metricName: "Average Attendance",
-      category: "attendance" as const,
-      currentValue: 92,
-      targetValue: 95,
-      trend: "stable" as const,
-      period: "January 2024",
-    },
-    {
-      id: "3",
-      metricName: "Student Engagement Score",
-      category: "engagement" as const,
-      currentValue: 78,
-      targetValue: 85,
-      trend: "up" as const,
-      period: "January 2024",
-    },
-    {
-      id: "4",
-      metricName: "Lab Utilization",
-      category: "resource" as const,
-      currentValue: 65,
-      targetValue: 80,
-      trend: "down" as const,
-      period: "January 2024",
-    },
-    {
-      id: "5",
-      metricName: "Faculty Satisfaction",
-      category: "engagement" as const,
-      currentValue: 88,
-      targetValue: 90,
-      trend: "up" as const,
-      period: "January 2024",
-    },
-    {
-      id: "6",
-      metricName: "Project Completion Rate",
-      category: "academic" as const,
-      currentValue: 94,
-      targetValue: 95,
-      trend: "stable" as const,
-      period: "January 2024",
-    },
-  ];
+  useEffect(() => {
+    if (institutionId) {
+      loadPerformanceData();
+    }
+  }, [institutionId, period]);
 
-  const getTrendIcon = (trend: string) => {
-    switch (trend) {
-      case "up":
-        return <TrendingUp className="h-4 w-4 text-green-500" />;
-      case "down":
-        return <TrendingDown className="h-4 w-4 text-red-500" />;
-      default:
-        return <Minus className="h-4 w-4 text-yellow-500" />;
+  const loadPerformanceData = async () => {
+    if (!institutionId) return;
+    
+    setLoading(true);
+    try {
+      // Fetch assignment stats
+      const { data: assignments } = await (supabase as any)
+        .from('assignments')
+        .select('id, total_marks, passing_marks')
+        .eq('institution_id', institutionId)
+        .eq('status', 'published');
+
+      const assignmentIds = (assignments || []).map((a: any) => a.id);
+      
+      let assignmentSubmissions: any[] = [];
+      if (assignmentIds.length > 0) {
+        const { data: subs } = await (supabase as any)
+          .from('assignment_submissions')
+          .select('*')
+          .in('assignment_id', assignmentIds);
+        assignmentSubmissions = subs || [];
+      }
+
+      const gradedAssignments = assignmentSubmissions.filter((s: any) => s.status === 'graded');
+      const passedAssignments = gradedAssignments.filter((s: any) => {
+        const assignment = (assignments || []).find((a: any) => a.id === s.assignment_id);
+        return assignment && s.marks_obtained >= (assignment.passing_marks || 40);
+      });
+
+      // Fetch assessment stats
+      const { data: assessmentAssignments } = await (supabase as any)
+        .from('assessment_class_assignments')
+        .select('assessment_id')
+        .eq('institution_id', institutionId);
+
+      const assessmentIds = [...new Set((assessmentAssignments || []).map((a: any) => a.assessment_id))];
+      
+      let assessmentAttempts: any[] = [];
+      if (assessmentIds.length > 0) {
+        const { data: attempts } = await (supabase as any)
+          .from('assessment_attempts')
+          .select('*')
+          .eq('institution_id', institutionId);
+        assessmentAttempts = attempts || [];
+      }
+
+      const completedAttempts = assessmentAttempts.filter((a: any) => 
+        a.status === 'submitted' || a.status === 'auto_submitted'
+      );
+      const passedAttempts = completedAttempts.filter((a: any) => a.passed);
+
+      // Calculate averages
+      const assignmentAvgScore = gradedAssignments.length > 0
+        ? gradedAssignments.reduce((acc: number, s: any) => {
+            const assignment = (assignments || []).find((a: any) => a.id === s.assignment_id);
+            if (!assignment) return acc;
+            return acc + (s.marks_obtained / assignment.total_marks) * 100;
+          }, 0) / gradedAssignments.length
+        : 0;
+
+      const assessmentAvgScore = completedAttempts.length > 0
+        ? completedAttempts.reduce((acc: number, a: any) => acc + a.percentage, 0) / completedAttempts.length
+        : 0;
+
+      // Fetch top students
+      const { data: studentProfiles } = await (supabase as any)
+        .from('profiles')
+        .select('id, name')
+        .eq('institution_id', institutionId)
+        .eq('role', 'student')
+        .limit(50);
+
+      const studentScores = (studentProfiles || []).map((student: any) => {
+        const studentAssignments = gradedAssignments.filter((s: any) => s.student_id === student.id);
+        const studentAttempts = completedAttempts.filter((a: any) => a.student_id === student.id);
+        
+        const totalItems = studentAssignments.length + studentAttempts.length;
+        if (totalItems === 0) return { ...student, avgScore: 0, completedCount: 0 };
+
+        let totalScore = 0;
+        studentAssignments.forEach((s: any) => {
+          const assignment = (assignments || []).find((a: any) => a.id === s.assignment_id);
+          if (assignment) {
+            totalScore += (s.marks_obtained / assignment.total_marks) * 100;
+          }
+        });
+        studentAttempts.forEach((a: any) => {
+          totalScore += a.percentage;
+        });
+
+        return {
+          id: student.id,
+          name: student.name || 'Unknown Student',
+          avgScore: Math.round(totalScore / totalItems),
+          completedCount: totalItems
+        };
+      });
+
+      const topStudents = studentScores
+        .filter((s: any) => s.completedCount > 0)
+        .sort((a: any, b: any) => b.avgScore - a.avgScore)
+        .slice(0, 10);
+
+      setPerformanceData({
+        assignments: {
+          total: (assignments || []).length,
+          submitted: assignmentSubmissions.length,
+          graded: gradedAssignments.length,
+          avgScore: Math.round(assignmentAvgScore),
+          passRate: gradedAssignments.length > 0 
+            ? Math.round((passedAssignments.length / gradedAssignments.length) * 100) 
+            : 0
+        },
+        assessments: {
+          total: assessmentIds.length,
+          completed: completedAttempts.length,
+          avgScore: Math.round(assessmentAvgScore),
+          passRate: completedAttempts.length > 0 
+            ? Math.round((passedAttempts.length / completedAttempts.length) * 100) 
+            : 0
+        },
+        topStudents
+      });
+    } catch (error) {
+      console.error('Error loading performance data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case "academic":
-        return <Award className="h-5 w-5 text-blue-500" />;
-      case "attendance":
-        return <Users className="h-5 w-5 text-green-500" />;
-      case "engagement":
-        return <Target className="h-5 w-5 text-purple-500" />;
-      default:
-        return <Target className="h-5 w-5 text-orange-500" />;
-    }
-  };
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case "academic":
-        return "bg-blue-500";
-      case "attendance":
-        return "bg-green-500";
-      case "engagement":
-        return "bg-purple-500";
-      default:
-        return "bg-orange-500";
-    }
+  const getTrendIcon = (value: number, target: number) => {
+    if (value >= target) return <TrendingUp className="h-4 w-4 text-green-500" />;
+    if (value < target - 10) return <TrendingDown className="h-4 w-4 text-red-500" />;
+    return <Minus className="h-4 w-4 text-yellow-500" />;
   };
 
   return (
@@ -135,7 +211,7 @@ const Performance = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Performance Metrics</h1>
-            <p className="text-muted-foreground">Track and analyze key performance indicators</p>
+            <p className="text-muted-foreground">Track student performance in assignments and assessments</p>
           </div>
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-[200px]">
@@ -150,93 +226,178 @@ const Performance = () => {
           </Select>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {performanceMetrics.map((metric) => (
-            <Card key={metric.id}>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    {getCategoryIcon(metric.category)}
-                    <CardTitle className="text-sm font-medium">
-                      {metric.metricName}
-                    </CardTitle>
-                  </div>
-                  {getTrendIcon(metric.trend)}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-3xl font-bold">{metric.currentValue}%</span>
-                  <span className="text-sm text-muted-foreground">
-                    Target: {metric.targetValue}%
-                  </span>
-                </div>
-
-                <div className="space-y-2">
+        {loading ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i}>
+                <CardHeader className="pb-2">
+                  <Skeleton className="h-4 w-24" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-16 mb-2" />
+                  <Skeleton className="h-2 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : performanceData && (
+          <>
+            {/* Assignment & Assessment Stats */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">Assignment Submissions</CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{performanceData.assignments.submitted}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {performanceData.assignments.graded} graded out of {performanceData.assignments.submitted}
+                  </p>
                   <Progress 
-                    value={(metric.currentValue / metric.targetValue) * 100} 
-                    className="h-2"
+                    value={performanceData.assignments.submitted > 0 
+                      ? (performanceData.assignments.graded / performanceData.assignments.submitted) * 100 
+                      : 0
+                    } 
+                    className="h-2 mt-2" 
                   />
-                  <div className="flex items-center justify-between text-xs">
-                    <Badge variant="outline" className="capitalize">
-                      {metric.category}
-                    </Badge>
-                    <span className="text-muted-foreground">{metric.period}</span>
-                  </div>
-                </div>
+                </CardContent>
+              </Card>
 
-                {metric.currentValue < metric.targetValue && (
-                  <div className="text-xs text-muted-foreground">
-                    {metric.targetValue - metric.currentValue}% below target
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">Assignment Pass Rate</CardTitle>
+                  {getTrendIcon(performanceData.assignments.passRate, 70)}
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{performanceData.assignments.passRate}%</div>
+                  <p className="text-xs text-muted-foreground">
+                    Avg Score: {performanceData.assignments.avgScore}%
+                  </p>
+                  <Progress value={performanceData.assignments.passRate} className="h-2 mt-2" />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">Assessment Attempts</CardTitle>
+                  <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{performanceData.assessments.completed}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Across {performanceData.assessments.total} assessments
+                  </p>
+                  <Progress value={100} className="h-2 mt-2" />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">Assessment Pass Rate</CardTitle>
+                  {getTrendIcon(performanceData.assessments.passRate, 70)}
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{performanceData.assessments.passRate}%</div>
+                  <p className="text-xs text-muted-foreground">
+                    Avg Score: {performanceData.assessments.avgScore}%
+                  </p>
+                  <Progress value={performanceData.assessments.passRate} className="h-2 mt-2" />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Top Students Leaderboard */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5 text-yellow-500" />
+                  Top Performing Students
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {performanceData.topStudents.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">
+                    No student performance data available yet
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {performanceData.topStudents.map((student, index) => (
+                      <div key={student.id} className="flex items-center gap-4">
+                        <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
+                          index === 0 ? 'bg-yellow-500 text-yellow-950' :
+                          index === 1 ? 'bg-gray-300 text-gray-700' :
+                          index === 2 ? 'bg-amber-600 text-amber-950' :
+                          'bg-muted text-muted-foreground'
+                        }`}>
+                          {index + 1}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium">{student.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {student.completedCount} items completed
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-primary">{student.avgScore}%</p>
+                          <p className="text-xs text-muted-foreground">avg score</p>
+                        </div>
+                        <Progress value={student.avgScore} className="w-24 h-2" />
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>
             </Card>
-          ))}
-        </div>
 
-        {/* Summary Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Performance Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded-full bg-blue-500" />
-                  <span className="text-sm font-medium">Academic</span>
+            {/* Summary Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Performance Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded-full bg-blue-500" />
+                      <span className="text-sm font-medium">Assignments</span>
+                    </div>
+                    <p className="text-2xl font-bold">{performanceData.assignments.avgScore}%</p>
+                    <p className="text-xs text-muted-foreground">Average score</p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded-full bg-green-500" />
+                      <span className="text-sm font-medium">Assessments</span>
+                    </div>
+                    <p className="text-2xl font-bold">{performanceData.assessments.avgScore}%</p>
+                    <p className="text-xs text-muted-foreground">Average score</p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded-full bg-purple-500" />
+                      <span className="text-sm font-medium">Total Submissions</span>
+                    </div>
+                    <p className="text-2xl font-bold">
+                      {performanceData.assignments.submitted + performanceData.assessments.completed}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Combined count</p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded-full bg-orange-500" />
+                      <span className="text-sm font-medium">Overall Pass Rate</span>
+                    </div>
+                    <p className="text-2xl font-bold">
+                      {Math.round((performanceData.assignments.passRate + performanceData.assessments.passRate) / 2)}%
+                    </p>
+                    <p className="text-xs text-muted-foreground">Average pass rate</p>
+                  </div>
                 </div>
-                <p className="text-2xl font-bold">90.5%</p>
-                <p className="text-xs text-muted-foreground">Average performance</p>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded-full bg-green-500" />
-                  <span className="text-sm font-medium">Attendance</span>
-                </div>
-                <p className="text-2xl font-bold">92%</p>
-                <p className="text-xs text-muted-foreground">Average rate</p>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded-full bg-purple-500" />
-                  <span className="text-sm font-medium">Engagement</span>
-                </div>
-                <p className="text-2xl font-bold">83%</p>
-                <p className="text-xs text-muted-foreground">Average score</p>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded-full bg-orange-500" />
-                  <span className="text-sm font-medium">Resources</span>
-                </div>
-                <p className="text-2xl font-bold">65%</p>
-                <p className="text-xs text-muted-foreground">Utilization rate</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
     </Layout>
   );
