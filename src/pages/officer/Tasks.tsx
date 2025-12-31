@@ -14,7 +14,8 @@ import { ClassSelector } from '@/components/officer/ClassSelector';
 import { ClassCourseLauncher } from '@/components/officer/ClassCourseLauncher';
 import { ClassStudentsList } from '@/components/officer/ClassStudentsList';
 import { ClassTeachingReport } from '@/components/officer/ClassTeachingReport';
-import { fetchTasksByAssignee, updateTaskInDb, addTaskComment, getTaskStatistics } from '@/services/task.service';
+import { updateTaskInDb, addTaskComment, getTaskStatistics } from '@/services/task.service';
+import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -31,14 +32,14 @@ export default function OfficerTasks() {
   const [selectedClassName, setSelectedClassName] = useState<string>('');
   const [classSubTab, setClassSubTab] = useState('courses');
   
-  // Task allotment state
-  const [tasks, setTasks] = useState<Task[]>([]);
+  // Task allotment state - using real-time
+  const { tasks: allTasks, loading } = useRealtimeTasks(user?.id || '', 'assigned');
+  const tasks = allTasks.filter(task => task.assigned_to_role === 'officer');
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ total: 0, pending: 0, in_progress: 0, completed: 0, overdue: 0 });
 
   // Get officer ID from the officers table based on user_id
@@ -51,7 +52,6 @@ export default function OfficerTasks() {
         .select('id, assigned_institutions')
         .eq('user_id', user.id)
         .maybeSingle();
-      
       if (error) throw error;
       return data;
     },
@@ -61,31 +61,9 @@ export default function OfficerTasks() {
   const officerId = officerData?.id;
   const institutionId = officerData?.assigned_institutions?.[0];
 
-  // Load user's tasks for Task Allotment tab
   useEffect(() => {
-    if (user?.id && activeTab === 'tasks') {
-      refreshTasks();
-      loadStats();
-    }
-  }, [user?.id, activeTab]);
-
-  const refreshTasks = async () => {
-    if (!user?.id) return;
-    
-    try {
-      setLoading(true);
-      const userTasks = await fetchTasksByAssignee(user.id);
-      // Filter to only officer tasks
-      const officerTasks = userTasks.filter(task => task.assigned_to_role === 'officer');
-      setTasks(officerTasks);
-      setFilteredTasks(officerTasks);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-      toast.error('Failed to load tasks');
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (user?.id && activeTab === 'tasks') loadStats();
+  }, [user?.id, activeTab, tasks]);
 
   const loadStats = async () => {
     if (!user?.id) return;
@@ -97,26 +75,16 @@ export default function OfficerTasks() {
     }
   };
 
-  // Apply filters for tasks
   useEffect(() => {
     let filtered = tasks;
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(task => task.status === statusFilter);
-    }
-
-    if (priorityFilter !== 'all') {
-      filtered = filtered.filter(task => task.priority === priorityFilter);
-    }
-
+    if (statusFilter !== 'all') filtered = filtered.filter(task => task.status === statusFilter);
+    if (priorityFilter !== 'all') filtered = filtered.filter(task => task.priority === priorityFilter);
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(task =>
-        task.title.toLowerCase().includes(query) ||
-        task.description.toLowerCase().includes(query)
+        task.title.toLowerCase().includes(query) || task.description.toLowerCase().includes(query)
       );
     }
-
     setFilteredTasks(filtered);
   }, [tasks, statusFilter, priorityFilter, searchQuery]);
 
@@ -126,15 +94,9 @@ export default function OfficerTasks() {
         status,
         progress_percentage: progress !== undefined ? progress : undefined,
         completed_at: status === 'completed' ? new Date().toISOString() : undefined,
-      });
-      
-      await refreshTasks();
+      }, { changedByName: user?.name || '' });
       await loadStats();
-      
-      if (selectedTask?.id === taskId) {
-        const updated = tasks.find(t => t.id === taskId);
-        if (updated) setSelectedTask({ ...updated, status, progress_percentage: progress });
-      }
+      if (selectedTask?.id === taskId) setSelectedTask(prev => prev ? { ...prev, status, progress_percentage: progress } : null);
     } catch (error) {
       console.error('Error updating task:', error);
       toast.error('Failed to update task');
@@ -144,12 +106,6 @@ export default function OfficerTasks() {
   const handleAddComment = async (taskId: string, comment: string) => {
     try {
       await addTaskComment(taskId, user?.id || '', user?.name || '', comment);
-      await refreshTasks();
-      
-      if (selectedTask?.id === taskId) {
-        const updated = tasks.find(t => t.id === taskId);
-        if (updated) setSelectedTask(updated);
-      }
     } catch (error) {
       console.error('Error adding comment:', error);
       toast.error('Failed to add comment');
@@ -162,14 +118,9 @@ export default function OfficerTasks() {
         status: 'submitted_for_approval',
         submitted_at: new Date().toISOString(),
         progress_percentage: 100,
-      });
-      await refreshTasks();
+      }, { submitterName: user?.name || '' });
       await loadStats();
-      
-      if (selectedTask?.id === taskId) {
-        const updated = tasks.find(t => t.id === taskId);
-        if (updated) setSelectedTask(updated);
-      }
+      if (selectedTask?.id === taskId) setSelectedTask(prev => prev ? { ...prev, status: 'submitted_for_approval' } : null);
       toast.success('Task submitted for approval');
     } catch (error) {
       console.error('Error submitting task:', error);

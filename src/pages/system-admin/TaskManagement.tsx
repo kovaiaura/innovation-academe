@@ -10,13 +10,13 @@ import { TaskDetailDialog } from '@/components/task/TaskDetailDialog';
 import { Button } from '@/components/ui/button';
 import { Plus, AlertCircle, Loader2 } from 'lucide-react';
 import { 
-  fetchAllTasks, 
   createTask, 
   updateTaskInDb, 
   deleteTaskFromDb, 
   addTaskComment,
   getTaskStatistics 
 } from '@/services/task.service';
+import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { canAccessFeature } from '@/utils/permissionHelpers';
@@ -42,12 +42,13 @@ export default function TaskManagement() {
     );
   }
 
-  const [tasks, setTasks] = useState<Task[]>([]);
+  // Use real-time tasks hook
+  const { tasks, loading } = useRealtimeTasks(user?.id || '', 'all');
+  
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'created' | 'pending'>('all');
-  const [loading, setLoading] = useState(true);
   
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'all'>('all');
@@ -56,24 +57,10 @@ export default function TaskManagement() {
   
   const [stats, setStats] = useState({ total: 0, pending: 0, in_progress: 0, completed: 0, overdue: 0 });
 
-  // Load tasks on mount
+  // Load stats on mount and when tasks change
   useEffect(() => {
-    refreshTasks();
     loadStats();
-  }, []);
-
-  const refreshTasks = async () => {
-    try {
-      setLoading(true);
-      const data = await fetchAllTasks();
-      setTasks(data);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-      toast.error('Failed to load tasks');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [tasks]);
 
   const loadStats = async () => {
     try {
@@ -149,7 +136,7 @@ export default function TaskManagement() {
         created_by_position: user?.position_name || 'CEO',
         progress_percentage: 0,
       });
-      await refreshTasks();
+      // No need to refresh - real-time will update
       await loadStats();
       toast.success('Task created successfully');
     } catch (error) {
@@ -164,14 +151,13 @@ export default function TaskManagement() {
         status,
         progress_percentage: progress !== undefined ? progress : undefined,
         completed_at: status === 'completed' ? new Date().toISOString() : undefined,
-      });
+      }, { changedByName: user?.name || '' });
       
-      await refreshTasks();
+      // No need to refresh - real-time will update
       await loadStats();
       
       if (selectedTask?.id === taskId) {
-        const updated = tasks.find(t => t.id === taskId);
-        if (updated) setSelectedTask({ ...updated, status, progress_percentage: progress });
+        setSelectedTask(prev => prev ? { ...prev, status, progress_percentage: progress } : null);
       }
     } catch (error) {
       console.error('Error updating task:', error);
@@ -182,12 +168,7 @@ export default function TaskManagement() {
   const handleAddComment = async (taskId: string, comment: string) => {
     try {
       await addTaskComment(taskId, user?.id || '', user?.name || '', comment);
-      await refreshTasks();
-      
-      if (selectedTask?.id === taskId) {
-        const updated = tasks.find(t => t.id === taskId);
-        if (updated) setSelectedTask(updated);
-      }
+      // Comments update via real-time
     } catch (error) {
       console.error('Error adding comment:', error);
       toast.error('Failed to add comment');
@@ -197,7 +178,7 @@ export default function TaskManagement() {
   const handleDeleteTask = async (taskId: string) => {
     try {
       await deleteTaskFromDb(taskId);
-      await refreshTasks();
+      // Real-time will remove it from the list
       await loadStats();
       toast.success('Task deleted successfully');
     } catch (error) {
@@ -214,13 +195,12 @@ export default function TaskManagement() {
         approved_by_id: approvedById,
         approved_by_name: user?.name || '',
         approved_at: new Date().toISOString(),
-      });
-      await refreshTasks();
+      }, { approverName: user?.name || '' });
+      
       await loadStats();
       
       if (selectedTask?.id === taskId) {
-        const updated = tasks.find(t => t.id === taskId);
-        if (updated) setSelectedTask(updated);
+        setSelectedTask(prev => prev ? { ...prev, status: 'completed' } : null);
       }
       toast.success('Task approved');
     } catch (error) {
@@ -234,13 +214,12 @@ export default function TaskManagement() {
       await updateTaskInDb(taskId, {
         status: 'rejected',
         rejection_reason: reason,
-      });
-      await refreshTasks();
+      }, { approverName: user?.name || '', rejectionReason: reason });
+      
       await loadStats();
       
       if (selectedTask?.id === taskId) {
-        const updated = tasks.find(t => t.id === taskId);
-        if (updated) setSelectedTask(updated);
+        setSelectedTask(prev => prev ? { ...prev, status: 'rejected' } : null);
       }
       toast.success('Task rejected');
     } catch (error) {

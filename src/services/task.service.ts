@@ -1,5 +1,13 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Task, TaskComment, TaskStats } from '@/types/task';
+import {
+  sendTaskAssignedNotification,
+  sendTaskStatusChangeNotification,
+  sendTaskCommentNotification,
+  sendTaskSubmittedNotification,
+  sendTaskApprovedNotification,
+  sendTaskRejectedNotification,
+} from './taskNotification.service';
 
 export async function fetchAllTasks(): Promise<Task[]> {
   const { data, error } = await supabase
@@ -71,10 +79,36 @@ export async function createTask(taskData: Omit<Task, 'id' | 'created_at' | 'com
     .single();
 
   if (error) throw error;
-  return { ...data, comments: [] } as Task;
+  
+  const newTask = { ...data, comments: [] } as Task;
+  
+  // Send notification to assignee
+  await sendTaskAssignedNotification(newTask);
+  
+  return newTask;
 }
 
-export async function updateTaskInDb(taskId: string, updates: Partial<Task>): Promise<Task> {
+export interface UpdateTaskOptions {
+  changedByName?: string;
+  approverName?: string;
+  submitterName?: string;
+  rejectionReason?: string;
+}
+
+export async function updateTaskInDb(
+  taskId: string, 
+  updates: Partial<Task>,
+  options?: UpdateTaskOptions
+): Promise<Task> {
+  // Get current task to check for status changes
+  const { data: currentTask } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('id', taskId)
+    .single();
+
+  const oldStatus = currentTask?.status;
+  
   const updateData = { ...updates };
   delete (updateData as any).comments;
   
@@ -93,7 +127,23 @@ export async function updateTaskInDb(taskId: string, updates: Partial<Task>): Pr
     .eq('task_id', taskId)
     .order('created_at', { ascending: true });
   
-  return { ...data, comments: comments || [] } as Task;
+  const updatedTask = { ...data, comments: comments || [] } as Task;
+
+  // Send notifications based on what changed
+  if (oldStatus && updates.status && oldStatus !== updates.status) {
+    // Status changed - send appropriate notification
+    if (updates.status === 'submitted_for_approval' && options?.submitterName) {
+      await sendTaskSubmittedNotification(updatedTask, options.submitterName);
+    } else if (updates.status === 'completed' && options?.approverName) {
+      await sendTaskApprovedNotification(updatedTask, options.approverName);
+    } else if (updates.status === 'rejected' && options?.approverName && options?.rejectionReason) {
+      await sendTaskRejectedNotification(updatedTask, options.approverName, options.rejectionReason);
+    } else if (options?.changedByName) {
+      await sendTaskStatusChangeNotification(updatedTask, oldStatus, updates.status, options.changedByName);
+    }
+  }
+  
+  return updatedTask;
 }
 
 export async function deleteTaskFromDb(taskId: string): Promise<void> {
@@ -101,7 +151,19 @@ export async function deleteTaskFromDb(taskId: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function addTaskComment(taskId: string, userId: string, userName: string, comment: string): Promise<TaskComment> {
+export async function addTaskComment(
+  taskId: string, 
+  userId: string, 
+  userName: string, 
+  comment: string
+): Promise<TaskComment> {
+  // Get task to send notification
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('id', taskId)
+    .single();
+
   const { data, error } = await supabase
     .from('task_comments')
     .insert({ task_id: taskId, user_id: userId, user_name: userName, comment })
@@ -109,6 +171,12 @@ export async function addTaskComment(taskId: string, userId: string, userName: s
     .single();
 
   if (error) throw error;
+  
+  // Send notification to the other party
+  if (task) {
+    await sendTaskCommentNotification(task as Task, userId, userName, comment);
+  }
+  
   return data as TaskComment;
 }
 

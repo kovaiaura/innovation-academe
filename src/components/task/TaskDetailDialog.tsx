@@ -310,8 +310,9 @@ export function TaskDetailDialog({
             <div className="space-y-3">
               <h3 className="font-semibold text-sm">Comments</h3>
               <TaskCommentSection
+                taskId={task.id}
                 comments={task.comments || []}
-                onAddComment={(comment) => onAddComment(task.id, comment)}
+                onAddComment={async (comment) => onAddComment(task.id, comment)}
               />
             </div>
           </div>

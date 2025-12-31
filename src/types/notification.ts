@@ -19,7 +19,16 @@ export type NotificationType =
   | 'assignment_graded'
   | 'assessment_graded'
   | 'new_assignment_published'
-  | 'new_assessment_published';
+  | 'new_assessment_published'
+  // Task-related notifications
+  | 'task_assigned'
+  | 'task_status_changed'
+  | 'task_comment_added'
+  | 'task_submitted'
+  | 'task_approved'
+  | 'task_rejected'
+  | 'task_due_soon'
+  | 'task_overdue';
 
 export interface Notification {
   id: string;
