@@ -36,7 +36,7 @@ export function CertificatePreviewDialog({
       
       if (foundTemplate) {
         setTemplate(foundTemplate);
-        drawCertificate(foundTemplate);
+        await drawCertificate(foundTemplate);
       } else {
         // Draw a default certificate if no template found
         drawDefaultCertificate();
@@ -118,30 +118,35 @@ export function CertificatePreviewDialog({
     ctx.fillText(`Verification: ${certificate.verification_code}`, 600, 820);
   };
 
-  const drawCertificate = (tmpl: any) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  const drawCertificate = (tmpl: any): Promise<void> => {
+    return new Promise((resolve) => {
+      const canvas = canvasRef.current;
+      if (!canvas) { resolve(); return; }
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(); return; }
 
-    canvas.width = tmpl.default_width || 1200;
-    canvas.height = tmpl.default_height || 900;
+      canvas.width = tmpl.default_width || 1200;
+      canvas.height = tmpl.default_height || 900;
 
-    if (tmpl.template_image_url) {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        drawTextOnCertificate(ctx, tmpl);
-      };
-      img.onerror = () => {
+      if (tmpl.template_image_url) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          drawTextOnCertificate(ctx, tmpl);
+          resolve();
+        };
+        img.onerror = () => {
+          drawDefaultCertificate();
+          resolve();
+        };
+        img.src = tmpl.template_image_url;
+      } else {
         drawDefaultCertificate();
-      };
-      img.src = tmpl.template_image_url;
-    } else {
-      drawDefaultCertificate();
-    }
+        resolve();
+      }
+    });
   };
 
   const drawTextOnCertificate = (ctx: CanvasRenderingContext2D, tmpl: any) => {

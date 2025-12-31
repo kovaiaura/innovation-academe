@@ -32,7 +32,8 @@ interface StudentGamification {
   points_breakdown: {
     sessions: number;
     projects: number;
-    attendance: number;
+    courses: number;
+    achievements: number;
     assessments: number;
   };
   weekly_points: number;
@@ -200,8 +201,9 @@ export default function StudentDashboard() {
         badges_locked: lockedBadges,
         points_breakdown: {
           sessions: xpBreakdown['session_attendance'] || 0,
-          projects: (xpBreakdown['project_membership'] || 0) + (xpBreakdown['project_award'] || 0),
-          attendance: xpBreakdown['session_attendance'] || 0,
+          projects: (xpBreakdown['project_membership'] || 0) + (xpBreakdown['project_completion'] || 0),
+          courses: xpBreakdown['level_completion'] || 0,
+          achievements: xpBreakdown['project_award'] || 0,
           assessments: (xpBreakdown['assessment_completion'] || 0) + (xpBreakdown['assessment_pass'] || 0) + (xpBreakdown['assessment_perfect_score'] || 0)
         },
         weekly_points: weeklyPoints
