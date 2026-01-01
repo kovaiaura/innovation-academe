@@ -282,13 +282,13 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice>
       balance_due: totals.balance_due,
       total_in_words: numberToWords(totals.total_amount),
       status: 'draft',
-      bank_details: input.bank_details as unknown as Record<string, unknown>,
+      bank_details: input.bank_details ? JSON.parse(JSON.stringify(input.bank_details)) : null,
       notes: input.notes,
       terms_and_conditions: input.terms_and_conditions,
       declaration: input.declaration,
       institution_id: input.institution_id,
       created_by: userData?.user?.id,
-    })
+    }])
     .select()
     .single();
   
