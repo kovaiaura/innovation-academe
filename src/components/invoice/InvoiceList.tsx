@@ -149,10 +149,12 @@ export function InvoiceList({
                             <Eye className="h-4 w-4 mr-2" />
                             View
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onDownload(invoice)}>
-                            <Download className="h-4 w-4 mr-2" />
-                            {invoice.invoice_type === 'purchase' ? 'Download Bill' : 'Download PDF'}
-                          </DropdownMenuItem>
+                          {invoice.invoice_type !== 'purchase' && (
+                            <DropdownMenuItem onClick={() => onDownload(invoice)}>
+                              <Download className="h-4 w-4 mr-2" />
+                              Download PDF
+                            </DropdownMenuItem>
+                          )}
                           {invoice.status === 'draft' && (
                             <DropdownMenuItem
                               onClick={() => onStatusChange(invoice.id, 'issued')}

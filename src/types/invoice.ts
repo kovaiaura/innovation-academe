@@ -194,6 +194,9 @@ export interface CreateInvoiceInput {
   bank_details?: BankDetails;
   institution_id?: string;
   total_amount?: number; // For purchase invoices where amount is entered directly
+  attachment_url?: string; // For purchase invoices
+  attachment_name?: string;
+  attachment_type?: string;
   line_items: Omit<InvoiceLineItem, 'id' | 'invoice_id'>[];
 }
 
