@@ -350,6 +350,67 @@ export async function deleteInvoice(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// Create purchase invoice (simplified for vendor bills)
+export async function createPurchaseInvoice(input: CreateInvoiceInput): Promise<Invoice> {
+  const { data: userData } = await supabase.auth.getUser();
+  
+  // Generate invoice number
+  const invoiceNumber = await generateInvoiceNumber('purchase');
+  
+  const totalAmount = input.total_amount || input.line_items.reduce((sum, item) => sum + item.amount, 0);
+  
+  // Create invoice
+  const { data: invoice, error: invoiceError } = await supabase
+    .from('invoices')
+    .insert([{
+      invoice_number: invoiceNumber,
+      invoice_type: 'purchase',
+      from_company_name: input.from_company_name,
+      from_company_address: input.from_company_address,
+      from_company_gstin: input.from_company_gstin,
+      from_company_phone: input.from_company_phone,
+      to_company_name: input.to_company_name,
+      to_company_address: input.to_company_address,
+      to_company_city: input.to_company_city,
+      to_company_state: input.to_company_state,
+      to_company_state_code: input.to_company_state_code,
+      to_company_pincode: input.to_company_pincode,
+      to_company_gstin: input.to_company_gstin,
+      invoice_date: input.invoice_date,
+      due_date: input.due_date,
+      reference_number: input.reference_number,
+      notes: input.notes,
+      sub_total: totalAmount,
+      total_amount: totalAmount,
+      balance_due: totalAmount,
+      status: 'draft',
+      created_by: userData?.user?.id,
+    }])
+    .select()
+    .single();
+  
+  if (invoiceError) throw invoiceError;
+  
+  // Create line items
+  const lineItemsToInsert = input.line_items.map((item, index) => ({
+    invoice_id: invoice.id,
+    description: item.description,
+    quantity: item.quantity,
+    rate: item.rate,
+    amount: item.amount,
+    display_order: index,
+  }));
+  
+  const { data: lineItems, error: lineItemsError } = await supabase
+    .from('invoice_line_items')
+    .insert(lineItemsToInsert)
+    .select();
+  
+  if (lineItemsError) throw lineItemsError;
+  
+  return { ...invoice, line_items: lineItems } as Invoice;
+}
+
 // Update company profile
 export async function updateCompanyProfile(id: string, data: Partial<CompanyProfile>): Promise<void> {
   const updateData = { ...data, updated_at: new Date().toISOString() };
