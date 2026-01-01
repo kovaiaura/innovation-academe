@@ -29,6 +29,9 @@ export interface CompanyProfile {
   bank_details?: BankDetails;
   terms_and_conditions?: string;
   logo_url?: string;
+  signature_url?: string;
+  declaration?: string;
+  default_notes?: string;
   is_default?: boolean;
   created_at?: string;
 }
@@ -127,6 +130,7 @@ export interface Invoice {
   notes?: string;
   terms_and_conditions?: string;
   declaration?: string;
+  signature_url?: string;
   
   // E-Invoicing
   irn?: string;

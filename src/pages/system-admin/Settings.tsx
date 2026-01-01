@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Shield, Mail, Settings as SettingsIcon, Save } from 'lucide-react';
+import { Shield, Mail, Settings as SettingsIcon, Save, FileText } from 'lucide-react';
 import { AccountSettingsSection } from '@/components/settings/AccountSettingsSection';
+import { InvoiceSettingsTab } from '@/components/settings/InvoiceSettingsTab';
 
 const EmailConfigurationTab = () => {
   return (
@@ -171,21 +172,22 @@ export default function SystemAdminSettings() {
         </div>
 
         <Tabs defaultValue="security" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-3">
+          <TabsList className="grid w-full max-w-xl grid-cols-4">
             <TabsTrigger value="security" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
-              <span className="hidden sm:inline">Account Security</span>
-              <span className="sm:hidden">Security</span>
+              <span className="hidden sm:inline">Security</span>
             </TabsTrigger>
             <TabsTrigger value="email" className="flex items-center gap-2">
               <Mail className="h-4 w-4" />
-              <span className="hidden sm:inline">Email Config</span>
-              <span className="sm:hidden">Email</span>
+              <span className="hidden sm:inline">Email</span>
             </TabsTrigger>
             <TabsTrigger value="preferences" className="flex items-center gap-2">
               <SettingsIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Preferences</span>
-              <span className="sm:hidden">Prefs</span>
+              <span className="hidden sm:inline">Prefs</span>
+            </TabsTrigger>
+            <TabsTrigger value="invoice" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Invoice</span>
             </TabsTrigger>
           </TabsList>
 
@@ -199,6 +201,10 @@ export default function SystemAdminSettings() {
 
           <TabsContent value="preferences" className="mt-6">
             <SystemPreferencesTab />
+          </TabsContent>
+
+          <TabsContent value="invoice" className="mt-6">
+            <InvoiceSettingsTab />
           </TabsContent>
         </Tabs>
       </div>
