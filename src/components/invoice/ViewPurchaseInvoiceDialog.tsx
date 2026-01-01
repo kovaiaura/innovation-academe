@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { InvoiceStatusBadge } from './InvoiceStatusBadge';
+import { InvoicePdfPreview } from './InvoicePdfPreview';
 import { ExternalLink, FileText, Image as ImageIcon } from 'lucide-react';
 import type { Invoice } from '@/types/invoice';
 import { format } from 'date-fns';
@@ -125,11 +126,10 @@ export function ViewPurchaseInvoiceDialog({
                       />
                     </div>
                   ) : isPdf ? (
-                    <div style={{ height: '70vh' }}>
-                      <iframe
-                        src={`${invoice.attachment_url}#toolbar=1&navpanes=0`}
-                        className="w-full h-full"
-                        title="Vendor Bill PDF"
+                    <div className="p-4">
+                      <InvoicePdfPreview 
+                        attachmentUrl={invoice.attachment_url} 
+                        title={`Bill ${invoice.invoice_number}`}
                       />
                     </div>
                   ) : (
