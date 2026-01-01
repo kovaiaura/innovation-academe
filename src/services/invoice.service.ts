@@ -359,7 +359,7 @@ export async function createPurchaseInvoice(input: CreateInvoiceInput): Promise<
   
   const totalAmount = input.total_amount || input.line_items.reduce((sum, item) => sum + item.amount, 0);
   
-  // Create invoice
+  // Create invoice with attachment details
   const { data: invoice, error: invoiceError } = await supabase
     .from('invoices')
     .insert([{
@@ -385,6 +385,9 @@ export async function createPurchaseInvoice(input: CreateInvoiceInput): Promise<
       balance_due: totalAmount,
       status: 'draft',
       created_by: userData?.user?.id,
+      attachment_url: input.attachment_url,
+      attachment_name: input.attachment_name,
+      attachment_type: input.attachment_type,
     }])
     .select()
     .single();

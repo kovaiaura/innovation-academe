@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { InvoiceStatusBadge } from './InvoiceStatusBadge';
-import { Download, ExternalLink, FileText, Image as ImageIcon } from 'lucide-react';
+import { ExternalLink, FileText, Image as ImageIcon } from 'lucide-react';
 import type { Invoice } from '@/types/invoice';
 import { format } from 'date-fns';
 
@@ -28,18 +28,6 @@ export function ViewPurchaseInvoiceDialog({
   const isPdf = invoice.attachment_type === 'application/pdf';
   const isImage = invoice.attachment_type?.startsWith('image/');
 
-  const handleDownload = () => {
-    if (invoice.attachment_url) {
-      const link = document.createElement('a');
-      link.href = invoice.attachment_url;
-      link.download = invoice.attachment_name || 'vendor-bill';
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
-
   const handleOpenInNewTab = () => {
     if (invoice.attachment_url) {
       window.open(invoice.attachment_url, '_blank');
@@ -56,20 +44,12 @@ export function ViewPurchaseInvoiceDialog({
               <InvoiceStatusBadge status={invoice.status} />
             </div>
           </div>
-          <div className="flex gap-2">
-            {invoice.attachment_url && (
-              <>
-                <Button variant="outline" size="sm" onClick={handleOpenInNewTab}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Open
-                </Button>
-                <Button size="sm" onClick={handleDownload}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Bill
-                </Button>
-              </>
-            )}
-          </div>
+          {invoice.attachment_url && (
+            <Button variant="outline" size="sm" onClick={handleOpenInNewTab}>
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Open in New Tab
+            </Button>
+          )}
         </DialogHeader>
 
         <ScrollArea className="max-h-[calc(90vh-120px)]">
@@ -128,24 +108,26 @@ export function ViewPurchaseInvoiceDialog({
 
             <Separator />
 
-            {/* Attached Bill */}
+            {/* Attached Bill - Full Preview */}
             <div>
               <h4 className="text-sm font-semibold mb-3">ATTACHED VENDOR BILL</h4>
               
               {invoice.attachment_url ? (
                 <div className="border rounded-lg overflow-hidden">
                   {isImage ? (
-                    <div className="p-2 bg-muted/30">
+                    <div className="p-4 bg-muted/30 flex justify-center">
                       <img
                         src={invoice.attachment_url}
                         alt="Vendor Bill"
-                        className="max-w-full max-h-[500px] mx-auto object-contain rounded"
+                        className="max-w-full h-auto object-contain rounded cursor-pointer hover:opacity-90 transition-opacity"
+                        style={{ maxHeight: '70vh' }}
+                        onClick={handleOpenInNewTab}
                       />
                     </div>
                   ) : isPdf ? (
-                    <div className="aspect-[3/4] max-h-[600px]">
+                    <div style={{ height: '70vh' }}>
                       <iframe
-                        src={`${invoice.attachment_url}#toolbar=0`}
+                        src={`${invoice.attachment_url}#toolbar=1&navpanes=0`}
                         className="w-full h-full"
                         title="Vendor Bill PDF"
                       />
@@ -154,9 +136,10 @@ export function ViewPurchaseInvoiceDialog({
                     <div className="p-8 text-center bg-muted/30">
                       <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-3" />
                       <p className="font-medium">{invoice.attachment_name}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Click "Download Bill" to view this file
-                      </p>
+                      <Button variant="outline" className="mt-3" onClick={handleOpenInNewTab}>
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Open File
+                      </Button>
                     </div>
                   )}
                   

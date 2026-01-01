@@ -105,11 +105,11 @@ export function CreatePurchaseInvoiceDialog({
     }
   };
 
-  const uploadAttachment = async (invoiceId: string): Promise<{ url: string; name: string; type: string } | null> => {
+  const uploadAttachment = async (): Promise<{ url: string; name: string; type: string } | null> => {
     if (!attachmentFile) return null;
     
     const fileExt = attachmentFile.name.split('.').pop();
-    const filePath = `purchase-bills/${invoiceId}/${Date.now()}.${fileExt}`;
+    const filePath = `purchase-bills/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
     
     const { error: uploadError } = await supabase.storage
       .from('invoice-assets')
@@ -145,7 +145,16 @@ export function CreatePurchaseInvoiceDialog({
     try {
       setLoading(true);
       
-      // Create invoice first to get the ID
+      // Upload attachment FIRST
+      setUploading(true);
+      const attachment = await uploadAttachment();
+      
+      if (!attachment) {
+        toast.error('Failed to upload attachment');
+        return;
+      }
+      
+      // Create invoice with attachment details included
       const invoice = await createPurchaseInvoice({
         invoice_type: 'purchase',
         from_company_name: vendorName,
@@ -164,6 +173,9 @@ export function CreatePurchaseInvoiceDialog({
         reference_number: vendorInvoiceNumber,
         notes,
         total_amount: parseFloat(totalAmount),
+        attachment_url: attachment.url,
+        attachment_name: attachment.name,
+        attachment_type: attachment.type,
         line_items: [{
           description: `Purchase from ${vendorName}`,
           quantity: 1,
@@ -171,22 +183,6 @@ export function CreatePurchaseInvoiceDialog({
           amount: parseFloat(totalAmount),
         }],
       });
-      
-      // Upload attachment
-      setUploading(true);
-      const attachment = await uploadAttachment(invoice.id);
-      
-      if (attachment) {
-        // Update invoice with attachment details
-        await supabase
-          .from('invoices')
-          .update({
-            attachment_url: attachment.url,
-            attachment_name: attachment.name,
-            attachment_type: attachment.type,
-          })
-          .eq('id', invoice.id);
-      }
       
       toast.success('Purchase invoice created successfully');
       onSuccess();
