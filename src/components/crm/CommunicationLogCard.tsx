@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Phone, Mail, Calendar, Users, FileText, Clock, AlertCircle } from "lucide-react";
-import { CommunicationLog } from "@/data/mockCRMData";
+import { CommunicationLog } from "@/types/communicationLog";
 import { format } from "date-fns";
 
 interface CommunicationLogCardProps {
@@ -73,7 +73,7 @@ export function CommunicationLogCard({ log, onEdit, onViewDetails }: Communicati
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <Users className="h-4 w-4" />
-            <span>{log.conducted_by}</span>
+            <span>{log.conducted_by_name}</span>
           </div>
         </div>
         
@@ -88,9 +88,11 @@ export function CommunicationLogCard({ log, onEdit, onViewDetails }: Communicati
             <div className="flex-1 text-sm">
               <p className="font-medium text-foreground">Next Action</p>
               <p className="text-muted-foreground">{log.next_action}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Due: {format(new Date(log.next_action_date), 'MMM dd, yyyy')}
-              </p>
+              {log.next_action_date && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Due: {format(new Date(log.next_action_date), 'MMM dd, yyyy')}
+                </p>
+              )}
             </div>
           </div>
         )}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -35,8 +35,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { CalendarIcon, Upload, X } from 'lucide-react';
-import { CommunicationLog } from '@/data/mockCRMData';
+import { CalendarIcon, Upload, X, Loader2, User } from 'lucide-react';
+import { CommunicationLog, CreateCommunicationLogInput } from '@/types/communicationLog';
 
 const communicationSchema = z.object({
   institution_id: z.string().min(1, 'Institution is required'),
@@ -48,13 +48,11 @@ const communicationSchema = z.object({
   subject: z.string().min(5, 'Subject must be at least 5 characters').max(200, 'Subject must be less than 200 characters'),
   contact_person: z.string().min(2, 'Contact person is required'),
   contact_role: z.string().min(2, 'Contact role is required'),
-  conducted_by: z.string().min(2, 'Conducted by is required'),
-  notes: z.string().min(50, 'Notes must be at least 50 characters').max(1000, 'Notes must be less than 1000 characters'),
+  notes: z.string().min(10, 'Notes must be at least 10 characters').max(1000, 'Notes must be less than 1000 characters'),
   priority: z.enum(['high', 'medium', 'low']),
   status: z.enum(['completed', 'pending', 'follow_up_required']),
   next_action: z.string().optional(),
   next_action_date: z.date().optional(),
-  attachments: z.array(z.string()).optional(),
 }).refine((data) => {
   if (data.status !== 'completed') {
     return data.next_action && data.next_action_date;
@@ -70,8 +68,9 @@ type CommunicationFormValues = z.infer<typeof communicationSchema>;
 interface AddCommunicationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (log: Omit<CommunicationLog, 'id'>) => void;
+  onSave: (log: Omit<CommunicationLog, 'id' | 'created_at' | 'updated_at'>) => void;
   institutions: Array<{ id: string; name: string }>;
+  currentUser: { id: string; name: string } | null;
 }
 
 export function AddCommunicationDialog({
@@ -79,8 +78,9 @@ export function AddCommunicationDialog({
   onOpenChange,
   onSave,
   institutions,
+  currentUser,
 }: AddCommunicationDialogProps) {
-  const [attachments, setAttachments] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<CommunicationFormValues>({
     resolver: zodResolver(communicationSchema),
@@ -89,13 +89,10 @@ export function AddCommunicationDialog({
       date: new Date(),
       priority: 'medium',
       status: 'completed',
-      conducted_by: 'System Admin',
-      attachments: [],
     },
   });
 
   const watchStatus = form.watch('status');
-  const watchInstitutionId = form.watch('institution_id');
   const watchNotes = form.watch('notes');
 
   const handleInstitutionChange = (value: string) => {
@@ -105,43 +102,43 @@ export function AddCommunicationDialog({
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const fileNames = Array.from(files).map((f) => f.name);
-      setAttachments([...attachments, ...fileNames]);
-      form.setValue('attachments', [...attachments, ...fileNames]);
+  const onSubmit = async (data: CommunicationFormValues) => {
+    if (!currentUser) {
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const newLog: Omit<CommunicationLog, 'id' | 'created_at' | 'updated_at'> = {
+        institution_id: data.institution_id,
+        institution_name: data.institution_name,
+        date: data.date.toISOString(),
+        type: data.type,
+        subject: data.subject,
+        notes: data.notes,
+        contact_person: data.contact_person,
+        contact_role: data.contact_role,
+        conducted_by_id: currentUser.id,
+        conducted_by_name: currentUser.name,
+        next_action: data.next_action || null,
+        next_action_date: data.next_action_date?.toISOString() || null,
+        priority: data.priority,
+        status: data.status,
+      };
+
+      await onSave(newLog);
+      form.reset();
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const removeAttachment = (index: number) => {
-    const newAttachments = attachments.filter((_, i) => i !== index);
-    setAttachments(newAttachments);
-    form.setValue('attachments', newAttachments);
-  };
-
-  const onSubmit = (data: CommunicationFormValues) => {
-    const newLog: Omit<CommunicationLog, 'id'> = {
-      institution_id: data.institution_id,
-      institution_name: data.institution_name,
-      date: data.date.toISOString(),
-      type: data.type,
-      subject: data.subject,
-      notes: data.notes,
-      contact_person: data.contact_person,
-      contact_role: data.contact_role,
-      conducted_by: data.conducted_by,
-      next_action: data.next_action || '',
-      next_action_date: data.next_action_date?.toISOString() || '',
-      priority: data.priority,
-      status: data.status,
-      attachments: data.attachments || [],
-    };
-
-    onSave(newLog);
-    form.reset();
-    setAttachments([]);
-  };
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!open) {
+      form.reset();
+    }
+  }, [open, form]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -155,6 +152,17 @@ export function AddCommunicationDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Conducted By (Read-only - current user) */}
+            <div className="p-3 bg-muted rounded-lg flex items-center gap-3">
+              <User className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Logged by</p>
+                <p className="text-sm text-muted-foreground">
+                  {currentUser?.name || 'Loading...'}
+                </p>
+              </div>
+            </div>
+
             {/* Institution Selection */}
             <FormField
               control={form.control}
@@ -175,11 +183,17 @@ export function AddCommunicationDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {institutions.map((inst) => (
-                        <SelectItem key={inst.id} value={inst.id}>
-                          {inst.name}
+                      {institutions.length === 0 ? (
+                        <SelectItem value="no-institutions" disabled>
+                          No institutions available
                         </SelectItem>
-                      ))}
+                      ) : (
+                        institutions.map((inst) => (
+                          <SelectItem key={inst.id} value={inst.id}>
+                            {inst.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -320,32 +334,6 @@ export function AddCommunicationDialog({
               />
             </div>
 
-            {/* Conducted By */}
-            <FormField
-              control={form.control}
-              name="conducted_by"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Conducted By *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select team member" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="System Admin">System Admin</SelectItem>
-                      <SelectItem value="Rajesh Kumar">Rajesh Kumar</SelectItem>
-                      <SelectItem value="Anita Desai">Anita Desai</SelectItem>
-                      <SelectItem value="Priya Sharma">Priya Sharma</SelectItem>
-                      <SelectItem value="Sneha Reddy">Sneha Reddy</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Priority */}
               <FormField
@@ -411,7 +399,7 @@ export function AddCommunicationDialog({
                     />
                   </FormControl>
                   <FormDescription>
-                    {watchNotes?.length || 0}/1000 characters (minimum 50)
+                    {watchNotes?.length || 0}/1000 characters (minimum 10)
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -482,63 +470,28 @@ export function AddCommunicationDialog({
               </div>
             )}
 
-            {/* Attachments */}
-            <div className="space-y-2">
-              <Label>Attachments (Optional)</Label>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => document.getElementById('file-upload')?.click()}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload Files
-                </Button>
-                <input
-                  id="file-upload"
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileUpload}
-                  accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-                />
-              </div>
-              {attachments.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {attachments.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-2 px-3 py-1 bg-muted rounded-md text-sm"
-                    >
-                      <span>{file}</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0"
-                        onClick={() => removeAttachment(index)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
             <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => {
                   form.reset();
-                  setAttachments([]);
                   onOpenChange(false);
                 }}
+                disabled={isSubmitting}
               >
                 Cancel
               </Button>
-              <Button type="submit">Save & Log</Button>
+              <Button type="submit" disabled={isSubmitting || !currentUser}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save & Log'
+                )}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

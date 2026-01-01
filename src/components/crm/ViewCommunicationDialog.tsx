@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CommunicationLog } from "@/data/mockCRMData";
+import { CommunicationLog } from "@/types/communicationLog";
 import { Phone, Mail, Users, MapPin, Calendar, User, Target, AlertTriangle, Paperclip } from "lucide-react";
 import { format } from "date-fns";
 
@@ -59,7 +59,6 @@ export function ViewCommunicationDialog({ open, onOpenChange, communication, onE
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Institution & Status */}
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Institution</p>
@@ -77,7 +76,6 @@ export function ViewCommunicationDialog({ open, onOpenChange, communication, onE
 
           <Separator />
 
-          {/* Communication Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
@@ -92,7 +90,7 @@ export function ViewCommunicationDialog({ open, onOpenChange, communication, onE
                 <User className="h-4 w-4" />
                 <span>Conducted By</span>
               </div>
-              <p className="font-medium">{communication.conducted_by}</p>
+              <p className="font-medium">{communication.conducted_by_name}</p>
             </div>
 
             <div>
@@ -105,17 +103,14 @@ export function ViewCommunicationDialog({ open, onOpenChange, communication, onE
             </div>
 
             <div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                <Badge variant="outline" className={typeColors[communication.type]}>
-                  {communication.type.replace(/_/g, ' ').toUpperCase()}
-                </Badge>
-              </div>
+              <Badge variant="outline" className={typeColors[communication.type]}>
+                {communication.type.replace(/_/g, ' ').toUpperCase()}
+              </Badge>
             </div>
           </div>
 
           <Separator />
 
-          {/* Communication Notes */}
           <div>
             <h4 className="font-semibold mb-2">Communication Notes</h4>
             <div className="bg-muted/50 p-4 rounded-lg">
@@ -123,8 +118,7 @@ export function ViewCommunicationDialog({ open, onOpenChange, communication, onE
             </div>
           </div>
 
-          {/* Next Action */}
-          {communication.next_action && (
+          {communication.next_action && communication.next_action_date && (
             <>
               <Separator />
               <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
@@ -143,7 +137,6 @@ export function ViewCommunicationDialog({ open, onOpenChange, communication, onE
             </>
           )}
 
-          {/* Attachments */}
           {communication.attachments && communication.attachments.length > 0 && (
             <>
               <Separator />
@@ -153,8 +146,10 @@ export function ViewCommunicationDialog({ open, onOpenChange, communication, onE
                   {communication.attachments.map((attachment, index) => (
                     <div key={index} className="flex items-center gap-2 p-2 border rounded-lg hover:bg-muted/50 cursor-pointer">
                       <Paperclip className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm flex-1">{attachment}</span>
-                      <Button variant="ghost" size="sm">Download</Button>
+                      <span className="text-sm flex-1">{attachment.file_name}</span>
+                      <Button variant="ghost" size="sm" asChild>
+                        <a href={attachment.public_url} target="_blank" rel="noopener noreferrer">Download</a>
+                      </Button>
                     </div>
                   ))}
                 </div>
