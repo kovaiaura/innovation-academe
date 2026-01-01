@@ -16,7 +16,7 @@ import SuperAdminSystemConfig from "./pages/super-admin/SystemConfig";
 import SuperAdminAuditLogs from "./pages/super-admin/AuditLogs";
 import SystemAdminDashboard from "./pages/system-admin/Dashboard";
 import InstitutionManagement from "./pages/system-admin/InstitutionManagement";
-import SystemAdminReports from "./pages/system-admin/Reports";
+import InvoiceManagement from "./pages/system-admin/InvoiceManagement";
 import OfficerManagement from "./pages/system-admin/OfficerManagement";
 import SystemAdminOfficerAttendance from "./pages/system-admin/OfficerAttendance";
 import StaffAttendancePayroll from "./pages/system-admin/StaffAttendancePayroll";
@@ -238,7 +238,7 @@ const App = () => (
               path="/system-admin/reports"
               element={
                 <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="reports_analytics">
-                  <SystemAdminReports />
+                  <InvoiceManagement />
                 </ProtectedRoute>
               }
             />
