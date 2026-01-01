@@ -284,6 +284,14 @@ export const styles = StyleSheet.create({
     width: 180,
     textAlign: 'center',
   },
+  signatureImage: {
+    width: 100,
+    height: 50,
+    marginBottom: 5,
+    marginTop: 10,
+    objectFit: 'contain',
+    alignSelf: 'center',
+  },
   signatureLine: {
     borderTopWidth: 1,
     borderTopColor: '#1a1a2e',

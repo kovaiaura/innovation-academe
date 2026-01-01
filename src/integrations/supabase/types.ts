@@ -1014,6 +1014,8 @@ export type Database = {
           country: string | null
           created_at: string | null
           created_by: string | null
+          declaration: string | null
+          default_notes: string | null
           email: string | null
           gstin: string | null
           id: string
@@ -1023,6 +1025,7 @@ export type Database = {
           phone: string | null
           pincode: string | null
           profile_type: string
+          signature_url: string | null
           state: string | null
           state_code: string | null
           terms_and_conditions: string | null
@@ -1038,6 +1041,8 @@ export type Database = {
           country?: string | null
           created_at?: string | null
           created_by?: string | null
+          declaration?: string | null
+          default_notes?: string | null
           email?: string | null
           gstin?: string | null
           id?: string
@@ -1047,6 +1052,7 @@ export type Database = {
           phone?: string | null
           pincode?: string | null
           profile_type?: string
+          signature_url?: string | null
           state?: string | null
           state_code?: string | null
           terms_and_conditions?: string | null
@@ -1062,6 +1068,8 @@ export type Database = {
           country?: string | null
           created_at?: string | null
           created_by?: string | null
+          declaration?: string | null
+          default_notes?: string | null
           email?: string | null
           gstin?: string | null
           id?: string
@@ -1071,6 +1079,7 @@ export type Database = {
           phone?: string | null
           pincode?: string | null
           profile_type?: string
+          signature_url?: string | null
           state?: string | null
           state_code?: string | null
           terms_and_conditions?: string | null

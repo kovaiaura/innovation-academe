@@ -1,4 +1,4 @@
-import { View, Text } from '@react-pdf/renderer';
+import { View, Text, Image } from '@react-pdf/renderer';
 import { styles } from './InvoicePDFStyles';
 import type { Invoice } from '@/types/invoice';
 
@@ -11,7 +11,7 @@ export function InvoicePDFFooter({ invoice }: InvoicePDFFooterProps) {
   const hasBankDetails = bankDetails && Object.keys(bankDetails).length > 0;
 
   return (
-    <View>
+    <View wrap={false}>
       {/* Bank Details & Notes */}
       <View style={styles.footerSection}>
         {/* Bank Details */}
@@ -75,7 +75,11 @@ export function InvoicePDFFooter({ invoice }: InvoicePDFFooterProps) {
       {/* Signature */}
       <View style={styles.signatureSection}>
         <View style={styles.signatureBox}>
-          <View style={styles.signatureLine} />
+          {invoice.signature_url ? (
+            <Image src={invoice.signature_url} style={styles.signatureImage} />
+          ) : (
+            <View style={styles.signatureLine} />
+          )}
           <Text style={styles.signatureText}>Authorized Signatory</Text>
           <Text style={styles.signatureCompany}>For {invoice.from_company_name}</Text>
         </View>
