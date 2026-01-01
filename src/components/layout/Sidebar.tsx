@@ -97,7 +97,7 @@ const menuItems: MenuItem[] = [
   { label: 'Gamification', icon: <Trophy className="h-5 w-5" />, path: '/gamification', roles: ['system_admin'], feature: 'gamification' },
   { label: 'Webinars', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['system_admin'] },
   // Reports & Invoice
-  { label: 'Reports & Invoice', icon: <BarChart className="h-5 w-5" />, path: '/reports', roles: ['system_admin'], feature: 'reports_analytics' },
+  { label: 'Invoice Management', icon: <FileText className="h-5 w-5" />, path: '/reports', roles: ['system_admin'], feature: 'reports_analytics' },
   // SDG Management
   { label: 'SDG Management', icon: <Target className="h-5 w-5" />, path: '/sdg-management', roles: ['system_admin'], feature: 'sdg_management' },
   // CRM & Ask Metova

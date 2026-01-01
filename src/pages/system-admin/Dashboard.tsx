@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Users, GraduationCap, Key, TrendingUp, AlertCircle, Phone, Package, Calendar, CalendarCheck } from 'lucide-react';
+import { Building2, Users, GraduationCap, Key, TrendingUp, AlertCircle, Phone, Package, Calendar, CalendarCheck, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Layout } from '@/components/layout/Layout';
@@ -240,8 +240,8 @@ export default function SystemAdminDashboard() {
               </Button>
               <Button variant="outline" className="h-24 flex-col gap-2" asChild>
                 <Link to="/system-admin/reports">
-                  <TrendingUp className="h-6 w-6" />
-                  System Reports
+                  <FileText className="h-6 w-6" />
+                  Invoice Management
                 </Link>
               </Button>
               <Button variant="outline" className="h-24 flex-col gap-2" asChild>
