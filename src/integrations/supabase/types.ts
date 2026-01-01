@@ -847,6 +847,121 @@ export type Database = {
           },
         ]
       }
+      communication_log_attachments: {
+        Row: {
+          communication_log_id: string
+          created_at: string | null
+          file_name: string
+          file_size: number
+          file_type: string
+          id: string
+          public_url: string
+          storage_path: string
+          uploaded_by_id: string | null
+          uploaded_by_name: string
+        }
+        Insert: {
+          communication_log_id: string
+          created_at?: string | null
+          file_name: string
+          file_size: number
+          file_type: string
+          id?: string
+          public_url: string
+          storage_path: string
+          uploaded_by_id?: string | null
+          uploaded_by_name: string
+        }
+        Update: {
+          communication_log_id?: string
+          created_at?: string | null
+          file_name?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          public_url?: string
+          storage_path?: string
+          uploaded_by_id?: string | null
+          uploaded_by_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_log_attachments_communication_log_id_fkey"
+            columns: ["communication_log_id"]
+            isOneToOne: false
+            referencedRelation: "communication_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      communication_logs: {
+        Row: {
+          conducted_by_id: string | null
+          conducted_by_name: string
+          contact_person: string
+          contact_role: string
+          created_at: string | null
+          date: string
+          id: string
+          institution_id: string
+          institution_name: string
+          next_action: string | null
+          next_action_date: string | null
+          notes: string
+          priority: string
+          status: string
+          subject: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          conducted_by_id?: string | null
+          conducted_by_name: string
+          contact_person: string
+          contact_role: string
+          created_at?: string | null
+          date?: string
+          id?: string
+          institution_id: string
+          institution_name: string
+          next_action?: string | null
+          next_action_date?: string | null
+          notes: string
+          priority?: string
+          status?: string
+          subject: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          conducted_by_id?: string | null
+          conducted_by_name?: string
+          contact_person?: string
+          contact_role?: string
+          created_at?: string | null
+          date?: string
+          id?: string
+          institution_id?: string
+          institution_name?: string
+          next_action?: string | null
+          next_action_date?: string | null
+          notes?: string
+          priority?: string
+          status?: string
+          subject?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_logs_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_holidays: {
         Row: {
           created_at: string | null

@@ -1,14 +1,16 @@
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CommunicationLog } from "@/data/mockCRMData";
+import { CommunicationLog } from "@/types/communicationLog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
+import { Loader2, User } from "lucide-react";
 
 const communicationSchema = z.object({
   institution_id: z.string().min(1, "Institution is required"),
@@ -17,7 +19,6 @@ const communicationSchema = z.object({
   subject: z.string().min(5, "Subject must be at least 5 characters"),
   contact_person: z.string().min(1, "Contact person is required"),
   contact_role: z.string().min(1, "Contact role is required"),
-  conducted_by: z.string().min(1, "Conducted by is required"),
   notes: z.string().min(10, "Notes must be at least 10 characters"),
   priority: z.enum(['high', 'medium', 'low']),
   status: z.enum(['completed', 'pending', 'follow_up_required']),
@@ -42,47 +43,58 @@ export function EditCommunicationDialog({
   onSave,
   institutions 
 }: EditCommunicationDialogProps) {
-  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<CommunicationFormData>({
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm<CommunicationFormData>({
     resolver: zodResolver(communicationSchema),
-    defaultValues: communication ? {
-      institution_id: communication.institution_id,
-      type: communication.type,
-      date: format(new Date(communication.date), 'yyyy-MM-dd'),
-      subject: communication.subject,
-      contact_person: communication.contact_person,
-      contact_role: communication.contact_role,
-      conducted_by: communication.conducted_by,
-      notes: communication.notes,
-      priority: communication.priority,
-      status: communication.status,
-      next_action: communication.next_action,
-      next_action_date: communication.next_action_date ? format(new Date(communication.next_action_date), 'yyyy-MM-dd') : '',
-    } : undefined
   });
 
-  const onSubmit = (data: CommunicationFormData) => {
+  // Reset form when communication changes
+  useEffect(() => {
+    if (communication) {
+      reset({
+        institution_id: communication.institution_id,
+        type: communication.type,
+        date: format(new Date(communication.date), 'yyyy-MM-dd'),
+        subject: communication.subject,
+        contact_person: communication.contact_person,
+        contact_role: communication.contact_role,
+        notes: communication.notes,
+        priority: communication.priority,
+        status: communication.status,
+        next_action: communication.next_action || '',
+        next_action_date: communication.next_action_date ? format(new Date(communication.next_action_date), 'yyyy-MM-dd') : '',
+      });
+    }
+  }, [communication, reset]);
+
+  const onSubmit = async (data: CommunicationFormData) => {
     if (!communication) return;
     
-    const selectedInstitution = institutions.find(i => i.id === data.institution_id);
-    
-    const updatedCommunication: CommunicationLog = {
-      ...communication,
-      institution_id: data.institution_id,
-      institution_name: selectedInstitution?.name || communication.institution_name,
-      type: data.type,
-      date: new Date(data.date).toISOString(),
-      subject: data.subject,
-      contact_person: data.contact_person,
-      contact_role: data.contact_role,
-      conducted_by: data.conducted_by,
-      notes: data.notes,
-      priority: data.priority,
-      status: data.status,
-      next_action: data.next_action || '',
-      next_action_date: data.next_action_date ? new Date(data.next_action_date).toISOString() : '',
-    };
-    
-    onSave(updatedCommunication);
+    setIsSubmitting(true);
+    try {
+      const selectedInstitution = institutions.find(i => i.id === data.institution_id);
+      
+      const updatedCommunication: CommunicationLog = {
+        ...communication,
+        institution_id: data.institution_id,
+        institution_name: selectedInstitution?.name || communication.institution_name,
+        type: data.type,
+        date: new Date(data.date).toISOString(),
+        subject: data.subject,
+        contact_person: data.contact_person,
+        contact_role: data.contact_role,
+        notes: data.notes,
+        priority: data.priority,
+        status: data.status,
+        next_action: data.next_action || null,
+        next_action_date: data.next_action_date ? new Date(data.next_action_date).toISOString() : null,
+      };
+      
+      await onSave(updatedCommunication);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!communication) return null;
@@ -93,6 +105,17 @@ export function EditCommunicationDialog({
         <DialogHeader>
           <DialogTitle>Edit Communication Log</DialogTitle>
         </DialogHeader>
+
+        {/* Show who logged this */}
+        <div className="p-3 bg-muted rounded-lg flex items-center gap-3">
+          <User className="h-5 w-5 text-muted-foreground" />
+          <div>
+            <p className="text-sm font-medium">Originally logged by</p>
+            <p className="text-sm text-muted-foreground">
+              {communication.conducted_by_name}
+            </p>
+          </div>
+        </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -142,12 +165,6 @@ export function EditCommunicationDialog({
               <Label htmlFor="date">Communication Date *</Label>
               <Input type="date" {...register('date')} />
               {errors.date && <p className="text-sm text-red-500">{errors.date.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="conducted_by">Conducted By *</Label>
-              <Input {...register('conducted_by')} placeholder="Your name" />
-              {errors.conducted_by && <p className="text-sm text-red-500">{errors.conducted_by.message}</p>}
             </div>
 
             <div className="space-y-2">
@@ -230,10 +247,19 @@ export function EditCommunicationDialog({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit">Save Changes</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

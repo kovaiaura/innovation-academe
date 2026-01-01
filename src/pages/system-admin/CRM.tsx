@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Phone, Plus, Search, Filter } from "lucide-react";
+import { Phone, Plus, Search, Filter, Loader2 } from "lucide-react";
 import { CommunicationLogCard } from "@/components/crm/CommunicationLogCard";
 import { ContractTracker } from "@/components/crm/ContractTracker";
 import { BillingDashboard } from "@/components/crm/BillingDashboard";
@@ -23,20 +23,38 @@ import { AddTaskDialog } from "@/components/crm/AddTaskDialog";
 import { EditTaskDialog } from "@/components/crm/EditTaskDialog";
 import { TimelineFilterDialog } from "@/components/crm/TimelineFilterDialog";
 import { 
-  mockCommunicationLogs, 
   mockContracts, 
   mockBillingRecords, 
   mockCRMTasks,
-  type CommunicationLog,
   type ContractDetail,
   type BillingRecord,
   type CRMTask
 } from "@/data/mockCRMData";
+import { CommunicationLog } from "@/types/communicationLog";
+import { useRealtimeCommunicationLogs } from "@/hooks/useRealtimeCommunicationLogs";
+import { 
+  createCommunicationLog, 
+  updateCommunicationLog, 
+  deleteCommunicationLog,
+  fetchInstitutions 
+} from "@/services/communicationLog.service";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function CRM() {
   const [activeTab, setActiveTab] = useState("communications");
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Current user info
+  const [currentUser, setCurrentUser] = useState<{ id: string; name: string } | null>(null);
+  
+  // Institutions from database
+  const [institutions, setInstitutions] = useState<{ id: string; name: string }[]>([]);
+  
+  // Communication logs from database with real-time updates
+  const { logs: communicationLogs, loading: logsLoading, refetch: refetchLogs } = useRealtimeCommunicationLogs(
+    searchQuery ? { search: searchQuery } : undefined
+  );
   
   // Dialog states
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -58,39 +76,64 @@ export default function CRM() {
   const [selectedInvoice, setSelectedInvoice] = useState<BillingRecord | null>(null);
   const [selectedTask, setSelectedTask] = useState<CRMTask | null>(null);
   
-  // Data states
-  const [communicationLogs, setCommunicationLogs] = useState<CommunicationLog[]>(mockCommunicationLogs);
+  // Data states for other tabs (still using mock data)
   const [contracts, setContracts] = useState(mockContracts);
   const [billingRecords, setBillingRecords] = useState(mockBillingRecords);
   const [tasks, setTasks] = useState(mockCRMTasks);
 
-  // Extract unique institutions from existing logs
-  const getUniqueInstitutions = (logs: CommunicationLog[]) => {
-    const institutionsMap = new Map();
-    logs.forEach(log => {
-      if (!institutionsMap.has(log.institution_id)) {
-        institutionsMap.set(log.institution_id, {
-          id: log.institution_id,
-          name: log.institution_name,
+  // Fetch current user and institutions on mount
+  useEffect(() => {
+    const loadUserAndInstitutions = async () => {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Get user profile for name
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', user.id)
+          .single();
+        
+        setCurrentUser({
+          id: user.id,
+          name: profile?.name || user.email?.split('@')[0] || 'Unknown User'
         });
       }
-    });
-    return Array.from(institutionsMap.values());
-  };
+      
+      // Fetch institutions
+      try {
+        const institutionsList = await fetchInstitutions();
+        setInstitutions(institutionsList);
+      } catch (error) {
+        console.error('Error fetching institutions:', error);
+      }
+    };
+    
+    loadUserAndInstitutions();
+  }, []);
 
   const handleAddCommunication = () => {
     setIsAddDialogOpen(true);
   };
 
-  const handleSaveCommunication = (newLog: Omit<CommunicationLog, 'id'>) => {
-    const logWithId: CommunicationLog = {
-      ...newLog,
-      id: `comm-${Date.now()}`,
-    };
+  const handleSaveCommunication = async (newLog: Omit<CommunicationLog, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!currentUser) {
+      toast.error("Please log in to add communication logs");
+      return;
+    }
     
-    setCommunicationLogs(prev => [logWithId, ...prev]);
-    setIsAddDialogOpen(false);
-    toast.success("Communication logged successfully");
+    try {
+      await createCommunicationLog({
+        ...newLog,
+        conducted_by_id: currentUser.id,
+        conducted_by_name: currentUser.name,
+      });
+      setIsAddDialogOpen(false);
+      toast.success("Communication logged successfully");
+    } catch (error) {
+      console.error('Error creating communication log:', error);
+      toast.error("Failed to save communication log");
+    }
   };
 
   // Communication handlers
@@ -109,13 +152,16 @@ export default function CRM() {
     setIsEditCommunicationOpen(true);
   };
 
-  const handleUpdateCommunication = (updatedLog: CommunicationLog) => {
-    setCommunicationLogs(prev => 
-      prev.map(log => log.id === updatedLog.id ? updatedLog : log)
-    );
-    setIsEditCommunicationOpen(false);
-    setSelectedCommunication(null);
-    toast.success("Communication log updated successfully");
+  const handleUpdateCommunication = async (updatedLog: CommunicationLog) => {
+    try {
+      await updateCommunicationLog(updatedLog.id, updatedLog);
+      setIsEditCommunicationOpen(false);
+      setSelectedCommunication(null);
+      toast.success("Communication log updated successfully");
+    } catch (error) {
+      console.error('Error updating communication log:', error);
+      toast.error("Failed to update communication log");
+    }
   };
 
   // Contract handlers
@@ -260,6 +306,18 @@ export default function CRM() {
     toast.success("Exporting timeline to PDF...");
   };
 
+  // Filter communication logs based on search
+  const filteredLogs = communicationLogs.filter(log => {
+    if (!searchQuery) return true;
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      log.institution_name.toLowerCase().includes(searchLower) ||
+      log.subject.toLowerCase().includes(searchLower) ||
+      log.contact_person.toLowerCase().includes(searchLower) ||
+      log.notes.toLowerCase().includes(searchLower)
+    );
+  });
+
   return (
     <Layout>
       <div className="container mx-auto p-6 space-y-6">
@@ -354,18 +412,18 @@ export default function CRM() {
                 </Button>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                {communicationLogs
-                  .filter(log => {
-                    const searchLower = searchQuery.toLowerCase();
-                    return (
-                      log.institution_name.toLowerCase().includes(searchLower) ||
-                      log.subject.toLowerCase().includes(searchLower) ||
-                      log.contact_person.toLowerCase().includes(searchLower) ||
-                      log.notes.toLowerCase().includes(searchLower)
-                    );
-                  })
-                  .map((log) => (
+              {logsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredLogs.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No communication logs found.</p>
+                  <p className="text-sm">Click "Log Communication" to add your first entry.</p>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {filteredLogs.map((log) => (
                     <CommunicationLogCard
                       key={log.id}
                       log={log}
@@ -373,7 +431,8 @@ export default function CRM() {
                       onViewDetails={() => handleViewCommunicationDetails(log)}
                     />
                   ))}
-              </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -456,35 +515,36 @@ export default function CRM() {
           open={isAddDialogOpen}
           onOpenChange={setIsAddDialogOpen}
           onSave={handleSaveCommunication}
-          institutions={getUniqueInstitutions(communicationLogs)}
+          institutions={institutions}
+          currentUser={currentUser}
         />
 
         <AddContractDialog
           open={isAddContractDialogOpen}
           onOpenChange={setIsAddContractDialogOpen}
           onSave={handleSaveContract}
-          institutions={getUniqueInstitutions(communicationLogs)}
+          institutions={institutions}
         />
 
         <AddInvoiceDialog
           open={isAddInvoiceDialogOpen}
           onOpenChange={setIsAddInvoiceDialogOpen}
           onSave={handleSaveInvoice}
-          institutions={getUniqueInstitutions(communicationLogs)}
+          institutions={institutions}
         />
 
         <AddTaskDialog
           open={isAddTaskDialogOpen}
           onOpenChange={setIsAddTaskDialogOpen}
           onSave={handleSaveTask}
-          institutions={getUniqueInstitutions(communicationLogs)}
+          institutions={institutions}
         />
 
         <TimelineFilterDialog
           open={isTimelineFilterOpen}
           onOpenChange={setIsTimelineFilterOpen}
           onApplyFilters={handleApplyTimelineFilters}
-          institutions={getUniqueInstitutions(communicationLogs)}
+          institutions={institutions}
         />
 
         <ViewCommunicationDialog
@@ -499,7 +559,7 @@ export default function CRM() {
           onOpenChange={setIsEditCommunicationOpen}
           communication={selectedCommunication}
           onSave={handleUpdateCommunication}
-          institutions={getUniqueInstitutions(communicationLogs)}
+          institutions={institutions}
         />
 
         <ViewContractDialog
@@ -518,7 +578,7 @@ export default function CRM() {
           onOpenChange={setIsEditContractOpen}
           contract={selectedContract}
           onSave={handleUpdateContract}
-          institutions={getUniqueInstitutions(communicationLogs)}
+          institutions={institutions}
         />
 
         <RenewalWorkflowDialog
@@ -541,7 +601,7 @@ export default function CRM() {
           onOpenChange={setIsEditTaskOpen}
           task={selectedTask}
           onSave={handleUpdateTask}
-          institutions={getUniqueInstitutions(communicationLogs)}
+          institutions={institutions}
         />
       </div>
     </Layout>
