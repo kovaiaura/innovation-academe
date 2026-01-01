@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -8,23 +9,27 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { InvoiceStatusBadge } from './InvoiceStatusBadge';
-import { Download, Printer } from 'lucide-react';
+import { Download, Printer, Loader2 } from 'lucide-react';
 import type { Invoice } from '@/types/invoice';
 import { format } from 'date-fns';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import { InvoicePDF } from './pdf/InvoicePDF';
+import { generatePDFFilename } from '@/services/pdf.service';
 
 interface ViewInvoiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoice: Invoice | null;
-  onDownload: (invoice: Invoice) => void;
+  onDownload?: (invoice: Invoice) => void;
 }
 
 export function ViewInvoiceDialog({
   open,
   onOpenChange,
   invoice,
-  onDownload,
 }: ViewInvoiceDialogProps) {
+  const [copyType] = useState<'original' | 'duplicate' | 'triplicate'>('original');
+  
   if (!invoice) return null;
 
   const handlePrint = () => {
@@ -48,10 +53,21 @@ export function ViewInvoiceDialog({
               <Printer className="h-4 w-4 mr-2" />
               Print
             </Button>
-            <Button size="sm" onClick={() => onDownload(invoice)}>
-              <Download className="h-4 w-4 mr-2" />
-              Download PDF
-            </Button>
+            <PDFDownloadLink
+              document={<InvoicePDF invoice={invoice} copyType={copyType} />}
+              fileName={generatePDFFilename(invoice.invoice_number, invoice.invoice_type)}
+            >
+              {({ loading }) => (
+                <Button size="sm" disabled={loading}>
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  {loading ? 'Generating...' : 'Download PDF'}
+                </Button>
+              )}
+            </PDFDownloadLink>
           </div>
         </DialogHeader>
 
