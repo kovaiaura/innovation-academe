@@ -151,7 +151,7 @@ export function InvoiceList({
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => onDownload(invoice)}>
                             <Download className="h-4 w-4 mr-2" />
-                            Download PDF
+                            {invoice.invoice_type === 'purchase' ? 'Download Bill' : 'Download PDF'}
                           </DropdownMenuItem>
                           {invoice.status === 'draft' && (
                             <DropdownMenuItem

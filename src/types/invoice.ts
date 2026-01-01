@@ -132,6 +132,11 @@ export interface Invoice {
   declaration?: string;
   signature_url?: string;
   
+  // Attachment (for purchase invoices)
+  attachment_url?: string;
+  attachment_name?: string;
+  attachment_type?: string;
+  
   // E-Invoicing
   irn?: string;
   ack_number?: string;
@@ -188,6 +193,7 @@ export interface CreateInvoiceInput {
   declaration?: string;
   bank_details?: BankDetails;
   institution_id?: string;
+  total_amount?: number; // For purchase invoices where amount is entered directly
   line_items: Omit<InvoiceLineItem, 'id' | 'invoice_id'>[];
 }
 

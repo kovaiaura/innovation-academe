@@ -2244,6 +2244,9 @@ export type Database = {
         Row: {
           ack_date: string | null
           ack_number: string | null
+          attachment_name: string | null
+          attachment_type: string | null
+          attachment_url: string | null
           balance_due: number
           bank_details: Json | null
           cgst_amount: number | null
@@ -2310,6 +2313,9 @@ export type Database = {
         Insert: {
           ack_date?: string | null
           ack_number?: string | null
+          attachment_name?: string | null
+          attachment_type?: string | null
+          attachment_url?: string | null
           balance_due?: number
           bank_details?: Json | null
           cgst_amount?: number | null
@@ -2376,6 +2382,9 @@ export type Database = {
         Update: {
           ack_date?: string | null
           ack_number?: string | null
+          attachment_name?: string | null
+          attachment_type?: string | null
+          attachment_url?: string | null
           balance_due?: number
           bank_details?: Json | null
           cgst_amount?: number | null

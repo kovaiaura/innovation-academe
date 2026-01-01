@@ -5,7 +5,9 @@ import { Plus, Building2, ShoppingCart, Package } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { InvoiceList } from '@/components/invoice/InvoiceList';
 import { CreateInvoiceDialog } from '@/components/invoice/CreateInvoiceDialog';
+import { CreatePurchaseInvoiceDialog } from '@/components/invoice/CreatePurchaseInvoiceDialog';
 import { ViewInvoiceDialog } from '@/components/invoice/ViewInvoiceDialog';
+import { ViewPurchaseInvoiceDialog } from '@/components/invoice/ViewPurchaseInvoiceDialog';
 import { useInvoices } from '@/hooks/useInvoices';
 import { updateInvoiceStatus, deleteInvoice } from '@/services/invoice.service';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,7 +17,9 @@ import { toast } from 'sonner';
 export default function InvoiceManagement() {
   const [activeTab, setActiveTab] = useState<InvoiceType>('institution');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createPurchaseDialogOpen, setCreatePurchaseDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewPurchaseDialogOpen, setViewPurchaseDialogOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [institutions, setInstitutions] = useState<{ id: string; name: string }[]>([]);
 
@@ -35,14 +39,36 @@ export default function InvoiceManagement() {
 
   const handleView = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
-    setViewDialogOpen(true);
+    if (invoice.invoice_type === 'purchase') {
+      setViewPurchaseDialogOpen(true);
+    } else {
+      setViewDialogOpen(true);
+    }
   };
 
   const handleDownload = (invoice: Invoice) => {
-    // For now, print the invoice
-    toast.info('PDF download coming soon. Use Print for now.');
-    setSelectedInvoice(invoice);
-    setViewDialogOpen(true);
+    if (invoice.invoice_type === 'purchase' && invoice.attachment_url) {
+      // Download the attached bill
+      const link = document.createElement('a');
+      link.href = invoice.attachment_url;
+      link.download = invoice.attachment_name || 'vendor-bill';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      // For generated invoices, open view dialog for PDF
+      setSelectedInvoice(invoice);
+      setViewDialogOpen(true);
+    }
+  };
+
+  const handleCreateClick = () => {
+    if (activeTab === 'purchase') {
+      setCreatePurchaseDialogOpen(true);
+    } else {
+      setCreateDialogOpen(true);
+    }
   };
 
   const handleStatusChange = async (id: string, status: InvoiceStatus) => {
@@ -97,9 +123,9 @@ export default function InvoiceManagement() {
               Create, manage and download invoices
             </p>
           </div>
-          <Button onClick={() => setCreateDialogOpen(true)}>
+          <Button onClick={handleCreateClick}>
             <Plus className="h-4 w-4 mr-2" />
-            Create Invoice
+            {activeTab === 'purchase' ? 'Record Purchase' : 'Create Invoice'}
           </Button>
         </div>
 
@@ -135,11 +161,23 @@ export default function InvoiceManagement() {
           institutions={institutions}
         />
 
+        <CreatePurchaseInvoiceDialog
+          open={createPurchaseDialogOpen}
+          onOpenChange={setCreatePurchaseDialogOpen}
+          onSuccess={refetch}
+        />
+
         <ViewInvoiceDialog
           open={viewDialogOpen}
           onOpenChange={setViewDialogOpen}
           invoice={selectedInvoice}
           onDownload={handleDownload}
+        />
+
+        <ViewPurchaseInvoiceDialog
+          open={viewPurchaseDialogOpen}
+          onOpenChange={setViewPurchaseDialogOpen}
+          invoice={selectedInvoice}
         />
       </div>
     </Layout>
