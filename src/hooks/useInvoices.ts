@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchInvoices } from '@/services/invoice.service';
 import type { Invoice, InvoiceFilters } from '@/types/invoice';
@@ -8,11 +8,32 @@ export function useInvoices(filters?: InvoiceFilters) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const isFetching = useRef(false);
+
+  // Extract individual filter values to use as stable dependencies
+  const invoiceType = filters?.invoice_type;
+  const status = filters?.status;
+  const institutionId = filters?.institution_id;
+  const search = filters?.search;
+  const startDate = filters?.start_date;
+  const endDate = filters?.end_date;
 
   const loadInvoices = useCallback(async () => {
+    // Prevent duplicate fetches
+    if (isFetching.current) return;
+    
+    isFetching.current = true;
     try {
       setLoading(true);
-      const data = await fetchInvoices(filters);
+      const filterParams: InvoiceFilters = {};
+      if (invoiceType) filterParams.invoice_type = invoiceType;
+      if (status) filterParams.status = status;
+      if (institutionId) filterParams.institution_id = institutionId;
+      if (search) filterParams.search = search;
+      if (startDate) filterParams.start_date = startDate;
+      if (endDate) filterParams.end_date = endDate;
+
+      const data = await fetchInvoices(filterParams);
       setInvoices(data);
       setError(null);
     } catch (err) {
@@ -21,8 +42,9 @@ export function useInvoices(filters?: InvoiceFilters) {
       toast.error('Failed to load invoices');
     } finally {
       setLoading(false);
+      isFetching.current = false;
     }
-  }, [filters]);
+  }, [invoiceType, status, institutionId, search, startDate, endDate]);
 
   useEffect(() => {
     loadInvoices();
@@ -43,7 +65,7 @@ export function useInvoices(filters?: InvoiceFilters) {
           if (payload.eventType === 'INSERT') {
             const newInvoice = payload.new as Invoice;
             // Only add if it matches current filters
-            if (!filters?.invoice_type || newInvoice.invoice_type === filters.invoice_type) {
+            if (!invoiceType || newInvoice.invoice_type === invoiceType) {
               setInvoices((prev) => [{ ...newInvoice, line_items: [] }, ...prev]);
               toast.success('New invoice created');
             }
@@ -63,7 +85,7 @@ export function useInvoices(filters?: InvoiceFilters) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [filters?.invoice_type]);
+  }, [invoiceType]);
 
   return { invoices, loading, error, refetch: loadInvoices };
 }
