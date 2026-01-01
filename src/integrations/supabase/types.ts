@@ -1004,6 +1004,81 @@ export type Database = {
         }
         Relationships: []
       }
+      company_profiles: {
+        Row: {
+          address: string | null
+          bank_details: Json | null
+          cin: string | null
+          city: string | null
+          company_name: string
+          country: string | null
+          created_at: string | null
+          created_by: string | null
+          email: string | null
+          gstin: string | null
+          id: string
+          is_default: boolean | null
+          logo_url: string | null
+          pan: string | null
+          phone: string | null
+          pincode: string | null
+          profile_type: string
+          state: string | null
+          state_code: string | null
+          terms_and_conditions: string | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          bank_details?: Json | null
+          cin?: string | null
+          city?: string | null
+          company_name: string
+          country?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          is_default?: boolean | null
+          logo_url?: string | null
+          pan?: string | null
+          phone?: string | null
+          pincode?: string | null
+          profile_type?: string
+          state?: string | null
+          state_code?: string | null
+          terms_and_conditions?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          bank_details?: Json | null
+          cin?: string | null
+          city?: string | null
+          company_name?: string
+          country?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          is_default?: boolean | null
+          logo_url?: string | null
+          pan?: string | null
+          phone?: string | null
+          pincode?: string | null
+          profile_type?: string
+          state?: string | null
+          state_code?: string | null
+          terms_and_conditions?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
       course_class_assignments: {
         Row: {
           assigned_at: string
@@ -2048,6 +2123,316 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "inventory_items_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_line_items: {
+        Row: {
+          amount: number
+          cgst_amount: number | null
+          cgst_rate: number | null
+          created_at: string | null
+          description: string
+          discount_amount: number | null
+          discount_percent: number | null
+          display_order: number | null
+          hsn_sac_code: string | null
+          id: string
+          igst_amount: number | null
+          igst_rate: number | null
+          invoice_id: string
+          quantity: number | null
+          rate: number
+          sgst_amount: number | null
+          sgst_rate: number | null
+          unit: string | null
+        }
+        Insert: {
+          amount?: number
+          cgst_amount?: number | null
+          cgst_rate?: number | null
+          created_at?: string | null
+          description: string
+          discount_amount?: number | null
+          discount_percent?: number | null
+          display_order?: number | null
+          hsn_sac_code?: string | null
+          id?: string
+          igst_amount?: number | null
+          igst_rate?: number | null
+          invoice_id: string
+          quantity?: number | null
+          rate?: number
+          sgst_amount?: number | null
+          sgst_rate?: number | null
+          unit?: string | null
+        }
+        Update: {
+          amount?: number
+          cgst_amount?: number | null
+          cgst_rate?: number | null
+          created_at?: string | null
+          description?: string
+          discount_amount?: number | null
+          discount_percent?: number | null
+          display_order?: number | null
+          hsn_sac_code?: string | null
+          id?: string
+          igst_amount?: number | null
+          igst_rate?: number | null
+          invoice_id?: string
+          quantity?: number | null
+          rate?: number
+          sgst_amount?: number | null
+          sgst_rate?: number | null
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_line_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_number_sequences: {
+        Row: {
+          created_at: string | null
+          financial_year: string
+          id: string
+          invoice_type: string
+          last_number: number
+          prefix: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          financial_year: string
+          id?: string
+          invoice_type: string
+          last_number?: number
+          prefix: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          financial_year?: string
+          id?: string
+          invoice_type?: string
+          last_number?: number
+          prefix?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      invoices: {
+        Row: {
+          ack_date: string | null
+          ack_number: string | null
+          balance_due: number
+          bank_details: Json | null
+          cgst_amount: number | null
+          cgst_rate: number | null
+          created_at: string | null
+          created_by: string | null
+          declaration: string | null
+          delivery_note: string | null
+          discount_amount: number | null
+          due_date: string | null
+          from_company_address: string | null
+          from_company_cin: string | null
+          from_company_city: string | null
+          from_company_email: string | null
+          from_company_gstin: string | null
+          from_company_name: string
+          from_company_pan: string | null
+          from_company_phone: string | null
+          from_company_pincode: string | null
+          from_company_state: string | null
+          from_company_state_code: string | null
+          from_company_website: string | null
+          id: string
+          igst_amount: number | null
+          igst_rate: number | null
+          institution_id: string | null
+          invoice_date: string
+          invoice_number: string
+          invoice_type: string
+          irn: string | null
+          notes: string | null
+          paid_date: string | null
+          payment_method: string | null
+          place_of_supply: string | null
+          reference_number: string | null
+          sgst_amount: number | null
+          sgst_rate: number | null
+          ship_to_address: string | null
+          ship_to_city: string | null
+          ship_to_gstin: string | null
+          ship_to_name: string | null
+          ship_to_pincode: string | null
+          ship_to_state: string | null
+          ship_to_state_code: string | null
+          status: string
+          sub_total: number
+          tds_amount: number | null
+          tds_rate: number | null
+          terms: string | null
+          terms_and_conditions: string | null
+          to_company_address: string | null
+          to_company_city: string | null
+          to_company_contact_person: string | null
+          to_company_gstin: string | null
+          to_company_name: string
+          to_company_phone: string | null
+          to_company_pincode: string | null
+          to_company_state: string | null
+          to_company_state_code: string | null
+          total_amount: number
+          total_in_words: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ack_date?: string | null
+          ack_number?: string | null
+          balance_due?: number
+          bank_details?: Json | null
+          cgst_amount?: number | null
+          cgst_rate?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          declaration?: string | null
+          delivery_note?: string | null
+          discount_amount?: number | null
+          due_date?: string | null
+          from_company_address?: string | null
+          from_company_cin?: string | null
+          from_company_city?: string | null
+          from_company_email?: string | null
+          from_company_gstin?: string | null
+          from_company_name: string
+          from_company_pan?: string | null
+          from_company_phone?: string | null
+          from_company_pincode?: string | null
+          from_company_state?: string | null
+          from_company_state_code?: string | null
+          from_company_website?: string | null
+          id?: string
+          igst_amount?: number | null
+          igst_rate?: number | null
+          institution_id?: string | null
+          invoice_date?: string
+          invoice_number: string
+          invoice_type: string
+          irn?: string | null
+          notes?: string | null
+          paid_date?: string | null
+          payment_method?: string | null
+          place_of_supply?: string | null
+          reference_number?: string | null
+          sgst_amount?: number | null
+          sgst_rate?: number | null
+          ship_to_address?: string | null
+          ship_to_city?: string | null
+          ship_to_gstin?: string | null
+          ship_to_name?: string | null
+          ship_to_pincode?: string | null
+          ship_to_state?: string | null
+          ship_to_state_code?: string | null
+          status?: string
+          sub_total?: number
+          tds_amount?: number | null
+          tds_rate?: number | null
+          terms?: string | null
+          terms_and_conditions?: string | null
+          to_company_address?: string | null
+          to_company_city?: string | null
+          to_company_contact_person?: string | null
+          to_company_gstin?: string | null
+          to_company_name: string
+          to_company_phone?: string | null
+          to_company_pincode?: string | null
+          to_company_state?: string | null
+          to_company_state_code?: string | null
+          total_amount?: number
+          total_in_words?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ack_date?: string | null
+          ack_number?: string | null
+          balance_due?: number
+          bank_details?: Json | null
+          cgst_amount?: number | null
+          cgst_rate?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          declaration?: string | null
+          delivery_note?: string | null
+          discount_amount?: number | null
+          due_date?: string | null
+          from_company_address?: string | null
+          from_company_cin?: string | null
+          from_company_city?: string | null
+          from_company_email?: string | null
+          from_company_gstin?: string | null
+          from_company_name?: string
+          from_company_pan?: string | null
+          from_company_phone?: string | null
+          from_company_pincode?: string | null
+          from_company_state?: string | null
+          from_company_state_code?: string | null
+          from_company_website?: string | null
+          id?: string
+          igst_amount?: number | null
+          igst_rate?: number | null
+          institution_id?: string | null
+          invoice_date?: string
+          invoice_number?: string
+          invoice_type?: string
+          irn?: string | null
+          notes?: string | null
+          paid_date?: string | null
+          payment_method?: string | null
+          place_of_supply?: string | null
+          reference_number?: string | null
+          sgst_amount?: number | null
+          sgst_rate?: number | null
+          ship_to_address?: string | null
+          ship_to_city?: string | null
+          ship_to_gstin?: string | null
+          ship_to_name?: string | null
+          ship_to_pincode?: string | null
+          ship_to_state?: string | null
+          ship_to_state_code?: string | null
+          status?: string
+          sub_total?: number
+          tds_amount?: number | null
+          tds_rate?: number | null
+          terms?: string | null
+          terms_and_conditions?: string | null
+          to_company_address?: string | null
+          to_company_city?: string | null
+          to_company_contact_person?: string | null
+          to_company_gstin?: string | null
+          to_company_name?: string
+          to_company_phone?: string | null
+          to_company_pincode?: string | null
+          to_company_state?: string | null
+          to_company_state_code?: string | null
+          total_amount?: number
+          total_in_words?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_institution_id_fkey"
             columns: ["institution_id"]
             isOneToOne: false
             referencedRelation: "institutions"
@@ -4243,6 +4628,10 @@ export type Database = {
       can_view_event_updates: {
         Args: { _event_id: string; _user_id: string }
         Returns: boolean
+      }
+      generate_invoice_number: {
+        Args: { p_invoice_type: string }
+        Returns: string
       }
       generate_request_code: {
         Args: { prefix: string; table_name: string }
