@@ -383,7 +383,7 @@ export function Sidebar() {
             // For multi-role users, use the matching role from the item's roles
             const itemRole = item.roles.find(r => userRoles.includes(r));
             const fullPath = getFullPath(item.path, itemRole);
-            const isActive = location.pathname.includes(item.path);
+            const isActive = location.pathname === fullPath || location.pathname.startsWith(fullPath + '/');
             const showBadge = 
               (item.label === 'Manager Approvals' && managerLeaveCount > 0) ||
               (item.label === 'AGM Approvals' && agmLeaveCount > 0) ||
