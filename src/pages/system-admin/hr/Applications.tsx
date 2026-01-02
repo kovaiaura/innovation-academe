@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
   Search, Users, Filter, Eye, FileText, Mail, Phone,
-  Building2, Briefcase, Calendar
+  Building2, Briefcase, Calendar, ArrowLeft
 } from 'lucide-react';
 import { useJobApplications, useUpdateApplication } from '@/hooks/useHRManagement';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -77,7 +77,12 @@ export default function Applications() {
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <Link to="/system-admin/hr-management">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
           <div>
             <h1 className="text-2xl font-bold">Applications</h1>
             <p className="text-muted-foreground">Review and manage candidate applications</p>

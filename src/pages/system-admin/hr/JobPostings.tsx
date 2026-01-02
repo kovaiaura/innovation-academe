@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
   Plus, Search, Briefcase, MapPin, Clock, Users, MoreVertical,
-  Edit, Trash2, Eye, Pause, Play
+  Edit, Trash2, Eye, Pause, Play, ArrowLeft
 } from 'lucide-react';
 import { useJobPostings, useUpdateJobPosting, useDeleteJobPosting } from '@/hooks/useHRManagement';
 import { Link, useNavigate } from 'react-router-dom';
@@ -85,8 +85,13 @@ export default function JobPostings() {
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
+        <div className="flex items-center gap-4">
+          <Link to="/system-admin/hr-management">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold">Job Postings</h1>
             <p className="text-muted-foreground">Manage open positions and job listings</p>
           </div>

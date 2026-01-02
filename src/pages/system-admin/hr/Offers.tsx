@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
   Search, FileText, Calendar, DollarSign, Send, CheckCircle,
-  XCircle, Clock, Mail, Download, UserPlus
+  XCircle, Clock, Mail, Download, UserPlus, ArrowLeft
 } from 'lucide-react';
 import { useCandidateOffers, useSendOffer, useUpdateOffer, useUpdateApplication } from '@/hooks/useHRManagement';
 import { Link } from 'react-router-dom';
@@ -132,7 +132,12 @@ Metasage Alliance`);
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <Link to="/system-admin/hr-management">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
           <div>
             <h1 className="text-2xl font-bold">Offers</h1>
             <p className="text-muted-foreground">Manage candidate offers and onboarding</p>
