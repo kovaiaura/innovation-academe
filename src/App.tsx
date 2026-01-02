@@ -132,6 +132,7 @@ import OfficerWebinars from "./pages/officer/Webinars";
 import ManagementWebinars from "./pages/management/Webinars";
 import OfficerAssignments from "./pages/officer/Assignments";
 import ManagementAssignments from "./pages/management/Assignments";
+import ReportsManagement from "./pages/system-admin/ReportsManagement";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -239,6 +240,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="reports_analytics">
                   <InvoiceManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/reports-management"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="reports_analytics">
+                  <ReportsManagement />
                 </ProtectedRoute>
               }
             />
