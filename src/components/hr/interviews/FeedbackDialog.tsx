@@ -48,6 +48,8 @@ export function FeedbackDialog({ open, onOpenChange, interview }: FeedbackDialog
     
     submitFeedback.mutate({
       interview_id: interview.id,
+      interviewer_id: null,
+      interviewer_name: null,
       ...formData,
       recommendation: formData.recommendation as any,
     });

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MainLayout } from '@/components/layout/MainLayout';
+import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -193,7 +193,7 @@ Metasage Alliance`);
   };
 
   return (
-    <MainLayout>
+    <Layout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
@@ -344,6 +344,6 @@ Metasage Alliance`);
         onOpenChange={(open) => !open && setFeedbackInterview(null)}
         interview={feedbackInterview}
       />
-    </MainLayout>
+    </Layout>
   );
 }

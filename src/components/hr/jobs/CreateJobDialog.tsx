@@ -26,10 +26,10 @@ interface CreateJobDialogProps {
 }
 
 const DEFAULT_STAGES = [
-  { stage_name: 'HR Screening', stage_order: 1, is_mandatory: true },
-  { stage_name: 'Technical Interview', stage_order: 2, is_mandatory: true },
-  { stage_name: 'Manager Interview', stage_order: 3, is_mandatory: true },
-  { stage_name: 'Final Interview', stage_order: 4, is_mandatory: false },
+  { stage_name: 'HR Screening', stage_order: 1, is_mandatory: true, description: null },
+  { stage_name: 'Technical Interview', stage_order: 2, is_mandatory: true, description: null },
+  { stage_name: 'Manager Interview', stage_order: 3, is_mandatory: true, description: null },
+  { stage_name: 'Final Interview', stage_order: 4, is_mandatory: false, description: null },
 ];
 
 export function CreateJobDialog({ open, onOpenChange, editJob }: CreateJobDialogProps) {
