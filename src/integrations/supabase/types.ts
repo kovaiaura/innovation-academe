@@ -3895,6 +3895,89 @@ export type Database = {
           },
         ]
       }
+      reports: {
+        Row: {
+          activities: Json
+          assessment_results: string | null
+          assessments_completed: string | null
+          client_location: string | null
+          client_name: string
+          created_at: string | null
+          created_by: string | null
+          generated_pdf_url: string | null
+          hours_handled: number | null
+          hours_unit: string | null
+          id: string
+          institution_id: string | null
+          portion_covered_percentage: number | null
+          report_date: string
+          report_month: string
+          report_type: string
+          signatory_designation: string | null
+          signatory_name: string | null
+          signature_url: string | null
+          status: string | null
+          trainers: Json
+          updated_at: string | null
+        }
+        Insert: {
+          activities?: Json
+          assessment_results?: string | null
+          assessments_completed?: string | null
+          client_location?: string | null
+          client_name: string
+          created_at?: string | null
+          created_by?: string | null
+          generated_pdf_url?: string | null
+          hours_handled?: number | null
+          hours_unit?: string | null
+          id?: string
+          institution_id?: string | null
+          portion_covered_percentage?: number | null
+          report_date?: string
+          report_month: string
+          report_type?: string
+          signatory_designation?: string | null
+          signatory_name?: string | null
+          signature_url?: string | null
+          status?: string | null
+          trainers?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          activities?: Json
+          assessment_results?: string | null
+          assessments_completed?: string | null
+          client_location?: string | null
+          client_name?: string
+          created_at?: string | null
+          created_by?: string | null
+          generated_pdf_url?: string | null
+          hours_handled?: number | null
+          hours_unit?: string | null
+          id?: string
+          institution_id?: string | null
+          portion_covered_percentage?: number | null
+          report_date?: string
+          report_month?: string
+          report_type?: string
+          signatory_designation?: string | null
+          signatory_name?: string | null
+          signature_url?: string | null
+          status?: string | null
+          trainers?: Json
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_attendance: {
         Row: {
           check_in_address: string | null
