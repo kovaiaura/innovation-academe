@@ -142,6 +142,10 @@ import HRApplications from "./pages/system-admin/hr/Applications";
 import HRApplicationDetail from "./pages/system-admin/hr/ApplicationDetail";
 import HRInterviews from "./pages/system-admin/hr/Interviews";
 import HROffers from "./pages/system-admin/hr/Offers";
+
+// Public Careers imports
+import CareersPage from "./pages/careers/CareersPage";
+import JobApplicationPage from "./pages/careers/JobApplicationPage";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -165,6 +169,10 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
+            
+            {/* Public Careers Routes */}
+            <Route path="/careers" element={<CareersPage />} />
+            <Route path="/careers/apply/:jobId" element={<JobApplicationPage />} />
             
             {/* Smart redirect for /timetable - redirects to role-specific timetable */}
             <Route path="/timetable" element={<TimetableRedirect />} />
