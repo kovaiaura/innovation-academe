@@ -73,6 +73,72 @@ export default function ApplicationDetail() {
     updateApplication.mutate({ id: application.id, hr_notes: notes || application.hr_notes });
   };
 
+  const sendInterviewEmail = (interview: typeof interviews extends (infer T)[] | undefined ? T : never) => {
+    const subject = `Interview Scheduled - ${application.job?.job_title || 'Position'} at Metasage`;
+    const body = `Dear ${application.candidate_name},
+
+We are pleased to invite you for ${interview.stage?.stage_name || 'an interview'} for the position of ${application.job?.job_title || 'the role you applied for'}.
+
+Interview Details:
+- Date: ${interview.scheduled_date ? format(new Date(interview.scheduled_date), 'MMMM dd, yyyy') : 'To be confirmed'}
+- Time: ${interview.scheduled_time || 'To be confirmed'}
+- Type: ${interview.interview_type || 'To be confirmed'}
+${interview.meeting_link ? `- Meeting Link: ${interview.meeting_link}` : ''}
+${interview.location ? `- Location: ${interview.location}` : ''}
+- Duration: ${interview.duration_minutes || 60} minutes
+${interview.interviewer_names?.length ? `- Interviewer(s): ${interview.interviewer_names.join(', ')}` : ''}
+
+Please confirm your availability by replying to this email.
+
+Best regards,
+HR Team
+Metasage Alliance`;
+
+    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(application.candidate_email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+  };
+
+  const sendOfferEmail = (offer: typeof offers extends (infer T)[] | undefined ? T : never) => {
+    const refNumber = `AC/HR/${new Date().getFullYear()}/${offer.id.slice(0, 4).toUpperCase()}`;
+    const currentDate = format(new Date(), 'MMMM dd, yyyy');
+    
+    const subject = `Offer Letter - ${offer.job_title} Position at Metasage Alliance`;
+    const body = `OFFER LETTER
+
+Ref: ${refNumber}
+Date: ${currentDate}
+
+To,
+${application.candidate_name}
+${application.candidate_email}
+
+Dear ${application.candidate_name},
+
+We are pleased to offer you the position of ${offer.job_title}${offer.department ? ` in the ${offer.department} department` : ''} at Metasage Alliance.
+
+POSITION DETAILS:
+- Position: ${offer.job_title}
+${offer.department ? `- Department: ${offer.department}` : ''}
+- Salary: ₹${offer.offered_salary?.toLocaleString()} per annum
+- Probation Period: ${offer.probation_period_months || 6} months
+- Joining Date: ${offer.joining_date ? format(new Date(offer.joining_date), 'MMMM dd, yyyy') : 'To be confirmed'}
+${offer.benefits ? `
+
+BENEFITS:
+${offer.benefits}` : ''}
+
+JOINING TIMELINE:
+You are requested to confirm your acceptance and join the position within 30 days of receiving this offer letter. Failure to do so may lead to the offer being reconsidered or withdrawn.
+
+We look forward to your dedication and performance-driven approach as part of our growing organization.
+
+Warm regards,
+
+HR Team
+Metasage Alliance`;
+
+    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(application.candidate_email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+  };
+
   const statusFlow: ApplicationStatus[] = [
     'applied', 'shortlisted', 'in_interview', 'selected', 'offer_sent', 'offer_accepted', 'hired'
   ];
@@ -270,7 +336,7 @@ export default function ApplicationDetail() {
                               </p>
                             )}
                           </div>
-                          <div className="flex flex-col items-end gap-1">
+                          <div className="flex flex-col items-end gap-2">
                             <Badge variant="outline">{interview.status}</Badge>
                             {interview.result && (
                               <Badge className={
@@ -281,6 +347,14 @@ export default function ApplicationDetail() {
                                 {interview.result}
                               </Badge>
                             )}
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => sendInterviewEmail(interview)}
+                            >
+                              <Mail className="h-3 w-3 mr-1" />
+                              Send Invite
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -321,14 +395,26 @@ export default function ApplicationDetail() {
                                 </p>
                               )}
                             </div>
-                            <Badge className={
-                              offer.status === 'accepted' ? 'bg-green-100 text-green-700' :
-                              offer.status === 'declined' ? 'bg-red-100 text-red-700' :
-                              offer.status === 'sent' ? 'bg-blue-100 text-blue-700' :
-                              'bg-gray-100 text-gray-700'
-                            }>
-                              {offer.status}
-                            </Badge>
+                            <div className="flex flex-col items-end gap-2">
+                              <Badge className={
+                                offer.status === 'accepted' ? 'bg-green-100 text-green-700' :
+                                offer.status === 'declined' ? 'bg-red-100 text-red-700' :
+                                offer.status === 'sent' ? 'bg-blue-100 text-blue-700' :
+                                'bg-gray-100 text-gray-700'
+                              }>
+                                {offer.status}
+                              </Badge>
+                              {(offer.status === 'draft' || offer.status === 'sent') && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => sendOfferEmail(offer)}
+                                >
+                                  <Mail className="h-3 w-3 mr-1" />
+                                  Send via Gmail
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
