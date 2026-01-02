@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { MainLayout } from '@/components/layout/MainLayout';
+import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,17 +36,17 @@ export default function ApplicationDetail() {
 
   if (isLoading) {
     return (
-      <MainLayout>
+      <Layout>
         <div className="text-center py-12">Loading...</div>
-      </MainLayout>
+      </Layout>
     );
   }
 
   if (!application) {
     return (
-      <MainLayout>
+      <Layout>
         <div className="text-center py-12">Application not found</div>
-      </MainLayout>
+      </Layout>
     );
   }
 
@@ -79,7 +79,7 @@ export default function ApplicationDetail() {
   const currentIndex = statusFlow.indexOf(application.status as ApplicationStatus);
 
   return (
-    <MainLayout>
+    <Layout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -452,6 +452,6 @@ export default function ApplicationDetail() {
         onOpenChange={setOfferDialogOpen}
         application={application}
       />
-    </MainLayout>
+    </Layout>
   );
 }
