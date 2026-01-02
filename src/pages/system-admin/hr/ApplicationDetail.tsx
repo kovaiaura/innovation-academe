@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { 
   ArrowLeft, Mail, Phone, Building2, Calendar, FileText,
   User, Briefcase, Clock, DollarSign, CheckCircle, XCircle,
-  MessageSquare, Plus
+  MessageSquare, Plus, Download
 } from 'lucide-react';
 import { 
   useJobApplication, 
@@ -209,11 +209,30 @@ export default function ApplicationDetail() {
 
                 {application.resume_url && (
                   <div>
-                    <Button variant="outline" asChild>
-                      <a href={application.resume_url} target="_blank" rel="noopener noreferrer">
-                        <FileText className="h-4 w-4 mr-2" />
-                        View Resume
-                      </a>
+                    <Button 
+                      variant="outline" 
+                      onClick={async () => {
+                        try {
+                          const response = await fetch(application.resume_url!);
+                          const blob = await response.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const link = document.createElement('a');
+                          link.href = url;
+                          const filename = application.resume_url!.split('/').pop() || 
+                            `${application.candidate_name.replace(/\s+/g, '_')}_resume.pdf`;
+                          link.download = filename;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          window.URL.revokeObjectURL(url);
+                        } catch (error) {
+                          console.error('Download failed:', error);
+                          window.open(application.resume_url!, '_blank');
+                        }
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download Resume
                     </Button>
                   </div>
                 )}
