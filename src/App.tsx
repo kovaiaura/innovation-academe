@@ -133,6 +133,15 @@ import ManagementWebinars from "./pages/management/Webinars";
 import OfficerAssignments from "./pages/officer/Assignments";
 import ManagementAssignments from "./pages/management/Assignments";
 import ReportsManagement from "./pages/system-admin/ReportsManagement";
+
+// HR Management imports
+import HRDashboard from "./pages/system-admin/hr/HRDashboard";
+import HRJobPostings from "./pages/system-admin/hr/JobPostings";
+import HRJobDetail from "./pages/system-admin/hr/JobDetail";
+import HRApplications from "./pages/system-admin/hr/Applications";
+import HRApplicationDetail from "./pages/system-admin/hr/ApplicationDetail";
+import HRInterviews from "./pages/system-admin/hr/Interviews";
+import HROffers from "./pages/system-admin/hr/Offers";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -523,6 +532,65 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            
+            {/* HR Management Routes */}
+            <Route
+              path="/system-admin/hr-management"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <HRDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/hr-management/jobs"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <HRJobPostings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/hr-management/jobs/:id"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <HRJobDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/hr-management/applications"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <HRApplications />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/hr-management/applications/:id"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <HRApplicationDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/hr-management/interviews"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <HRInterviews />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/hr-management/offers"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <HROffers />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Teacher Routes (path-based multi-tenancy) */}
             <Route
               path="/tenant/:tenantId/teacher/dashboard"

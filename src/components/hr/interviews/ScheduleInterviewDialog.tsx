@@ -3,10 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useScheduleInterview } from '@/hooks/useHRManagement';
 import { InterviewStage } from '@/types/hr';
+import { Mail } from 'lucide-react';
 
 interface ScheduleInterviewDialogProps {
   open: boolean;
@@ -14,9 +14,21 @@ interface ScheduleInterviewDialogProps {
   applicationId: string;
   jobId: string;
   stages: InterviewStage[];
+  candidateEmail?: string;
+  candidateName?: string;
+  jobTitle?: string;
 }
 
-export function ScheduleInterviewDialog({ open, onOpenChange, applicationId, jobId, stages }: ScheduleInterviewDialogProps) {
+export function ScheduleInterviewDialog({ 
+  open, 
+  onOpenChange, 
+  applicationId, 
+  jobId, 
+  stages,
+  candidateEmail,
+  candidateName,
+  jobTitle
+}: ScheduleInterviewDialogProps) {
   const scheduleInterview = useScheduleInterview();
   const [formData, setFormData] = useState({
     stage_id: '',
@@ -43,6 +55,34 @@ export function ScheduleInterviewDialog({ open, onOpenChange, applicationId, job
       interviewer_names: formData.interviewer_names.split(',').map(s => s.trim()).filter(Boolean),
     });
     onOpenChange(false);
+  };
+
+  const openGmailCompose = () => {
+    if (!candidateEmail) return;
+    
+    const selectedStage = stages.find(s => s.id === formData.stage_id);
+    const stageName = selectedStage?.stage_name || 'Interview';
+    
+    const subject = encodeURIComponent(`Interview Scheduled - ${jobTitle || 'Position'} at Metasage`);
+    const body = encodeURIComponent(`Dear ${candidateName || 'Candidate'},
+
+We are pleased to invite you for ${stageName} for the position of ${jobTitle || 'the role'}.
+
+Interview Details:
+- Date: ${formData.scheduled_date || '[Date to be confirmed]'}
+- Time: ${formData.scheduled_time || '[Time to be confirmed]'}
+- Type: ${formData.interview_type === 'online' ? 'Online' : formData.interview_type === 'in_person' ? 'In-Person' : 'Phone'}
+${formData.meeting_link ? `- Meeting Link: ${formData.meeting_link}` : formData.location ? `- Location: ${formData.location}` : ''}
+- Duration: ${formData.duration_minutes} minutes
+${formData.interviewer_names ? `- Interviewer(s): ${formData.interviewer_names}` : ''}
+
+Please confirm your availability by replying to this email.
+
+Best regards,
+HR Team
+Metasage Alliance`);
+    
+    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${candidateEmail}&su=${subject}&body=${body}`, '_blank');
   };
 
   return (
@@ -92,9 +132,17 @@ export function ScheduleInterviewDialog({ open, onOpenChange, applicationId, job
             <Label>Interviewers (comma-separated names)</Label>
             <Input value={formData.interviewer_names} onChange={(e) => setFormData({ ...formData, interviewer_names: e.target.value })} placeholder="John Doe, Jane Smith" />
           </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit">Schedule</Button>
+          <div className="flex justify-between gap-2">
+            {candidateEmail && (
+              <Button type="button" variant="outline" onClick={openGmailCompose}>
+                <Mail className="h-4 w-4 mr-2" />
+                Send via Gmail
+              </Button>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button type="submit">Schedule</Button>
+            </div>
           </div>
         </form>
       </DialogContent>

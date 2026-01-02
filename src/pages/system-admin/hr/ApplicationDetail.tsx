@@ -444,6 +444,9 @@ export default function ApplicationDetail() {
         applicationId={application.id}
         jobId={application.job_id || ''}
         stages={stages || []}
+        candidateEmail={application.candidate_email}
+        candidateName={application.candidate_name}
+        jobTitle={application.job?.job_title}
       />
 
       {/* Create Offer Dialog */}
