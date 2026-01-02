@@ -33,6 +33,7 @@ export default function ApplicationDetail() {
   const [notes, setNotes] = useState('');
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [offerDialogOpen, setOfferDialogOpen] = useState(false);
+  const [selectedInterview, setSelectedInterview] = useState<typeof interviews extends (infer T)[] | undefined ? T : never | null>(null);
 
   if (isLoading) {
     return (
@@ -310,7 +311,10 @@ Metasage Alliance`;
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Interviews</CardTitle>
                 {application.status !== 'rejected' && application.status !== 'hired' && (
-                  <Button size="sm" onClick={() => setScheduleDialogOpen(true)}>
+                  <Button size="sm" onClick={() => {
+                    setSelectedInterview(null);
+                    setScheduleDialogOpen(true);
+                  }}>
                     <Plus className="h-4 w-4 mr-1" />
                     Schedule Interview
                   </Button>
@@ -322,7 +326,14 @@ Metasage Alliance`;
                 ) : (
                   <div className="space-y-4">
                     {interviews.map((interview) => (
-                      <div key={interview.id} className="p-4 border rounded-lg">
+                      <div 
+                        key={interview.id} 
+                        className="p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => {
+                          setSelectedInterview(interview);
+                          setScheduleDialogOpen(true);
+                        }}
+                      >
                         <div className="flex justify-between items-start">
                           <div>
                             <h4 className="font-medium">{interview.stage?.stage_name}</h4>
@@ -347,14 +358,6 @@ Metasage Alliance`;
                                 {interview.result}
                               </Badge>
                             )}
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              onClick={() => sendInterviewEmail(interview)}
-                            >
-                              <Mail className="h-3 w-3 mr-1" />
-                              Send Invite
-                            </Button>
                           </div>
                         </div>
                       </div>
@@ -455,7 +458,10 @@ Metasage Alliance`;
                 {application.status === 'shortlisted' && (
                   <Button 
                     className="w-full" 
-                    onClick={() => setScheduleDialogOpen(true)}
+                    onClick={() => {
+                      setSelectedInterview(null);
+                      setScheduleDialogOpen(true);
+                    }}
                   >
                     <Calendar className="h-4 w-4 mr-2" />
                     Schedule Interview
@@ -545,13 +551,17 @@ Metasage Alliance`;
       {/* Schedule Interview Dialog */}
       <ScheduleInterviewDialog 
         open={scheduleDialogOpen}
-        onOpenChange={setScheduleDialogOpen}
+        onOpenChange={(open) => {
+          setScheduleDialogOpen(open);
+          if (!open) setSelectedInterview(null);
+        }}
         applicationId={application.id}
         jobId={application.job_id || ''}
         stages={stages || []}
         candidateEmail={application.candidate_email}
         candidateName={application.candidate_name}
         jobTitle={application.job?.job_title}
+        editInterview={selectedInterview}
       />
 
       {/* Create Offer Dialog */}

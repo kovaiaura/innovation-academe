@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useScheduleInterview } from '@/hooks/useHRManagement';
-import { InterviewStage } from '@/types/hr';
+import { useScheduleInterview, useUpdateInterview } from '@/hooks/useHRManagement';
+import { InterviewStage, CandidateInterview } from '@/types/hr';
 import { Mail } from 'lucide-react';
 
 interface ScheduleInterviewDialogProps {
@@ -17,6 +17,7 @@ interface ScheduleInterviewDialogProps {
   candidateEmail?: string;
   candidateName?: string;
   jobTitle?: string;
+  editInterview?: CandidateInterview | null;
 }
 
 export function ScheduleInterviewDialog({ 
@@ -27,9 +28,13 @@ export function ScheduleInterviewDialog({
   stages,
   candidateEmail,
   candidateName,
-  jobTitle
+  jobTitle,
+  editInterview
 }: ScheduleInterviewDialogProps) {
   const scheduleInterview = useScheduleInterview();
+  const updateInterview = useUpdateInterview();
+  const isEditMode = !!editInterview;
+
   const [formData, setFormData] = useState({
     stage_id: '',
     interview_type: 'online',
@@ -41,10 +46,36 @@ export function ScheduleInterviewDialog({
     interviewer_names: '',
   });
 
+  // Populate form when editing
+  useEffect(() => {
+    if (editInterview) {
+      setFormData({
+        stage_id: editInterview.stage_id || '',
+        interview_type: editInterview.interview_type || 'online',
+        scheduled_date: editInterview.scheduled_date || '',
+        scheduled_time: editInterview.scheduled_time || '',
+        duration_minutes: editInterview.duration_minutes || 60,
+        location: editInterview.location || '',
+        meeting_link: editInterview.meeting_link || '',
+        interviewer_names: editInterview.interviewer_names?.join(', ') || '',
+      });
+    } else {
+      setFormData({
+        stage_id: '',
+        interview_type: 'online',
+        scheduled_date: '',
+        scheduled_time: '',
+        duration_minutes: 60,
+        location: '',
+        meeting_link: '',
+        interviewer_names: '',
+      });
+    }
+  }, [editInterview, open]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    scheduleInterview.mutate({
-      application_id: applicationId,
+    const interviewData = {
       stage_id: formData.stage_id,
       interview_type: formData.interview_type as any,
       scheduled_date: formData.scheduled_date,
@@ -53,7 +84,16 @@ export function ScheduleInterviewDialog({
       location: formData.location || undefined,
       meeting_link: formData.meeting_link || undefined,
       interviewer_names: formData.interviewer_names.split(',').map(s => s.trim()).filter(Boolean),
-    });
+    };
+
+    if (isEditMode && editInterview) {
+      updateInterview.mutate({ id: editInterview.id, ...interviewData });
+    } else {
+      scheduleInterview.mutate({
+        application_id: applicationId,
+        ...interviewData,
+      });
+    }
     onOpenChange(false);
   };
 
@@ -89,7 +129,7 @@ Metasage Alliance`);
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Schedule Interview</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Edit Interview' : 'Schedule Interview'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -141,7 +181,7 @@ Metasage Alliance`);
             )}
             <div className="flex gap-2 ml-auto">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit">Schedule</Button>
+              <Button type="submit">{isEditMode ? 'Update' : 'Schedule'}</Button>
             </div>
           </div>
         </form>
