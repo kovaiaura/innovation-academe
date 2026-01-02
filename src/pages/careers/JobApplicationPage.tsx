@@ -30,7 +30,7 @@ export default function JobApplicationPage() {
     current_company: '',
     current_designation: '',
     expected_salary: '',
-    notice_period: '',
+    notice_period_days: '',
     skills: '',
     cover_letter: '',
   });
@@ -120,7 +120,7 @@ export default function JobApplicationPage() {
         current_company: formData.current_company || null,
         current_designation: formData.current_designation || null,
         expected_salary: formData.expected_salary ? parseInt(formData.expected_salary) : null,
-        notice_period: formData.notice_period || null,
+        notice_period_days: formData.notice_period_days ? parseInt(formData.notice_period_days) : null,
         skills: skillsArray.length > 0 ? skillsArray : null,
         cover_letter: formData.cover_letter || null,
         resume_url: resumeUrl || null,
@@ -365,13 +365,15 @@ export default function JobApplicationPage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="notice_period">Notice Period</Label>
+                        <Label htmlFor="notice_period_days">Notice Period (in days)</Label>
                         <Input
-                          id="notice_period"
-                          name="notice_period"
-                          value={formData.notice_period}
+                          id="notice_period_days"
+                          name="notice_period_days"
+                          type="number"
+                          min="0"
+                          value={formData.notice_period_days}
                           onChange={handleInputChange}
-                          placeholder="30 days"
+                          placeholder="30"
                         />
                       </div>
                     </div>
