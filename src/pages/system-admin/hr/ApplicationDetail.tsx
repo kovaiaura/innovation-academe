@@ -8,18 +8,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { 
   ArrowLeft, Mail, Phone, Building2, Calendar, FileText,
   User, Briefcase, Clock, DollarSign, CheckCircle, XCircle,
-  MessageSquare, Plus, Download
+  MessageSquare, Plus, Download, Send, UserPlus
 } from 'lucide-react';
 import { 
   useJobApplication, 
   useUpdateApplication,
   useCandidateInterviews,
   useInterviewStages,
-  useCandidateOffers
+  useCandidateOffers,
+  useUpdateOffer,
+  useSendOffer
 } from '@/hooks/useHRManagement';
 import { format } from 'date-fns';
 import { ScheduleInterviewDialog } from '@/components/hr/interviews/ScheduleInterviewDialog';
 import { CreateOfferDialog } from '@/components/hr/offers/CreateOfferDialog';
+import { OnboardDialog } from '@/components/hr/onboarding/OnboardDialog';
 import { ApplicationStatus } from '@/types/hr';
 
 export default function ApplicationDetail() {
@@ -29,11 +32,44 @@ export default function ApplicationDetail() {
   const { data: stages } = useInterviewStages(application?.job_id || '');
   const { data: offers } = useCandidateOffers(id);
   const updateApplication = useUpdateApplication();
+  const updateOffer = useUpdateOffer();
+  const sendOffer = useSendOffer();
 
   const [notes, setNotes] = useState('');
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [offerDialogOpen, setOfferDialogOpen] = useState(false);
+  const [onboardDialogOpen, setOnboardDialogOpen] = useState(false);
   const [selectedInterview, setSelectedInterview] = useState<typeof interviews extends (infer T)[] | undefined ? T : never | null>(null);
+
+  // Get the active offer (most recent non-declined/expired)
+  const activeOffer = offers?.find(o => ['draft', 'sent', 'accepted'].includes(o.status || ''));
+
+  const handleMarkOfferSent = () => {
+    if (activeOffer) {
+      sendOffer.mutate({ 
+        offerId: activeOffer.id, 
+        applicationId: application.id 
+      });
+    }
+  };
+
+  const handleOfferAccepted = () => {
+    if (activeOffer) {
+      updateOffer.mutate({ id: activeOffer.id, status: 'accepted', responded_at: new Date().toISOString() });
+      updateApplication.mutate({ id: application.id, status: 'offer_accepted' });
+    }
+  };
+
+  const handleOfferDeclined = () => {
+    if (activeOffer) {
+      updateOffer.mutate({ id: activeOffer.id, status: 'declined', responded_at: new Date().toISOString() });
+      updateApplication.mutate({ id: application.id, status: 'offer_declined' });
+    }
+  };
+
+  const handleMarkHired = () => {
+    updateApplication.mutate({ id: application.id, status: 'hired' });
+  };
 
   if (isLoading) {
     return (
@@ -495,6 +531,62 @@ Metasage Alliance`;
                     Create Offer
                   </Button>
                 )}
+                {/* Selected with draft offer - Show "Mark Offer Sent" */}
+                {application.status === 'selected' && activeOffer?.status === 'draft' && (
+                  <Button 
+                    className="w-full" 
+                    onClick={handleMarkOfferSent}
+                    disabled={sendOffer.isPending}
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    Mark Offer Sent
+                  </Button>
+                )}
+                {/* Offer sent - Show Accept/Decline options */}
+                {application.status === 'offer_sent' && activeOffer?.status === 'sent' && (
+                  <>
+                    <Button 
+                      className="w-full" 
+                      onClick={handleOfferAccepted}
+                      disabled={updateOffer.isPending}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Mark Accepted
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full text-destructive" 
+                      onClick={handleOfferDeclined}
+                      disabled={updateOffer.isPending}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Mark Declined
+                    </Button>
+                  </>
+                )}
+                {/* Offer accepted - Show Hire button */}
+                {application.status === 'offer_accepted' && (
+                  <>
+                    <Button 
+                      className="w-full" 
+                      onClick={handleMarkHired}
+                      disabled={updateApplication.isPending}
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Mark as Hired
+                    </Button>
+                    {activeOffer && (
+                      <Button 
+                        variant="outline" 
+                        className="w-full" 
+                        onClick={() => setOnboardDialogOpen(true)}
+                      >
+                        <Briefcase className="h-4 w-4 mr-2" />
+                        Start Onboarding
+                      </Button>
+                    )}
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -570,6 +662,15 @@ Metasage Alliance`;
         onOpenChange={setOfferDialogOpen}
         application={application}
       />
+
+      {/* Onboard Dialog */}
+      {activeOffer && (
+        <OnboardDialog 
+          open={onboardDialogOpen}
+          onOpenChange={setOnboardDialogOpen}
+          offer={activeOffer}
+        />
+      )}
     </Layout>
   );
 }
