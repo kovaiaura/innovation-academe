@@ -40,6 +40,7 @@ export default function ApplicationDetail() {
   const [offerDialogOpen, setOfferDialogOpen] = useState(false);
   const [onboardDialogOpen, setOnboardDialogOpen] = useState(false);
   const [selectedInterview, setSelectedInterview] = useState<typeof interviews extends (infer T)[] | undefined ? T : never | null>(null);
+  const [selectedOffer, setSelectedOffer] = useState<typeof offers extends (infer T)[] | undefined ? T : never | null>(null);
 
   // Get the active offer (most recent non-declined/expired)
   const activeOffer = offers?.find(o => ['draft', 'sent', 'accepted'].includes(o.status || ''));
@@ -409,7 +410,10 @@ Metasage Alliance`;
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Offers</CardTitle>
                   {application.status === 'selected' && (!offers || offers.length === 0) && (
-                    <Button size="sm" onClick={() => setOfferDialogOpen(true)}>
+                    <Button size="sm" onClick={() => {
+                      setSelectedOffer(null);
+                      setOfferDialogOpen(true);
+                    }}>
                       <Plus className="h-4 w-4 mr-1" />
                       Create Offer
                     </Button>
@@ -421,7 +425,14 @@ Metasage Alliance`;
                   ) : (
                     <div className="space-y-4">
                       {offers.map((offer) => (
-                        <div key={offer.id} className="p-4 border rounded-lg">
+                        <div 
+                          key={offer.id} 
+                          className="p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => {
+                            setSelectedOffer(offer);
+                            setOfferDialogOpen(true);
+                          }}
+                        >
                           <div className="flex justify-between items-start">
                             <div>
                               <h4 className="font-medium">{offer.job_title}</h4>
@@ -434,26 +445,14 @@ Metasage Alliance`;
                                 </p>
                               )}
                             </div>
-                            <div className="flex flex-col items-end gap-2">
-                              <Badge className={
-                                offer.status === 'accepted' ? 'bg-green-100 text-green-700' :
-                                offer.status === 'declined' ? 'bg-red-100 text-red-700' :
-                                offer.status === 'sent' ? 'bg-blue-100 text-blue-700' :
-                                'bg-gray-100 text-gray-700'
-                              }>
-                                {offer.status}
-                              </Badge>
-                              {(offer.status === 'draft' || offer.status === 'sent') && (
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  onClick={() => sendOfferEmail(offer)}
-                                >
-                                  <Mail className="h-3 w-3 mr-1" />
-                                  Send via Gmail
-                                </Button>
-                              )}
-                            </div>
+                            <Badge className={
+                              offer.status === 'accepted' ? 'bg-green-100 text-green-700' :
+                              offer.status === 'declined' ? 'bg-red-100 text-red-700' :
+                              offer.status === 'sent' ? 'bg-blue-100 text-blue-700' :
+                              'bg-gray-100 text-gray-700'
+                            }>
+                              {offer.status}
+                            </Badge>
                           </div>
                         </div>
                       ))}
@@ -656,11 +655,15 @@ Metasage Alliance`;
         editInterview={selectedInterview}
       />
 
-      {/* Create Offer Dialog */}
+      {/* Create/Edit Offer Dialog */}
       <CreateOfferDialog 
         open={offerDialogOpen}
-        onOpenChange={setOfferDialogOpen}
+        onOpenChange={(open) => {
+          setOfferDialogOpen(open);
+          if (!open) setSelectedOffer(null);
+        }}
         application={application}
+        editOffer={selectedOffer}
       />
 
       {/* Onboard Dialog */}
