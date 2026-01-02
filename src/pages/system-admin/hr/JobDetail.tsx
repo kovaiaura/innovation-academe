@@ -6,16 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   ArrowLeft, Briefcase, MapPin, Clock, Users, DollarSign,
-  Edit, Pause, Play, Plus
+  Edit, Pause, Play, Plus, Copy, ExternalLink
 } from 'lucide-react';
 import { useJobPosting, useJobApplications, useInterviewStages, useUpdateJobPosting } from '@/hooks/useHRManagement';
 import { format } from 'date-fns';
 import { CreateJobDialog } from '@/components/hr/jobs/CreateJobDialog';
 import { ApplyJobDialog } from '@/components/hr/applications/ApplyJobDialog';
+import { useToast } from '@/hooks/use-toast';
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { data: job, isLoading } = useJobPosting(id!);
   const { data: applications } = useJobApplications(id);
   const { data: stages } = useInterviewStages(id!);
@@ -23,6 +25,16 @@ export default function JobDetail() {
   
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
+
+  const publicApplicationUrl = `${window.location.origin}/careers/apply/${id}`;
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(publicApplicationUrl);
+    toast({
+      title: 'Link Copied!',
+      description: 'Public application link copied to clipboard',
+    });
+  };
 
   if (isLoading) {
     return (
@@ -116,12 +128,40 @@ export default function JobDetail() {
                 </>
               )}
             </Button>
-            <Button onClick={() => setApplyDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Application
+            <Button variant="outline" onClick={handleCopyLink}>
+              <Copy className="h-4 w-4 mr-2" />
+              Copy Public Link
             </Button>
+            <Button variant="outline" onClick={() => setApplyDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Manually
+            </Button>
+            <Link to={`/careers/apply/${job.id}`} target="_blank">
+              <Button variant="secondary">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Preview
+              </Button>
+            </Link>
           </div>
         </div>
+
+        {/* Public Application Link */}
+        {job.status === 'open' && (
+          <Card className="bg-muted/50">
+            <CardContent className="py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Public Application Link:</span>
+                  <code className="text-sm bg-background px-2 py-1 rounded">{publicApplicationUrl}</code>
+                </div>
+                <Button variant="ghost" size="sm" onClick={handleCopyLink}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4">
