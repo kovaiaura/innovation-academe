@@ -534,6 +534,143 @@ export type Database = {
           },
         ]
       }
+      candidate_interviews: {
+        Row: {
+          application_id: string | null
+          created_at: string | null
+          duration_minutes: number | null
+          id: string
+          interview_type: string
+          interviewer_ids: string[] | null
+          interviewer_names: string[] | null
+          location: string | null
+          meeting_link: string | null
+          result: string | null
+          scheduled_date: string | null
+          scheduled_time: string | null
+          stage_id: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          application_id?: string | null
+          created_at?: string | null
+          duration_minutes?: number | null
+          id?: string
+          interview_type?: string
+          interviewer_ids?: string[] | null
+          interviewer_names?: string[] | null
+          location?: string | null
+          meeting_link?: string | null
+          result?: string | null
+          scheduled_date?: string | null
+          scheduled_time?: string | null
+          stage_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          application_id?: string | null
+          created_at?: string | null
+          duration_minutes?: number | null
+          id?: string
+          interview_type?: string
+          interviewer_ids?: string[] | null
+          interviewer_names?: string[] | null
+          location?: string | null
+          meeting_link?: string | null
+          result?: string | null
+          scheduled_date?: string | null
+          scheduled_time?: string | null
+          stage_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_interviews_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "job_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_interviews_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "interview_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidate_offers: {
+        Row: {
+          application_id: string | null
+          benefits: string | null
+          candidate_response_notes: string | null
+          created_at: string | null
+          created_by: string | null
+          department: string | null
+          expiry_date: string | null
+          id: string
+          job_title: string
+          joining_date: string | null
+          offer_letter_url: string | null
+          offered_salary: number
+          probation_period_months: number | null
+          responded_at: string | null
+          sent_at: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          application_id?: string | null
+          benefits?: string | null
+          candidate_response_notes?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          department?: string | null
+          expiry_date?: string | null
+          id?: string
+          job_title: string
+          joining_date?: string | null
+          offer_letter_url?: string | null
+          offered_salary: number
+          probation_period_months?: number | null
+          responded_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          application_id?: string | null
+          benefits?: string | null
+          candidate_response_notes?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          department?: string | null
+          expiry_date?: string | null
+          id?: string
+          job_title?: string
+          joining_date?: string | null
+          offer_letter_url?: string | null
+          offered_salary?: number
+          probation_period_months?: number | null
+          responded_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_offers_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "job_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certificate_templates: {
         Row: {
           category: string
@@ -2010,6 +2147,103 @@ export type Database = {
         }
         Relationships: []
       }
+      interview_feedback: {
+        Row: {
+          communication_rating: number | null
+          cultural_fit_rating: number | null
+          detailed_feedback: string | null
+          id: string
+          interview_id: string | null
+          interviewer_id: string | null
+          interviewer_name: string | null
+          overall_rating: number | null
+          problem_solving_rating: number | null
+          recommendation: string | null
+          strengths: string | null
+          submitted_at: string | null
+          technical_skills_rating: number | null
+          weaknesses: string | null
+        }
+        Insert: {
+          communication_rating?: number | null
+          cultural_fit_rating?: number | null
+          detailed_feedback?: string | null
+          id?: string
+          interview_id?: string | null
+          interviewer_id?: string | null
+          interviewer_name?: string | null
+          overall_rating?: number | null
+          problem_solving_rating?: number | null
+          recommendation?: string | null
+          strengths?: string | null
+          submitted_at?: string | null
+          technical_skills_rating?: number | null
+          weaknesses?: string | null
+        }
+        Update: {
+          communication_rating?: number | null
+          cultural_fit_rating?: number | null
+          detailed_feedback?: string | null
+          id?: string
+          interview_id?: string | null
+          interviewer_id?: string | null
+          interviewer_name?: string | null
+          overall_rating?: number | null
+          problem_solving_rating?: number | null
+          recommendation?: string | null
+          strengths?: string | null
+          submitted_at?: string | null
+          technical_skills_rating?: number | null
+          weaknesses?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_feedback_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_interviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interview_stages: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_mandatory: boolean | null
+          job_id: string | null
+          stage_name: string
+          stage_order: number
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_mandatory?: boolean | null
+          job_id?: string | null
+          stage_name: string
+          stage_order: number
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_mandatory?: boolean | null
+          job_id?: string | null
+          stage_name?: string
+          stage_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_stages_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "job_postings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_issues: {
         Row: {
           acknowledged_at: string | null
@@ -2472,6 +2706,143 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      job_applications: {
+        Row: {
+          applied_at: string | null
+          candidate_email: string
+          candidate_name: string
+          candidate_phone: string | null
+          cover_letter: string | null
+          current_company: string | null
+          current_designation: string | null
+          expected_salary: number | null
+          experience_years: number | null
+          hr_notes: string | null
+          id: string
+          job_id: string | null
+          notice_period_days: number | null
+          resume_url: string | null
+          skills: string[] | null
+          source: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          applied_at?: string | null
+          candidate_email: string
+          candidate_name: string
+          candidate_phone?: string | null
+          cover_letter?: string | null
+          current_company?: string | null
+          current_designation?: string | null
+          expected_salary?: number | null
+          experience_years?: number | null
+          hr_notes?: string | null
+          id?: string
+          job_id?: string | null
+          notice_period_days?: number | null
+          resume_url?: string | null
+          skills?: string[] | null
+          source?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+          candidate_email?: string
+          candidate_name?: string
+          candidate_phone?: string | null
+          cover_letter?: string | null
+          current_company?: string | null
+          current_designation?: string | null
+          expected_salary?: number | null
+          experience_years?: number | null
+          hr_notes?: string | null
+          id?: string
+          job_id?: string | null
+          notice_period_days?: number | null
+          resume_url?: string | null
+          skills?: string[] | null
+          source?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_applications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "job_postings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_postings: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          department: string | null
+          description: string | null
+          employment_type: string
+          experience_level: string | null
+          id: string
+          job_title: string
+          location: string | null
+          max_experience_years: number | null
+          min_experience_years: number | null
+          number_of_openings: number | null
+          position_id: string | null
+          required_skills: string[] | null
+          salary_range_max: number | null
+          salary_range_min: number | null
+          status: string | null
+          target_role: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          department?: string | null
+          description?: string | null
+          employment_type?: string
+          experience_level?: string | null
+          id?: string
+          job_title: string
+          location?: string | null
+          max_experience_years?: number | null
+          min_experience_years?: number | null
+          number_of_openings?: number | null
+          position_id?: string | null
+          required_skills?: string[] | null
+          salary_range_max?: number | null
+          salary_range_min?: number | null
+          status?: string | null
+          target_role?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          department?: string | null
+          description?: string | null
+          employment_type?: string
+          experience_level?: string | null
+          id?: string
+          job_title?: string
+          location?: string | null
+          max_experience_years?: number | null
+          min_experience_years?: number | null
+          number_of_openings?: number | null
+          position_id?: string | null
+          required_skills?: string[] | null
+          salary_range_max?: number | null
+          salary_range_min?: number | null
+          status?: string | null
+          target_role?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       leaderboard_configs: {
         Row: {
