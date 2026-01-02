@@ -139,6 +139,23 @@ export const reportService = {
   },
 
   async deleteReport(id: string): Promise<void> {
+    // First fetch the report to check for stored PDF
+    const report = await this.getReportById(id);
+    
+    // If there's a stored PDF in storage, delete it
+    if (report?.generated_pdf_url) {
+      try {
+        const path = report.generated_pdf_url.split('/invoice-assets/')[1];
+        if (path) {
+          await supabase.storage.from('invoice-assets').remove([path]);
+        }
+      } catch (storageError) {
+        console.error('Error deleting stored PDF:', storageError);
+        // Continue with report deletion even if storage deletion fails
+      }
+    }
+
+    // Delete the report record
     const { error } = await supabase
       .from('reports')
       .delete()

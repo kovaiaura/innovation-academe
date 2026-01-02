@@ -37,38 +37,85 @@ export const styles = StyleSheet.create({
     textDecoration: 'underline',
   },
   
-  // Details Section
-  detailsSection: {
+  // Details Table with Borders
+  detailsTable: {
+    border: '1 solid #333333',
     marginBottom: 20,
   },
   detailRow: {
     flexDirection: 'row',
-    marginBottom: 8,
+    borderBottom: '1 solid #333333',
+    minHeight: 28,
+  },
+  detailRowLast: {
+    flexDirection: 'row',
+    minHeight: 28,
   },
   detailLabel: {
-    width: 220,
+    width: '40%',
     fontSize: 11,
     fontWeight: 'bold',
     color: '#333333',
+    padding: 8,
+    backgroundColor: '#f8f8f8',
+    borderRight: '1 solid #333333',
   },
   detailValue: {
+    width: '60%',
+    fontSize: 11,
+    color: '#333333',
+    padding: 8,
+  },
+  
+  // Trainer Table (multi-column)
+  trainerTable: {
+    border: '1 solid #333333',
+    marginBottom: 20,
+  },
+  trainerHeaderRow: {
+    flexDirection: 'row',
+    backgroundColor: '#f8f8f8',
+    borderBottom: '1 solid #333333',
+  },
+  trainerRow: {
+    flexDirection: 'row',
+    borderBottom: '1 solid #333333',
+    minHeight: 24,
+  },
+  trainerRowLast: {
+    flexDirection: 'row',
+    minHeight: 24,
+  },
+  trainerLabelCell: {
+    width: '30%',
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#333333',
+    padding: 8,
+    backgroundColor: '#f8f8f8',
+    borderRight: '1 solid #333333',
+  },
+  trainerNameCell: {
     flex: 1,
-    fontSize: 11,
+    fontSize: 10,
     color: '#333333',
+    padding: 6,
+    borderRight: '1 solid #333333',
+    textAlign: 'center',
+  },
+  trainerNameCellLast: {
+    flex: 1,
+    fontSize: 10,
+    color: '#333333',
+    padding: 6,
+    textAlign: 'center',
   },
   
-  // Trainer List
-  trainerItem: {
-    marginLeft: 20,
-    fontSize: 11,
-    color: '#333333',
-    marginBottom: 2,
-  },
-  
-  // Attendance row
-  attendanceValue: {
-    fontSize: 11,
-    color: '#333333',
+  // Hours note
+  hoursNote: {
+    fontSize: 9,
+    color: '#666666',
+    fontStyle: 'italic',
   },
   
   // Activities Table

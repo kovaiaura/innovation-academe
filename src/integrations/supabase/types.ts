@@ -1025,6 +1025,11 @@ export type Database = {
           phone: string | null
           pincode: string | null
           profile_type: string
+          report_logo_height: number | null
+          report_logo_url: string | null
+          report_logo_width: number | null
+          report_signatory_designation: string | null
+          report_signatory_name: string | null
           signature_url: string | null
           state: string | null
           state_code: string | null
@@ -1052,6 +1057,11 @@ export type Database = {
           phone?: string | null
           pincode?: string | null
           profile_type?: string
+          report_logo_height?: number | null
+          report_logo_url?: string | null
+          report_logo_width?: number | null
+          report_signatory_designation?: string | null
+          report_signatory_name?: string | null
           signature_url?: string | null
           state?: string | null
           state_code?: string | null
@@ -1079,6 +1089,11 @@ export type Database = {
           phone?: string | null
           pincode?: string | null
           profile_type?: string
+          report_logo_height?: number | null
+          report_logo_url?: string | null
+          report_logo_width?: number | null
+          report_signatory_designation?: string | null
+          report_signatory_name?: string | null
           signature_url?: string | null
           state?: string | null
           state_code?: string | null

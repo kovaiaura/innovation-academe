@@ -4,26 +4,43 @@ import { Report } from '@/types/report';
 import { format } from 'date-fns';
 import logoImage from '@/assets/logo.png';
 
-interface ActivityReportPDFProps {
-  report: Report;
+interface ReportSettings {
+  report_logo_url?: string | null;
+  report_logo_width?: number;
+  report_logo_height?: number;
 }
 
-export const ActivityReportPDF = ({ report }: ActivityReportPDFProps) => {
+interface ActivityReportPDFProps {
+  report: Report;
+  reportSettings?: ReportSettings;
+}
+
+export const ActivityReportPDF = ({ report, reportSettings }: ActivityReportPDFProps) => {
   const reportDate = report.report_date ? new Date(report.report_date) : new Date();
   const formattedDate = format(reportDate, 'dd.MM.yyyy');
   
-  // Format attendance as comma-separated percentages
-  const attendanceDisplay = report.trainers
-    .filter(t => t.attendance !== undefined && t.attendance !== null)
-    .map(t => `${t.attendance}%`)
-    .join(' | ');
+  const logoSrc = reportSettings?.report_logo_url || logoImage;
+  const logoWidth = reportSettings?.report_logo_width || 120;
+  const logoHeight = reportSettings?.report_logo_height || 40;
+  
+  // Format client name with location
+  const clientDisplay = report.client_location 
+    ? `${report.client_name}, ${report.client_location}`
+    : report.client_name;
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         {/* Header with Logo and Date */}
         <View style={styles.header}>
-          <Image src={logoImage} style={styles.logo} />
+          <Image 
+            src={logoSrc} 
+            style={{ 
+              width: logoWidth, 
+              height: logoHeight, 
+              objectFit: 'contain' as const 
+            }} 
+          />
           <Text style={styles.dateText}>{formattedDate}</Text>
         </View>
 
@@ -32,60 +49,81 @@ export const ActivityReportPDF = ({ report }: ActivityReportPDFProps) => {
           <Text style={styles.title}>{report.report_month.toUpperCase()} Activity Report</Text>
         </View>
 
-        {/* Details Section */}
-        <View style={styles.detailsSection}>
-          {/* Client Name */}
+        {/* Main Details Table with Borders */}
+        <View style={styles.detailsTable}>
+          {/* Client Name Row */}
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Client Name</Text>
-            <Text style={styles.detailValue}>: {report.client_name}</Text>
+            <Text style={styles.detailValue}>{clientDisplay}</Text>
           </View>
+        </View>
 
-          {/* Trainers */}
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Trainer(s) Name and Designation</Text>
-            <Text style={styles.detailValue}>:</Text>
-          </View>
-          {report.trainers.map((trainer, index) => (
-            <Text key={index} style={styles.trainerItem}>
-              • {trainer.name}, {trainer.designation}
-            </Text>
-          ))}
-
-          {/* Attendance */}
-          {attendanceDisplay && (
-            <View style={[styles.detailRow, { marginTop: 10 }]}>
-              <Text style={styles.detailLabel}>Trainer(s) Attendance</Text>
-              <Text style={styles.detailValue}>: {attendanceDisplay}</Text>
+        {/* Trainer Details Table */}
+        {report.trainers.length > 0 && (
+          <View style={styles.trainerTable}>
+            {/* Trainer Name Row */}
+            <View style={styles.trainerRow}>
+              <Text style={styles.trainerLabelCell}>Trainer(s) Name and Designation</Text>
+              {report.trainers.map((trainer, index) => (
+                <Text 
+                  key={`name-${index}`} 
+                  style={index === report.trainers.length - 1 ? styles.trainerNameCellLast : styles.trainerNameCell}
+                >
+                  {trainer.name}{'\n'}{trainer.designation}
+                </Text>
+              ))}
             </View>
-          )}
 
+            {/* Attendance Row */}
+            <View style={styles.trainerRowLast}>
+              <Text style={styles.trainerLabelCell}>Trainer(s) Attendance</Text>
+              {report.trainers.map((trainer, index) => (
+                <Text 
+                  key={`attendance-${index}`} 
+                  style={index === report.trainers.length - 1 ? styles.trainerNameCellLast : styles.trainerNameCell}
+                >
+                  {trainer.attendance !== undefined && trainer.attendance !== null ? `${trainer.attendance}%` : '-'}
+                </Text>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Statistics Table */}
+        <View style={styles.detailsTable}>
           {/* Hours Handled */}
-          {report.hours_handled !== undefined && report.hours_handled !== null && (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>No. of hours handled</Text>
-              <Text style={styles.detailValue}>
-                : {report.hours_handled} {report.hours_unit || 'Hours (Sessions Handled)'}
-              </Text>
+          <View style={styles.detailRow}>
+            <View style={{ width: '40%', padding: 8, backgroundColor: '#f8f8f8', borderRight: '1 solid #333333' }}>
+              <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#333333' }}>No. of hours handled</Text>
+              <Text style={styles.hoursNote}>(1 hour = 60 minutes)</Text>
             </View>
-          )}
+            <Text style={styles.detailValue}>
+              {report.hours_handled !== undefined && report.hours_handled !== null 
+                ? `${report.hours_handled} ${report.hours_unit || 'Hours (Sessions Handled)'}`
+                : '-'}
+            </Text>
+          </View>
 
           {/* Portion Covered */}
-          {report.portion_covered_percentage !== undefined && report.portion_covered_percentage !== null && (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Percentage of portion covered</Text>
-              <Text style={styles.detailValue}>: {report.portion_covered_percentage}%</Text>
-            </View>
-          )}
-
-          {/* Assessments */}
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>No. of Assessment completed</Text>
-            <Text style={styles.detailValue}>: {report.assessments_completed || '-'}</Text>
+            <Text style={styles.detailLabel}>Percentage of portion covered</Text>
+            <Text style={styles.detailValue}>
+              {report.portion_covered_percentage !== undefined && report.portion_covered_percentage !== null 
+                ? `${report.portion_covered_percentage}%`
+                : '-'}
+            </Text>
           </View>
 
+          {/* Assessments Completed */}
           <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>No. of Assessment completed</Text>
+            <Text style={styles.detailValue}>{report.assessments_completed || '-'}</Text>
+          </View>
+
+          {/* Assessment Results */}
+          <View style={styles.detailRowLast}>
             <Text style={styles.detailLabel}>Results of assessment</Text>
-            <Text style={styles.detailValue}>: {report.assessment_results || '-'}</Text>
+            <Text style={styles.detailValue}>{report.assessment_results || '-'}</Text>
           </View>
         </View>
 
