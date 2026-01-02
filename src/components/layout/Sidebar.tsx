@@ -95,6 +95,7 @@ const menuItems: MenuItem[] = [
   { label: 'Task Allotment', icon: <ListTodo className="h-5 w-5" />, path: '/tasks', roles: ['system_admin'], feature: 'task_allotment' },
   // Gamification
   { label: 'Gamification', icon: <Trophy className="h-5 w-5" />, path: '/gamification', roles: ['system_admin'], feature: 'gamification' },
+  { label: 'HR Management', icon: <Briefcase className="h-5 w-5" />, path: '/hr-management', roles: ['system_admin'], ceoOnly: true },
   { label: 'Webinars', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['system_admin'] },
   // Reports & Invoice
   { label: 'Reports Management', icon: <FileText className="h-5 w-5" />, path: '/reports-management', roles: ['system_admin'], feature: 'reports_analytics' },
