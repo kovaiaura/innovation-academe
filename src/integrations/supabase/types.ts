@@ -3510,6 +3510,81 @@ export type Database = {
         }
         Relationships: []
       }
+      news_and_feeds: {
+        Row: {
+          content: string
+          created_at: string | null
+          created_by: string | null
+          created_by_name: string
+          expires_at: string | null
+          id: string
+          image_url: string | null
+          institution_id: string | null
+          priority: string
+          published_at: string | null
+          status: string
+          tags: string[] | null
+          target_audience: string[]
+          title: string
+          type: string
+          updated_at: string | null
+          views_count: number | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          created_by_name: string
+          expires_at?: string | null
+          id?: string
+          image_url?: string | null
+          institution_id?: string | null
+          priority?: string
+          published_at?: string | null
+          status?: string
+          tags?: string[] | null
+          target_audience?: string[]
+          title: string
+          type: string
+          updated_at?: string | null
+          views_count?: number | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          created_by_name?: string
+          expires_at?: string | null
+          id?: string
+          image_url?: string | null
+          institution_id?: string | null
+          priority?: string
+          published_at?: string | null
+          status?: string
+          tags?: string[] | null
+          target_audience?: string[]
+          title?: string
+          type?: string
+          updated_at?: string | null
+          views_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_and_feeds_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "news_and_feeds_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           archived: boolean | null
