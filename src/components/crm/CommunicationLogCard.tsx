@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, Mail, Calendar, Users, FileText, Clock, AlertCircle } from "lucide-react";
+import { Phone, Mail, Calendar, Users, FileText, Clock, AlertCircle, Trash2 } from "lucide-react";
 import { CommunicationLog } from "@/types/communicationLog";
 import { format } from "date-fns";
 
@@ -9,6 +9,7 @@ interface CommunicationLogCardProps {
   log: CommunicationLog;
   onEdit?: (log: CommunicationLog) => void;
   onViewDetails?: (log: CommunicationLog) => void;
+  onDelete?: (log: CommunicationLog) => void;
 }
 
 const typeIcons = {
@@ -39,7 +40,7 @@ const priorityColors = {
   low: "bg-blue-500/10 text-blue-600",
 };
 
-export function CommunicationLogCard({ log, onEdit, onViewDetails }: CommunicationLogCardProps) {
+export function CommunicationLogCard({ log, onEdit, onViewDetails, onDelete }: CommunicationLogCardProps) {
   const TypeIcon = typeIcons[log.type];
   
   return (
@@ -120,6 +121,14 @@ export function CommunicationLogCard({ log, onEdit, onViewDetails }: Communicati
             onClick={() => onEdit?.(log)}
           >
             Edit Log
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={() => onDelete?.(log)}
+          >
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </CardContent>

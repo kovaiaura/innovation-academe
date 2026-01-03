@@ -17,6 +17,7 @@ import { AddContractDialog } from "@/components/crm/AddContractDialog";
 import { ViewContractDialog } from "@/components/crm/ViewContractDialog";
 import { EditContractDialog } from "@/components/crm/EditContractDialog";
 import { DeleteContractDialog } from "@/components/crm/DeleteContractDialog";
+import { DeleteCommunicationDialog } from "@/components/crm/DeleteCommunicationDialog";
 import { RenewalWorkflowDialog } from "@/components/crm/RenewalWorkflowDialog";
 import { AddTaskDialog } from "@/components/crm/AddTaskDialog";
 import { EditTaskDialog } from "@/components/crm/EditTaskDialog";
@@ -62,6 +63,9 @@ export default function CRM() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isViewCommunicationOpen, setIsViewCommunicationOpen] = useState(false);
   const [isEditCommunicationOpen, setIsEditCommunicationOpen] = useState(false);
+  const [isDeleteCommunicationOpen, setIsDeleteCommunicationOpen] = useState(false);
+  const [communicationToDelete, setCommunicationToDelete] = useState<CommunicationLog | null>(null);
+  const [isDeletingCommunication, setIsDeletingCommunication] = useState(false);
   const [isAddContractDialogOpen, setIsAddContractDialogOpen] = useState(false);
   const [isViewContractOpen, setIsViewContractOpen] = useState(false);
   const [isEditContractOpen, setIsEditContractOpen] = useState(false);
@@ -171,6 +175,26 @@ export default function CRM() {
     } catch (error) {
       console.error('Error updating communication log:', error);
       toast.error("Failed to update communication log");
+    }
+  };
+
+  const handleDeleteCommunication = (log: CommunicationLog) => {
+    setCommunicationToDelete(log);
+    setIsDeleteCommunicationOpen(true);
+  };
+
+  const handleConfirmDeleteCommunication = async (log: CommunicationLog) => {
+    setIsDeletingCommunication(true);
+    try {
+      await deleteCommunicationLog(log.id);
+      toast.success("Communication log deleted successfully");
+      setIsDeleteCommunicationOpen(false);
+      setCommunicationToDelete(null);
+    } catch (error) {
+      console.error('Error deleting communication log:', error);
+      toast.error("Failed to delete communication log");
+    } finally {
+      setIsDeletingCommunication(false);
     }
   };
 
@@ -423,6 +447,7 @@ export default function CRM() {
                       log={log}
                       onEdit={() => handleEditCommunication(log)}
                       onViewDetails={() => handleViewCommunicationDetails(log)}
+                      onDelete={() => handleDeleteCommunication(log)}
                     />
                   ))}
                 </div>
@@ -557,6 +582,14 @@ export default function CRM() {
           communication={selectedCommunication}
           onSave={handleUpdateCommunication}
           institutions={institutions}
+        />
+
+        <DeleteCommunicationDialog
+          open={isDeleteCommunicationOpen}
+          onOpenChange={setIsDeleteCommunicationOpen}
+          communication={communicationToDelete}
+          onConfirmDelete={handleConfirmDeleteCommunication}
+          isDeleting={isDeletingCommunication}
         />
 
         <ViewContractDialog
