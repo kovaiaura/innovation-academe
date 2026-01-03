@@ -4,15 +4,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   ChevronLeft, ChevronRight, Users, UserX, Clock, 
-  Calendar as CalendarIcon, Gift, Plus
+  Calendar as CalendarIcon, Gift, Plus, Filter
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
   fetchCalendarData, 
   CalendarDayData,
-  DailyAttendanceRecord 
+  DailyAttendanceRecord,
+  EmployeeTypeFilter
 } from '@/services/payroll.service';
 import { EditAttendanceDialog } from './EditAttendanceDialog';
 import { AddAttendanceDialog } from './AddAttendanceDialog';
@@ -34,15 +36,16 @@ export function AttendanceCalendar({ month, year, onMonthChange }: AttendanceCal
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<DailyAttendanceRecord | null>(null);
   const [selectedDateForAdd, setSelectedDateForAdd] = useState<string>('');
+  const [employeeTypeFilter, setEmployeeTypeFilter] = useState<EmployeeTypeFilter>('all');
 
   useEffect(() => {
     loadCalendarData();
-  }, [month, year]);
+  }, [month, year, employeeTypeFilter]);
 
   const loadCalendarData = async () => {
     setIsLoading(true);
     try {
-      const data = await fetchCalendarData(month, year);
+      const data = await fetchCalendarData(month, year, { employeeType: employeeTypeFilter });
       setCalendarData(data);
     } catch (error) {
       console.error('Error loading calendar data:', error);
@@ -89,7 +92,6 @@ export function AttendanceCalendar({ month, year, onMonthChange }: AttendanceCal
 
   // Calculate first day offset for calendar grid
   const firstDayOfMonth = new Date(year, month - 1, 1).getDay();
-  const daysInMonth = new Date(year, month, 0).getDate();
 
   // Create empty cells for days before the 1st
   const emptyDays = Array.from({ length: firstDayOfMonth }, (_, i) => i);
@@ -104,11 +106,19 @@ export function AttendanceCalendar({ month, year, onMonthChange }: AttendanceCal
     return 'bg-background';
   };
 
+  const getFilterLabel = () => {
+    switch (employeeTypeFilter) {
+      case 'officer': return 'Officers Only';
+      case 'staff': return 'Staff Only';
+      default: return 'All Employees';
+    }
+  };
+
   return (
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <CalendarIcon className="h-5 w-5" />
@@ -119,16 +129,48 @@ export function AttendanceCalendar({ month, year, onMonthChange }: AttendanceCal
               </p>
             </div>
             
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={handlePrevMonth}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="font-medium min-w-[150px] text-center">{getMonthName()}</span>
-              <Button variant="outline" size="icon" onClick={handleNextMonth}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+            <div className="flex items-center gap-3">
+              {/* Employee Type Filter */}
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <Select 
+                  value={employeeTypeFilter} 
+                  onValueChange={(value: EmployeeTypeFilter) => setEmployeeTypeFilter(value)}
+                >
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Filter by type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Employees</SelectItem>
+                    <SelectItem value="officer">Officers Only</SelectItem>
+                    <SelectItem value="staff">Staff Only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Month Navigation */}
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" onClick={handlePrevMonth}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="font-medium min-w-[150px] text-center">{getMonthName()}</span>
+                <Button variant="outline" size="icon" onClick={handleNextMonth}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
+          
+          {/* Active Filter Badge */}
+          {employeeTypeFilter !== 'all' && (
+            <div className="mt-2">
+              <Badge variant="secondary" className="text-xs">
+                Showing: {getFilterLabel()}
+                {employeeTypeFilter === 'officer' && ' (using institution holidays)'}
+                {employeeTypeFilter === 'staff' && ' (using company holidays)'}
+              </Badge>
+            </div>
+          )}
           
           {/* Legend */}
           <div className="flex flex-wrap gap-4 mt-4 text-sm">
@@ -322,7 +364,12 @@ export function AttendanceCalendar({ month, year, onMonthChange }: AttendanceCal
                             <Users className="h-4 w-4 text-primary" />
                           </div>
                           <div>
-                            <p className="font-medium">{record.user_name}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{record.user_name}</p>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                {record.user_type === 'officer' ? 'Officer' : 'Staff'}
+                              </Badge>
+                            </div>
                             <p className="text-xs text-muted-foreground">
                               {record.check_in_time ? new Date(record.check_in_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'No check-in'} 
                               {' → '}
