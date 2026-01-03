@@ -19,6 +19,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ApplicationStatus } from '@/types/hr';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const APPLICATION_STATUSES: { value: ApplicationStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All Applications' },
@@ -32,6 +34,54 @@ const APPLICATION_STATUSES: { value: ApplicationStatus | 'all'; label: string }[
   { value: 'offer_declined', label: 'Offer Declined' },
   { value: 'hired', label: 'Hired' },
 ];
+
+// Resume Button Component for private bucket
+function ResumeButton({ resumeUrl }: { resumeUrl: string }) {
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleViewResume = async () => {
+    setIsLoading(true);
+    try {
+      let filePath = '';
+      if (resumeUrl.includes('/hr-documents/')) {
+        filePath = resumeUrl.split('/hr-documents/').pop() || '';
+      } else {
+        filePath = resumeUrl;
+      }
+
+      if (!filePath) {
+        throw new Error('Invalid resume URL');
+      }
+
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+        .from('hr-documents')
+        .createSignedUrl(filePath, 60);
+
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        throw signedUrlError || new Error('Failed to generate URL');
+      }
+
+      window.open(signedUrlData.signedUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      console.error('Failed to open resume:', error);
+      toast({
+        title: 'Failed to open resume',
+        description: 'Unable to access resume. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Button variant="outline" size="sm" onClick={handleViewResume} disabled={isLoading}>
+      <FileText className="h-4 w-4 mr-1" />
+      {isLoading ? 'Loading...' : 'Resume'}
+    </Button>
+  );
+}
 
 export default function Applications() {
   const [searchParams] = useSearchParams();
@@ -239,12 +289,7 @@ export default function Applications() {
 
                     <div className="flex gap-2">
                       {app.resume_url && (
-                        <Button variant="outline" size="sm" asChild>
-                          <a href={app.resume_url} target="_blank" rel="noopener noreferrer">
-                            <FileText className="h-4 w-4 mr-1" />
-                            Resume
-                          </a>
-                        </Button>
+                        <ResumeButton resumeUrl={app.resume_url} />
                       )}
                       <Link to={`/system-admin/hr-management/applications/${app.id}`}>
                         <Button variant="outline" size="sm">
