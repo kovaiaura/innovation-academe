@@ -103,8 +103,9 @@ Please confirm your acceptance by replying to this email.
 Best regards,
 HR Team`;
 
-    const mailtoLink = `mailto:${application.candidate_email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailtoLink;
+    // Use Gmail compose URL directly - works better in iframe environments
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(application.candidate_email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(gmailUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -178,7 +179,6 @@ HR Team`;
               )}
             </div>
             <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button type="button" variant="secondary" onClick={handleSendViaGmail}>
                 <Mail className="h-4 w-4 mr-2" />
                 Send via Gmail
