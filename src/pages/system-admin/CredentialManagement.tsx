@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,30 +8,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Key, Mail, Check, AlertCircle, RefreshCw } from 'lucide-react';
-import { loadMetaStaff, loadCredentialStatus, saveCredentialStatus, MetaStaffUser } from '@/data/mockMetaStaffData';
-import { loadPositions } from '@/data/mockPositions';
-import { mockInstitutions } from '@/data/mockInstitutionData';
-import { mockStudents, getStudentsByInstitution } from '@/data/mockStudentData';
+import { Search, Key, Mail, Check, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { SetPasswordDialog } from '@/components/auth/SetPasswordDialog';
 import { passwordService } from '@/services/password.service';
-import { metaStaffService } from '@/services/metastaff.service';
+import { credentialService } from '@/services/credentialService';
+import { 
+  useMetaEmployees, 
+  useOfficers, 
+  useInstitutionsWithAdmins, 
+  useStudentsByInstitution,
+  useInstitutionsList 
+} from '@/hooks/useCredentialUsers';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-// Officers from mockUsers for now (can be migrated to separate localStorage later)
-import { mockUsers } from '@/data/mockUsers';
-
 export default function CredentialManagement() {
+  const queryClient = useQueryClient();
+
   // Meta Employees Tab State
   const [metaSearch, setMetaSearch] = useState('');
   const [positionFilter, setPositionFilter] = useState<string>('all');
-  const [metaEmployees, setMetaEmployees] = useState<MetaStaffUser[]>([]);
-  const [positions, setPositions] = useState<{ id: string; display_name: string; position_name: string }[]>([]);
+
+  // Officers Tab State
+  const [officerSearch, setOfficerSearch] = useState('');
+  const [officerStatusFilter, setOfficerStatusFilter] = useState<string>('all');
 
   // Institutions Tab State
   const [institutionSearch, setInstitutionSearch] = useState('');
   const [showOnlyPending, setShowOnlyPending] = useState(false);
-  const [credentialStatus, setCredentialStatus] = useState<Record<string, boolean>>({});
 
   // Students Tab State
   const [selectedInstitution, setSelectedInstitution] = useState<string>('');
@@ -43,82 +47,59 @@ export default function CredentialManagement() {
     id: string;
     name: string;
     email: string;
-    type: 'meta_employee' | 'institution_admin' | 'student';
+    type: 'meta_employee' | 'officer' | 'institution_admin' | 'student';
   } | null>(null);
 
-  // Load data from localStorage
-  const loadData = useCallback(() => {
-    // Load meta staff from localStorage
-    const metaStaff = loadMetaStaff();
-    
-    // Also include officers from mockUsers
-    const officers = mockUsers.filter(u => u.role === 'officer');
-    
-    // Combine meta staff with officers
-    const allEmployees = [
-      ...metaStaff,
-      ...officers.map(o => ({ ...o, password: (o as any).password } as MetaStaffUser))
-    ];
-    
-    setMetaEmployees(allEmployees);
-    
-    // Load positions
-    const loadedPositions = loadPositions();
-    setPositions(loadedPositions.map(p => ({
-      id: p.id,
-      display_name: p.display_name,
-      position_name: p.position_name
-    })));
-    
-    // Load credential status
-    setCredentialStatus(loadCredentialStatus());
-  }, []);
-
-  useEffect(() => {
-    loadData();
-    
-    // Listen for focus to refresh data when returning to this page
-    const handleFocus = () => loadData();
-    window.addEventListener('focus', handleFocus);
-    
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [loadData]);
+  // Fetch data using React Query hooks
+  const { data: metaEmployees = [], isLoading: metaLoading, refetch: refetchMeta } = useMetaEmployees();
+  const { data: officers = [], isLoading: officersLoading, refetch: refetchOfficers } = useOfficers();
+  const { data: institutions = [], isLoading: institutionsLoading, refetch: refetchInstitutions } = useInstitutionsWithAdmins();
+  const { data: students = [], isLoading: studentsLoading } = useStudentsByInstitution(selectedInstitution || null);
+  const { data: institutionsList = [] } = useInstitutionsList();
 
   // Filter meta employees
   const filteredMetaEmployees = metaEmployees.filter(emp => {
     const matchesSearch = emp.name.toLowerCase().includes(metaSearch.toLowerCase()) ||
                          emp.email.toLowerCase().includes(metaSearch.toLowerCase());
     const matchesPosition = positionFilter === 'all' || 
-                           (emp.role === 'officer' && positionFilter === 'officer') ||
-                           (emp.position_name === positionFilter);
+                           emp.position_name?.toLowerCase() === positionFilter.toLowerCase() ||
+                           emp.role === positionFilter;
     return matchesSearch && matchesPosition;
   });
 
-  // Get institutions
-  const institutions = Object.values(mockInstitutions);
+  // Filter officers
+  const filteredOfficers = officers.filter(officer => {
+    const matchesSearch = officer.full_name.toLowerCase().includes(officerSearch.toLowerCase()) ||
+                         officer.email.toLowerCase().includes(officerSearch.toLowerCase());
+    const matchesStatus = officerStatusFilter === 'all' || officer.status === officerStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   // Filter institutions
   const filteredInstitutions = institutions.filter(inst => {
     const matchesSearch = inst.name.toLowerCase().includes(institutionSearch.toLowerCase()) ||
-      inst.contact_email.toLowerCase().includes(institutionSearch.toLowerCase());
-    const matchesPending = !showOnlyPending || !credentialStatus[inst.id];
+      (inst.admin_email?.toLowerCase() || '').includes(institutionSearch.toLowerCase());
+    const matchesPending = !showOnlyPending || !inst.password_changed;
     return matchesSearch && matchesPending;
   });
 
-  const pendingCount = institutions.filter(inst => !credentialStatus[inst.id]).length;
-
-  // Get students for selected institution
-  const studentsForInstitution = selectedInstitution 
-    ? getStudentsByInstitution(selectedInstitution)
-    : [];
+  const pendingCount = institutions.filter(inst => !inst.password_changed).length;
 
   // Filter students
-  const filteredStudents = studentsForInstitution.filter(student =>
+  const filteredStudents = students.filter(student =>
     student.student_name.toLowerCase().includes(studentSearch.toLowerCase()) ||
     student.student_id.toLowerCase().includes(studentSearch.toLowerCase())
   );
 
-  const handleSetPassword = (userId: string, userName: string, userEmail: string, userType: 'meta_employee' | 'institution_admin' | 'student') => {
+  // Get unique positions from meta employees
+  const uniquePositions = [...new Set(metaEmployees.map(emp => emp.position_name).filter(Boolean))];
+
+  const handleSetPassword = (
+    userId: string, 
+    userName: string, 
+    userEmail: string, 
+    userType: 'meta_employee' | 'officer' | 'institution_admin' | 'student'
+  ) => {
     setSelectedUser({ id: userId, name: userName, email: userEmail, type: userType });
     setSetPasswordDialogOpen(true);
   };
@@ -132,31 +113,79 @@ export default function CredentialManagement() {
   };
 
   const handleSetPasswordSuccess = async (userId: string, password: string, userType: string) => {
-    if (userType === 'meta_employee') {
-      // Update password in localStorage via service
-      await metaStaffService.setPassword(userId, password);
-      // Refresh data
-      loadData();
-    } else if (userType === 'institution_admin') {
-      // Update credential status for institution
-      const admin = mockUsers.find(u => u.id === userId);
-      if (admin?.institution_id) {
-        const newStatus = { ...credentialStatus, [admin.institution_id]: true };
-        setCredentialStatus(newStatus);
-        saveCredentialStatus(newStatus);
+    try {
+      const result = await credentialService.setUserPassword(
+        userId, 
+        password, 
+        userType as 'meta_employee' | 'officer' | 'institution_admin' | 'student'
+      );
+
+      if (!result.success) {
+        toast.error(result.error || 'Failed to set password');
+        return;
       }
+
+      // Refresh the appropriate data
+      if (userType === 'meta_employee') {
+        refetchMeta();
+      } else if (userType === 'officer') {
+        refetchOfficers();
+      } else if (userType === 'institution_admin') {
+        refetchInstitutions();
+      } else if (userType === 'student') {
+        queryClient.invalidateQueries({ queryKey: ['credential-students'] });
+      }
+
+      toast.success('Password set successfully!', {
+        description: 'The user can now log in with their new credentials'
+      });
+
+      setSetPasswordDialogOpen(false);
+    } catch (error) {
+      toast.error('Failed to set password');
     }
-    
-    toast.success('Password set successfully!', {
-      description: 'The user can now log in with their new credentials'
-    });
-    
-    setSetPasswordDialogOpen(false);
   };
 
   const handleRefresh = () => {
-    loadData();
+    refetchMeta();
+    refetchOfficers();
+    refetchInstitutions();
+    if (selectedInstitution) {
+      queryClient.invalidateQueries({ queryKey: ['credential-students'] });
+    }
     toast.success('Data refreshed');
+  };
+
+  const getCredentialStatusBadge = (passwordChanged: boolean, mustChangePassword: boolean, hasUserId: boolean) => {
+    if (!hasUserId) {
+      return (
+        <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-200">
+          No Account
+        </Badge>
+      );
+    }
+    if (mustChangePassword) {
+      return (
+        <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 border-yellow-200">
+          <AlertCircle className="h-3 w-3 mr-1" />
+          Must Change
+        </Badge>
+      );
+    }
+    if (passwordChanged) {
+      return (
+        <Badge className="bg-green-500/10 text-green-700 border-green-200">
+          <Check className="h-3 w-3 mr-1" />
+          Configured
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="bg-orange-500/10 text-orange-700 border-orange-200">
+        <AlertCircle className="h-3 w-3 mr-1" />
+        Pending Setup
+      </Badge>
+    );
   };
 
   return (
@@ -178,6 +207,7 @@ export default function CredentialManagement() {
         <Tabs defaultValue="meta-employees" className="space-y-4">
           <TabsList>
             <TabsTrigger value="meta-employees">Meta Employees</TabsTrigger>
+            <TabsTrigger value="officers">Officers</TabsTrigger>
             <TabsTrigger value="institutions">Institutions</TabsTrigger>
             <TabsTrigger value="students">Students</TabsTrigger>
           </TabsList>
@@ -188,7 +218,7 @@ export default function CredentialManagement() {
               <CardHeader>
                 <CardTitle>Meta Employees</CardTitle>
                 <CardDescription>
-                  Manage credentials for system administrators, innovation officers, and staff
+                  Manage credentials for system administrators and staff
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -208,12 +238,11 @@ export default function CredentialManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Positions</SelectItem>
-                      {positions.map(pos => (
-                        <SelectItem key={pos.id} value={pos.position_name}>
-                          {pos.display_name}
+                      {uniquePositions.map(pos => (
+                        <SelectItem key={pos} value={pos!}>
+                          {pos?.toUpperCase().replace(/_/g, ' ')}
                         </SelectItem>
                       ))}
-                      <SelectItem value="officer">Innovation Officer</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -225,52 +254,167 @@ export default function CredentialManagement() {
                         <TableHead>Name</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Position</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Credential Status</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredMetaEmployees.map((emp) => (
-                        <TableRow key={emp.id}>
-                          <TableCell className="font-medium">{emp.name}</TableCell>
-                          <TableCell>{emp.email}</TableCell>
-                          <TableCell>
-                            <Badge variant="secondary">
-                              {emp.role === 'officer' ? 'Innovation Officer' : 
-                               emp.position_name?.toUpperCase().replace('_', ' ')}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-200">
-                              Active
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleSetPassword(emp.id, emp.name, emp.email, 'meta_employee')}
-                              >
-                                <Key className="h-4 w-4 mr-1" />
-                                Set Password
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleSendResetLink(emp.email, emp.name, 'meta_employee')}
-                              >
-                                <Mail className="h-4 w-4 mr-1" />
-                                Send Reset Link
-                              </Button>
-                            </div>
+                      {metaLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                           </TableCell>
                         </TableRow>
-                      ))}
-                      {filteredMetaEmployees.length === 0 && (
+                      ) : filteredMetaEmployees.length > 0 ? (
+                        filteredMetaEmployees.map((emp) => (
+                          <TableRow key={emp.id}>
+                            <TableCell className="font-medium">{emp.name}</TableCell>
+                            <TableCell>{emp.email}</TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">
+                                {emp.position_name?.toUpperCase().replace(/_/g, ' ') || 'Staff'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">
+                                {emp.role.replace(/_/g, ' ').toUpperCase()}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {getCredentialStatusBadge(emp.password_changed, emp.must_change_password, true)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleSetPassword(emp.id, emp.name, emp.email, 'meta_employee')}
+                                >
+                                  <Key className="h-4 w-4 mr-1" />
+                                  Set Password
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleSendResetLink(emp.email, emp.name, 'meta_employee')}
+                                >
+                                  <Mail className="h-4 w-4 mr-1" />
+                                  Send Reset Link
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                             No employees found
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Officers Tab */}
+          <TabsContent value="officers" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Innovation Officers</CardTitle>
+                <CardDescription>
+                  Manage credentials for innovation officers assigned to institutions
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by name or email..."
+                      value={officerSearch}
+                      onChange={(e) => setOfficerSearch(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={officerStatusFilter} onValueChange={setOfficerStatusFilter}>
+                    <SelectTrigger className="w-[150px]">
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Employee ID</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Credential Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {officersLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+                          </TableCell>
+                        </TableRow>
+                      ) : filteredOfficers.length > 0 ? (
+                        filteredOfficers.map((officer) => (
+                          <TableRow key={officer.id}>
+                            <TableCell className="font-medium">{officer.full_name}</TableCell>
+                            <TableCell>{officer.email}</TableCell>
+                            <TableCell>{officer.employee_id || '-'}</TableCell>
+                            <TableCell>
+                              <Badge variant={officer.status === 'active' ? 'default' : 'secondary'}>
+                                {officer.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {getCredentialStatusBadge(officer.password_changed, officer.must_change_password, !!officer.user_id)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {officer.user_id ? (
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleSetPassword(officer.id, officer.full_name, officer.email, 'officer')}
+                                  >
+                                    <Key className="h-4 w-4 mr-1" />
+                                    Set Password
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleSendResetLink(officer.email, officer.full_name, 'officer')}
+                                  >
+                                    <Mail className="h-4 w-4 mr-1" />
+                                    Send Reset
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">No account created</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                            No officers found
                           </TableCell>
                         </TableRow>
                       )}
@@ -319,35 +463,28 @@ export default function CredentialManagement() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Institution Name</TableHead>
+                        <TableHead>Admin Name</TableHead>
                         <TableHead>Admin Email</TableHead>
-                        <TableHead>Location</TableHead>
                         <TableHead>Credential Status</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredInstitutions.map((inst) => {
-                        // Find admin for this institution
-                        const admin = mockUsers.find(u => u.institution_id === inst.id && u.role === 'management');
-                        const isConfigured = credentialStatus[inst.id];
-                        return (
+                      {institutionsLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+                          </TableCell>
+                        </TableRow>
+                      ) : filteredInstitutions.length > 0 ? (
+                        filteredInstitutions.map((inst) => (
                           <TableRow key={inst.id}>
                             <TableCell className="font-medium">{inst.name}</TableCell>
-                            <TableCell>{admin?.email || inst.contact_email}</TableCell>
-                            <TableCell>{inst.location}</TableCell>
+                            <TableCell>{inst.admin_name || '-'}</TableCell>
+                            <TableCell>{inst.admin_email || '-'}</TableCell>
                             <TableCell>
-                              {isConfigured ? (
-                                <Badge className="bg-green-500/10 text-green-700 border-green-200">
-                                  <Check className="h-3 w-3 mr-1" />
-                                  Configured
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="bg-orange-500/10 text-orange-700 border-orange-200">
-                                  <AlertCircle className="h-3 w-3 mr-1" />
-                                  Pending Setup
-                                </Badge>
-                              )}
+                              {getCredentialStatusBadge(inst.password_changed, inst.must_change_password, !!inst.admin_user_id)}
                             </TableCell>
                             <TableCell>
                               <Badge variant={inst.status === 'active' ? 'default' : 'secondary'}>
@@ -355,15 +492,13 @@ export default function CredentialManagement() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right">
-                              {admin ? (
+                              {inst.admin_user_id && inst.admin_email ? (
                                 <div className="flex justify-end gap-2 flex-wrap">
-                                  {!isConfigured ? (
+                                  {!inst.password_changed ? (
                                     <Button
                                       size="sm"
                                       variant="default"
-                                      onClick={() => {
-                                        handleSetPassword(admin.id, admin.name, admin.email, 'institution_admin');
-                                      }}
+                                      onClick={() => handleSetPassword(inst.admin_user_id!, inst.admin_name || inst.name, inst.admin_email!, 'institution_admin')}
                                     >
                                       <Key className="h-4 w-4 mr-1" />
                                       Set Up Credentials
@@ -373,7 +508,7 @@ export default function CredentialManagement() {
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => handleSetPassword(admin.id, admin.name, admin.email, 'institution_admin')}
+                                        onClick={() => handleSetPassword(inst.admin_user_id!, inst.admin_name || inst.name, inst.admin_email!, 'institution_admin')}
                                       >
                                         <Key className="h-4 w-4 mr-1" />
                                         Reset Password
@@ -381,7 +516,7 @@ export default function CredentialManagement() {
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => handleSendResetLink(admin.email, admin.name, 'institution_admin')}
+                                        onClick={() => handleSendResetLink(inst.admin_email!, inst.admin_name || inst.name, 'institution_admin')}
                                       >
                                         <Mail className="h-4 w-4 mr-1" />
                                         Send Reset Link
@@ -394,8 +529,14 @@ export default function CredentialManagement() {
                               )}
                             </TableCell>
                           </TableRow>
-                        );
-                      })}
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                            No institutions found
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </div>
@@ -418,7 +559,7 @@ export default function CredentialManagement() {
                     <SelectValue placeholder="Select an institution..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {institutions.map((inst) => (
+                    {institutionsList.map((inst) => (
                       <SelectItem key={inst.id} value={inst.id}>
                         {inst.name}
                       </SelectItem>
@@ -444,46 +585,61 @@ export default function CredentialManagement() {
                           <TableRow>
                             <TableHead>Student ID</TableHead>
                             <TableHead>Name</TableHead>
-                            <TableHead>Parent Email</TableHead>
+                            <TableHead>Email</TableHead>
                             <TableHead>Class</TableHead>
                             <TableHead>Section</TableHead>
+                            <TableHead>Credential Status</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredStudents.length > 0 ? (
+                          {studentsLoading ? (
+                            <TableRow>
+                              <TableCell colSpan={7} className="text-center py-8">
+                                <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+                              </TableCell>
+                            </TableRow>
+                          ) : filteredStudents.length > 0 ? (
                             filteredStudents.slice(0, 20).map((student) => (
                               <TableRow key={student.id}>
                                 <TableCell className="font-medium">{student.student_id}</TableCell>
                                 <TableCell>{student.student_name}</TableCell>
-                                <TableCell>{student.email}</TableCell>
-                                <TableCell>{student.class}</TableCell>
-                                <TableCell>{student.section}</TableCell>
+                                <TableCell>{student.email || student.parent_email || '-'}</TableCell>
+                                <TableCell>{student.class_name || '-'}</TableCell>
+                                <TableCell>{student.section || '-'}</TableCell>
+                                <TableCell>
+                                  {getCredentialStatusBadge(student.password_changed, student.must_change_password, !!student.user_id)}
+                                </TableCell>
                                 <TableCell className="text-right">
-                                  <div className="flex justify-end gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleSetPassword(student.id, student.student_name, student.email, 'student')}
-                                    >
-                                      <Key className="h-4 w-4 mr-1" />
-                                      Set Password
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleSendResetLink(student.email, student.student_name, 'student')}
-                                    >
-                                      <Mail className="h-4 w-4 mr-1" />
-                                      Send Reset Link
-                                    </Button>
-                                  </div>
+                                  {student.user_id ? (
+                                    <div className="flex justify-end gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleSetPassword(student.id, student.student_name, student.email || student.parent_email || '', 'student')}
+                                      >
+                                        <Key className="h-4 w-4 mr-1" />
+                                        Set Password
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleSendResetLink(student.email || student.parent_email || '', student.student_name, 'student')}
+                                        disabled={!student.email && !student.parent_email}
+                                      >
+                                        <Mail className="h-4 w-4 mr-1" />
+                                        Send Reset
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground">No account</span>
+                                  )}
                                 </TableCell>
                               </TableRow>
                             ))
                           ) : (
                             <TableRow>
-                              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                                 No students found
                               </TableCell>
                             </TableRow>

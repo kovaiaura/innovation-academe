@@ -21,7 +21,7 @@ interface SetPasswordDialogProps {
   userName: string;
   userEmail: string;
   userId: string;
-  userType: 'meta_employee' | 'institution_admin' | 'student';
+  userType: 'meta_employee' | 'officer' | 'institution_admin' | 'student';
   onSetPassword?: (password: string) => Promise<void>;
 }
 
