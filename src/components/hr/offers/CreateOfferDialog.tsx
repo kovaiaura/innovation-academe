@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Mail } from 'lucide-react';
-import { useCreateOffer, useUpdateOffer } from '@/hooks/useHRManagement';
+import { Mail, Trash2 } from 'lucide-react';
+import { useCreateOffer, useUpdateOffer, useDeleteOffer } from '@/hooks/useHRManagement';
 import { JobApplication, JobPosting, CandidateOffer } from '@/types/hr';
 
 interface CreateOfferDialogProps {
@@ -18,6 +19,7 @@ interface CreateOfferDialogProps {
 export function CreateOfferDialog({ open, onOpenChange, application, editOffer }: CreateOfferDialogProps) {
   const createOffer = useCreateOffer();
   const updateOffer = useUpdateOffer();
+  const deleteOffer = useDeleteOffer();
   const isEditMode = !!editOffer;
 
   const [formData, setFormData] = useState({
@@ -75,6 +77,13 @@ export function CreateOfferDialog({ open, onOpenChange, application, editOffer }
     onOpenChange(false);
   };
 
+  const handleDelete = () => {
+    if (editOffer) {
+      deleteOffer.mutate(editOffer.id);
+      onOpenChange(false);
+    }
+  };
+
   const handleSendViaGmail = () => {
     const subject = `Job Offer: ${formData.job_title} at Your Company`;
     const body = `Dear ${application.candidate_name},
@@ -95,7 +104,7 @@ Best regards,
 HR Team`;
 
     const mailtoLink = `mailto:${application.candidate_email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.open(mailtoLink, '_blank');
+    window.location.href = mailtoLink;
   };
 
   return (
@@ -141,15 +150,43 @@ HR Team`;
             <Label>Benefits</Label>
             <Textarea value={formData.benefits} onChange={(e) => setFormData({ ...formData, benefits: e.target.value })} placeholder="Health insurance, PF, etc." rows={3} />
           </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="button" variant="secondary" onClick={handleSendViaGmail}>
-              <Mail className="h-4 w-4 mr-2" />
-              Send via Gmail
-            </Button>
-            <Button type="submit">
-              {isEditMode ? 'Update Offer' : 'Create Offer'}
-            </Button>
+          <div className="flex justify-between">
+            <div>
+              {isEditMode && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button type="button" variant="destructive" size="sm">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Offer</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete this offer? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button type="button" variant="secondary" onClick={handleSendViaGmail}>
+                <Mail className="h-4 w-4 mr-2" />
+                Send via Gmail
+              </Button>
+              <Button type="submit">
+                {isEditMode ? 'Update Offer' : 'Create Offer'}
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>

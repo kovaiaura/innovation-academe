@@ -469,6 +469,29 @@ export function useUpdateOffer() {
   });
 }
 
+export function useDeleteOffer() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('candidate_offers')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidate-offers'] });
+      toast({ title: 'Offer deleted successfully' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Failed to delete offer', description: error.message, variant: 'destructive' });
+    },
+  });
+}
+
 export function useSendOffer() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
