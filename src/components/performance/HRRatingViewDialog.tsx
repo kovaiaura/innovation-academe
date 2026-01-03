@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Printer, Star, Check, X } from 'lucide-react';
-import { HRRating } from '@/data/mockPerformanceData';
+import { HRRating } from '@/hooks/useHRRatings';
 import { format } from 'date-fns';
 
 interface Props {
@@ -19,6 +19,8 @@ export function HRRatingViewDialog({ open, onOpenChange, rating }: Props) {
   const handlePrint = () => {
     window.print();
   };
+
+  const projectRatings = rating.project_ratings || [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -62,7 +64,7 @@ export function HRRatingViewDialog({ open, onOpenChange, rating }: Props) {
                 <CardTitle className="text-base">Project Ratings</CardTitle>
               </CardHeader>
               <CardContent>
-                {rating.project_ratings.length > 0 ? (
+                {projectRatings.length > 0 ? (
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
@@ -74,7 +76,7 @@ export function HRRatingViewDialog({ open, onOpenChange, rating }: Props) {
                       </tr>
                     </thead>
                     <tbody>
-                      {rating.project_ratings.map(project => (
+                      {projectRatings.map(project => (
                         <tr key={project.id} className="border-b">
                           <td className="p-2 font-medium">{project.project_title}</td>
                           <td className="p-2">{project.competition_level}</td>
