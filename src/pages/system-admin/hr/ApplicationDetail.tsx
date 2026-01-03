@@ -10,6 +10,8 @@ import {
   User, Briefcase, Clock, DollarSign, CheckCircle, XCircle,
   MessageSquare, Plus, Download, Send, UserPlus
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { 
   useJobApplication, 
   useUpdateApplication,
@@ -24,6 +26,69 @@ import { ScheduleInterviewDialog } from '@/components/hr/interviews/ScheduleInte
 import { CreateOfferDialog } from '@/components/hr/offers/CreateOfferDialog';
 import { OnboardDialog } from '@/components/hr/onboarding/OnboardDialog';
 import { ApplicationStatus } from '@/types/hr';
+
+// Resume Download Button Component for private bucket
+function ResumeDownloadButton({ resumeUrl, candidateName }: { resumeUrl: string; candidateName: string }) {
+  const { toast } = useToast();
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    try {
+      // Extract file path from the URL
+      let filePath = '';
+      if (resumeUrl.includes('/hr-documents/')) {
+        filePath = resumeUrl.split('/hr-documents/').pop() || '';
+      } else {
+        filePath = resumeUrl;
+      }
+
+      if (!filePath) {
+        throw new Error('Invalid resume URL');
+      }
+
+      // Create a signed URL for the private bucket (valid for 60 seconds)
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+        .from('hr-documents')
+        .createSignedUrl(filePath, 60);
+
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        throw signedUrlError || new Error('Failed to generate download URL');
+      }
+
+      // Download using signed URL
+      const response = await fetch(signedUrlData.signedUrl);
+      if (!response.ok) throw new Error('Download failed');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const filename = `${candidateName.replace(/\s+/g, '_')}_resume.pdf`;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast({
+        title: 'Download failed',
+        description: 'Unable to download resume. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  return (
+    <Button variant="outline" onClick={handleDownload} disabled={isDownloading}>
+      <Download className="h-4 w-4 mr-2" />
+      {isDownloading ? 'Downloading...' : 'Download Resume'}
+    </Button>
+  );
+}
 
 export default function ApplicationDetail() {
   const { id } = useParams<{ id: string }>();
@@ -313,31 +378,10 @@ Metasage Alliance`;
 
                 {application.resume_url && (
                   <div>
-                    <Button 
-                      variant="outline" 
-                      onClick={async () => {
-                        try {
-                          const response = await fetch(application.resume_url!);
-                          const blob = await response.blob();
-                          const url = window.URL.createObjectURL(blob);
-                          const link = document.createElement('a');
-                          link.href = url;
-                          const filename = application.resume_url!.split('/').pop() || 
-                            `${application.candidate_name.replace(/\s+/g, '_')}_resume.pdf`;
-                          link.download = filename;
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                          window.URL.revokeObjectURL(url);
-                        } catch (error) {
-                          console.error('Download failed:', error);
-                          window.open(application.resume_url!, '_blank');
-                        }
-                      }}
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download Resume
-                    </Button>
+                    <ResumeDownloadButton 
+                      resumeUrl={application.resume_url} 
+                      candidateName={application.candidate_name} 
+                    />
                   </div>
                 )}
               </CardContent>
