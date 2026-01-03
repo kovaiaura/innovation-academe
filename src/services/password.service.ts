@@ -300,4 +300,42 @@ export const passwordService = {
 
     return { valid: errors.length === 0, errors };
   },
+
+  // Send bulk reset links to multiple users
+  sendBulkResetLinks: async (
+    users: Array<{ email: string; name: string; userId?: string; userType: string }>,
+    onProgress?: (current: number, total: number) => void
+  ): Promise<{ success: number; failed: Array<{ email: string; error: string }> }> => {
+    const results = { success: 0, failed: [] as Array<{ email: string; error: string }> };
+    
+    for (let i = 0; i < users.length; i++) {
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(users[i].email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+
+        if (error) {
+          results.failed.push({ email: users[i].email, error: error.message });
+        } else {
+          results.success++;
+          
+          // Log the reset request
+          if (users[i].userId) {
+            passwordService.logPasswordChange(users[i].userId, users[i].email, 'reset_requested');
+          }
+        }
+      } catch (error: any) {
+        results.failed.push({ email: users[i].email, error: error.message || 'Unknown error' });
+      }
+      
+      onProgress?.(i + 1, users.length);
+      
+      // Small delay to avoid rate limiting (200ms between requests)
+      if (i < users.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    }
+    
+    return results;
+  },
 };

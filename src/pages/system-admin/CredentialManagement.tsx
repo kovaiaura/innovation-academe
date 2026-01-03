@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Key, Mail, Check, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { Search, Key, Mail, Check, AlertCircle, RefreshCw, Loader2, X } from 'lucide-react';
 import { SetPasswordDialog } from '@/components/auth/SetPasswordDialog';
+import { BulkResetDialog } from '@/components/credential/BulkResetDialog';
 import { passwordService } from '@/services/password.service';
 import { credentialService } from '@/services/credentialService';
 import { 
@@ -49,6 +50,18 @@ export default function CredentialManagement() {
     email: string;
     type: 'meta_employee' | 'officer' | 'institution_admin' | 'student';
   } | null>(null);
+
+  // Bulk Selection States
+  const [selectedMetaEmployees, setSelectedMetaEmployees] = useState<Set<string>>(new Set());
+  const [selectedOfficers, setSelectedOfficers] = useState<Set<string>>(new Set());
+  const [selectedInstitutions, setSelectedInstitutions] = useState<Set<string>>(new Set());
+  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+
+  // Bulk Reset Dialog State
+  const [bulkResetDialogOpen, setBulkResetDialogOpen] = useState(false);
+  const [bulkResetType, setBulkResetType] = useState<'meta_employee' | 'officer' | 'institution_admin' | 'student'>('meta_employee');
+  const [bulkResetProgress, setBulkResetProgress] = useState<{ current: number; total: number; errors: Array<{ email: string; error: string }> }>({ current: 0, total: 0, errors: [] });
+  const [isBulkResetting, setIsBulkResetting] = useState(false);
 
   // Fetch data using React Query hooks
   const { data: metaEmployees = [], isLoading: metaLoading, refetch: refetchMeta } = useMetaEmployees();
@@ -156,6 +169,119 @@ export default function CredentialManagement() {
     toast.success('Data refreshed');
   };
 
+  // Bulk Selection Helpers
+  const toggleSelection = (set: Set<string>, setFn: React.Dispatch<React.SetStateAction<Set<string>>>, id: string) => {
+    const newSet = new Set(set);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setFn(newSet);
+  };
+
+  const toggleAllMetaEmployees = (checked: boolean) => {
+    if (checked) {
+      setSelectedMetaEmployees(new Set(filteredMetaEmployees.map(e => e.id)));
+    } else {
+      setSelectedMetaEmployees(new Set());
+    }
+  };
+
+  const toggleAllOfficers = (checked: boolean) => {
+    if (checked) {
+      setSelectedOfficers(new Set(filteredOfficers.filter(o => o.user_id).map(o => o.id)));
+    } else {
+      setSelectedOfficers(new Set());
+    }
+  };
+
+  const toggleAllInstitutions = (checked: boolean) => {
+    if (checked) {
+      setSelectedInstitutions(new Set(filteredInstitutions.filter(i => i.admin_user_id && i.admin_email).map(i => i.id)));
+    } else {
+      setSelectedInstitutions(new Set());
+    }
+  };
+
+  const toggleAllStudents = (checked: boolean) => {
+    if (checked) {
+      setSelectedStudents(new Set(filteredStudents.filter(s => s.user_id && (s.email || s.parent_email)).map(s => s.id)));
+    } else {
+      setSelectedStudents(new Set());
+    }
+  };
+
+  // Get selected users for bulk reset
+  const getSelectedUsersForBulkReset = (type: typeof bulkResetType) => {
+    switch (type) {
+      case 'meta_employee':
+        return metaEmployees
+          .filter(e => selectedMetaEmployees.has(e.id))
+          .map(e => ({ id: e.id, name: e.name, email: e.email }));
+      case 'officer':
+        return officers
+          .filter(o => selectedOfficers.has(o.id) && o.user_id)
+          .map(o => ({ id: o.id, name: o.full_name, email: o.email }));
+      case 'institution_admin':
+        return institutions
+          .filter(i => selectedInstitutions.has(i.id) && i.admin_user_id && i.admin_email)
+          .map(i => ({ id: i.admin_user_id!, name: i.admin_name || i.name, email: i.admin_email! }));
+      case 'student':
+        return students
+          .filter(s => selectedStudents.has(s.id) && s.user_id && (s.email || s.parent_email))
+          .map(s => ({ id: s.id, name: s.student_name, email: s.email || s.parent_email || '' }));
+      default:
+        return [];
+    }
+  };
+
+  const openBulkResetDialog = (type: typeof bulkResetType) => {
+    setBulkResetType(type);
+    setBulkResetProgress({ current: 0, total: 0, errors: [] });
+    setBulkResetDialogOpen(true);
+  };
+
+  const handleBulkReset = async () => {
+    const users = getSelectedUsersForBulkReset(bulkResetType);
+    if (users.length === 0) return;
+
+    setIsBulkResetting(true);
+    setBulkResetProgress({ current: 0, total: users.length, errors: [] });
+
+    const result = await passwordService.sendBulkResetLinks(
+      users.map(u => ({ email: u.email, name: u.name, userId: u.id, userType: bulkResetType })),
+      (current, total) => setBulkResetProgress(prev => ({ ...prev, current, total }))
+    );
+
+    setBulkResetProgress(prev => ({ ...prev, errors: result.failed }));
+    setIsBulkResetting(false);
+
+    if (result.failed.length === 0) {
+      toast.success(`Reset links sent to ${result.success} users`);
+    } else if (result.success > 0) {
+      toast.warning(`Sent ${result.success} links, ${result.failed.length} failed`);
+    } else {
+      toast.error(`Failed to send reset links`);
+    }
+
+    // Clear selection after completion
+    if (result.failed.length === 0) {
+      switch (bulkResetType) {
+        case 'meta_employee': setSelectedMetaEmployees(new Set()); break;
+        case 'officer': setSelectedOfficers(new Set()); break;
+        case 'institution_admin': setSelectedInstitutions(new Set()); break;
+        case 'student': setSelectedStudents(new Set()); break;
+      }
+    }
+  };
+
+  const closeBulkResetDialog = () => {
+    if (!isBulkResetting) {
+      setBulkResetDialogOpen(false);
+    }
+  };
+
   const getCredentialStatusBadge = (passwordChanged: boolean, mustChangePassword: boolean, hasUserId: boolean) => {
     if (!hasUserId) {
       return (
@@ -247,10 +373,35 @@ export default function CredentialManagement() {
                   </Select>
                 </div>
 
+                {/* Bulk Action Bar */}
+                {selectedMetaEmployees.size > 0 && (
+                  <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
+                    <span className="text-sm font-medium">
+                      {selectedMetaEmployees.size} user(s) selected
+                    </span>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedMetaEmployees(new Set())}>
+                        <X className="h-4 w-4 mr-1" />
+                        Clear
+                      </Button>
+                      <Button size="sm" onClick={() => openBulkResetDialog('meta_employee')}>
+                        <Mail className="h-4 w-4 mr-2" />
+                        Send Reset Links
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="border rounded-lg">
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={selectedMetaEmployees.size === filteredMetaEmployees.length && filteredMetaEmployees.length > 0}
+                            onCheckedChange={(checked) => toggleAllMetaEmployees(!!checked)}
+                          />
+                        </TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Position</TableHead>
@@ -262,13 +413,19 @@ export default function CredentialManagement() {
                     <TableBody>
                       {metaLoading ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8">
+                          <TableCell colSpan={7} className="text-center py-8">
                             <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                           </TableCell>
                         </TableRow>
                       ) : filteredMetaEmployees.length > 0 ? (
                         filteredMetaEmployees.map((emp) => (
                           <TableRow key={emp.id}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedMetaEmployees.has(emp.id)}
+                                onCheckedChange={() => toggleSelection(selectedMetaEmployees, setSelectedMetaEmployees, emp.id)}
+                              />
+                            </TableCell>
                             <TableCell className="font-medium">{emp.name}</TableCell>
                             <TableCell>{emp.email}</TableCell>
                             <TableCell>
@@ -308,7 +465,7 @@ export default function CredentialManagement() {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                          <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                             No employees found
                           </TableCell>
                         </TableRow>
@@ -352,10 +509,35 @@ export default function CredentialManagement() {
                   </Select>
                 </div>
 
+                {/* Bulk Action Bar */}
+                {selectedOfficers.size > 0 && (
+                  <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
+                    <span className="text-sm font-medium">
+                      {selectedOfficers.size} officer(s) selected
+                    </span>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedOfficers(new Set())}>
+                        <X className="h-4 w-4 mr-1" />
+                        Clear
+                      </Button>
+                      <Button size="sm" onClick={() => openBulkResetDialog('officer')}>
+                        <Mail className="h-4 w-4 mr-2" />
+                        Send Reset Links
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="border rounded-lg">
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={selectedOfficers.size === filteredOfficers.filter(o => o.user_id).length && filteredOfficers.filter(o => o.user_id).length > 0}
+                            onCheckedChange={(checked) => toggleAllOfficers(!!checked)}
+                          />
+                        </TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Employee ID</TableHead>
@@ -367,13 +549,20 @@ export default function CredentialManagement() {
                     <TableBody>
                       {officersLoading ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8">
+                          <TableCell colSpan={7} className="text-center py-8">
                             <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                           </TableCell>
                         </TableRow>
                       ) : filteredOfficers.length > 0 ? (
                         filteredOfficers.map((officer) => (
                           <TableRow key={officer.id}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedOfficers.has(officer.id)}
+                                onCheckedChange={() => toggleSelection(selectedOfficers, setSelectedOfficers, officer.id)}
+                                disabled={!officer.user_id}
+                              />
+                            </TableCell>
                             <TableCell className="font-medium">{officer.full_name}</TableCell>
                             <TableCell>{officer.email}</TableCell>
                             <TableCell>{officer.employee_id || '-'}</TableCell>
@@ -413,7 +602,7 @@ export default function CredentialManagement() {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                          <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                             No officers found
                           </TableCell>
                         </TableRow>
@@ -458,10 +647,35 @@ export default function CredentialManagement() {
                   </div>
                 </div>
 
+                {/* Bulk Action Bar */}
+                {selectedInstitutions.size > 0 && (
+                  <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
+                    <span className="text-sm font-medium">
+                      {selectedInstitutions.size} institution(s) selected
+                    </span>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedInstitutions(new Set())}>
+                        <X className="h-4 w-4 mr-1" />
+                        Clear
+                      </Button>
+                      <Button size="sm" onClick={() => openBulkResetDialog('institution_admin')}>
+                        <Mail className="h-4 w-4 mr-2" />
+                        Send Reset Links
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="border rounded-lg">
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={selectedInstitutions.size === filteredInstitutions.filter(i => i.admin_user_id && i.admin_email).length && filteredInstitutions.filter(i => i.admin_user_id && i.admin_email).length > 0}
+                            onCheckedChange={(checked) => toggleAllInstitutions(!!checked)}
+                          />
+                        </TableHead>
                         <TableHead>Institution Name</TableHead>
                         <TableHead>Admin Name</TableHead>
                         <TableHead>Admin Email</TableHead>
@@ -473,13 +687,20 @@ export default function CredentialManagement() {
                     <TableBody>
                       {institutionsLoading ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8">
+                          <TableCell colSpan={7} className="text-center py-8">
                             <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                           </TableCell>
                         </TableRow>
                       ) : filteredInstitutions.length > 0 ? (
                         filteredInstitutions.map((inst) => (
                           <TableRow key={inst.id}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedInstitutions.has(inst.id)}
+                                onCheckedChange={() => toggleSelection(selectedInstitutions, setSelectedInstitutions, inst.id)}
+                                disabled={!inst.admin_user_id || !inst.admin_email}
+                              />
+                            </TableCell>
                             <TableCell className="font-medium">{inst.name}</TableCell>
                             <TableCell>{inst.admin_name || '-'}</TableCell>
                             <TableCell>{inst.admin_email || '-'}</TableCell>
@@ -532,7 +753,7 @@ export default function CredentialManagement() {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                          <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                             No institutions found
                           </TableCell>
                         </TableRow>
@@ -579,10 +800,35 @@ export default function CredentialManagement() {
                       />
                     </div>
 
+                    {/* Bulk Action Bar */}
+                    {selectedStudents.size > 0 && (
+                      <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
+                        <span className="text-sm font-medium">
+                          {selectedStudents.size} student(s) selected
+                        </span>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedStudents(new Set())}>
+                            <X className="h-4 w-4 mr-1" />
+                            Clear
+                          </Button>
+                          <Button size="sm" onClick={() => openBulkResetDialog('student')}>
+                            <Mail className="h-4 w-4 mr-2" />
+                            Send Reset Links
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="border rounded-lg">
                       <Table>
                         <TableHeader>
                           <TableRow>
+                            <TableHead className="w-12">
+                              <Checkbox
+                                checked={selectedStudents.size === filteredStudents.filter(s => s.user_id && (s.email || s.parent_email)).slice(0, 20).length && filteredStudents.filter(s => s.user_id && (s.email || s.parent_email)).length > 0}
+                                onCheckedChange={(checked) => toggleAllStudents(!!checked)}
+                              />
+                            </TableHead>
                             <TableHead>Student ID</TableHead>
                             <TableHead>Name</TableHead>
                             <TableHead>Email</TableHead>
@@ -595,13 +841,20 @@ export default function CredentialManagement() {
                         <TableBody>
                           {studentsLoading ? (
                             <TableRow>
-                              <TableCell colSpan={7} className="text-center py-8">
+                              <TableCell colSpan={8} className="text-center py-8">
                                 <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                               </TableCell>
                             </TableRow>
                           ) : filteredStudents.length > 0 ? (
                             filteredStudents.slice(0, 20).map((student) => (
                               <TableRow key={student.id}>
+                                <TableCell>
+                                  <Checkbox
+                                    checked={selectedStudents.has(student.id)}
+                                    onCheckedChange={() => toggleSelection(selectedStudents, setSelectedStudents, student.id)}
+                                    disabled={!student.user_id || (!student.email && !student.parent_email)}
+                                  />
+                                </TableCell>
                                 <TableCell className="font-medium">{student.student_id}</TableCell>
                                 <TableCell>{student.student_name}</TableCell>
                                 <TableCell>{student.email || student.parent_email || '-'}</TableCell>
@@ -639,7 +892,7 @@ export default function CredentialManagement() {
                             ))
                           ) : (
                             <TableRow>
-                              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                                 No students found
                               </TableCell>
                             </TableRow>
@@ -683,6 +936,17 @@ export default function CredentialManagement() {
           }}
         />
       )}
+
+      {/* Bulk Reset Dialog */}
+      <BulkResetDialog
+        open={bulkResetDialogOpen}
+        onClose={closeBulkResetDialog}
+        selectedUsers={getSelectedUsersForBulkReset(bulkResetType)}
+        userType={bulkResetType}
+        onConfirm={handleBulkReset}
+        isProcessing={isBulkResetting}
+        progress={bulkResetProgress}
+      />
     </Layout>
   );
 }
