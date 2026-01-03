@@ -9,24 +9,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Plus, Trash2, Printer } from 'lucide-react';
+import { Plus, Trash2, Download, Loader2 } from 'lucide-react';
 import { useCreateAppraisal, useUpdateAppraisal, PerformanceAppraisal, CreateAppraisalData } from '@/hooks/usePerformanceAppraisals';
+import { useOfficers } from '@/hooks/useOfficers';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { pdf } from '@react-pdf/renderer';
+import { PerformanceAppraisalPDF } from './pdf/PerformanceAppraisalPDF';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   appraisal: PerformanceAppraisal | null;
   onSuccess: () => void;
-}
-
-interface Officer {
-  id: string;
-  name: string;
-  employee_id: string | null;
-  assigned_institutions: string[] | null;
 }
 
 interface Institution {
@@ -50,10 +46,11 @@ export function PerformanceAppraisalForm({ open, onOpenChange, appraisal, onSucc
   const { user } = useAuth();
   const createMutation = useCreateAppraisal();
   const updateMutation = useUpdateAppraisal();
+  const { data: officers = [], isLoading: isLoadingOfficers } = useOfficers();
   
-  const [officers, setOfficers] = useState<Officer[]>([]);
   const [institutions, setInstitutions] = useState<Institution[]>([]);
-  const [isLoadingData, setIsLoadingData] = useState(false);
+  const [isLoadingInstitutions, setIsLoadingInstitutions] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   
   const [formData, setFormData] = useState({
     trainer_id: '',
@@ -85,34 +82,21 @@ export function PerformanceAppraisalForm({ open, onOpenChange, appraisal, onSucc
     status: 'draft' as PerformanceAppraisal['status']
   });
 
-  // Load officers and institutions from database
+  // Load institutions from database
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoadingData(true);
+    const loadInstitutions = async () => {
+      setIsLoadingInstitutions(true);
       try {
-        const [officersRes, institutionsRes] = await Promise.all([
-          supabase.from('officers').select('id, employee_id, assigned_institutions, profiles!officers_user_id_fkey(name)'),
-          supabase.from('institutions').select('id, name').order('name')
-        ]);
-        
-        if (officersRes.data) {
-          const mappedOfficers = officersRes.data.map((o: any) => ({
-            id: o.id,
-            name: o.profiles?.name || `Officer ${o.id.slice(0, 8)}`,
-            employee_id: o.employee_id,
-            assigned_institutions: o.assigned_institutions
-          }));
-          setOfficers(mappedOfficers);
-        }
-        if (institutionsRes.data) setInstitutions(institutionsRes.data);
+        const { data } = await supabase.from('institutions').select('id, name').order('name');
+        if (data) setInstitutions(data);
       } catch (error) {
-        console.error('Error loading data:', error);
+        console.error('Error loading institutions:', error);
       } finally {
-        setIsLoadingData(false);
+        setIsLoadingInstitutions(false);
       }
     };
     
-    if (open) loadData();
+    if (open) loadInstitutions();
   }, [open]);
 
   useEffect(() => {
@@ -190,7 +174,7 @@ export function PerformanceAppraisalForm({ open, onOpenChange, appraisal, onSucc
       setFormData(prev => ({
         ...prev,
         trainer_id: officer.id,
-        trainer_name: officer.name,
+        trainer_name: officer.full_name,
         employee_id: officer.employee_id || `EMP-${officer.id.slice(0, 8)}`,
         institution_id: institutionId,
         institution_name: institution?.name || ''
@@ -296,8 +280,30 @@ export function PerformanceAppraisalForm({ open, onOpenChange, appraisal, onSucc
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handleDownloadPDF = async () => {
+    if (!appraisal) {
+      toast({ title: 'Please save the appraisal first', variant: 'destructive' });
+      return;
+    }
+    
+    setIsDownloading(true);
+    try {
+      const blob = await pdf(<PerformanceAppraisalPDF appraisal={appraisal} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Performance_Appraisal_${appraisal.trainer_name.replace(/\s+/g, '_')}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({ title: 'PDF downloaded successfully' });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({ title: 'Failed to generate PDF', variant: 'destructive' });
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -306,10 +312,12 @@ export function PerformanceAppraisalForm({ open, onOpenChange, appraisal, onSucc
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             {appraisal ? 'Edit Performance Appraisal' : 'Create Performance Appraisal'}
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer className="h-4 w-4 mr-2" />
-              Print
-            </Button>
+            {appraisal && (
+              <Button variant="outline" size="sm" onClick={handleDownloadPDF} disabled={isDownloading}>
+                {isDownloading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                Download PDF
+              </Button>
+            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -324,14 +332,14 @@ export function PerformanceAppraisalForm({ open, onOpenChange, appraisal, onSucc
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Select Trainer</Label>
-                    <Select value={formData.trainer_id} onValueChange={handleOfficerChange} disabled={isLoadingData}>
+                    <Select value={formData.trainer_id} onValueChange={handleOfficerChange} disabled={isLoadingOfficers}>
                       <SelectTrigger>
-                        <SelectValue placeholder={isLoadingData ? 'Loading...' : 'Select trainer'} />
+                        <SelectValue placeholder={isLoadingOfficers ? 'Loading...' : 'Select trainer'} />
                       </SelectTrigger>
                       <SelectContent>
                         {officers.map(officer => (
                           <SelectItem key={officer.id} value={officer.id}>
-                            {officer.name}
+                            {officer.full_name}
                           </SelectItem>
                         ))}
                       </SelectContent>

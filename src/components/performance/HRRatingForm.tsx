@@ -7,11 +7,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
-import { Plus, Trash2, Printer, Star } from 'lucide-react';
+import { Plus, Trash2, Download, Loader2, Star } from 'lucide-react';
 import { HRRating, HRRatingProject, useCreateHRRating, useUpdateHRRating, useCumulativeStars } from '@/hooks/useHRRatings';
 import { useOfficers } from '@/hooks/useOfficers';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { pdf } from '@react-pdf/renderer';
+import { HRRatingPDF } from './pdf/HRRatingPDF';
 
 interface Props {
   open: boolean;
@@ -35,9 +37,10 @@ interface FormProject {
 
 export function HRRatingForm({ open, onOpenChange, rating, onSuccess }: Props) {
   const { user } = useAuth();
-  const { data: officers = [] } = useOfficers();
+  const { data: officers = [], isLoading: isLoadingOfficers } = useOfficers();
   const createMutation = useCreateHRRating();
   const updateMutation = useUpdateHRRating();
+  const [isDownloading, setIsDownloading] = useState(false);
   
   const [formData, setFormData] = useState({
     trainer_id: '',
@@ -175,8 +178,30 @@ export function HRRatingForm({ open, onOpenChange, rating, onSuccess }: Props) {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handleDownloadPDF = async () => {
+    if (!rating) {
+      toast({ title: 'Please save the rating first', variant: 'destructive' });
+      return;
+    }
+    
+    setIsDownloading(true);
+    try {
+      const blob = await pdf(<HRRatingPDF rating={rating} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `HR_Rating_${rating.trainer_name.replace(/\s+/g, '_')}_${rating.period}_${rating.year}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({ title: 'PDF downloaded successfully' });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({ title: 'Failed to generate PDF', variant: 'destructive' });
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -185,10 +210,12 @@ export function HRRatingForm({ open, onOpenChange, rating, onSuccess }: Props) {
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             {rating ? 'Edit HR Rating' : 'Create HR Rating'}
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer className="h-4 w-4 mr-2" />
-              Print
-            </Button>
+            {rating && (
+              <Button variant="outline" size="sm" onClick={handleDownloadPDF} disabled={isDownloading}>
+                {isDownloading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                Download PDF
+              </Button>
+            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -198,9 +225,9 @@ export function HRRatingForm({ open, onOpenChange, rating, onSuccess }: Props) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Select Trainer</Label>
-                <Select value={formData.trainer_id} onValueChange={handleOfficerChange}>
+                <Select value={formData.trainer_id} onValueChange={handleOfficerChange} disabled={isLoadingOfficers}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select trainer" />
+                    <SelectValue placeholder={isLoadingOfficers ? 'Loading...' : 'Select trainer'} />
                   </SelectTrigger>
                   <SelectContent>
                     {officers.map(officer => (
