@@ -15,6 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { CRMTask } from "@/hooks/useCRMTasks";
 import { supabase } from "@/integrations/supabase/client";
+import { loadMetaStaff, MetaStaffUser } from "@/data/mockMetaStaffData";
 
 const taskSchema = z.object({
   institution_id: z.string().min(1, "Institution is required"),
@@ -37,18 +38,10 @@ interface AddTaskDialogProps {
   institutions: { id: string; name: string }[];
 }
 
-const TEAM_MEMBERS = [
-  'Rajesh Kumar',
-  'Anita Desai',
-  'Priya Sharma',
-  'Sneha Reddy',
-  'Amit Patel',
-  'Kavita Singh',
-];
-
 export function AddTaskDialog({ open, onOpenChange, onSave, institutions }: AddTaskDialogProps) {
   const [dueDate, setDueDate] = useState<Date>();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [metaStaff, setMetaStaff] = useState<MetaStaffUser[]>([]);
 
   useEffect(() => {
     const getUser = async () => {
@@ -58,6 +51,10 @@ export function AddTaskDialog({ open, onOpenChange, onSave, institutions }: AddT
       }
     };
     getUser();
+    
+    // Load meta staff users
+    const staff = loadMetaStaff();
+    setMetaStaff(staff);
   }, []);
 
   const {
@@ -185,9 +182,9 @@ export function AddTaskDialog({ open, onOpenChange, onSave, institutions }: AddT
                   <SelectValue placeholder="Select team member" />
                 </SelectTrigger>
                 <SelectContent>
-                  {TEAM_MEMBERS.map((member) => (
-                    <SelectItem key={member} value={member}>
-                      {member}
+                  {metaStaff.map((staff) => (
+                    <SelectItem key={staff.id} value={staff.name}>
+                      {staff.name} - {staff.position_name?.toUpperCase() || 'Staff'}
                     </SelectItem>
                   ))}
                 </SelectContent>
