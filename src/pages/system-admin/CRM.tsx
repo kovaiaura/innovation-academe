@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Phone, Plus, Search, Filter, Loader2 } from "lucide-react";
 import { CommunicationLogCard } from "@/components/crm/CommunicationLogCard";
 import { ContractTracker } from "@/components/crm/ContractTracker";
-import { BillingDashboard } from "@/components/crm/BillingDashboard";
+
 import { CRMTaskManager } from "@/components/crm/CRMTaskManager";
 import { CommunicationTimeline } from "@/components/crm/CommunicationTimeline";
 import { AddCommunicationDialog } from "@/components/crm/AddCommunicationDialog";
@@ -17,16 +17,12 @@ import { AddContractDialog } from "@/components/crm/AddContractDialog";
 import { ViewContractDialog } from "@/components/crm/ViewContractDialog";
 import { EditContractDialog } from "@/components/crm/EditContractDialog";
 import { RenewalWorkflowDialog } from "@/components/crm/RenewalWorkflowDialog";
-import { AddInvoiceDialog } from "@/components/crm/AddInvoiceDialog";
-import { ViewInvoiceDialog } from "@/components/crm/ViewInvoiceDialog";
 import { AddTaskDialog } from "@/components/crm/AddTaskDialog";
 import { EditTaskDialog } from "@/components/crm/EditTaskDialog";
 import { TimelineFilterDialog } from "@/components/crm/TimelineFilterDialog";
 import { 
-  mockBillingRecords, 
   mockCRMTasks,
   type ContractDetail,
-  type BillingRecord,
   type CRMTask
 } from "@/data/mockCRMData";
 import { CommunicationLog } from "@/types/communicationLog";
@@ -64,8 +60,6 @@ export default function CRM() {
   const [isViewContractOpen, setIsViewContractOpen] = useState(false);
   const [isEditContractOpen, setIsEditContractOpen] = useState(false);
   const [isRenewalOpen, setIsRenewalOpen] = useState(false);
-  const [isAddInvoiceDialogOpen, setIsAddInvoiceDialogOpen] = useState(false);
-  const [isViewInvoiceOpen, setIsViewInvoiceOpen] = useState(false);
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
   const [isEditTaskOpen, setIsEditTaskOpen] = useState(false);
   const [isTimelineFilterOpen, setIsTimelineFilterOpen] = useState(false);
@@ -73,7 +67,7 @@ export default function CRM() {
   // Selected items for view/edit
   const [selectedCommunication, setSelectedCommunication] = useState<CommunicationLog | null>(null);
   const [selectedContract, setSelectedContract] = useState<ContractDetail | null>(null);
-  const [selectedInvoice, setSelectedInvoice] = useState<BillingRecord | null>(null);
+  
   const [selectedTask, setSelectedTask] = useState<CRMTask | null>(null);
   
   // Contracts from database
@@ -82,8 +76,7 @@ export default function CRM() {
   const updateContractMutation = useUpdateContract();
   const renewContractMutation = useRenewContract();
   
-  // Data states for other tabs (still using mock data)
-  const [billingRecords, setBillingRecords] = useState(mockBillingRecords);
+  // Data states for tasks (still using mock data)
   const [tasks, setTasks] = useState(mockCRMTasks);
 
   // Fetch current user and institutions on mount
@@ -218,21 +211,6 @@ export default function CRM() {
     }
   };
 
-  // Invoice handlers
-  const handleViewInvoice = (record: BillingRecord) => {
-    setSelectedInvoice(record);
-    setIsViewInvoiceOpen(true);
-  };
-
-  const handleDownloadInvoicePDF = () => {
-    window.print();
-    toast.success("Generating PDF...");
-  };
-
-  const handleSendReminder = (record: BillingRecord) => {
-    toast.success(`Payment reminder sent to ${record.institution_name}`);
-  };
-
   // Task handlers
   const handleCompleteTask = (task: CRMTask) => {
     setTasks(prev => 
@@ -270,21 +248,6 @@ export default function CRM() {
   ) => {
     createContractMutation.mutate({ contract: newContract, files });
     setIsAddContractDialogOpen(false);
-  };
-
-  // Invoice handlers
-  const handleAddInvoice = () => {
-    setIsAddInvoiceDialogOpen(true);
-  };
-
-  const handleSaveInvoice = (newInvoice: Omit<typeof mockBillingRecords[0], 'id'>) => {
-    const invoiceWithId = {
-      ...newInvoice,
-      id: `inv-${Date.now()}`,
-    };
-    setBillingRecords(prev => [invoiceWithId, ...prev]);
-    setIsAddInvoiceDialogOpen(false);
-    toast.success("Invoice created successfully");
   };
 
   // Task handlers
@@ -337,7 +300,7 @@ export default function CRM() {
             CRM & Client Relations
           </h1>
           <p className="text-muted-foreground mt-2">
-            Manage communications, contracts, billing, and client relationships
+            Manage communications, contracts, tasks, and client relationships
           </p>
         </div>
         
@@ -354,13 +317,6 @@ export default function CRM() {
             <Button onClick={handleAddContract}>
               <Plus className="h-4 w-4 mr-2" />
               Create Contract
-            </Button>
-          )}
-          
-          {activeTab === "billing" && (
-            <Button onClick={handleAddInvoice}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Invoice
             </Button>
           )}
           
@@ -387,10 +343,9 @@ export default function CRM() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="communications">Communication Tracking</TabsTrigger>
           <TabsTrigger value="contracts">Renewals & Contracts</TabsTrigger>
-          <TabsTrigger value="billing">Billing & Invoices</TabsTrigger>
           <TabsTrigger value="tasks">Tasks & Reminders</TabsTrigger>
           <TabsTrigger value="timeline">Timeline View</TabsTrigger>
         </TabsList>
@@ -507,15 +462,6 @@ export default function CRM() {
           )}
         </TabsContent>
 
-        {/* Billing Tab */}
-        <TabsContent value="billing">
-          <BillingDashboard
-            billingRecords={billingRecords}
-            onViewInvoice={handleViewInvoice}
-            onSendReminder={handleSendReminder}
-          />
-        </TabsContent>
-
         {/* Tasks Tab */}
         <TabsContent value="tasks">
           <CRMTaskManager
@@ -543,13 +489,6 @@ export default function CRM() {
           open={isAddContractDialogOpen}
           onOpenChange={setIsAddContractDialogOpen}
           onSave={handleSaveContract}
-          institutions={institutions}
-        />
-
-        <AddInvoiceDialog
-          open={isAddInvoiceDialogOpen}
-          onOpenChange={setIsAddInvoiceDialogOpen}
-          onSave={handleSaveInvoice}
           institutions={institutions}
         />
 
@@ -606,14 +545,6 @@ export default function CRM() {
           onOpenChange={setIsRenewalOpen}
           contract={selectedContract}
           onComplete={handleRenewalComplete}
-        />
-
-        <ViewInvoiceDialog
-          open={isViewInvoiceOpen}
-          onOpenChange={setIsViewInvoiceOpen}
-          invoice={selectedInvoice}
-          onDownloadPDF={handleDownloadInvoicePDF}
-          onSendReminder={() => selectedInvoice && handleSendReminder(selectedInvoice)}
         />
 
         <EditTaskDialog
