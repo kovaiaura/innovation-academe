@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,8 @@ import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CRMTask } from "@/data/mockCRMData";
+import { CRMTask } from "@/hooks/useCRMTasks";
+import { supabase } from "@/integrations/supabase/client";
 
 const taskSchema = z.object({
   institution_id: z.string().min(1, "Institution is required"),
@@ -24,6 +25,7 @@ const taskSchema = z.object({
   due_date: z.string().min(1, "Due date is required"),
   priority: z.enum(['high', 'medium', 'low']),
   status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']),
+  notes: z.string().optional(),
 });
 
 type TaskFormData = z.infer<typeof taskSchema>;
@@ -31,7 +33,7 @@ type TaskFormData = z.infer<typeof taskSchema>;
 interface AddTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (task: Omit<CRMTask, 'id'>) => void;
+  onSave: (task: Omit<CRMTask, 'id' | 'created_at' | 'updated_at' | 'completed_at'>) => void;
   institutions: { id: string; name: string }[];
 }
 
@@ -46,6 +48,17 @@ const TEAM_MEMBERS = [
 
 export function AddTaskDialog({ open, onOpenChange, onSave, institutions }: AddTaskDialogProps) {
   const [dueDate, setDueDate] = useState<Date>();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+    };
+    getUser();
+  }, []);
 
   const {
     register,
@@ -64,7 +77,7 @@ export function AddTaskDialog({ open, onOpenChange, onSave, institutions }: AddT
   });
 
   const onSubmit = (data: TaskFormData) => {
-    const newTask: Omit<CRMTask, 'id'> = {
+    const newTask: Omit<CRMTask, 'id' | 'created_at' | 'updated_at' | 'completed_at'> = {
       institution_id: data.institution_id,
       institution_name: data.institution_name,
       task_type: data.task_type,
@@ -73,6 +86,8 @@ export function AddTaskDialog({ open, onOpenChange, onSave, institutions }: AddT
       assigned_to: data.assigned_to,
       priority: data.priority,
       status: data.status,
+      notes: data.notes || null,
+      created_by: currentUserId,
     };
 
     onSave(newTask);
@@ -270,6 +285,17 @@ export function AddTaskDialog({ open, onOpenChange, onSave, institutions }: AddT
             {errors.status && (
               <p className="text-sm text-destructive">{errors.status.message}</p>
             )}
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <Label htmlFor="notes">Notes (Optional)</Label>
+            <Textarea
+              id="notes"
+              placeholder="Add any additional notes..."
+              {...register("notes")}
+              rows={3}
+            />
           </div>
 
           {/* Form Actions */}

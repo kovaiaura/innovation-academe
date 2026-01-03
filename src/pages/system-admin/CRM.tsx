@@ -19,15 +19,20 @@ import { EditContractDialog } from "@/components/crm/EditContractDialog";
 import { RenewalWorkflowDialog } from "@/components/crm/RenewalWorkflowDialog";
 import { AddTaskDialog } from "@/components/crm/AddTaskDialog";
 import { EditTaskDialog } from "@/components/crm/EditTaskDialog";
+import { ViewTaskDialog } from "@/components/crm/ViewTaskDialog";
 import { TimelineFilterDialog } from "@/components/crm/TimelineFilterDialog";
-import { 
-  mockCRMTasks,
-  type ContractDetail,
-  type CRMTask
-} from "@/data/mockCRMData";
+import { type ContractDetail } from "@/data/mockCRMData";
 import { CommunicationLog } from "@/types/communicationLog";
 import { useRealtimeCommunicationLogs } from "@/hooks/useRealtimeCommunicationLogs";
 import { useContracts, useCreateContract, useUpdateContract, useRenewContract } from "@/hooks/useContracts";
+import { 
+  useCRMTasks, 
+  useCreateCRMTask, 
+  useUpdateCRMTask, 
+  useDeleteCRMTask, 
+  useMarkTaskComplete,
+  CRMTask 
+} from "@/hooks/useCRMTasks";
 import { 
   createCommunicationLog, 
   updateCommunicationLog, 
@@ -62,12 +67,12 @@ export default function CRM() {
   const [isRenewalOpen, setIsRenewalOpen] = useState(false);
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
   const [isEditTaskOpen, setIsEditTaskOpen] = useState(false);
+  const [isViewTaskOpen, setIsViewTaskOpen] = useState(false);
   const [isTimelineFilterOpen, setIsTimelineFilterOpen] = useState(false);
   
   // Selected items for view/edit
   const [selectedCommunication, setSelectedCommunication] = useState<CommunicationLog | null>(null);
   const [selectedContract, setSelectedContract] = useState<ContractDetail | null>(null);
-  
   const [selectedTask, setSelectedTask] = useState<CRMTask | null>(null);
   
   // Contracts from database
@@ -76,8 +81,12 @@ export default function CRM() {
   const updateContractMutation = useUpdateContract();
   const renewContractMutation = useRenewContract();
   
-  // Data states for tasks (still using mock data)
-  const [tasks, setTasks] = useState(mockCRMTasks);
+  // CRM Tasks from database with real-time updates
+  const { data: tasks = [], isLoading: tasksLoading } = useCRMTasks();
+  const createTaskMutation = useCreateCRMTask();
+  const updateTaskMutation = useUpdateCRMTask();
+  const deleteTaskMutation = useDeleteCRMTask();
+  const markCompleteMutation = useMarkTaskComplete();
 
   // Fetch current user and institutions on mount
   useEffect(() => {
@@ -213,14 +222,12 @@ export default function CRM() {
 
   // Task handlers
   const handleCompleteTask = (task: CRMTask) => {
-    setTasks(prev => 
-      prev.map(t => 
-        t.id === task.id 
-          ? { ...t, status: 'completed' as const }
-          : t
-      )
-    );
-    toast.success("Task marked as completed");
+    markCompleteMutation.mutate(task.id);
+  };
+
+  const handleViewTask = (task: CRMTask) => {
+    setSelectedTask(task);
+    setIsViewTaskOpen(true);
   };
 
   const handleEditTask = (task: CRMTask) => {
@@ -229,12 +236,26 @@ export default function CRM() {
   };
 
   const handleUpdateTask = (updatedTask: CRMTask) => {
-    setTasks(prev =>
-      prev.map(t => t.id === updatedTask.id ? updatedTask : t)
-    );
+    updateTaskMutation.mutate({
+      id: updatedTask.id,
+      updates: {
+        institution_id: updatedTask.institution_id,
+        institution_name: updatedTask.institution_name,
+        task_type: updatedTask.task_type,
+        description: updatedTask.description,
+        due_date: updatedTask.due_date,
+        assigned_to: updatedTask.assigned_to,
+        priority: updatedTask.priority,
+        status: updatedTask.status,
+        notes: updatedTask.notes,
+      }
+    });
     setIsEditTaskOpen(false);
     setSelectedTask(null);
-    toast.success("Task updated successfully");
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    deleteTaskMutation.mutate(taskId);
   };
 
   // Contract handlers
@@ -255,14 +276,9 @@ export default function CRM() {
     setIsAddTaskDialogOpen(true);
   };
 
-  const handleSaveTask = (newTask: Omit<typeof mockCRMTasks[0], 'id'>) => {
-    const taskWithId = {
-      ...newTask,
-      id: `task-${Date.now()}`,
-    };
-    setTasks(prev => [taskWithId, ...prev]);
+  const handleSaveTask = (newTask: Omit<CRMTask, 'id'>) => {
+    createTaskMutation.mutate(newTask);
     setIsAddTaskDialogOpen(false);
-    toast.success("Task created successfully");
   };
 
   // Timeline handlers
@@ -464,11 +480,18 @@ export default function CRM() {
 
         {/* Tasks Tab */}
         <TabsContent value="tasks">
-          <CRMTaskManager
-            tasks={tasks}
-            onCompleteTask={handleCompleteTask}
-            onEditTask={handleEditTask}
-          />
+          {tasksLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <CRMTaskManager
+              tasks={tasks}
+              onCompleteTask={handleCompleteTask}
+              onEditTask={handleEditTask}
+              onViewTask={handleViewTask}
+            />
+          )}
         </TabsContent>
 
         {/* Timeline Tab */}
@@ -553,6 +576,15 @@ export default function CRM() {
           task={selectedTask}
           onSave={handleUpdateTask}
           institutions={institutions}
+        />
+
+        <ViewTaskDialog
+          open={isViewTaskOpen}
+          onOpenChange={setIsViewTaskOpen}
+          task={selectedTask}
+          onEdit={handleEditTask}
+          onComplete={handleCompleteTask}
+          onDelete={handleDeleteTask}
         />
       </div>
     </Layout>
