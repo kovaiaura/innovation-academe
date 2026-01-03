@@ -5600,6 +5600,75 @@ export type Database = {
           },
         ]
       }
+      system_logs: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          description: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          institution_id: string | null
+          ip_address: string | null
+          metadata: Json | null
+          status: string
+          user_agent: string | null
+          user_email: string
+          user_id: string | null
+          user_name: string
+          user_role: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          description: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          institution_id?: string | null
+          ip_address?: string | null
+          metadata?: Json | null
+          status?: string
+          user_agent?: string | null
+          user_email: string
+          user_id?: string | null
+          user_name: string
+          user_role: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          description?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          institution_id?: string | null
+          ip_address?: string | null
+          metadata?: Json | null
+          status?: string
+          user_agent?: string | null
+          user_email?: string
+          user_id?: string | null
+          user_name?: string
+          user_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_logs_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_activity_log: {
         Row: {
           action_type: string
