@@ -16,6 +16,7 @@ import { EditCommunicationDialog } from "@/components/crm/EditCommunicationDialo
 import { AddContractDialog } from "@/components/crm/AddContractDialog";
 import { ViewContractDialog } from "@/components/crm/ViewContractDialog";
 import { EditContractDialog } from "@/components/crm/EditContractDialog";
+import { DeleteContractDialog } from "@/components/crm/DeleteContractDialog";
 import { RenewalWorkflowDialog } from "@/components/crm/RenewalWorkflowDialog";
 import { AddTaskDialog } from "@/components/crm/AddTaskDialog";
 import { EditTaskDialog } from "@/components/crm/EditTaskDialog";
@@ -24,7 +25,7 @@ import { TimelineFilterDialog } from "@/components/crm/TimelineFilterDialog";
 import { type ContractDetail } from "@/data/mockCRMData";
 import { CommunicationLog } from "@/types/communicationLog";
 import { useRealtimeCommunicationLogs } from "@/hooks/useRealtimeCommunicationLogs";
-import { useContracts, useCreateContract, useUpdateContract, useRenewContract } from "@/hooks/useContracts";
+import { useContracts, useCreateContract, useUpdateContract, useDeleteContract, useRenewContract } from "@/hooks/useContracts";
 import { 
   useCRMTasks, 
   useCreateCRMTask, 
@@ -65,6 +66,7 @@ export default function CRM() {
   const [isViewContractOpen, setIsViewContractOpen] = useState(false);
   const [isEditContractOpen, setIsEditContractOpen] = useState(false);
   const [isRenewalOpen, setIsRenewalOpen] = useState(false);
+  const [isDeleteContractOpen, setIsDeleteContractOpen] = useState(false);
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
   const [isEditTaskOpen, setIsEditTaskOpen] = useState(false);
   const [isViewTaskOpen, setIsViewTaskOpen] = useState(false);
@@ -79,6 +81,7 @@ export default function CRM() {
   const { data: contracts = [], isLoading: contractsLoading } = useContracts();
   const createContractMutation = useCreateContract();
   const updateContractMutation = useUpdateContract();
+  const deleteContractMutation = useDeleteContract();
   const renewContractMutation = useRenewContract();
   
   // CRM Tasks from database with real-time updates
@@ -218,6 +221,17 @@ export default function CRM() {
       renewContractMutation.mutate(selectedContract.id);
       setSelectedContract(null);
     }
+  };
+
+  const handleDeleteContract = (contract: ContractDetail) => {
+    setSelectedContract(contract);
+    setIsDeleteContractOpen(true);
+  };
+
+  const handleConfirmDeleteContract = async (contract: ContractDetail) => {
+    await deleteContractMutation.mutateAsync(contract.id);
+    setIsDeleteContractOpen(false);
+    setSelectedContract(null);
   };
 
   // Task handlers
@@ -472,6 +486,7 @@ export default function CRM() {
                   onViewDetails={handleViewContract}
                   onEdit={handleEditContract}
                   onRenew={handleInitiateRenewal}
+                  onDelete={handleDeleteContract}
                 />
               ))}
             </div>
@@ -568,6 +583,14 @@ export default function CRM() {
           onOpenChange={setIsRenewalOpen}
           contract={selectedContract}
           onComplete={handleRenewalComplete}
+        />
+
+        <DeleteContractDialog
+          open={isDeleteContractOpen}
+          onOpenChange={setIsDeleteContractOpen}
+          contract={selectedContract}
+          onConfirmDelete={handleConfirmDeleteContract}
+          isDeleting={deleteContractMutation.isPending}
         />
 
         <EditTaskDialog

@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { FileText, Calendar, DollarSign, AlertTriangle, CheckCircle, RefreshCw } from "lucide-react";
+import { FileText, Calendar, DollarSign, AlertTriangle, CheckCircle, RefreshCw, Trash2 } from "lucide-react";
 import { ContractDetail } from "@/data/mockCRMData";
 import { format, differenceInDays } from "date-fns";
 
@@ -11,6 +11,7 @@ interface ContractTrackerProps {
   onViewDetails?: (contract: ContractDetail) => void;
   onEdit?: (contract: ContractDetail) => void;
   onRenew?: (contract: ContractDetail) => void;
+  onDelete?: (contract: ContractDetail) => void;
 }
 
 const statusColors = {
@@ -26,7 +27,7 @@ const renewalColors = {
   needs_discussion: "bg-orange-500/10 text-orange-600",
 };
 
-export function ContractTracker({ contract, onViewDetails, onEdit, onRenew }: ContractTrackerProps) {
+export function ContractTracker({ contract, onViewDetails, onEdit, onRenew, onDelete }: ContractTrackerProps) {
   const daysUntilRenewal = differenceInDays(new Date(contract.renewal_date), new Date());
   const contractDuration = differenceInDays(new Date(contract.end_date), new Date(contract.start_date));
   const daysElapsed = differenceInDays(new Date(), new Date(contract.start_date));
@@ -145,6 +146,15 @@ export function ContractTracker({ contract, onViewDetails, onEdit, onRenew }: Co
               Renew
             </Button>
           )}
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={() => onDelete?.(contract)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       </CardContent>
     </Card>
