@@ -5,16 +5,21 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Star, Upload } from "lucide-react";
+import { Star, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Feedback } from "@/data/mockFeedbackData";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { StudentFeedback } from "@/services/studentFeedback.service";
 
 interface FeedbackFormProps {
-  onSubmit: (feedback: Omit<Feedback, 'id' | 'submitted_at' | 'status'>) => void;
+  onSubmit: (feedback: Omit<StudentFeedback, 'id' | 'status'>) => void;
 }
 
 export function FeedbackForm({ onSubmit }: FeedbackFormProps) {
+  const { user } = useAuth();
+  const profile = user;
   const [category, setCategory] = useState<string>('');
   const [subject, setSubject] = useState('');
   const [relatedCourse, setRelatedCourse] = useState('');
@@ -23,8 +28,43 @@ export function FeedbackForm({ onSubmit }: FeedbackFormProps) {
   const [feedbackText, setFeedbackText] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Fetch courses assigned to student's class
+  const { data: courses = [] } = useQuery({
+    queryKey: ['student-courses', profile?.class_id],
+    queryFn: async () => {
+      if (!profile?.class_id) return [];
+      const { data, error } = await supabase
+        .from('course_class_assignments')
+        .select(`
+          course_id,
+          courses (id, title)
+        `)
+        .eq('class_id', profile.class_id);
+      if (error) throw error;
+      return data?.map(d => d.courses).filter(Boolean) || [];
+    },
+    enabled: !!profile?.class_id,
+  });
+
+  // Fetch officers from student's institution
+  const { data: officers = [] } = useQuery({
+    queryKey: ['institution-officers', profile?.institution_id],
+    queryFn: async () => {
+      if (!profile?.institution_id) return [];
+      const { data, error } = await supabase
+        .from('officers')
+        .select('id, name')
+        .contains('assigned_institutions', [profile.institution_id])
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!profile?.institution_id,
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!category || !subject || !feedbackText) {
@@ -37,38 +77,35 @@ export function FeedbackForm({ onSubmit }: FeedbackFormProps) {
       return;
     }
 
-    // TODO: Get actual student data from auth context
-    const studentId = 'MSD-2024-001';
-    const studentName = 'Aarav Sharma';
-    const institutionId = 'inst-msd-001';
-    const institutionName = 'Modern School Vasant Vihar';
+    setIsSubmitting(true);
 
-    const feedback: Omit<Feedback, 'id' | 'submitted_at' | 'status'> = {
-      student_id: studentId,
-      student_name: isAnonymous ? 'Anonymous' : studentName,
-      institution_id: institutionId,
-      institution_name: institutionName,
-      category: category as Feedback['category'],
-      subject,
-      feedback_text: feedbackText,
-      is_anonymous: isAnonymous,
-      rating: rating > 0 ? rating : undefined,
-      related_course_id: category === 'course' && relatedCourse ? relatedCourse : undefined,
-      related_officer_id: category === 'officer' && relatedOfficer ? relatedOfficer : undefined
-    };
+    try {
+      const feedback: Omit<StudentFeedback, 'id' | 'status'> = {
+        student_id: '', // Will be set by parent
+        student_name: profile?.name,
+        institution_id: '', // Will be set by parent
+        category: category as StudentFeedback['category'],
+        subject,
+        feedback_text: feedbackText,
+        is_anonymous: isAnonymous,
+        rating: rating > 0 ? rating : undefined,
+        related_course_id: category === 'course' && relatedCourse ? relatedCourse : undefined,
+        related_officer_id: category === 'officer' && relatedOfficer ? relatedOfficer : undefined
+      };
 
-    onSubmit(feedback);
-    
-    // Reset form
-    setCategory('');
-    setSubject('');
-    setRelatedCourse('');
-    setRelatedOfficer('');
-    setRating(0);
-    setFeedbackText('');
-    setIsAnonymous(false);
-    
-    toast.success("Feedback submitted successfully!");
+      onSubmit(feedback);
+      
+      // Reset form
+      setCategory('');
+      setSubject('');
+      setRelatedCourse('');
+      setRelatedOfficer('');
+      setRating(0);
+      setFeedbackText('');
+      setIsAnonymous(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -107,9 +144,13 @@ export function FeedbackForm({ onSubmit }: FeedbackFormProps) {
                   <SelectValue placeholder="Select course" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="course-1">Data Science Fundamentals</SelectItem>
-                  <SelectItem value="course-2">Web Development</SelectItem>
-                  <SelectItem value="course-3">AI & Machine Learning</SelectItem>
+                  {courses.length > 0 ? (
+                    courses.map((course: any) => (
+                      <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="" disabled>No courses available</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -123,9 +164,13 @@ export function FeedbackForm({ onSubmit }: FeedbackFormProps) {
                   <SelectValue placeholder="Select officer" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="officer-1">Priya Mehta</SelectItem>
-                  <SelectItem value="officer-2">Raj Kumar</SelectItem>
-                  <SelectItem value="officer-3">Anita Singh</SelectItem>
+                  {officers.length > 0 ? (
+                    officers.map((officer: any) => (
+                      <SelectItem key={officer.id} value={officer.id}>{officer.name}</SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="" disabled>No officers available</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -190,19 +235,6 @@ export function FeedbackForm({ onSubmit }: FeedbackFormProps) {
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="attachment">Attachment (Optional)</Label>
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" className="gap-2">
-                <Upload className="h-4 w-4" />
-                Upload File
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                Max 5MB (PDF, PNG, JPG)
-              </span>
-            </div>
-          </div>
-
           <div className="flex items-center space-x-2">
             <Switch
               id="anonymous"
@@ -214,7 +246,8 @@ export function FeedbackForm({ onSubmit }: FeedbackFormProps) {
             </Label>
           </div>
 
-          <Button type="submit" className="w-full">
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Submit Feedback
           </Button>
         </form>
