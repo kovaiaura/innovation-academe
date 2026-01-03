@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '@/types';
 import { SystemAdminFeature, ALL_SYSTEM_ADMIN_FEATURES } from '@/types/permissions';
 import { supabase } from '@/integrations/supabase/client';
+import { logLogin, logLogout } from '@/services/systemLog.service';
 
 interface AuthContextType {
   user: User | null;
@@ -165,6 +166,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));
+        
+        // Log login activity (deferred to avoid blocking)
+        setTimeout(() => {
+          logLogin(userId, userData.name, userData.email, userData.role);
+        }, 100);
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -178,6 +184,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    // Log logout before clearing session
+    await logLogout();
     await supabase.auth.signOut();
     setUser(null);
     localStorage.removeItem('authToken');
