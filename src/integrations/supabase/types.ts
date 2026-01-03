@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      appraisal_projects: {
+        Row: {
+          appraisal_id: string
+          contest_name: string | null
+          created_at: string | null
+          display_order: number | null
+          domain: string | null
+          grade_level: string | null
+          id: string
+          level: string | null
+          project_title: string
+          result: string | null
+        }
+        Insert: {
+          appraisal_id: string
+          contest_name?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          domain?: string | null
+          grade_level?: string | null
+          id?: string
+          level?: string | null
+          project_title: string
+          result?: string | null
+        }
+        Update: {
+          appraisal_id?: string
+          contest_name?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          domain?: string | null
+          grade_level?: string | null
+          id?: string
+          level?: string | null
+          project_title?: string
+          result?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appraisal_projects_appraisal_id_fkey"
+            columns: ["appraisal_id"]
+            isOneToOne: false
+            referencedRelation: "performance_appraisals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assessment_answers: {
         Row: {
           answered_at: string
@@ -2067,6 +2114,117 @@ export type Database = {
           },
         ]
       }
+      hr_rating_projects: {
+        Row: {
+          competition_level: string | null
+          created_at: string | null
+          hr_rating_id: string
+          id: string
+          project_title: string
+          result: string | null
+          stars_earned: number | null
+          verified_by: string | null
+          verified_by_hr: boolean | null
+          verified_date: string | null
+        }
+        Insert: {
+          competition_level?: string | null
+          created_at?: string | null
+          hr_rating_id: string
+          id?: string
+          project_title: string
+          result?: string | null
+          stars_earned?: number | null
+          verified_by?: string | null
+          verified_by_hr?: boolean | null
+          verified_date?: string | null
+        }
+        Update: {
+          competition_level?: string | null
+          created_at?: string | null
+          hr_rating_id?: string
+          id?: string
+          project_title?: string
+          result?: string | null
+          stars_earned?: number | null
+          verified_by?: string | null
+          verified_by_hr?: boolean | null
+          verified_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_rating_projects_hr_rating_id_fkey"
+            columns: ["hr_rating_id"]
+            isOneToOne: false
+            referencedRelation: "hr_ratings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_rating_projects_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_ratings: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          cumulative_stars_year: number | null
+          employee_id: string
+          id: string
+          period: string
+          total_stars_quarter: number | null
+          trainer_id: string
+          trainer_name: string
+          updated_at: string | null
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          cumulative_stars_year?: number | null
+          employee_id: string
+          id?: string
+          period: string
+          total_stars_quarter?: number | null
+          trainer_id: string
+          trainer_name: string
+          updated_at?: string | null
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          cumulative_stars_year?: number | null
+          employee_id?: string
+          id?: string
+          period?: string
+          total_stars_quarter?: number | null
+          trainer_id?: string
+          trainer_name?: string
+          updated_at?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_ratings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_ratings_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       id_counters: {
         Row: {
           counter_padding: number | null
@@ -3990,6 +4148,118 @@ export type Database = {
             columns: ["position_id"]
             isOneToOne: false
             referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      performance_appraisals: {
+        Row: {
+          collaboration_coordination: string | null
+          created_at: string | null
+          created_by: string | null
+          employee_id: string
+          future_goals: string[] | null
+          hr_review: Json | null
+          id: string
+          innovations_introduced: string[] | null
+          institution_id: string | null
+          institution_name: string
+          key_contributions: string[] | null
+          lab_domains: string[] | null
+          manager_review: Json | null
+          planned_trainings: string[] | null
+          principal_review: Json | null
+          reporting_period_from: string
+          reporting_period_to: string
+          status: string
+          student_comments_summary: string | null
+          student_feedback: Json | null
+          student_mentorship_experience: string | null
+          support_needed: string | null
+          total_instructional_hours: number | null
+          total_projects_mentored: number | null
+          trainer_id: string
+          trainer_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          collaboration_coordination?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          employee_id: string
+          future_goals?: string[] | null
+          hr_review?: Json | null
+          id?: string
+          innovations_introduced?: string[] | null
+          institution_id?: string | null
+          institution_name: string
+          key_contributions?: string[] | null
+          lab_domains?: string[] | null
+          manager_review?: Json | null
+          planned_trainings?: string[] | null
+          principal_review?: Json | null
+          reporting_period_from: string
+          reporting_period_to: string
+          status?: string
+          student_comments_summary?: string | null
+          student_feedback?: Json | null
+          student_mentorship_experience?: string | null
+          support_needed?: string | null
+          total_instructional_hours?: number | null
+          total_projects_mentored?: number | null
+          trainer_id: string
+          trainer_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          collaboration_coordination?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          employee_id?: string
+          future_goals?: string[] | null
+          hr_review?: Json | null
+          id?: string
+          innovations_introduced?: string[] | null
+          institution_id?: string | null
+          institution_name?: string
+          key_contributions?: string[] | null
+          lab_domains?: string[] | null
+          manager_review?: Json | null
+          planned_trainings?: string[] | null
+          principal_review?: Json | null
+          reporting_period_from?: string
+          reporting_period_to?: string
+          status?: string
+          student_comments_summary?: string | null
+          student_feedback?: Json | null
+          student_mentorship_experience?: string | null
+          support_needed?: string | null
+          total_instructional_hours?: number | null
+          total_projects_mentored?: number | null
+          trainer_id?: string
+          trainer_name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_appraisals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_appraisals_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_appraisals_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "officers"
             referencedColumns: ["id"]
           },
         ]

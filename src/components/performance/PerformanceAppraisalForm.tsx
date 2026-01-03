@@ -7,12 +7,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Plus, Trash2, Printer } from 'lucide-react';
-import { PerformanceAppraisal, ProjectSummary, addPerformanceAppraisal, updatePerformanceAppraisal } from '@/data/mockPerformanceData';
-import { loadOfficers } from '@/data/mockOfficerData';
-import { mockInstitutions } from '@/data/mockInstitutionData';
+import { useCreateAppraisal, useUpdateAppraisal, PerformanceAppraisal, CreateAppraisalData } from '@/hooks/usePerformanceAppraisals';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -23,12 +22,38 @@ interface Props {
   onSuccess: () => void;
 }
 
+interface Officer {
+  id: string;
+  name: string;
+  employee_id: string | null;
+  assigned_institutions: string[] | null;
+}
+
+interface Institution {
+  id: string;
+  name: string;
+}
+
+interface ProjectSummary {
+  id: string;
+  project_title: string;
+  grade_level: string;
+  domain: string;
+  contest_name: string;
+  level: 'school' | 'district' | 'state' | 'national' | 'international';
+  result: string;
+}
+
 const LAB_DOMAINS = ['IoT', 'AI', 'Robotics', 'AR/VR', 'Drones', 'Digital Media'] as const;
 
 export function PerformanceAppraisalForm({ open, onOpenChange, appraisal, onSuccess }: Props) {
   const { user } = useAuth();
-  const officers = loadOfficers();
-  const institutions = mockInstitutions;
+  const createMutation = useCreateAppraisal();
+  const updateMutation = useUpdateAppraisal();
+  
+  const [officers, setOfficers] = useState<Officer[]>([]);
+  const [institutions, setInstitutions] = useState<Institution[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(false);
   
   const [formData, setFormData] = useState({
     trainer_id: '',
@@ -38,7 +63,7 @@ export function PerformanceAppraisalForm({ open, onOpenChange, appraisal, onSucc
     institution_name: '',
     reporting_period_from: '',
     reporting_period_to: '',
-    lab_domains: [] as typeof LAB_DOMAINS[number][],
+    lab_domains: [] as string[],
     total_projects_mentored: 0,
     total_instructional_hours: 0,
     projects_summary: [] as ProjectSummary[],
@@ -60,29 +85,67 @@ export function PerformanceAppraisalForm({ open, onOpenChange, appraisal, onSucc
     status: 'draft' as PerformanceAppraisal['status']
   });
 
+  // Load officers and institutions from database
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoadingData(true);
+      try {
+        const [officersRes, institutionsRes] = await Promise.all([
+          supabase.from('officers').select('id, employee_id, assigned_institutions, profiles!officers_user_id_fkey(name)'),
+          supabase.from('institutions').select('id, name').order('name')
+        ]);
+        
+        if (officersRes.data) {
+          const mappedOfficers = officersRes.data.map((o: any) => ({
+            id: o.id,
+            name: o.profiles?.name || `Officer ${o.id.slice(0, 8)}`,
+            employee_id: o.employee_id,
+            assigned_institutions: o.assigned_institutions
+          }));
+          setOfficers(mappedOfficers);
+        }
+        if (institutionsRes.data) setInstitutions(institutionsRes.data);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+    
+    if (open) loadData();
+  }, [open]);
+
   useEffect(() => {
     if (appraisal) {
       setFormData({
         trainer_id: appraisal.trainer_id,
         trainer_name: appraisal.trainer_name,
         employee_id: appraisal.employee_id,
-        institution_id: appraisal.institution_id,
+        institution_id: appraisal.institution_id || '',
         institution_name: appraisal.institution_name,
         reporting_period_from: appraisal.reporting_period_from,
         reporting_period_to: appraisal.reporting_period_to,
         lab_domains: appraisal.lab_domains,
         total_projects_mentored: appraisal.total_projects_mentored,
         total_instructional_hours: appraisal.total_instructional_hours,
-        projects_summary: appraisal.projects_summary,
+        projects_summary: (appraisal.projects_summary || []).map(p => ({
+          id: p.id,
+          project_title: p.project_title,
+          grade_level: p.grade_level || '',
+          domain: p.domain || '',
+          contest_name: p.contest_name || '',
+          level: (p.level || 'school') as ProjectSummary['level'],
+          result: p.result || ''
+        })),
         key_contributions: [...appraisal.key_contributions, '', '', ''].slice(0, 3),
         innovations_introduced: [...appraisal.innovations_introduced, '', '', ''].slice(0, 3),
-        student_mentorship_experience: appraisal.student_mentorship_experience,
-        collaboration_coordination: appraisal.collaboration_coordination,
+        student_mentorship_experience: appraisal.student_mentorship_experience || '',
+        collaboration_coordination: appraisal.collaboration_coordination || '',
         student_feedback: appraisal.student_feedback,
-        student_comments_summary: appraisal.student_comments_summary,
+        student_comments_summary: appraisal.student_comments_summary || '',
         future_goals: [...appraisal.future_goals, '', '', ''].slice(0, 3),
         planned_trainings: [...appraisal.planned_trainings, '', '', ''].slice(0, 3),
-        support_needed: appraisal.support_needed,
+        support_needed: appraisal.support_needed || '',
         status: appraisal.status
       });
     } else {
@@ -123,19 +186,19 @@ export function PerformanceAppraisalForm({ open, onOpenChange, appraisal, onSucc
     const officer = officers.find(o => o.id === officerId);
     if (officer) {
       const institutionId = officer.assigned_institutions?.[0] || '';
-      const institution = Object.values(institutions).find(i => i.id === institutionId);
+      const institution = institutions.find(i => i.id === institutionId);
       setFormData(prev => ({
         ...prev,
         trainer_id: officer.id,
         trainer_name: officer.name,
-        employee_id: officer.employee_id || `EMP-${officer.id}`,
+        employee_id: officer.employee_id || `EMP-${officer.id.slice(0, 8)}`,
         institution_id: institutionId,
         institution_name: institution?.name || ''
       }));
     }
   };
 
-  const handleDomainToggle = (domain: typeof LAB_DOMAINS[number]) => {
+  const handleDomainToggle = (domain: string) => {
     setFormData(prev => ({
       ...prev,
       lab_domains: prev.lab_domains.includes(domain)
@@ -175,34 +238,62 @@ export function PerformanceAppraisalForm({ open, onOpenChange, appraisal, onSucc
     }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.trainer_id) {
       toast({ title: 'Please select a trainer', variant: 'destructive' });
       return;
     }
 
-    const cleanedData = {
-      ...formData,
+    const cleanedData: CreateAppraisalData = {
+      trainer_id: formData.trainer_id,
+      trainer_name: formData.trainer_name,
+      employee_id: formData.employee_id,
+      institution_id: formData.institution_id || null,
+      institution_name: formData.institution_name,
+      reporting_period_from: formData.reporting_period_from,
+      reporting_period_to: formData.reporting_period_to,
+      lab_domains: formData.lab_domains,
+      total_projects_mentored: formData.total_projects_mentored,
+      total_instructional_hours: formData.total_instructional_hours,
       key_contributions: formData.key_contributions.filter(c => c.trim()),
       innovations_introduced: formData.innovations_introduced.filter(i => i.trim()),
+      student_mentorship_experience: formData.student_mentorship_experience || null,
+      collaboration_coordination: formData.collaboration_coordination || null,
+      student_feedback: formData.student_feedback,
+      student_comments_summary: formData.student_comments_summary || null,
       future_goals: formData.future_goals.filter(g => g.trim()),
       planned_trainings: formData.planned_trainings.filter(t => t.trim()),
+      support_needed: formData.support_needed || null,
       manager_review: appraisal?.manager_review || null,
       principal_review: appraisal?.principal_review || null,
       hr_review: appraisal?.hr_review || null,
-      created_by: user?.id || 'system'
+      status: formData.status,
+      created_by: user?.id || null,
+      projects_summary: formData.projects_summary.map(p => ({
+        project_title: p.project_title,
+        grade_level: p.grade_level || null,
+        domain: p.domain || null,
+        contest_name: p.contest_name || null,
+        level: p.level || null,
+        result: p.result || null,
+        display_order: 0
+      }))
     };
 
-    if (appraisal) {
-      updatePerformanceAppraisal(appraisal.id, cleanedData);
-      toast({ title: 'Appraisal updated successfully' });
-    } else {
-      addPerformanceAppraisal(cleanedData);
-      toast({ title: 'Appraisal created successfully' });
-    }
+    try {
+      if (appraisal) {
+        await updateMutation.mutateAsync({ id: appraisal.id, data: cleanedData });
+        toast({ title: 'Appraisal updated successfully' });
+      } else {
+        await createMutation.mutateAsync(cleanedData);
+        toast({ title: 'Appraisal created successfully' });
+      }
 
-    onSuccess();
-    onOpenChange(false);
+      onSuccess();
+      onOpenChange(false);
+    } catch (error) {
+      toast({ title: 'Failed to save appraisal', variant: 'destructive' });
+    }
   };
 
   const handlePrint = () => {
@@ -233,9 +324,9 @@ export function PerformanceAppraisalForm({ open, onOpenChange, appraisal, onSucc
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Select Trainer</Label>
-                    <Select value={formData.trainer_id} onValueChange={handleOfficerChange}>
+                    <Select value={formData.trainer_id} onValueChange={handleOfficerChange} disabled={isLoadingData}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select trainer" />
+                        <SelectValue placeholder={isLoadingData ? 'Loading...' : 'Select trainer'} />
                       </SelectTrigger>
                       <SelectContent>
                         {officers.map(officer => (
@@ -550,7 +641,7 @@ export function PerformanceAppraisalForm({ open, onOpenChange, appraisal, onSucc
           </Select>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button onClick={handleSubmit}>
+            <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
               {appraisal ? 'Update' : 'Create'} Appraisal
             </Button>
           </div>

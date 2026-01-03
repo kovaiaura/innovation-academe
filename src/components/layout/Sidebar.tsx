@@ -72,7 +72,7 @@ const menuItems: MenuItem[] = [
   { label: 'Course Management', icon: <BookOpen className="h-5 w-5" />, path: '/course-management', roles: ['system_admin'], feature: 'course_management' },
   { label: 'Assessment Management', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['system_admin'], feature: 'assessment_management' },
   { label: 'Assignment Management', icon: <FileText className="h-5 w-5" />, path: '/assignments', roles: ['system_admin'] },
-  { label: 'Events', icon: <Trophy className="h-5 w-5" />, path: '/event-management', roles: ['system_admin'], feature: 'event_management' },
+  { label: 'Events Management', icon: <Trophy className="h-5 w-5" />, path: '/event-management', roles: ['system_admin'], feature: 'event_management' },
   // Officers Management
   { label: 'Officer Management', icon: <Users className="h-5 w-5" />, path: '/officers', roles: ['system_admin'], feature: 'officer_management' },
   // Project Management
@@ -95,8 +95,8 @@ const menuItems: MenuItem[] = [
   { label: 'Task Allotment', icon: <ListTodo className="h-5 w-5" />, path: '/tasks', roles: ['system_admin'], feature: 'task_allotment' },
   // Gamification
   { label: 'Gamification', icon: <Trophy className="h-5 w-5" />, path: '/gamification', roles: ['system_admin'], feature: 'gamification' },
-  { label: 'HR Management', icon: <Briefcase className="h-5 w-5" />, path: '/hr-management', roles: ['system_admin'], ceoOnly: true },
-  { label: 'Webinars', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['system_admin'] },
+  { label: 'ATS Management', icon: <Briefcase className="h-5 w-5" />, path: '/hr-management', roles: ['system_admin'], ceoOnly: true },
+  { label: 'Webinar Management', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['system_admin'] },
   // Reports & Invoice
   { label: 'Reports Management', icon: <FileText className="h-5 w-5" />, path: '/reports-management', roles: ['system_admin'], feature: 'reports_analytics' },
   { label: 'Invoice Management', icon: <FileText className="h-5 w-5" />, path: '/reports', roles: ['system_admin'], feature: 'reports_analytics' },
@@ -125,9 +125,9 @@ const menuItems: MenuItem[] = [
   { label: 'Lab Inventory', icon: <Package className="h-5 w-5" />, path: '/inventory', roles: ['officer'] },
   { label: 'Class Attendance', icon: <UserCheck className="h-5 w-5" />, path: '/attendance', roles: ['officer'] },
   { label: 'Leave Management', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-management', roles: ['officer'] },
-  { label: 'Events', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['officer'] },
+  { label: 'Events Management', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['officer'] },
   { label: 'Ask Metova', icon: <MessageSquare className="h-5 w-5" />, path: '/ask-metova', roles: ['officer'] },
-  { label: 'Webinars', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['officer'] },
+  { label: 'Webinar Management', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['officer'] },
   // { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['officer'] }, // Temporarily hidden
   // Student menu items
   { label: 'My Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['student'] },
@@ -135,14 +135,14 @@ const menuItems: MenuItem[] = [
   { label: 'Assignments', icon: <FileText className="h-5 w-5" />, path: '/assignments', roles: ['student'] },
   
   { label: 'My Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['student'] },
-  { label: 'Events', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['student'] },
+  { label: 'Events Management', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['student'] },
   { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['student'] },
   { label: 'Certificates', icon: <Award className="h-5 w-5" />, path: '/certificates', roles: ['student'] },
   { label: 'Gamification', icon: <BarChart className="h-5 w-5" />, path: '/gamification', roles: ['student'] },
   { label: 'Resume', icon: <FileText className="h-5 w-5" />, path: '/resume', roles: ['student'] },
   // { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['student'] }, // Temporarily hidden
   { label: 'Ask Metova', icon: <MessageSquare className="h-5 w-5" />, path: '/ask-metova', roles: ['student'] },
-  { label: 'Webinars', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['student'] },
+  { label: 'Webinar Management', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['student'] },
   { label: 'Feedback/Survey', icon: <MessageCircle className="h-5 w-5" />, path: '/feedback', roles: ['student'] },
   // System Admin - Configuration
   { label: 'ID Configuration', icon: <Settings className="h-5 w-5" />, path: '/id-configuration', roles: ['system_admin'], feature: 'id_configuration' },
@@ -157,9 +157,9 @@ const menuItems: MenuItem[] = [
   { label: 'Inventory & Purchase', icon: <Package className="h-5 w-5" />, path: '/inventory-purchase', roles: ['management'] },
   { label: 'Projects & Awards', icon: <Target className="h-5 w-5" />, path: '/projects-certificates', roles: ['management'] },
   { label: 'SDG Dashboard', icon: <Target className="h-5 w-5" />, path: '/sdg-dashboard', roles: ['management'] },
-  { label: 'Events', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['management'] },
+  { label: 'Events Management', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['management'] },
   { label: 'Reports', icon: <FileText className="h-5 w-5" />, path: '/reports', roles: ['management'] },
-  { label: 'Webinars', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['management'] },
+  { label: 'Webinar Management', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['management'] },
   { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['management'] },
   { label: 'Attendance', icon: <Clock className="h-5 w-5" />, path: '/attendance', roles: ['management'] },
   { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['management'] },
