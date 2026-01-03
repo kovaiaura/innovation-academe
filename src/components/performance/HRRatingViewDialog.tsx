@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Printer, Star, Check, X } from 'lucide-react';
+import { Download, Loader2, Star, Check, X } from 'lucide-react';
 import { HRRating } from '@/hooks/useHRRatings';
 import { format } from 'date-fns';
+import { pdf } from '@react-pdf/renderer';
+import { HRRatingPDF } from './pdf/HRRatingPDF';
+import { toast } from '@/hooks/use-toast';
 
 interface Props {
   open: boolean;
@@ -14,10 +18,29 @@ interface Props {
 }
 
 export function HRRatingViewDialog({ open, onOpenChange, rating }: Props) {
+  const [isDownloading, setIsDownloading] = useState(false);
+
   if (!rating) return null;
 
-  const handlePrint = () => {
-    window.print();
+  const handleDownloadPDF = async () => {
+    setIsDownloading(true);
+    try {
+      const blob = await pdf(<HRRatingPDF rating={rating} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `HR_Rating_${rating.trainer_name.replace(/\s+/g, '_')}_${rating.period}_${rating.year}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({ title: 'PDF downloaded successfully' });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({ title: 'Failed to generate PDF', variant: 'destructive' });
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const projectRatings = rating.project_ratings || [];
@@ -25,12 +48,12 @@ export function HRRatingViewDialog({ open, onOpenChange, rating }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] print:max-w-none print:max-h-none print:h-auto">
-        <DialogHeader className="print:hidden">
+        <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             HR Star Rating - {rating.trainer_name}
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer className="h-4 w-4 mr-2" />
-              Print PDF
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF} disabled={isDownloading}>
+              {isDownloading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              Download PDF
             </Button>
           </DialogTitle>
         </DialogHeader>

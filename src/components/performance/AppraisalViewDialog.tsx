@@ -1,12 +1,16 @@
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Printer, Star } from 'lucide-react';
+import { Download, Loader2, Star } from 'lucide-react';
 import { PerformanceAppraisal } from '@/hooks/usePerformanceAppraisals';
 import { format } from 'date-fns';
+import { pdf } from '@react-pdf/renderer';
+import { PerformanceAppraisalPDF } from './pdf/PerformanceAppraisalPDF';
+import { toast } from '@/hooks/use-toast';
 
 interface Props {
   open: boolean;
@@ -15,10 +19,29 @@ interface Props {
 }
 
 export function AppraisalViewDialog({ open, onOpenChange, appraisal }: Props) {
+  const [isDownloading, setIsDownloading] = useState(false);
+
   if (!appraisal) return null;
 
-  const handlePrint = () => {
-    window.print();
+  const handleDownloadPDF = async () => {
+    setIsDownloading(true);
+    try {
+      const blob = await pdf(<PerformanceAppraisalPDF appraisal={appraisal} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Performance_Appraisal_${appraisal.trainer_name.replace(/\s+/g, '_')}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({ title: 'PDF downloaded successfully' });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({ title: 'Failed to generate PDF', variant: 'destructive' });
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -36,12 +59,12 @@ export function AppraisalViewDialog({ open, onOpenChange, appraisal }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] print:max-w-none print:max-h-none print:h-auto">
-        <DialogHeader className="print:hidden">
+        <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             Performance Appraisal - {appraisal.trainer_name}
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer className="h-4 w-4 mr-2" />
-              Print PDF
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF} disabled={isDownloading}>
+              {isDownloading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              Download PDF
             </Button>
           </DialogTitle>
         </DialogHeader>
