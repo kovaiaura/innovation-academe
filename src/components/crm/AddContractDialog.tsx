@@ -39,7 +39,7 @@ type ContractFormData = z.infer<typeof contractSchema>;
 interface AddContractDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (contract: Omit<ContractDetail, 'id'>) => void;
+  onSave: (contract: Omit<ContractDetail, 'id' | 'documents' | 'communication_history'>, files?: File[]) => void;
   institutions: { id: string; name: string }[];
 }
 
@@ -48,7 +48,7 @@ export function AddContractDialog({ open, onOpenChange, onSave, institutions }: 
   const [endDate, setEndDate] = useState<Date>();
   const [renewalDate, setRenewalDate] = useState<Date>();
   const [autoRenew, setAutoRenew] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const {
     register,
@@ -67,7 +67,7 @@ export function AddContractDialog({ open, onOpenChange, onSave, institutions }: 
   const selectedInstitution = watch("institution_id");
 
   const onSubmit = (data: ContractFormData) => {
-    const newContract: Omit<ContractDetail, 'id'> = {
+    const newContract: Omit<ContractDetail, 'id' | 'documents' | 'communication_history'> = {
       institution_id: data.institution_id,
       institution_name: data.institution_name,
       contract_type: data.contract_type,
@@ -78,16 +78,10 @@ export function AddContractDialog({ open, onOpenChange, onSave, institutions }: 
       payment_terms: data.payment_terms,
       status: 'active',
       auto_renew: data.auto_renew,
-      documents: selectedFiles.map((file) => ({
-        name: file,
-        url: `/contracts/${file}`,
-        uploaded_date: new Date().toISOString().split('T')[0],
-      })),
       renewal_status: data.auto_renew ? 'auto_renew' : 'manual_renew',
-      communication_history: [],
     };
 
-    onSave(newContract);
+    onSave(newContract, selectedFiles.length > 0 ? selectedFiles : undefined);
     handleClose();
   };
 
@@ -104,8 +98,7 @@ export function AddContractDialog({ open, onOpenChange, onSave, institutions }: 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      const fileNames = Array.from(files).map(file => file.name);
-      setSelectedFiles(prev => [...prev, ...fileNames]);
+      setSelectedFiles(prev => [...prev, ...Array.from(files)]);
     }
   };
 
@@ -357,9 +350,16 @@ export function AddContractDialog({ open, onOpenChange, onSave, institutions }: 
                 {selectedFiles.map((file, index) => (
                   <div
                     key={index}
-                    className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded"
+                    className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded flex items-center gap-2"
                   >
-                    {file}
+                    {file.name}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== index))}
+                      className="hover:text-destructive"
+                    >
+                      ×
+                    </button>
                   </div>
                 ))}
               </div>
