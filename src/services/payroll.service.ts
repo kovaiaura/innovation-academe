@@ -3,7 +3,20 @@ import { supabase } from '@/integrations/supabase/client';
 // Constants
 export const STANDARD_DAYS_PER_MONTH = 30;
 
+// Helper function to format date without timezone conversion
+export const formatDateLocal = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // Types
+export type EmployeeTypeFilter = 'all' | 'officer' | 'staff';
+
+export interface CalendarFilters {
+  employeeType?: EmployeeTypeFilter;
+}
 export interface EmployeePayrollSummary {
   user_id: string;
   user_type: 'officer' | 'staff';
@@ -124,7 +137,7 @@ export const getWorkingDaysInMonth = (year: number, month: number, fromDate?: Da
     if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday or Saturday
       // If fromDate is provided, only count days from that date
       if (!fromDate || d >= fromDate) {
-        workingDays.push(d.toISOString().split('T')[0]);
+        workingDays.push(formatDateLocal(d));
       }
     }
   }
@@ -223,19 +236,45 @@ export const getApprovedLeaveDays = async (
   return { leaveDays: leaveDates.size, leaveDates };
 };
 
-// Get holidays
-export const getHolidaysInMonth = async (month: number, year: number): Promise<Set<string>> => {
-  const { data: holidays } = await supabase
+// Get holidays (company-wide or institution-specific)
+export const getHolidaysInMonth = async (
+  month: number, 
+  year: number, 
+  institutionId?: string
+): Promise<Set<string>> => {
+  const holidayDates = new Set<string>();
+  
+  // Fetch company holidays
+  const { data: companyHolidays } = await supabase
     .from('company_holidays')
     .select('date')
     .eq('year', year);
   
-  const holidayDates = new Set<string>();
-  if (holidays) {
-    for (const h of holidays) {
-      const hMonth = new Date(h.date).getMonth() + 1;
+  if (companyHolidays) {
+    for (const h of companyHolidays) {
+      const holidayDate = new Date(h.date);
+      const hMonth = holidayDate.getMonth() + 1;
       if (hMonth === month) {
-        holidayDates.add(h.date);
+        holidayDates.add(formatDateLocal(holidayDate));
+      }
+    }
+  }
+  
+  // If institution is specified, also fetch institution-specific holidays
+  if (institutionId) {
+    const { data: institutionHolidays } = await supabase
+      .from('institution_holidays')
+      .select('date')
+      .eq('institution_id', institutionId)
+      .eq('year', year);
+    
+    if (institutionHolidays) {
+      for (const h of institutionHolidays) {
+        const holidayDate = new Date(h.date);
+        const hMonth = holidayDate.getMonth() + 1;
+        if (hMonth === month) {
+          holidayDates.add(formatDateLocal(holidayDate));
+        }
       }
     }
   }
@@ -638,34 +677,83 @@ export const fetchDailyAttendance = async (
   }
 };
 
-// Fetch calendar data for a month
-export const fetchCalendarData = async (month: number, year: number): Promise<CalendarDayData[]> => {
+// Fetch calendar data for a month with optional employee type filter
+export const fetchCalendarData = async (
+  month: number, 
+  year: number,
+  filters?: CalendarFilters
+): Promise<CalendarDayData[]> => {
   const calendarDays: CalendarDayData[] = [];
   const startDate = new Date(year, month - 1, 1);
   const endDate = new Date(year, month, 0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
+  const employeeTypeFilter = filters?.employeeType || 'all';
+  
   // Get all attendance for the month
-  const startDateStr = startDate.toISOString().split('T')[0];
-  const endDateStr = endDate.toISOString().split('T')[0];
-  const allRecords = await fetchDailyAttendance(startDateStr, endDateStr);
+  const startDateStr = formatDateLocal(startDate);
+  const endDateStr = formatDateLocal(endDate);
+  let allRecords = await fetchDailyAttendance(startDateStr, endDateStr);
   
-  // Get holidays
-  const { data: holidays } = await supabase
-    .from('company_holidays')
-    .select('date, name')
-    .eq('year', year);
+  // Filter records by employee type
+  if (employeeTypeFilter !== 'all') {
+    allRecords = allRecords.filter(r => r.user_type === employeeTypeFilter);
+  }
   
-  const holidayMap = new Map(holidays?.map(h => [h.date, h.name]) || []);
+  // Build holiday map based on employee type filter
+  const holidayMap = new Map<string, string>();
+  
+  // For staff or all employees, include company holidays
+  if (employeeTypeFilter === 'all' || employeeTypeFilter === 'staff') {
+    const { data: companyHolidays } = await supabase
+      .from('company_holidays')
+      .select('date, name')
+      .eq('year', year);
+    
+    if (companyHolidays) {
+      for (const h of companyHolidays) {
+        const holidayDate = new Date(h.date);
+        const hMonth = holidayDate.getMonth() + 1;
+        if (hMonth === month) {
+          holidayMap.set(formatDateLocal(holidayDate), h.name);
+        }
+      }
+    }
+  }
+  
+  // For officers or all employees, include institution holidays
+  if (employeeTypeFilter === 'all' || employeeTypeFilter === 'officer') {
+    const { data: institutionHolidays } = await supabase
+      .from('institution_holidays')
+      .select('date, name')
+      .eq('year', year);
+    
+    if (institutionHolidays) {
+      for (const h of institutionHolidays) {
+        const holidayDate = new Date(h.date);
+        const hMonth = holidayDate.getMonth() + 1;
+        if (hMonth === month) {
+          // Only add if not already in map (company holiday takes precedence for naming)
+          const dateKey = formatDateLocal(holidayDate);
+          if (!holidayMap.has(dateKey)) {
+            holidayMap.set(dateKey, h.name);
+          }
+        }
+      }
+    }
+  }
   
   // Get all employees for "absent" calculation
-  const employees = await fetchAllEmployees(month, year);
+  let employees = await fetchAllEmployees(month, year);
+  if (employeeTypeFilter !== 'all') {
+    employees = employees.filter(e => e.user_type === employeeTypeFilter);
+  }
   const employeeCount = employees.length;
   
   // Build calendar data for each day
   for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = formatDateLocal(d);
     const dayOfWeek = d.getDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     const isHoliday = holidayMap.has(dateStr);
