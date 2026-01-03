@@ -1,10 +1,11 @@
+import { useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CRMTask } from "@/data/mockCRMData";
+import { CRMTask } from "@/hooks/useCRMTasks";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -18,6 +19,7 @@ const taskSchema = z.object({
   due_date: z.string().min(1, "Due date is required"),
   priority: z.enum(['high', 'medium', 'low']),
   status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']),
+  notes: z.string().optional(),
 });
 
 type TaskFormData = z.infer<typeof taskSchema>;
@@ -46,7 +48,7 @@ export function EditTaskDialog({
   onSave,
   institutions 
 }: EditTaskDialogProps) {
-  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<TaskFormData>({
+  const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),
     defaultValues: task ? {
       institution_id: task.institution_id,
@@ -56,8 +58,25 @@ export function EditTaskDialog({
       due_date: format(new Date(task.due_date), 'yyyy-MM-dd'),
       priority: task.priority,
       status: task.status,
+      notes: task.notes || '',
     } : undefined
   });
+
+  // Reset form when task changes
+  useEffect(() => {
+    if (task) {
+      reset({
+        institution_id: task.institution_id,
+        task_type: task.task_type,
+        description: task.description,
+        assigned_to: task.assigned_to,
+        due_date: format(new Date(task.due_date), 'yyyy-MM-dd'),
+        priority: task.priority,
+        status: task.status,
+        notes: task.notes || '',
+      });
+    }
+  }, [task, reset]);
 
   const onSubmit = (data: TaskFormData) => {
     if (!task) return;
@@ -74,6 +93,7 @@ export function EditTaskDialog({
       due_date: data.due_date,
       priority: data.priority,
       status: data.status,
+      notes: data.notes || null,
     };
     
     onSave(updatedTask);
@@ -206,6 +226,16 @@ export function EditTaskDialog({
               </Select>
               {errors.status && <p className="text-sm text-red-500">{errors.status.message}</p>}
             </div>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <Label htmlFor="notes">Notes (Optional)</Label>
+            <Textarea
+              {...register('notes')}
+              placeholder="Add any additional notes..."
+              rows={3}
+            />
           </div>
 
           <DialogFooter>

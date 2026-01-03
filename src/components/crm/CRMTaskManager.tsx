@@ -3,13 +3,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, User, AlertCircle, CheckCircle, Clock, RefreshCw, MessageSquare, DollarSign, Users } from "lucide-react";
-import { CRMTask } from "@/data/mockCRMData";
-import { format, isPast, isFuture } from "date-fns";
+import { CRMTask } from "@/hooks/useCRMTasks";
+import { format, isPast } from "date-fns";
 
 interface CRMTaskManagerProps {
   tasks: CRMTask[];
   onCompleteTask?: (task: CRMTask) => void;
   onEditTask?: (task: CRMTask) => void;
+  onViewTask?: (task: CRMTask) => void;
 }
 
 const taskTypeIcons = {
@@ -41,7 +42,7 @@ const statusColors = {
   cancelled: "bg-red-500/10 text-red-600",
 };
 
-export function CRMTaskManager({ tasks, onCompleteTask, onEditTask }: CRMTaskManagerProps) {
+export function CRMTaskManager({ tasks, onCompleteTask, onEditTask, onViewTask }: CRMTaskManagerProps) {
   const pendingTasks = tasks.filter(t => t.status === 'pending');
   const inProgressTasks = tasks.filter(t => t.status === 'in_progress');
   const completedTasks = tasks.filter(t => t.status === 'completed');
@@ -53,8 +54,15 @@ export function CRMTaskManager({ tasks, onCompleteTask, onEditTask }: CRMTaskMan
     const TypeIcon = taskTypeIcons[task.task_type];
     const isOverdue = isPast(new Date(task.due_date)) && task.status !== 'completed';
 
+    const handleCardClick = () => {
+      onViewTask?.(task);
+    };
+
     return (
-      <Card className={`hover:shadow-md transition-shadow ${isOverdue ? 'border-red-500/50' : ''}`}>
+      <Card 
+        className={`hover:shadow-md transition-shadow cursor-pointer ${isOverdue ? 'border-red-500/50' : ''}`}
+        onClick={handleCardClick}
+      >
         <CardContent className="pt-6">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-start gap-3 flex-1">
@@ -95,7 +103,10 @@ export function CRMTaskManager({ tasks, onCompleteTask, onEditTask }: CRMTaskMan
               <Button
                 size="sm"
                 className="flex-1"
-                onClick={() => onCompleteTask?.(task)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCompleteTask?.(task);
+                }}
               >
                 <CheckCircle className="h-4 w-4 mr-2" />
                 Mark Complete
@@ -105,7 +116,10 @@ export function CRMTaskManager({ tasks, onCompleteTask, onEditTask }: CRMTaskMan
               variant="outline"
               size="sm"
               className="flex-1"
-              onClick={() => onEditTask?.(task)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditTask?.(task);
+              }}
             >
               Edit
             </Button>

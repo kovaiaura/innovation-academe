@@ -1664,6 +1664,92 @@ export type Database = {
           },
         ]
       }
+      crm_tasks: {
+        Row: {
+          assigned_to: string
+          assigned_to_id: string | null
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string
+          due_date: string
+          id: string
+          institution_id: string
+          institution_name: string
+          notes: string | null
+          priority: string
+          related_contract_id: string | null
+          status: string
+          task_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to: string
+          assigned_to_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description: string
+          due_date: string
+          id?: string
+          institution_id: string
+          institution_name: string
+          notes?: string | null
+          priority?: string
+          related_contract_id?: string | null
+          status?: string
+          task_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string
+          assigned_to_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string
+          due_date?: string
+          id?: string
+          institution_id?: string
+          institution_name?: string
+          notes?: string | null
+          priority?: string
+          related_contract_id?: string | null
+          status?: string
+          task_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_tasks_assigned_to_id_fkey"
+            columns: ["assigned_to_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_tasks_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_tasks_related_contract_id_fkey"
+            columns: ["related_contract_id"]
+            isOneToOne: false
+            referencedRelation: "crm_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_work_logs: {
         Row: {
           created_at: string | null
