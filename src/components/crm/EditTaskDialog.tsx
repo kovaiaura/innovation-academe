@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
+import { loadMetaStaff, MetaStaffUser } from "@/data/mockMetaStaffData";
 
 const taskSchema = z.object({
   institution_id: z.string().min(1, "Institution is required"),
@@ -32,15 +33,6 @@ interface EditTaskDialogProps {
   institutions: { id: string; name: string }[];
 }
 
-const teamMembers = [
-  "Rajesh Kumar",
-  "Anita Desai",
-  "Priya Sharma",
-  "Sneha Reddy",
-  "Amit Patel",
-  "Kavita Singh"
-];
-
 export function EditTaskDialog({ 
   open, 
   onOpenChange, 
@@ -48,6 +40,8 @@ export function EditTaskDialog({
   onSave,
   institutions 
 }: EditTaskDialogProps) {
+  const [metaStaff, setMetaStaff] = useState<MetaStaffUser[]>([]);
+  
   const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),
     defaultValues: task ? {
@@ -61,6 +55,12 @@ export function EditTaskDialog({
       notes: task.notes || '',
     } : undefined
   });
+
+  // Load meta staff users
+  useEffect(() => {
+    const staff = loadMetaStaff();
+    setMetaStaff(staff);
+  }, []);
 
   // Reset form when task changes
   useEffect(() => {
@@ -174,9 +174,9 @@ export function EditTaskDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {teamMembers.map((member) => (
-                    <SelectItem key={member} value={member}>
-                      {member}
+                  {metaStaff.map((staff) => (
+                    <SelectItem key={staff.id} value={staff.name}>
+                      {staff.name} - {staff.position_name?.toUpperCase() || 'Staff'}
                     </SelectItem>
                   ))}
                 </SelectContent>
