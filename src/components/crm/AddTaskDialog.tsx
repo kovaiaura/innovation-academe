@@ -15,7 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { CRMTask } from "@/hooks/useCRMTasks";
 import { supabase } from "@/integrations/supabase/client";
-import { loadMetaStaff, MetaStaffUser } from "@/data/mockMetaStaffData";
+import { AssigneeSelector } from "@/components/task/AssigneeSelector";
 
 const taskSchema = z.object({
   institution_id: z.string().min(1, "Institution is required"),
@@ -23,6 +23,7 @@ const taskSchema = z.object({
   task_type: z.enum(['renewal_reminder', 'follow_up', 'payment_reminder', 'meeting_scheduled', 'support_ticket']),
   description: z.string().min(10, "Description must be at least 10 characters").max(500),
   assigned_to: z.string().min(1, "Assignee is required"),
+  assigned_to_id: z.string().optional(),
   due_date: z.string().min(1, "Due date is required"),
   priority: z.enum(['high', 'medium', 'low']),
   status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']),
@@ -41,7 +42,7 @@ interface AddTaskDialogProps {
 export function AddTaskDialog({ open, onOpenChange, onSave, institutions }: AddTaskDialogProps) {
   const [dueDate, setDueDate] = useState<Date>();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [metaStaff, setMetaStaff] = useState<MetaStaffUser[]>([]);
+  const [selectedAssignee, setSelectedAssignee] = useState<string>('');
 
   useEffect(() => {
     const getUser = async () => {
@@ -51,10 +52,6 @@ export function AddTaskDialog({ open, onOpenChange, onSave, institutions }: AddT
       }
     };
     getUser();
-    
-    // Load meta staff users
-    const staff = loadMetaStaff();
-    setMetaStaff(staff);
   }, []);
 
   const {
@@ -94,6 +91,7 @@ export function AddTaskDialog({ open, onOpenChange, onSave, institutions }: AddT
   const handleClose = () => {
     reset();
     setDueDate(undefined);
+    setSelectedAssignee('');
     onOpenChange(false);
   };
 
@@ -177,18 +175,20 @@ export function AddTaskDialog({ open, onOpenChange, onSave, institutions }: AddT
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="assigned_to">Assigned To *</Label>
-              <Select onValueChange={(value) => setValue("assigned_to", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select team member" />
-                </SelectTrigger>
-                <SelectContent>
-                  {metaStaff.map((staff) => (
-                    <SelectItem key={staff.id} value={staff.name}>
-                      {staff.name} - {staff.position_name?.toUpperCase() || 'Staff'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <AssigneeSelector
+                value={selectedAssignee}
+                onValueChange={(assignee) => {
+                  if (assignee) {
+                    setSelectedAssignee(assignee.id);
+                    setValue("assigned_to", assignee.name);
+                    setValue("assigned_to_id", assignee.id);
+                  } else {
+                    setSelectedAssignee('');
+                    setValue("assigned_to", '');
+                    setValue("assigned_to_id", '');
+                  }
+                }}
+              />
               {errors.assigned_to && (
                 <p className="text-sm text-destructive">{errors.assigned_to.message}</p>
               )}
