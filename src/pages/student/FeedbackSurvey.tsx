@@ -6,86 +6,74 @@ import { FeedbackForm } from "@/components/student/FeedbackForm";
 import { FeedbackItem } from "@/components/student/FeedbackItem";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, MessageSquare, CheckCircle2, Clock } from "lucide-react";
-import { useState, useEffect } from "react";
-import { Survey, loadSurveys, SurveyResponse, mockSurveyResponses } from "@/data/mockSurveyData";
-import { Feedback, mockFeedback } from "@/data/mockFeedbackData";
+import { FileText, MessageSquare, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useActiveSurveysForStudent } from "@/hooks/useSurveys";
+import { useSubmitSurveyResponse } from "@/hooks/useSurveyResponses";
+import { useStudentOwnFeedback, useSubmitFeedback } from "@/hooks/useStudentFeedback";
+import { useRealtimeSurveys, useRealtimeFeedback } from "@/hooks/useRealtimeSurveys";
+import { StudentFeedback } from "@/services/studentFeedback.service";
 
 export default function FeedbackSurvey() {
-  const [surveys, setSurveys] = useState<Survey[]>([]);
-  const [surveyResponses, setSurveyResponses] = useState<SurveyResponse[]>([]);
-  const [feedbackList, setFeedbackList] = useState<Feedback[]>([]);
-  const [selectedSurvey, setSelectedSurvey] = useState<Survey | null>(null);
+  const { user } = useAuth();
+  const profile = user;
+  const [selectedSurvey, setSelectedSurvey] = useState<any | null>(null);
   const [takeSurveyOpen, setTakeSurveyOpen] = useState(false);
 
-  useEffect(() => {
-    // Load fresh surveys using loadSurveys() for real-time sync
-    const allSurveys = loadSurveys();
-    
-    // Get current student institution (mock - should come from auth context)
-    const currentStudentInstitution = 'inst-msd-001'; // TODO: Get from user context
+  // Enable realtime updates
+  useRealtimeSurveys();
+  useRealtimeFeedback();
 
-    // Filter surveys for current student's institution
-    const studentSurveys = allSurveys.filter((s: any) => 
-      s.target_audience === 'all_students' || s.target_ids?.includes(currentStudentInstitution)
-    );
+  // Fetch active surveys for this student
+  const { data: surveys = [], isLoading: surveysLoading } = useActiveSurveysForStudent(
+    user?.id,
+    profile?.institution_id,
+    profile?.class_id
+  );
 
-    setSurveys(studentSurveys);
-    
-    // Load survey responses
-    const storedResponses = localStorage.getItem('survey_responses');
-    setSurveyResponses(storedResponses ? JSON.parse(storedResponses) : mockSurveyResponses);
-    
-    // Filter feedback to show only current student's feedback
-    const storedFeedback = localStorage.getItem('all_student_feedback');
-    const allFeedback = storedFeedback ? JSON.parse(storedFeedback) : mockFeedback;
-    const studentFeedback = allFeedback.filter((f: any) => f.student_id === 'student-1'); // TODO: Use actual student ID
-    setFeedbackList(studentFeedback);
-  }, []);
+  // Fetch student's feedback
+  const { data: feedbackList = [], isLoading: feedbackLoading } = useStudentOwnFeedback(user?.id);
 
-  const isSurveyCompleted = (surveyId: string) => {
-    return surveyResponses.some(r => r.survey_id === surveyId && r.status === 'submitted');
-  };
+  // Mutations
+  const submitResponseMutation = useSubmitSurveyResponse();
+  const submitFeedbackMutation = useSubmitFeedback();
 
-  const handleTakeSurvey = (survey: Survey) => {
+  const handleTakeSurvey = (survey: any) => {
     setSelectedSurvey(survey);
     setTakeSurveyOpen(true);
   };
 
-  const handleSubmitSurvey = (response: Omit<SurveyResponse, 'id' | 'submitted_at'>) => {
-    const newResponse: SurveyResponse = {
-      ...response,
-      id: `response-${Date.now()}`,
-      submitted_at: new Date().toISOString()
-    };
+  const handleSubmitSurvey = (answers: Array<{ question_id: string; answer_text?: string; answer_number?: number; answer_options?: string[] }>) => {
+    if (!selectedSurvey || !user?.id || !profile?.institution_id) return;
 
-    const updatedResponses = [...surveyResponses, newResponse];
-    setSurveyResponses(updatedResponses);
-    localStorage.setItem('survey_responses', JSON.stringify(updatedResponses));
-    setTakeSurveyOpen(false);
+    submitResponseMutation.mutate({
+      survey_id: selectedSurvey.id,
+      student_id: user.id,
+      institution_id: profile.institution_id,
+      class_id: profile.class_id,
+      answers,
+    }, {
+      onSuccess: () => {
+        setTakeSurveyOpen(false);
+        setSelectedSurvey(null);
+      },
+    });
   };
 
-  const handleSubmitFeedback = (feedback: Omit<Feedback, 'id' | 'submitted_at' | 'status'>) => {
-    const newFeedback: Feedback = {
-      ...feedback,
-      id: `feedback-${Date.now()}`,
-      submitted_at: new Date().toISOString(),
-      status: 'submitted'
-    };
+  const handleSubmitFeedback = (feedbackData: Omit<StudentFeedback, 'id' | 'status'>) => {
+    if (!user?.id || !profile?.institution_id) return;
 
-    // Add to local list
-    const updatedFeedback = [newFeedback, ...feedbackList];
-    setFeedbackList(updatedFeedback);
-    
-    // Save to shared localStorage key for admin visibility
-    const allFeedback = localStorage.getItem('all_student_feedback');
-    const allFeedbackList = allFeedback ? JSON.parse(allFeedback) : [];
-    const updatedAllFeedback = [newFeedback, ...allFeedbackList];
-    localStorage.setItem('all_student_feedback', JSON.stringify(updatedAllFeedback));
+    submitFeedbackMutation.mutate({
+      ...feedbackData,
+      student_id: user.id,
+      student_name: profile?.name,
+      institution_id: profile.institution_id,
+    });
   };
 
-  const activeSurveys = surveys.filter(s => s.status === 'active' && !isSurveyCompleted(s.id));
-  const completedSurveys = surveys.filter(s => isSurveyCompleted(s.id));
+  const activeSurveys = surveys.filter((s: any) => !s.is_completed);
+  const completedSurveys = surveys.filter((s: any) => s.is_completed);
 
   return (
     <Layout>
@@ -110,45 +98,55 @@ export default function FeedbackSurvey() {
           </TabsList>
 
           <TabsContent value="surveys" className="space-y-6">
-            {activeSurveys.length > 0 && (
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Pending Surveys</h2>
-                <div className="grid gap-4">
-                  {activeSurveys.map((survey) => (
-                    <SurveyCard
-                      key={survey.id}
-                      survey={survey}
-                      isCompleted={false}
-                      onTakeSurvey={handleTakeSurvey}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {completedSurveys.length > 0 && (
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Completed Surveys</h2>
-                <div className="grid gap-4">
-                  {completedSurveys.map((survey) => (
-                    <SurveyCard
-                      key={survey.id}
-                      survey={survey}
-                      isCompleted={true}
-                      onTakeSurvey={handleTakeSurvey}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeSurveys.length === 0 && completedSurveys.length === 0 && (
+            {surveysLoading ? (
               <Card>
-                <CardContent className="py-12 text-center">
-                  <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <p className="text-muted-foreground">No surveys available at the moment</p>
+                <CardContent className="py-12 flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </CardContent>
               </Card>
+            ) : (
+              <>
+                {activeSurveys.length > 0 && (
+                  <div>
+                    <h2 className="text-xl font-semibold mb-4">Pending Surveys</h2>
+                    <div className="grid gap-4">
+                {activeSurveys.map((survey: any) => (
+                        <SurveyCard
+                          key={survey.id}
+                          survey={survey}
+                          isCompleted={false}
+                          onTakeSurvey={() => handleTakeSurvey(survey)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {completedSurveys.length > 0 && (
+                  <div>
+                    <h2 className="text-xl font-semibold mb-4">Completed Surveys</h2>
+                    <div className="grid gap-4">
+                      {completedSurveys.map((survey: any) => (
+                        <SurveyCard
+                          key={survey.id}
+                          survey={survey}
+                          isCompleted={true}
+                          onTakeSurvey={() => {}}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {activeSurveys.length === 0 && completedSurveys.length === 0 && (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                      <p className="text-muted-foreground">No surveys available at the moment</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
             )}
           </TabsContent>
 
@@ -167,20 +165,26 @@ export default function FeedbackSurvey() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ScrollArea className="h-[600px] pr-4">
-                      {feedbackList.length > 0 ? (
-                        <div className="space-y-4">
-                          {feedbackList.map((feedback) => (
-                            <FeedbackItem key={feedback.id} feedback={feedback} />
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-12">
-                          <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                          <p className="text-muted-foreground">No feedback submitted yet</p>
-                        </div>
-                      )}
-                    </ScrollArea>
+                    {feedbackLoading ? (
+                      <div className="py-12 flex items-center justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : (
+                      <ScrollArea className="h-[600px] pr-4">
+                        {feedbackList.length > 0 ? (
+                          <div className="space-y-4">
+                            {feedbackList.map((feedback: any) => (
+                              <FeedbackItem key={feedback.id} feedback={feedback} />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-12">
+                            <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                            <p className="text-muted-foreground">No feedback submitted yet</p>
+                          </div>
+                        )}
+                      </ScrollArea>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -188,12 +192,28 @@ export default function FeedbackSurvey() {
           </TabsContent>
         </Tabs>
 
-        <TakeSurveyDialog
-          survey={selectedSurvey}
-          open={takeSurveyOpen}
-          onClose={() => setTakeSurveyOpen(false)}
-          onSubmit={handleSubmitSurvey}
-        />
+        {selectedSurvey && (
+          <TakeSurveyDialog
+            survey={{
+              id: selectedSurvey.id,
+              title: selectedSurvey.title,
+              description: selectedSurvey.description,
+              questions: (selectedSurvey.survey_questions || []).map((q: any) => ({
+                id: q.id,
+                question_text: q.question_text,
+                question_type: q.question_type,
+                options: q.options,
+                required: q.is_required,
+              })),
+            }}
+            open={takeSurveyOpen}
+            onClose={() => {
+              setTakeSurveyOpen(false);
+              setSelectedSurvey(null);
+            }}
+            onSubmit={handleSubmitSurvey}
+          />
+        )}
       </div>
     </Layout>
   );

@@ -4825,6 +4825,118 @@ export type Database = {
           },
         ]
       }
+      student_feedback: {
+        Row: {
+          admin_response: string | null
+          admin_response_at: string | null
+          admin_response_by: string | null
+          category: string
+          created_at: string | null
+          feedback_text: string
+          id: string
+          institution_id: string
+          is_anonymous: boolean | null
+          rating: number | null
+          related_course_id: string | null
+          related_officer_id: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          student_id: string
+          student_name: string | null
+          subject: string
+          submitted_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          admin_response?: string | null
+          admin_response_at?: string | null
+          admin_response_by?: string | null
+          category: string
+          created_at?: string | null
+          feedback_text: string
+          id?: string
+          institution_id: string
+          is_anonymous?: boolean | null
+          rating?: number | null
+          related_course_id?: string | null
+          related_officer_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          student_id: string
+          student_name?: string | null
+          subject: string
+          submitted_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          admin_response?: string | null
+          admin_response_at?: string | null
+          admin_response_by?: string | null
+          category?: string
+          created_at?: string | null
+          feedback_text?: string
+          id?: string
+          institution_id?: string
+          is_anonymous?: boolean | null
+          rating?: number | null
+          related_course_id?: string | null
+          related_officer_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          student_id?: string
+          student_name?: string | null
+          subject?: string
+          submitted_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_feedback_admin_response_by_fkey"
+            columns: ["admin_response_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_feedback_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_feedback_related_course_id_fkey"
+            columns: ["related_course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_feedback_related_officer_id_fkey"
+            columns: ["related_officer_id"]
+            isOneToOne: false
+            referencedRelation: "officers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_feedback_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_feedback_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_streaks: {
         Row: {
           created_at: string | null
@@ -4994,6 +5106,223 @@ export type Database = {
           },
           {
             foreignKeyName: "students_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      survey_questions: {
+        Row: {
+          created_at: string | null
+          display_order: number
+          id: string
+          is_required: boolean | null
+          options: Json | null
+          question_text: string
+          question_type: string
+          scale_max: number | null
+          scale_min: number | null
+          survey_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          display_order?: number
+          id?: string
+          is_required?: boolean | null
+          options?: Json | null
+          question_text: string
+          question_type: string
+          scale_max?: number | null
+          scale_min?: number | null
+          survey_id: string
+        }
+        Update: {
+          created_at?: string | null
+          display_order?: number
+          id?: string
+          is_required?: boolean | null
+          options?: Json | null
+          question_text?: string
+          question_type?: string
+          scale_max?: number | null
+          scale_min?: number | null
+          survey_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_questions_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      survey_response_answers: {
+        Row: {
+          answer_number: number | null
+          answer_options: Json | null
+          answer_text: string | null
+          created_at: string | null
+          id: string
+          question_id: string
+          response_id: string
+        }
+        Insert: {
+          answer_number?: number | null
+          answer_options?: Json | null
+          answer_text?: string | null
+          created_at?: string | null
+          id?: string
+          question_id: string
+          response_id: string
+        }
+        Update: {
+          answer_number?: number | null
+          answer_options?: Json | null
+          answer_text?: string | null
+          created_at?: string | null
+          id?: string
+          question_id?: string
+          response_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_response_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "survey_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_response_answers_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: false
+            referencedRelation: "survey_responses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      survey_responses: {
+        Row: {
+          class_id: string | null
+          created_at: string | null
+          id: string
+          institution_id: string
+          status: string
+          student_id: string
+          submitted_at: string | null
+          survey_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          class_id?: string | null
+          created_at?: string | null
+          id?: string
+          institution_id: string
+          status?: string
+          student_id: string
+          submitted_at?: string | null
+          survey_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          class_id?: string | null
+          created_at?: string | null
+          id?: string
+          institution_id?: string
+          status?: string
+          student_id?: string
+          submitted_at?: string | null
+          survey_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_responses_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_responses_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_responses_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_responses_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      surveys: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          created_by_name: string
+          deadline: string
+          description: string | null
+          id: string
+          institution_id: string | null
+          status: string
+          target_audience: string
+          target_class_ids: string[] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          created_by_name: string
+          deadline: string
+          description?: string | null
+          id?: string
+          institution_id?: string | null
+          status?: string
+          target_audience?: string
+          target_class_ids?: string[] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          created_by_name?: string
+          deadline?: string
+          description?: string | null
+          id?: string
+          institution_id?: string | null
+          status?: string
+          target_audience?: string
+          target_class_ids?: string[] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "surveys_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "surveys_institution_id_fkey"
             columns: ["institution_id"]
             isOneToOne: false
             referencedRelation: "institutions"

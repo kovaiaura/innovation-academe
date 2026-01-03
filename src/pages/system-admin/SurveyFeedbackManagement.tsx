@@ -8,17 +8,20 @@ import { Badge } from '@/components/ui/badge';
 import { CreateSurveyDialog } from '@/components/surveys/CreateSurveyDialog';
 import { SurveyAnalytics } from '@/components/surveys/SurveyAnalytics';
 import { FeedbackManagementCard } from '@/components/surveys/FeedbackManagementCard';
-import { useState, useEffect } from 'react';
-import { Survey, loadSurveys, saveSurveys, mockSurveyResponses } from '@/data/mockSurveyData';
-import { Feedback, mockFeedback, saveFeedback } from '@/data/mockFeedbackData';
-import { Plus, FileText, MessageCircle, TrendingUp, CheckCircle, Search, Filter } from 'lucide-react';
-import { toast } from 'sonner';
+import { useState } from 'react';
+import { useSurveys, useCreateSurvey, useCloseSurvey, useDeleteSurvey } from '@/hooks/useSurveys';
+import { useFeedbackList, useFeedbackStats, useUpdateFeedbackStatus } from '@/hooks/useStudentFeedback';
+import { useRealtimeSurveys, useRealtimeFeedback } from '@/hooks/useRealtimeSurveys';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+import { Plus, FileText, MessageCircle, TrendingUp, CheckCircle, Search, Loader2 } from 'lucide-react';
+import { Survey, SurveyQuestion } from '@/services/survey.service';
 
 export default function SurveyFeedbackManagement() {
-  const [surveys, setSurveys] = useState<Survey[]>([]);
-  const [feedbackList, setFeedbackList] = useState<Feedback[]>([]);
+  const { user } = useAuth();
   const [createSurveyOpen, setCreateSurveyOpen] = useState(false);
-  const [selectedSurvey, setSelectedSurvey] = useState<Survey | null>(null);
+  const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
 
   // Survey filters
@@ -31,97 +34,106 @@ export default function SurveyFeedbackManagement() {
   const [feedbackStatusFilter, setFeedbackStatusFilter] = useState<string>('all');
   const [feedbackSearch, setFeedbackSearch] = useState('');
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // Enable realtime
+  useRealtimeSurveys();
+  useRealtimeFeedback();
 
-  const loadData = () => {
-    // Load fresh surveys from localStorage for real-time sync
-    const freshSurveys = loadSurveys();
-    setSurveys(freshSurveys);
-    setFeedbackList(mockFeedback);
-  };
+  // Fetch surveys
+  const { data: surveys = [], isLoading: surveysLoading } = useSurveys({
+    status: surveyStatusFilter !== 'all' ? surveyStatusFilter : undefined,
+  });
 
-  const handleCreateSurvey = (surveyData: Omit<Survey, 'id'>) => {
-    const newSurvey: Survey = {
-      ...surveyData,
-      id: `survey-${Date.now()}`
-    };
-    const updatedSurveys = [...surveys, newSurvey];
-    setSurveys(updatedSurveys);
-    saveSurveys(updatedSurveys);
-    toast.success('Survey created and published successfully!');
+  // Fetch feedback
+  const { data: feedbackList = [], isLoading: feedbackLoading } = useFeedbackList({
+    status: feedbackStatusFilter !== 'all' ? feedbackStatusFilter : undefined,
+    category: feedbackCategoryFilter !== 'all' ? feedbackCategoryFilter : undefined,
+    institution_id: feedbackInstitutionFilter !== 'all' ? feedbackInstitutionFilter : undefined,
+  });
+
+  // Fetch feedback stats
+  const { data: feedbackStats } = useFeedbackStats();
+
+  // Fetch institutions
+  const { data: institutions = [] } = useQuery({
+    queryKey: ['institutions'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('institutions')
+        .select('id, name')
+        .order('name');
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Mutations
+  const createSurveyMutation = useCreateSurvey();
+  const closeSurveyMutation = useCloseSurvey();
+  const deleteSurveyMutation = useDeleteSurvey();
+  const updateFeedbackMutation = useUpdateFeedbackStatus();
+
+  const handleCreateSurvey = (surveyData: Survey, questions: SurveyQuestion[]) => {
+    createSurveyMutation.mutate({
+      survey: {
+        ...surveyData,
+        created_by: user?.id,
+        created_by_name: user?.name || 'System Admin',
+      },
+      questions,
+    });
   };
 
   const handleCloseSurvey = (surveyId: string) => {
-    const updatedSurveys = surveys.map(s =>
-      s.id === surveyId ? { ...s, status: 'closed' as const } : s
-    );
-    setSurveys(updatedSurveys);
-    saveSurveys(updatedSurveys);
-    toast.success('Survey closed');
+    closeSurveyMutation.mutate(surveyId);
   };
 
   const handleDeleteSurvey = (surveyId: string) => {
     if (!confirm('Are you sure you want to delete this survey?')) return;
-    const updatedSurveys = surveys.filter(s => s.id !== surveyId);
-    setSurveys(updatedSurveys);
-    saveSurveys(updatedSurveys);
-    toast.success('Survey deleted');
+    deleteSurveyMutation.mutate(surveyId);
   };
 
-  const handleViewAnalytics = (survey: Survey) => {
-    setSelectedSurvey(survey);
+  const handleViewAnalytics = (surveyId: string) => {
+    setSelectedSurveyId(surveyId);
     setAnalyticsOpen(true);
   };
 
-  const handleUpdateFeedback = (id: string, updates: Partial<Feedback>) => {
-    const updatedFeedback = feedbackList.map(f =>
-      f.id === id ? { ...f, ...updates } : f
-    );
-    setFeedbackList(updatedFeedback);
-    saveFeedback(updatedFeedback);
+  const handleUpdateFeedback = (id: string, updates: { status?: string; admin_response?: string }) => {
+    updateFeedbackMutation.mutate({
+      feedbackId: id,
+      status: updates.status as any,
+      adminResponse: updates.admin_response,
+      adminUserId: user?.id,
+    });
   };
 
-  // Filter surveys
-  const filteredSurveys = surveys.filter(survey => {
-    if (surveyStatusFilter !== 'all' && survey.status !== surveyStatusFilter) return false;
+  // Filter surveys by institution
+  const filteredSurveys = surveys.filter((survey: any) => {
     if (surveyInstitutionFilter !== 'all') {
       if (survey.target_audience === 'all_students') return surveyInstitutionFilter === 'all';
-      if (!survey.target_ids || !survey.target_ids.includes(surveyInstitutionFilter)) return false;
+      if (survey.institution_id !== surveyInstitutionFilter) return false;
     }
     return true;
   });
 
-  // Filter feedback
-  const filteredFeedback = feedbackList.filter(feedback => {
-    if (feedbackInstitutionFilter !== 'all' && feedback.institution_id !== feedbackInstitutionFilter) return false;
-    if (feedbackCategoryFilter !== 'all' && feedback.category !== feedbackCategoryFilter) return false;
-    if (feedbackStatusFilter !== 'all' && feedback.status !== feedbackStatusFilter) return false;
-    if (feedbackSearch && !feedback.subject.toLowerCase().includes(feedbackSearch.toLowerCase()) &&
-        !feedback.feedback_text.toLowerCase().includes(feedbackSearch.toLowerCase())) return false;
+  // Filter feedback by search
+  const filteredFeedback = feedbackList.filter((feedback: any) => {
+    if (feedbackSearch && 
+        !feedback.subject?.toLowerCase().includes(feedbackSearch.toLowerCase()) &&
+        !feedback.feedback_text?.toLowerCase().includes(feedbackSearch.toLowerCase())) {
+      return false;
+    }
     return true;
   });
 
   // Calculate stats
   const totalSurveys = surveys.length;
-  const activeSurveys = surveys.filter(s => s.status === 'active').length;
-  const totalResponses = mockSurveyResponses.length;
-  const avgCompletionRate = surveys.length > 0
-    ? Math.round((mockSurveyResponses.filter(r => r.status === 'submitted').length / surveys.length) * 100)
-    : 0;
+  const activeSurveys = surveys.filter((s: any) => s.status === 'active').length;
+  const totalResponses = surveys.reduce((sum: number, s: any) => sum + (s.response_count || 0), 0);
 
-  const totalFeedback = feedbackList.length;
-  const pendingFeedback = feedbackList.filter(f => f.status === 'submitted').length;
-  const resolvedFeedback = feedbackList.filter(f => f.status === 'resolved').length;
-  const avgRating = feedbackList.filter(f => f.rating).length > 0
-    ? (feedbackList.reduce((sum, f) => sum + (f.rating || 0), 0) / feedbackList.filter(f => f.rating).length).toFixed(1)
-    : 'N/A';
-
-  const institutions = [
-    { id: 'inst-msd-001', name: 'Modern School Vasant Vihar' },
-    { id: 'inst-kga-001', name: 'Kikani Global Academy' }
-  ];
+  const totalFeedback = feedbackStats?.total || 0;
+  const pendingFeedback = feedbackStats?.by_status?.submitted || 0;
+  const resolvedFeedback = feedbackStats?.by_status?.resolved || 0;
+  const avgRating = feedbackStats?.average_rating?.toFixed(1) || 'N/A';
 
   return (
     <Layout>
@@ -191,7 +203,9 @@ export default function SurveyFeedbackManagement() {
                 <CardContent>
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-5 w-5 text-orange-500" />
-                    <span className="text-2xl font-bold">{avgCompletionRate}%</span>
+                    <span className="text-2xl font-bold">
+                      {totalSurveys > 0 ? Math.round((totalResponses / totalSurveys) * 10) : 0}%
+                    </span>
                   </div>
                 </CardContent>
               </Card>
@@ -217,7 +231,7 @@ export default function SurveyFeedbackManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Institutions</SelectItem>
-                    {institutions.map(inst => (
+                    {institutions.map((inst: any) => (
                       <SelectItem key={inst.id} value={inst.id}>{inst.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -232,62 +246,65 @@ export default function SurveyFeedbackManagement() {
 
             {/* Surveys List */}
             <div className="grid gap-4">
-              {filteredSurveys.length > 0 ? (
-                filteredSurveys.map((survey) => {
-                  const responses = mockSurveyResponses.filter(r => r.survey_id === survey.id);
-                  return (
-                    <Card key={survey.id}>
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <CardTitle>{survey.title}</CardTitle>
-                            <CardDescription className="mt-1">{survey.description}</CardDescription>
-                          </div>
-                          <Badge variant={survey.status === 'active' ? 'default' : 'secondary'}>
-                            {survey.status}
-                          </Badge>
+              {surveysLoading ? (
+                <Card>
+                  <CardContent className="py-12 flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              ) : filteredSurveys.length > 0 ? (
+                filteredSurveys.map((survey: any) => (
+                  <Card key={survey.id}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle>{survey.title}</CardTitle>
+                          <CardDescription className="mt-1">{survey.description}</CardDescription>
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
+                        <Badge variant={survey.status === 'active' ? 'default' : 'secondary'}>
+                          {survey.status}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
                         <div className="flex flex-wrap gap-2">
                           {survey.target_audience === 'all_students' && <Badge variant="outline">All Students</Badge>}
-                          {survey.target_institution_name && <Badge variant="outline">{survey.target_institution_name}</Badge>}
+                          {survey.institutions?.name && <Badge variant="outline">{survey.institutions.name}</Badge>}
                         </div>
 
-                          <div className="grid grid-cols-3 gap-4 text-sm">
-                            <div>
-                              <p className="text-muted-foreground">Created</p>
-                              <p className="font-medium">{new Date(survey.created_at).toLocaleDateString()}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Deadline</p>
-                              <p className="font-medium">{new Date(survey.deadline).toLocaleDateString()}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Responses</p>
-                              <p className="font-medium">{responses.length} students</p>
-                            </div>
+                        <div className="grid grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <p className="text-muted-foreground">Created</p>
+                            <p className="font-medium">{new Date(survey.created_at).toLocaleDateString()}</p>
                           </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            <Button size="sm" variant="outline" onClick={() => handleViewAnalytics(survey)}>
-                              View Responses
-                            </Button>
-                            {survey.status === 'active' && (
-                              <Button size="sm" variant="outline" onClick={() => handleCloseSurvey(survey.id)}>
-                                Close Survey
-                              </Button>
-                            )}
-                            <Button size="sm" variant="outline" onClick={() => handleDeleteSurvey(survey.id)}>
-                              Delete
-                            </Button>
+                          <div>
+                            <p className="text-muted-foreground">Deadline</p>
+                            <p className="font-medium">{new Date(survey.deadline).toLocaleDateString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Responses</p>
+                            <p className="font-medium">{survey.response_count || 0} students</p>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })
+
+                        <div className="flex flex-wrap gap-2">
+                          <Button size="sm" variant="outline" onClick={() => handleViewAnalytics(survey.id)}>
+                            View Responses
+                          </Button>
+                          {survey.status === 'active' && (
+                            <Button size="sm" variant="outline" onClick={() => handleCloseSurvey(survey.id)}>
+                              Close Survey
+                            </Button>
+                          )}
+                          <Button size="sm" variant="outline" onClick={() => handleDeleteSurvey(survey.id)}>
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
               ) : (
                 <Card>
                   <CardContent className="py-12 text-center">
@@ -369,7 +386,7 @@ export default function SurveyFeedbackManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Institutions</SelectItem>
-                  {institutions.map(inst => (
+                  {institutions.map((inst: any) => (
                     <SelectItem key={inst.id} value={inst.id}>{inst.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -405,11 +422,31 @@ export default function SurveyFeedbackManagement() {
 
             {/* Feedback List */}
             <div className="space-y-4">
-              {filteredFeedback.length > 0 ? (
-                filteredFeedback.map((feedback) => (
+              {feedbackLoading ? (
+                <Card>
+                  <CardContent className="py-12 flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              ) : filteredFeedback.length > 0 ? (
+                filteredFeedback.map((feedback: any) => (
                   <FeedbackManagementCard
                     key={feedback.id}
-                    feedback={feedback}
+                    feedback={{
+                      id: feedback.id,
+                      student_id: feedback.student_id,
+                      student_name: feedback.is_anonymous ? 'Anonymous' : (feedback.profiles?.name || feedback.student_name || 'Unknown'),
+                      institution_id: feedback.institution_id,
+                      institution_name: feedback.institutions?.name || 'Unknown',
+                      category: feedback.category,
+                      subject: feedback.subject,
+                      feedback_text: feedback.feedback_text,
+                      is_anonymous: feedback.is_anonymous,
+                      rating: feedback.rating,
+                      status: feedback.status,
+                      submitted_at: feedback.submitted_at,
+                      admin_response: feedback.admin_response,
+                    }}
                     onUpdate={handleUpdateFeedback}
                   />
                 ))
@@ -429,12 +466,6 @@ export default function SurveyFeedbackManagement() {
           open={createSurveyOpen}
           onOpenChange={setCreateSurveyOpen}
           onSubmit={handleCreateSurvey}
-        />
-
-        <SurveyAnalytics
-          survey={selectedSurvey}
-          open={analyticsOpen}
-          onOpenChange={setAnalyticsOpen}
         />
       </div>
     </Layout>

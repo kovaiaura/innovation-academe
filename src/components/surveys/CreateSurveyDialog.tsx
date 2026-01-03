@@ -13,41 +13,73 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { Plus, Trash2, GripVertical, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Survey, SurveyQuestion } from '@/data/mockSurveyData';
+import { Survey, SurveyQuestion } from '@/services/survey.service';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface CreateSurveyDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (survey: Omit<Survey, 'id'>) => void;
+  onSubmit: (survey: Survey, questions: SurveyQuestion[]) => void;
 }
 
 export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurveyDialogProps) {
   const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+    deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     target_audience: 'all_students' as 'all_students' | 'specific_institution' | 'specific_class',
-    target_ids: [] as string[],
-    target_institution_name: '',
-    questions: [] as SurveyQuestion[]
+    institution_id: '',
+    target_class_ids: [] as string[],
+    questions: [] as Array<{
+      question_text: string;
+      question_type: 'mcq' | 'multiple_select' | 'rating' | 'text' | 'long_text' | 'linear_scale';
+      options: string[];
+      is_required: boolean;
+      scale_min?: number;
+      scale_max?: number;
+    }>
   });
 
   const [currentQuestion, setCurrentQuestion] = useState({
     question_text: '',
-    question_type: 'mcq' as SurveyQuestion['question_type'],
+    question_type: 'mcq' as 'mcq' | 'multiple_select' | 'rating' | 'text' | 'long_text' | 'linear_scale',
     options: [''],
-    required: true
+    is_required: true
   });
 
-  const institutions = [
-    { id: 'inst-msd-001', name: 'Modern School Vasant Vihar' },
-    { id: 'inst-kga-001', name: 'Kikani Global Academy' }
-  ];
+  // Fetch institutions from database
+  const { data: institutions = [] } = useQuery({
+    queryKey: ['institutions'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('institutions')
+        .select('id, name')
+        .order('name');
+      if (error) throw error;
+      return data;
+    },
+  });
 
-  const grades = ['Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
+  // Fetch classes for selected institution
+  const { data: classes = [] } = useQuery({
+    queryKey: ['classes', formData.institution_id],
+    queryFn: async () => {
+      if (!formData.institution_id) return [];
+      const { data, error } = await supabase
+        .from('classes')
+        .select('id, class_name, section')
+        .eq('institution_id', formData.institution_id)
+        .order('class_name');
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!formData.institution_id,
+  });
 
   const handleNext = () => {
     if (step === 1) {
@@ -57,8 +89,12 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
       }
     }
     if (step === 2) {
-      if (formData.target_audience === 'specific_institution' && formData.target_ids.length === 0) {
+      if (formData.target_audience === 'specific_institution' && !formData.institution_id) {
         toast.error('Please select an institution');
+        return;
+      }
+      if (formData.target_audience === 'specific_class' && formData.target_class_ids.length === 0) {
+        toast.error('Please select at least one class');
         return;
       }
     }
@@ -84,21 +120,23 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
       return;
     }
 
-    const newQuestion: SurveyQuestion = {
-      id: `q${formData.questions.length + 1}`,
-      question_text: currentQuestion.question_text,
-      question_type: currentQuestion.question_type,
-      options: (currentQuestion.question_type === 'mcq' || currentQuestion.question_type === 'multiple_select') 
-        ? currentQuestion.options.filter(o => o) : undefined,
-      required: currentQuestion.required
-    };
-
-    setFormData({ ...formData, questions: [...formData.questions, newQuestion] });
+    setFormData({
+      ...formData,
+      questions: [...formData.questions, {
+        question_text: currentQuestion.question_text,
+        question_type: currentQuestion.question_type,
+        options: currentQuestion.options.filter(o => o),
+        is_required: currentQuestion.is_required,
+        scale_min: currentQuestion.question_type === 'linear_scale' ? 1 : undefined,
+        scale_max: currentQuestion.question_type === 'linear_scale' ? 10 : undefined,
+      }]
+    });
+    
     setCurrentQuestion({
       question_text: '',
       question_type: 'mcq',
       options: [''],
-      required: true
+      is_required: true
     });
     toast.success('Question added');
   };
@@ -131,21 +169,30 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
   };
 
   const handleSubmit = () => {
-    const survey: Omit<Survey, 'id'> = {
+    setIsSubmitting(true);
+
+    const survey: Survey = {
       title: formData.title,
       description: formData.description,
-      created_by: 'System Admin',
       created_by_name: 'System Admin',
-      created_at: new Date().toISOString().split('T')[0],
-      deadline: format(formData.deadline, 'yyyy-MM-dd'),
+      deadline: formData.deadline.toISOString(),
       target_audience: formData.target_audience,
-      target_ids: formData.target_ids.length > 0 ? formData.target_ids : undefined,
-      target_institution_name: formData.target_institution_name || undefined,
+      institution_id: formData.target_audience === 'specific_institution' ? formData.institution_id : null,
+      target_class_ids: formData.target_audience === 'specific_class' ? formData.target_class_ids : [],
       status: 'active',
-      questions: formData.questions
     };
 
-    onSubmit(survey);
+    const questions: SurveyQuestion[] = formData.questions.map((q, index) => ({
+      question_text: q.question_text,
+      question_type: q.question_type,
+      options: q.options,
+      is_required: q.is_required,
+      scale_min: q.scale_min,
+      scale_max: q.scale_max,
+      display_order: index,
+    }));
+
+    onSubmit(survey, questions);
     
     // Reset form
     setFormData({
@@ -153,11 +200,12 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
       description: '',
       deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       target_audience: 'all_students',
-      target_ids: [],
-      target_institution_name: '',
+      institution_id: '',
+      target_class_ids: [],
       questions: []
     });
     setStep(1);
+    setIsSubmitting(false);
     onOpenChange(false);
   };
 
@@ -223,45 +271,68 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
                 <Label>Target Audience *</Label>
                 <RadioGroup
                   value={formData.target_audience}
-                  onValueChange={(value: any) => setFormData({ ...formData, target_audience: value })}
+                  onValueChange={(value: any) => setFormData({ ...formData, target_audience: value, institution_id: '', target_class_ids: [] })}
                   className="space-y-3 mt-2"
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="all_students" id="all_students" />
-                    <Label htmlFor="all_students" className="cursor-pointer">All Students (Both Institutions)</Label>
+                    <Label htmlFor="all_students" className="cursor-pointer">All Students (All Institutions)</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="specific_institution" id="specific_institution" />
                     <Label htmlFor="specific_institution" className="cursor-pointer">Specific Institution</Label>
                   </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="specific_class" id="specific_class" />
+                    <Label htmlFor="specific_class" className="cursor-pointer">Specific Classes</Label>
+                  </div>
                 </RadioGroup>
               </div>
 
-              {formData.target_audience === 'specific_institution' && (
+              {(formData.target_audience === 'specific_institution' || formData.target_audience === 'specific_class') && (
                 <div>
                   <Label htmlFor="institution">Select Institution *</Label>
                   <Select
-                    value={formData.target_ids[0] || ''}
-                    onValueChange={(value) => {
-                      const inst = institutions.find(i => i.id === value);
-                      setFormData({
-                        ...formData,
-                        target_ids: [value],
-                        target_institution_name: inst?.name || ''
-                      });
-                    }}
+                    value={formData.institution_id}
+                    onValueChange={(value) => setFormData({ ...formData, institution_id: value, target_class_ids: [] })}
                   >
                     <SelectTrigger id="institution">
                       <SelectValue placeholder="Select institution" />
                     </SelectTrigger>
                     <SelectContent>
-                      {institutions.map((inst) => (
+                      {institutions.map((inst: any) => (
                         <SelectItem key={inst.id} value={inst.id}>
                           {inst.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+              )}
+
+              {formData.target_audience === 'specific_class' && formData.institution_id && (
+                <div>
+                  <Label>Select Classes *</Label>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    {classes.map((cls: any) => (
+                      <div key={cls.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={cls.id}
+                          checked={formData.target_class_ids.includes(cls.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setFormData({ ...formData, target_class_ids: [...formData.target_class_ids, cls.id] });
+                            } else {
+                              setFormData({ ...formData, target_class_ids: formData.target_class_ids.filter(id => id !== cls.id) });
+                            }
+                          }}
+                        />
+                        <Label htmlFor={cls.id} className="cursor-pointer">
+                          {cls.class_name} {cls.section && `- ${cls.section}`}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -273,12 +344,12 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
                 <div className="space-y-3 mb-6">
                   <Label>Added Questions ({formData.questions.length})</Label>
                   {formData.questions.map((q, index) => (
-                    <div key={q.id} className="flex items-start gap-2 p-3 border rounded-md bg-muted/30">
+                    <div key={index} className="flex items-start gap-2 p-3 border rounded-md bg-muted/30">
                       <GripVertical className="h-5 w-5 text-muted-foreground mt-1" />
                       <div className="flex-1">
                         <p className="font-medium">{index + 1}. {q.question_text}</p>
-                    <Badge variant="outline" className="mt-1">{q.question_type}</Badge>
-                    {q.required && <Badge variant="secondary" className="ml-2">Required</Badge>}
+                        <Badge variant="outline" className="mt-1">{q.question_type}</Badge>
+                        {q.is_required && <Badge variant="secondary" className="ml-2">Required</Badge>}
                       </div>
                       <Button
                         variant="ghost"
@@ -358,8 +429,8 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="required"
-                    checked={currentQuestion.required}
-                    onCheckedChange={(checked: boolean) => setCurrentQuestion({ ...currentQuestion, required: checked })}
+                    checked={currentQuestion.is_required}
+                    onCheckedChange={(checked: boolean) => setCurrentQuestion({ ...currentQuestion, is_required: checked })}
                   />
                   <Label htmlFor="required" className="cursor-pointer">Required question</Label>
                 </div>
@@ -391,8 +462,11 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
                   <Label className="text-sm text-muted-foreground">Target Audience</Label>
                   <div className="flex gap-2 mt-1">
                     {formData.target_audience === 'all_students' && <Badge>All Students</Badge>}
-                    {formData.target_audience === 'specific_institution' && formData.target_institution_name && (
-                      <Badge>{formData.target_institution_name}</Badge>
+                    {formData.target_audience === 'specific_institution' && (
+                      <Badge>{institutions.find((i: any) => i.id === formData.institution_id)?.name}</Badge>
+                    )}
+                    {formData.target_audience === 'specific_class' && (
+                      <Badge>{formData.target_class_ids.length} classes selected</Badge>
                     )}
                   </div>
                 </div>
@@ -421,7 +495,8 @@ export function CreateSurveyDialog({ open, onOpenChange, onSubmit }: CreateSurve
               <ChevronRight className="h-4 w-4 ml-2" />
             </Button>
           ) : (
-            <Button onClick={handleSubmit}>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Publish Survey
             </Button>
           )}

@@ -1,32 +1,48 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Survey, SurveyResponse } from "@/data/mockSurveyData";
 import { SurveyQuestion } from "./SurveyQuestion";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Loader2 } from "lucide-react";
+
+interface Question {
+  id: string;
+  question_text: string;
+  question_type: 'mcq' | 'multiple_select' | 'rating' | 'text' | 'long_text' | 'linear_scale';
+  options?: string[];
+  required?: boolean;
+  is_required?: boolean;
+}
+
+interface Survey {
+  id: string;
+  title: string;
+  description?: string;
+  questions: Question[];
+}
 
 interface TakeSurveyDialogProps {
   survey: Survey | null;
   open: boolean;
   onClose: () => void;
-  onSubmit: (response: Omit<SurveyResponse, 'id' | 'submitted_at'>) => void;
+  onSubmit: (answers: Array<{ question_id: string; answer_text?: string; answer_number?: number; answer_options?: string[] }>) => void;
 }
 
 export function TakeSurveyDialog({ survey, open, onClose, onSubmit }: TakeSurveyDialogProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [responses, setResponses] = useState<Record<string, string | string[] | number>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!survey) return null;
+  if (!survey || !survey.questions || survey.questions.length === 0) return null;
 
   const currentQuestion = survey.questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / survey.questions.length) * 100;
   const isLastQuestion = currentQuestionIndex === survey.questions.length - 1;
   const currentAnswer = responses[currentQuestion.id];
-
-  const canProceed = !currentQuestion.required || (
+  const isRequired = currentQuestion.required ?? currentQuestion.is_required ?? false;
+  const canProceed = !isRequired || (
     currentAnswer !== undefined && 
     currentAnswer !== '' && 
     (Array.isArray(currentAnswer) ? currentAnswer.length > 0 : true)
@@ -57,7 +73,8 @@ export function TakeSurveyDialog({ survey, open, onClose, onSubmit }: TakeSurvey
     // Check if all required questions are answered
     const unansweredRequired = survey.questions.filter(q => {
       const answer = responses[q.id];
-      return q.required && (
+      const qRequired = q.required ?? q.is_required ?? false;
+      return qRequired && (
         answer === undefined || 
         answer === '' ||
         (Array.isArray(answer) && answer.length === 0)
@@ -69,19 +86,33 @@ export function TakeSurveyDialog({ survey, open, onClose, onSubmit }: TakeSurvey
       return;
     }
 
-    const surveyResponse: Omit<SurveyResponse, 'id' | 'submitted_at'> = {
-      survey_id: survey.id,
-      student_id: 'student-1', // This would come from auth context
-      responses: Object.entries(responses).map(([question_id, answer]) => ({
-        question_id,
-        answer
-      })),
-      status: 'submitted'
-    };
+    setIsSubmitting(true);
 
-    onSubmit(surveyResponse);
+    // Format answers for submission
+    const formattedAnswers = Object.entries(responses).map(([question_id, answer]) => {
+      const question = survey.questions.find(q => q.id === question_id);
+      
+      if (question?.question_type === 'rating' || question?.question_type === 'linear_scale') {
+        return {
+          question_id,
+          answer_number: typeof answer === 'number' ? answer : parseInt(answer as string),
+        };
+      } else if (question?.question_type === 'mcq' || question?.question_type === 'multiple_select') {
+        return {
+          question_id,
+          answer_options: Array.isArray(answer) ? answer : [answer as string],
+        };
+      } else {
+        return {
+          question_id,
+          answer_text: answer as string,
+        };
+      }
+    });
+
+    onSubmit(formattedAnswers);
     setSubmitted(true);
-    toast.success("Survey submitted successfully!");
+    setIsSubmitting(false);
     
     setTimeout(() => {
       handleClose();
@@ -92,6 +123,7 @@ export function TakeSurveyDialog({ survey, open, onClose, onSubmit }: TakeSurvey
     setCurrentQuestionIndex(0);
     setResponses({});
     setSubmitted(false);
+    setIsSubmitting(false);
     onClose();
   };
 
@@ -131,7 +163,10 @@ export function TakeSurveyDialog({ survey, open, onClose, onSubmit }: TakeSurvey
 
           <div className="py-6">
             <SurveyQuestion
-              question={currentQuestion}
+              question={{
+                ...currentQuestion,
+                required: currentQuestion.required ?? currentQuestion.is_required ?? false
+              }}
               questionNumber={currentQuestionIndex + 1}
               value={currentAnswer}
               onChange={(value) => handleAnswerChange(currentQuestion.id, value)}
@@ -151,9 +186,14 @@ export function TakeSurveyDialog({ survey, open, onClose, onSubmit }: TakeSurvey
 
           <Button
             onClick={handleNext}
-            disabled={!canProceed}
+            disabled={!canProceed || isSubmitting}
           >
-            {isLastQuestion ? (
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Submitting...
+              </>
+            ) : isLastQuestion ? (
               <>
                 <Check className="h-4 w-4 mr-2" />
                 Submit
