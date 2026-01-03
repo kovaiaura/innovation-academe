@@ -8,8 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { Plus, Trash2, Printer, Star } from 'lucide-react';
-import { HRRating, HRRatingProject, addHRRating, updateHRRating, calculateCumulativeStars } from '@/data/mockPerformanceData';
-import { loadOfficers } from '@/data/mockOfficerData';
+import { HRRating, HRRatingProject, useCreateHRRating, useUpdateHRRating, useCumulativeStars } from '@/hooks/useHRRatings';
+import { useOfficers } from '@/hooks/useOfficers';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -24,9 +24,20 @@ const PERIODS = ['Q1', 'Q2', 'Q3', 'Q4'] as const;
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
 
+interface FormProject {
+  id: string;
+  project_title: string;
+  competition_level: string;
+  result: string;
+  stars_earned: number;
+  verified_by_hr: boolean;
+}
+
 export function HRRatingForm({ open, onOpenChange, rating, onSuccess }: Props) {
   const { user } = useAuth();
-  const officers = loadOfficers();
+  const { data: officers = [] } = useOfficers();
+  const createMutation = useCreateHRRating();
+  const updateMutation = useUpdateHRRating();
   
   const [formData, setFormData] = useState({
     trainer_id: '',
@@ -34,8 +45,13 @@ export function HRRatingForm({ open, onOpenChange, rating, onSuccess }: Props) {
     employee_id: '',
     period: 'Q1' as typeof PERIODS[number],
     year: CURRENT_YEAR,
-    project_ratings: [] as HRRatingProject[]
+    project_ratings: [] as FormProject[]
   });
+
+  const { data: existingCumulativeStars = 0 } = useCumulativeStars(
+    formData.trainer_id || null,
+    formData.year || null
+  );
 
   useEffect(() => {
     if (rating) {
@@ -45,7 +61,14 @@ export function HRRatingForm({ open, onOpenChange, rating, onSuccess }: Props) {
         employee_id: rating.employee_id,
         period: rating.period,
         year: rating.year,
-        project_ratings: rating.project_ratings
+        project_ratings: (rating.project_ratings || []).map(p => ({
+          id: p.id,
+          project_title: p.project_title,
+          competition_level: p.competition_level || '',
+          result: p.result || '',
+          stars_earned: p.stars_earned,
+          verified_by_hr: p.verified_by_hr
+        }))
       });
     } else {
       setFormData({
@@ -65,8 +88,8 @@ export function HRRatingForm({ open, onOpenChange, rating, onSuccess }: Props) {
       setFormData(prev => ({
         ...prev,
         trainer_id: officer.id,
-        trainer_name: officer.name,
-        employee_id: officer.employee_id || `EMP-${officer.id}`
+        trainer_name: officer.full_name,
+        employee_id: officer.employee_id || `EMP-${officer.id.slice(0, 8)}`
       }));
     }
   };
@@ -75,7 +98,7 @@ export function HRRatingForm({ open, onOpenChange, rating, onSuccess }: Props) {
     setFormData(prev => ({
       ...prev,
       project_ratings: [...prev.project_ratings, {
-        id: `pr-${Date.now()}`,
+        id: `temp-${Date.now()}`,
         project_title: '',
         competition_level: '',
         result: '',
@@ -85,7 +108,7 @@ export function HRRatingForm({ open, onOpenChange, rating, onSuccess }: Props) {
     }));
   };
 
-  const updateProject = (index: number, field: keyof HRRatingProject, value: string | number | boolean) => {
+  const updateProject = (index: number, field: keyof FormProject, value: string | number | boolean) => {
     setFormData(prev => ({
       ...prev,
       project_ratings: prev.project_ratings.map((p, i) => 
@@ -102,33 +125,54 @@ export function HRRatingForm({ open, onOpenChange, rating, onSuccess }: Props) {
   };
 
   const totalStarsQuarter = formData.project_ratings.reduce((sum, p) => sum + p.stars_earned, 0);
+  
+  // Calculate cumulative: existing stars + new quarter stars (minus existing rating's stars if editing)
   const cumulativeStarsYear = rating 
-    ? calculateCumulativeStars(formData.trainer_id, formData.year) - (rating.total_stars_quarter || 0) + totalStarsQuarter
-    : calculateCumulativeStars(formData.trainer_id, formData.year) + totalStarsQuarter;
+    ? existingCumulativeStars - (rating.total_stars_quarter || 0) + totalStarsQuarter
+    : existingCumulativeStars + totalStarsQuarter;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.trainer_id) {
       toast({ title: 'Please select a trainer', variant: 'destructive' });
       return;
     }
 
+    const projectData = formData.project_ratings.map(p => ({
+      project_title: p.project_title,
+      competition_level: p.competition_level || null,
+      result: p.result || null,
+      stars_earned: p.stars_earned,
+      verified_by_hr: p.verified_by_hr,
+      verified_date: p.verified_by_hr ? new Date().toISOString() : null,
+      verified_by: p.verified_by_hr ? user?.id || null : null
+    }));
+
     const data = {
-      ...formData,
+      trainer_id: formData.trainer_id,
+      trainer_name: formData.trainer_name,
+      employee_id: formData.employee_id,
+      period: formData.period,
+      year: formData.year,
       total_stars_quarter: totalStarsQuarter,
       cumulative_stars_year: cumulativeStarsYear,
-      created_by: user?.id || 'hr-admin'
+      created_by: user?.id || null,
+      project_ratings: projectData
     };
 
-    if (rating) {
-      updateHRRating(rating.id, data);
-      toast({ title: 'HR Rating updated successfully' });
-    } else {
-      addHRRating(data);
-      toast({ title: 'HR Rating created successfully' });
-    }
+    try {
+      if (rating) {
+        await updateMutation.mutateAsync({ id: rating.id, data });
+        toast({ title: 'HR Rating updated successfully' });
+      } else {
+        await createMutation.mutateAsync(data);
+        toast({ title: 'HR Rating created successfully' });
+      }
 
-    onSuccess();
-    onOpenChange(false);
+      onSuccess();
+      onOpenChange(false);
+    } catch (error) {
+      toast({ title: 'Failed to save HR Rating', variant: 'destructive' });
+    }
   };
 
   const handlePrint = () => {
@@ -161,7 +205,7 @@ export function HRRatingForm({ open, onOpenChange, rating, onSuccess }: Props) {
                   <SelectContent>
                     {officers.map(officer => (
                       <SelectItem key={officer.id} value={officer.id}>
-                        {officer.name}
+                        {officer.full_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -283,7 +327,10 @@ export function HRRatingForm({ open, onOpenChange, rating, onSuccess }: Props) {
 
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSubmit}>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={createMutation.isPending || updateMutation.isPending}
+          >
             {rating ? 'Update' : 'Create'} Rating
           </Button>
         </div>

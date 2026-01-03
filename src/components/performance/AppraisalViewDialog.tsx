@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Printer, Star } from 'lucide-react';
-import { PerformanceAppraisal } from '@/data/mockPerformanceData';
+import { PerformanceAppraisal } from '@/hooks/usePerformanceAppraisals';
 import { format } from 'date-fns';
 
 interface Props {
@@ -97,7 +97,7 @@ export function AppraisalViewDialog({ open, onOpenChange, appraisal }: Props) {
                 <CardTitle className="text-base">3. Summary of Projects Mentored</CardTitle>
               </CardHeader>
               <CardContent>
-                {appraisal.projects_summary.length > 0 ? (
+                {appraisal.projects_summary && appraisal.projects_summary.length > 0 ? (
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
