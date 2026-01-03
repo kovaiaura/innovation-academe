@@ -23,7 +23,6 @@ import { AddTaskDialog } from "@/components/crm/AddTaskDialog";
 import { EditTaskDialog } from "@/components/crm/EditTaskDialog";
 import { TimelineFilterDialog } from "@/components/crm/TimelineFilterDialog";
 import { 
-  mockContracts, 
   mockBillingRecords, 
   mockCRMTasks,
   type ContractDetail,
@@ -32,6 +31,7 @@ import {
 } from "@/data/mockCRMData";
 import { CommunicationLog } from "@/types/communicationLog";
 import { useRealtimeCommunicationLogs } from "@/hooks/useRealtimeCommunicationLogs";
+import { useContracts, useCreateContract, useUpdateContract, useRenewContract } from "@/hooks/useContracts";
 import { 
   createCommunicationLog, 
   updateCommunicationLog, 
@@ -76,8 +76,13 @@ export default function CRM() {
   const [selectedInvoice, setSelectedInvoice] = useState<BillingRecord | null>(null);
   const [selectedTask, setSelectedTask] = useState<CRMTask | null>(null);
   
+  // Contracts from database
+  const { data: contracts = [], isLoading: contractsLoading } = useContracts();
+  const createContractMutation = useCreateContract();
+  const updateContractMutation = useUpdateContract();
+  const renewContractMutation = useRenewContract();
+  
   // Data states for other tabs (still using mock data)
-  const [contracts, setContracts] = useState(mockContracts);
   const [billingRecords, setBillingRecords] = useState(mockBillingRecords);
   const [tasks, setTasks] = useState(mockCRMTasks);
 
@@ -181,12 +186,24 @@ export default function CRM() {
   };
 
   const handleUpdateContract = (updatedContract: ContractDetail) => {
-    setContracts(prev =>
-      prev.map(c => c.id === updatedContract.id ? updatedContract : c)
-    );
+    updateContractMutation.mutate({
+      id: updatedContract.id,
+      updates: {
+        institution_id: updatedContract.institution_id,
+        institution_name: updatedContract.institution_name,
+        contract_type: updatedContract.contract_type,
+        start_date: updatedContract.start_date,
+        end_date: updatedContract.end_date,
+        renewal_date: updatedContract.renewal_date,
+        contract_value: updatedContract.contract_value,
+        payment_terms: updatedContract.payment_terms,
+        status: updatedContract.status,
+        auto_renew: updatedContract.auto_renew,
+        renewal_status: updatedContract.renewal_status,
+      }
+    });
     setIsEditContractOpen(false);
     setSelectedContract(null);
-    toast.success("Contract updated successfully");
   };
 
   const handleInitiateRenewal = (contract: ContractDetail) => {
@@ -196,13 +213,7 @@ export default function CRM() {
 
   const handleRenewalComplete = () => {
     if (selectedContract) {
-      setContracts(prev =>
-        prev.map(c => 
-          c.id === selectedContract.id 
-            ? { ...c, status: 'under_negotiation' as const }
-            : c
-        )
-      );
+      renewContractMutation.mutate(selectedContract.id);
       setSelectedContract(null);
     }
   };
@@ -253,14 +264,12 @@ export default function CRM() {
     setIsAddContractDialogOpen(true);
   };
 
-  const handleSaveContract = (newContract: Omit<typeof mockContracts[0], 'id'>) => {
-    const contractWithId = {
-      ...newContract,
-      id: `cnt-${Date.now()}`,
-    };
-    setContracts(prev => [contractWithId, ...prev]);
+  const handleSaveContract = (
+    newContract: Omit<ContractDetail, 'id' | 'documents' | 'communication_history'>,
+    files?: File[]
+  ) => {
+    createContractMutation.mutate({ contract: newContract, files });
     setIsAddContractDialogOpen(false);
-    toast.success("Contract created successfully");
   };
 
   // Invoice handlers
@@ -474,17 +483,28 @@ export default function CRM() {
             </Card>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {contracts.map((contract) => (
-              <ContractTracker
-                key={contract.id}
-                contract={contract}
-                onViewDetails={handleViewContract}
-                onEdit={handleEditContract}
-                onRenew={handleInitiateRenewal}
-              />
-            ))}
-          </div>
+          {contractsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : contracts.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No contracts found.</p>
+              <p className="text-sm">Click "Create Contract" to add your first contract.</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {contracts.map((contract) => (
+                <ContractTracker
+                  key={contract.id}
+                  contract={contract}
+                  onViewDetails={handleViewContract}
+                  onEdit={handleEditContract}
+                  onRenew={handleInitiateRenewal}
+                />
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         {/* Billing Tab */}

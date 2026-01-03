@@ -1544,6 +1544,126 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_contract_documents: {
+        Row: {
+          contract_id: string
+          file_name: string
+          file_size: number | null
+          id: string
+          public_url: string
+          storage_path: string
+          uploaded_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          contract_id: string
+          file_name: string
+          file_size?: number | null
+          id?: string
+          public_url: string
+          storage_path: string
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          contract_id?: string
+          file_name?: string
+          file_size?: number | null
+          id?: string
+          public_url?: string
+          storage_path?: string
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_contract_documents_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "crm_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_contract_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_contracts: {
+        Row: {
+          auto_renew: boolean | null
+          contract_type: string
+          contract_value: number
+          created_at: string | null
+          created_by: string | null
+          end_date: string
+          id: string
+          institution_id: string
+          institution_name: string
+          notes: string | null
+          payment_terms: string
+          renewal_date: string
+          renewal_status: string
+          start_date: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          auto_renew?: boolean | null
+          contract_type: string
+          contract_value?: number
+          created_at?: string | null
+          created_by?: string | null
+          end_date: string
+          id?: string
+          institution_id: string
+          institution_name: string
+          notes?: string | null
+          payment_terms?: string
+          renewal_date: string
+          renewal_status?: string
+          start_date: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          auto_renew?: boolean | null
+          contract_type?: string
+          contract_value?: number
+          created_at?: string | null
+          created_by?: string | null
+          end_date?: string
+          id?: string
+          institution_id?: string
+          institution_name?: string
+          notes?: string | null
+          payment_terms?: string
+          renewal_date?: string
+          renewal_status?: string
+          start_date?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_contracts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_contracts_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_work_logs: {
         Row: {
           created_at: string | null

@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { ContractDetail } from "@/data/mockCRMData";
-import { Calendar, DollarSign, FileText, RefreshCw, CheckCircle, Clock, Paperclip } from "lucide-react";
+import { Calendar, DollarSign, FileText, RefreshCw, CheckCircle, Clock, Paperclip, Loader2, Download } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface ViewContractDialogProps {
   open: boolean;
@@ -35,12 +38,56 @@ export function ViewContractDialog({
   onEdit,
   onInitiateRenewal 
 }: ViewContractDialogProps) {
+  const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
+
   if (!contract) return null;
 
   const daysUntilRenewal = differenceInDays(new Date(contract.renewal_date), new Date());
   const contractDuration = differenceInDays(new Date(contract.end_date), new Date(contract.start_date));
   const daysElapsed = differenceInDays(new Date(), new Date(contract.start_date));
   const progressPercentage = Math.min(Math.round((daysElapsed / contractDuration) * 100), 100);
+
+  const handleDownloadDocument = async (doc: { name: string; url: string }) => {
+    try {
+      setDownloadingDoc(doc.name);
+      
+      // Extract the storage path from the URL
+      const urlParts = doc.url.split('/crm-attachments/');
+      const storagePath = urlParts[1];
+      
+      if (!storagePath) {
+        throw new Error('Invalid document URL');
+      }
+
+      // Create signed URL for private bucket access
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+        .from('crm-attachments')
+        .createSignedUrl(storagePath, 60);
+
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        throw signedUrlError || new Error('Failed to generate download URL');
+      }
+
+      // Download the file
+      const response = await fetch(signedUrlData.signedUrl);
+      if (!response.ok) throw new Error('Download failed');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = doc.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast.error('Failed to download document');
+    } finally {
+      setDownloadingDoc(null);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -170,7 +217,19 @@ export function ViewContractDialog({
                           </p>
                         </div>
                       </div>
-                      <Button variant="ghost" size="sm">Download</Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDownloadDocument(doc)}
+                        disabled={downloadingDoc === doc.name}
+                      >
+                        {downloadingDoc === doc.name ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4 mr-2" />
+                        )}
+                        Download
+                      </Button>
                     </div>
                   ))}
                 </div>
