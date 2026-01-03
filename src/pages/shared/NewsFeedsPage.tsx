@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ export default function NewsFeedsPage() {
   const regularPosts = filteredPosts.filter(p => p.priority !== 'high');
 
   return (
+    <Layout>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -118,5 +120,6 @@ export default function NewsFeedsPage() {
         </div>
       )}
     </div>
+    </Layout>
   );
 }
