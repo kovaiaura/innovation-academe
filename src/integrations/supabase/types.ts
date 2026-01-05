@@ -581,6 +581,50 @@ export type Database = {
           },
         ]
       }
+      calendar_day_types: {
+        Row: {
+          calendar_type: string
+          created_at: string | null
+          created_by: string | null
+          date: string
+          day_type: string
+          description: string | null
+          id: string
+          institution_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          calendar_type: string
+          created_at?: string | null
+          created_by?: string | null
+          date: string
+          day_type: string
+          description?: string | null
+          id?: string
+          institution_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          calendar_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          date?: string
+          day_type?: string
+          description?: string | null
+          id?: string
+          institution_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_day_types_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_interviews: {
         Row: {
           application_id: string | null

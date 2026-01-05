@@ -79,6 +79,8 @@ export default function CompanyHolidays() {
           title="Company Holiday Calendar"
           isMutating={createMutation.isPending || updateMutation.isPending || deleteMutation.isPending}
           onYearChange={setSelectedYear}
+          calendarType="company"
+          enableDayTypeMarking={true}
         />
       </div>
     </Layout>

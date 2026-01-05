@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-
+import { calendarDayTypeService, CalendarDayType as DayType } from './calendarDayType.service';
 // Constants
 export const STANDARD_DAYS_PER_MONTH = 30;
 
@@ -123,21 +123,46 @@ export const calculateLOPDeduction = (monthlySalary: number, lopDays: number): n
   return perDaySalary * lopDays;
 };
 
-// Helper: Get working days for a month (or from join date)
-export const getWorkingDaysInMonth = (year: number, month: number, fromDate?: Date): string[] => {
+// Helper: Get working days for a month (uses manual calendar day types if available)
+export const getWorkingDaysInMonth = async (
+  year: number, 
+  month: number, 
+  fromDate?: Date,
+  calendarType: 'company' | 'institution' = 'company',
+  institutionId?: string
+): Promise<string[]> => {
   const startDate = new Date(year, month - 1, 1);
   const endDate = new Date(year, month, 0);
   const today = new Date();
   today.setHours(23, 59, 59, 999);
   
+  // Try to get manually marked day types
+  const dayTypesMap = await calendarDayTypeService.getDayTypesForMonth(
+    calendarType,
+    year,
+    month,
+    calendarType === 'institution' ? institutionId : undefined
+  );
+  
   const workingDays: string[] = [];
   
   for (let d = new Date(startDate); d <= endDate && d <= today; d.setDate(d.getDate() + 1)) {
-    const dayOfWeek = d.getDay();
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday or Saturday
-      // If fromDate is provided, only count days from that date
-      if (!fromDate || d >= fromDate) {
-        workingDays.push(formatDateLocal(d));
+    const dateStr = formatDateLocal(d);
+    
+    // If fromDate is provided, only count days from that date
+    if (fromDate && d < fromDate) continue;
+    
+    // Check if manually marked
+    if (dayTypesMap.size > 0) {
+      const dayType = dayTypesMap.get(dateStr);
+      if (dayType === 'working') {
+        workingDays.push(dateStr);
+      }
+    } else {
+      // Fallback to automatic weekend detection if no manual marking
+      const dayOfWeek = d.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday or Saturday
+        workingDays.push(dateStr);
       }
     }
   }
@@ -352,7 +377,8 @@ export const fetchAllEmployees = async (month?: number, year?: number): Promise<
         }
         
         // Calculate working days from join date for tracking not marked days
-        const workingDays = getWorkingDaysInMonth(currentYear, currentMonth, joinDate);
+        // Use institution calendar for officers
+        const workingDays = await getWorkingDaysInMonth(currentYear, currentMonth, joinDate, 'institution', officer.assigned_institutions?.[0]);
         const workingDaysExcludingHolidays = workingDays.filter(d => !holidays.has(d));
         
         // Days Not Marked = Working days - Present days - Leave days
@@ -466,7 +492,8 @@ export const fetchAllEmployees = async (month?: number, year?: number): Promise<
         }
         
         // Calculate working days from join date for tracking not marked days
-        const workingDays = getWorkingDaysInMonth(currentYear, currentMonth, joinDate);
+        // Use company calendar for staff
+        const workingDays = await getWorkingDaysInMonth(currentYear, currentMonth, joinDate, 'company');
         const workingDaysExcludingHolidays = workingDays.filter(d => !holidays.has(d));
         
         // Days Not Marked = Working days - Present days - Leave days
@@ -811,7 +838,7 @@ export const detectUninformedLeave = async (
   try {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
-    const workingDays = getWorkingDaysInMonth(year, month);
+    const workingDays = await getWorkingDaysInMonth(year, month, undefined, userType === 'officer' ? 'institution' : 'company');
     
     // Get days with attendance
     let attendanceDays = new Set<string>();
