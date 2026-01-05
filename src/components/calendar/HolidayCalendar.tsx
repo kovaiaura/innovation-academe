@@ -81,9 +81,21 @@ export function HolidayCalendar({
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isMarkDayDialogOpen, setIsMarkDayDialogOpen] = useState(false);
   const [editingHoliday, setEditingHoliday] = useState<Holiday | null>(null);
   const [dayTypes, setDayTypes] = useState<Map<string, CalendarDayType>>(new Map());
   const [isLoadingDayTypes, setIsLoadingDayTypes] = useState(false);
+  const [markDayForm, setMarkDayForm] = useState<{
+    date: string;
+    dayType: CalendarDayType;
+    holidayName: string;
+    description: string;
+  }>({
+    date: '',
+    dayType: 'working',
+    holidayName: '',
+    description: ''
+  });
   const [formData, setFormData] = useState<CreateHolidayInput>({
     name: '',
     date: '',
@@ -216,10 +228,70 @@ export function HolidayCalendar({
   };
 
   const handleDayClick = (day: Date) => {
+    if (!isSameMonth(day, currentDate)) return;
     setSelectedDate(day);
     const dayHolidays = getHolidaysForDay(day);
-    if (dayHolidays.length === 0) {
+    if (dayHolidays.length === 0 && enableDayTypeMarking) {
+      openMarkDayDialog(day);
+    } else if (dayHolidays.length === 0) {
       openAddDialog(day);
+    }
+  };
+
+  const openMarkDayDialog = (date?: Date) => {
+    const d = date || new Date();
+    const dateStr = format(d, 'yyyy-MM-dd');
+    const currentType = dayTypes.get(dateStr) || 'working';
+    
+    // Check if there's a holiday on this date
+    const dayHolidays = getHolidaysForDay(d);
+    const holidayName = dayHolidays.length > 0 ? dayHolidays[0].name : '';
+    const description = dayHolidays.length > 0 ? (dayHolidays[0].description || '') : '';
+    
+    setMarkDayForm({
+      date: dateStr,
+      dayType: currentType,
+      holidayName,
+      description
+    });
+    setIsMarkDayDialogOpen(true);
+  };
+
+  const handleMarkDaySubmit = async () => {
+    if (!markDayForm.date) return;
+    
+    try {
+      await calendarDayTypeService.setDayType(
+        calendarType,
+        markDayForm.date,
+        markDayForm.dayType,
+        calendarType === 'institution' ? institutionId : undefined,
+        markDayForm.dayType === 'holiday' ? markDayForm.description : undefined
+      );
+      
+      // Update local state
+      const newDayTypes = new Map(dayTypes);
+      newDayTypes.set(markDayForm.date, markDayForm.dayType);
+      setDayTypes(newDayTypes);
+      
+      // If marking as holiday with a name, also add to holidays table
+      if (markDayForm.dayType === 'holiday' && markDayForm.holidayName) {
+        const year = parseInt(markDayForm.date.split('-')[0]);
+        onAddHoliday({
+          name: markDayForm.holidayName,
+          date: markDayForm.date,
+          end_date: '',
+          description: markDayForm.description,
+          holiday_type: calendarType === 'institution' ? 'institution' : 'company',
+          year,
+          is_paid: true
+        });
+      }
+      
+      toast.success(`Day marked as ${DAY_TYPE_LABELS[markDayForm.dayType]}`);
+      setIsMarkDayDialogOpen(false);
+    } catch (error) {
+      toast.error('Failed to mark day');
     }
   };
 
@@ -328,15 +400,23 @@ export function HolidayCalendar({
           </div>
           <div className="flex items-center gap-2">
             {enableDayTypeMarking && (
-              <Button variant="outline" onClick={handleQuickSetup} size="sm">
-                <Wand2 className="h-4 w-4 mr-2" />
-                Quick Setup
+              <>
+                <Button variant="outline" onClick={handleQuickSetup} size="sm">
+                  <Wand2 className="h-4 w-4 mr-2" />
+                  Quick Setup
+                </Button>
+                <Button onClick={() => openMarkDayDialog()}>
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Mark Day
+                </Button>
+              </>
+            )}
+            {!enableDayTypeMarking && (
+              <Button onClick={() => openAddDialog()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Holiday
               </Button>
             )}
-            <Button onClick={() => openAddDialog()}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Holiday
-            </Button>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -530,7 +610,7 @@ export function HolidayCalendar({
         </Card>
       </div>
 
-      {/* Add/Edit Dialog */}
+      {/* Add/Edit Holiday Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -607,6 +687,83 @@ export function HolidayCalendar({
             <Button variant="outline" onClick={handleCloseDialog}>Cancel</Button>
             <Button onClick={handleSubmit} disabled={isMutating || !formData.name || !formData.date}>
               {editingHoliday ? 'Update' : 'Add'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mark Day Dialog */}
+      <Dialog open={isMarkDayDialogOpen} onOpenChange={setIsMarkDayDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Mark Day Type</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Date</Label>
+              <Input
+                type="date"
+                value={markDayForm.date}
+                onChange={(e) => setMarkDayForm({ ...markDayForm, date: e.target.value })}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Day Type</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {(['working', 'weekend', 'holiday'] as CalendarDayType[]).map(type => {
+                  const colors = DAY_TYPE_COLORS[type];
+                  const isSelected = markDayForm.dayType === type;
+                  const label = type === 'holiday' 
+                    ? (calendarType === 'institution' ? 'Institution Holiday' : 'Company Holiday')
+                    : DAY_TYPE_LABELS[type];
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setMarkDayForm({ ...markDayForm, dayType: type })}
+                      className={cn(
+                        "p-3 rounded-lg border-2 transition-all text-center",
+                        colors.bg,
+                        isSelected ? `${colors.border} ring-2 ring-offset-2` : "border-transparent",
+                        "hover:opacity-80"
+                      )}
+                    >
+                      <div className={cn("text-sm font-medium", colors.text)}>
+                        {label}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {markDayForm.dayType === 'holiday' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Holiday Name (Optional)</Label>
+                  <Input
+                    value={markDayForm.holidayName}
+                    onChange={(e) => setMarkDayForm({ ...markDayForm, holidayName: e.target.value })}
+                    placeholder="e.g., Diwali, Christmas"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Description (Optional)</Label>
+                  <Textarea
+                    value={markDayForm.description}
+                    onChange={(e) => setMarkDayForm({ ...markDayForm, description: e.target.value })}
+                    placeholder="Optional description"
+                    rows={2}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsMarkDayDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleMarkDaySubmit} disabled={!markDayForm.date}>
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
