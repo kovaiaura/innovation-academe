@@ -458,31 +458,34 @@ export function Sidebar() {
               profilePath={getFullPath('/profile', user.role as UserRole)}
               collapsed={collapsed}
             />
-            {!collapsed && ['system_admin', 'officer', 'student', 'management'].some(r => userRoles.includes(r as UserRole)) && (
-              <div className="px-4 pb-2 flex justify-end">
-                <NotificationBell 
-                  userId={user.id} 
-                  userRole={user.role}
-                  notificationsPath={getFullPath('/notifications')}
-                />
-              </div>
-            )}
           </>
         ) : null}
         
-        {/* Logout Button (always visible) */}
+        {/* Logout Button with Notification Bell */}
         <div className="px-4 pb-4">
-          <Button
-            variant="ghost"
-            onClick={handleLogout}
-            className={cn(
-              'w-full justify-start text-white hover:bg-red-600 hover:text-white',
-              collapsed && 'justify-center px-2'
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              onClick={handleLogout}
+              className={cn(
+                'flex-1 justify-start text-white hover:bg-red-600 hover:text-white',
+                collapsed && 'justify-center px-2'
+              )}
+            >
+              <LogOut className="h-5 w-5" />
+              {!collapsed && <span className="ml-3">Logout</span>}
+            </Button>
+            
+            {!collapsed && user && ['system_admin', 'officer', 'student', 'management'].some(
+              r => userRoles.includes(r as UserRole)
+            ) && (
+              <NotificationBell 
+                userId={user.id} 
+                userRole={user.role}
+                notificationsPath={getFullPath('/notifications')}
+              />
             )}
-          >
-            <LogOut className="h-5 w-5" />
-            {!collapsed && <span className="ml-3">Logout</span>}
-          </Button>
+          </div>
         </div>
       </div>
     </div>
