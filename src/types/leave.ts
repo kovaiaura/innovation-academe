@@ -5,6 +5,22 @@ export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export type UserType = 'officer' | 'staff';
 export type HolidayType = 'company' | 'national' | 'optional' | 'institution' | 'academic' | 'exam';
 
+// Calendar Day Types for manual marking
+export type CalendarDayType = 'working' | 'weekend' | 'holiday';
+export type CalendarType = 'company' | 'institution';
+
+export interface CalendarDayTypeEntry {
+  id: string;
+  calendar_type: CalendarType;
+  institution_id?: string | null;
+  date: string;
+  day_type: CalendarDayType;
+  description?: string | null;
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // Company Holiday
 export interface CompanyHoliday {
   id: string;

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, parseISO, isWithinInterval, startOfWeek, endOfWeek } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,9 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ChevronLeft, ChevronRight, Plus, Calendar, Pencil, Trash2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar, Wand2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { CreateHolidayInput, HolidayType, HOLIDAY_TYPE_LABELS } from '@/types/leave';
+import { CreateHolidayInput, HolidayType, HOLIDAY_TYPE_LABELS, CalendarDayType, CalendarType } from '@/types/leave';
+import { calendarDayTypeService } from '@/services/calendarDayType.service';
+import { toast } from 'sonner';
 
 interface Holiday {
   id: string;
@@ -35,6 +37,10 @@ interface Props {
   title?: string;
   isMutating?: boolean;
   onYearChange?: (year: number) => void;
+  // Day type marking props
+  calendarType?: CalendarType;
+  institutionId?: string;
+  enableDayTypeMarking?: boolean;
 }
 
 const HOLIDAY_COLORS: Record<HolidayType, { bg: string; text: string; border: string }> = {
@@ -46,6 +52,18 @@ const HOLIDAY_COLORS: Record<HolidayType, { bg: string; text: string; border: st
   exam: { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-300', border: 'border-l-orange-500' }
 };
 
+const DAY_TYPE_COLORS: Record<CalendarDayType, { bg: string; text: string; border: string }> = {
+  working: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', border: 'border-green-500' },
+  weekend: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300', border: 'border-red-500' },
+  holiday: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-500' }
+};
+
+const DAY_TYPE_LABELS: Record<CalendarDayType, string> = {
+  working: 'Working Day',
+  weekend: 'Weekend',
+  holiday: 'Holiday/Leave'
+};
+
 export function HolidayCalendar({
   holidays,
   isLoading,
@@ -55,12 +73,17 @@ export function HolidayCalendar({
   allowedTypes = ['company', 'national', 'optional'],
   title = 'Holiday Calendar',
   isMutating = false,
-  onYearChange
+  onYearChange,
+  calendarType = 'company',
+  institutionId,
+  enableDayTypeMarking = true
 }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingHoliday, setEditingHoliday] = useState<Holiday | null>(null);
+  const [dayTypes, setDayTypes] = useState<Map<string, CalendarDayType>>(new Map());
+  const [isLoadingDayTypes, setIsLoadingDayTypes] = useState(false);
   const [formData, setFormData] = useState<CreateHolidayInput>({
     name: '',
     date: '',
@@ -70,6 +93,31 @@ export function HolidayCalendar({
     year: new Date().getFullYear(),
     is_paid: true
   });
+
+  // Fetch day types when month or institution changes
+  useEffect(() => {
+    if (!enableDayTypeMarking) return;
+    
+    const fetchDayTypes = async () => {
+      setIsLoadingDayTypes(true);
+      try {
+        const year = currentDate.getFullYear();
+        const types = await calendarDayTypeService.getDayTypesForRange(
+          calendarType,
+          year - 1,
+          year + 2,
+          calendarType === 'institution' ? institutionId : undefined
+        );
+        setDayTypes(types);
+      } catch (error) {
+        console.error('Error fetching day types:', error);
+      } finally {
+        setIsLoadingDayTypes(false);
+      }
+    };
+    
+    fetchDayTypes();
+  }, [currentDate, calendarType, institutionId, enableDayTypeMarking]);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -90,6 +138,11 @@ export function HolidayCalendar({
     });
   };
 
+  const getDayTypeForDate = (day: Date): CalendarDayType | null => {
+    const dateStr = format(day, 'yyyy-MM-dd');
+    return dayTypes.get(dateStr) || null;
+  };
+
   const upcomingHolidays = useMemo(() => {
     const today = new Date();
     return holidays
@@ -101,7 +154,6 @@ export function HolidayCalendar({
   const handlePrevMonth = () => {
     const newDate = subMonths(currentDate, 1);
     setCurrentDate(newDate);
-    // Notify parent if year changed
     if (onYearChange && newDate.getFullYear() !== currentDate.getFullYear()) {
       onYearChange(newDate.getFullYear());
     }
@@ -110,7 +162,6 @@ export function HolidayCalendar({
   const handleNextMonth = () => {
     const newDate = addMonths(currentDate, 1);
     setCurrentDate(newDate);
-    // Notify parent if year changed
     if (onYearChange && newDate.getFullYear() !== currentDate.getFullYear()) {
       onYearChange(newDate.getFullYear());
     }
@@ -124,11 +175,80 @@ export function HolidayCalendar({
     setCurrentDate(today);
   };
 
+  // Toggle day type on right-click or shift+click
+  const handleDayTypeToggle = async (day: Date, e: React.MouseEvent) => {
+    if (!enableDayTypeMarking) return;
+    if (!isSameMonth(day, currentDate)) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const dateStr = format(day, 'yyyy-MM-dd');
+    const currentType = dayTypes.get(dateStr);
+    
+    // Cycle: working -> weekend -> holiday -> working
+    let newType: CalendarDayType;
+    if (!currentType || currentType === 'working') {
+      newType = 'weekend';
+    } else if (currentType === 'weekend') {
+      newType = 'holiday';
+    } else {
+      newType = 'working';
+    }
+    
+    try {
+      await calendarDayTypeService.setDayType(
+        calendarType,
+        dateStr,
+        newType,
+        calendarType === 'institution' ? institutionId : undefined
+      );
+      
+      // Update local state
+      const newDayTypes = new Map(dayTypes);
+      newDayTypes.set(dateStr, newType);
+      setDayTypes(newDayTypes);
+      
+      toast.success(`Marked as ${DAY_TYPE_LABELS[newType]}`);
+    } catch (error) {
+      toast.error('Failed to update day type');
+    }
+  };
+
   const handleDayClick = (day: Date) => {
     setSelectedDate(day);
     const dayHolidays = getHolidaysForDay(day);
     if (dayHolidays.length === 0) {
       openAddDialog(day);
+    }
+  };
+
+  const handleQuickSetup = async () => {
+    if (!enableDayTypeMarking) return;
+    
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth() + 1;
+    
+    try {
+      await calendarDayTypeService.quickSetupMonth(
+        calendarType,
+        year,
+        month,
+        calendarType === 'institution' ? institutionId : undefined
+      );
+      
+      // Refresh day types
+      const types = await calendarDayTypeService.getDayTypesForRange(
+        calendarType,
+        year - 1,
+        year + 2,
+        calendarType === 'institution' ? institutionId : undefined
+      );
+      setDayTypes(types);
+      
+      toast.success('Quick setup complete! Saturdays and Sundays marked as weekends.');
+    } catch (error) {
+      toast.error('Failed to set up calendar');
     }
   };
 
@@ -206,13 +326,21 @@ export function HolidayCalendar({
               Today
             </Button>
           </div>
-          <Button onClick={() => openAddDialog()}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Holiday
-          </Button>
+          <div className="flex items-center gap-2">
+            {enableDayTypeMarking && (
+              <Button variant="outline" onClick={handleQuickSetup} size="sm">
+                <Wand2 className="h-4 w-4 mr-2" />
+                Quick Setup
+              </Button>
+            )}
+            <Button onClick={() => openAddDialog()}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Holiday
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
-          {isLoading ? (
+          {isLoading || isLoadingDayTypes ? (
             <div className="flex items-center justify-center h-96 text-muted-foreground">
               Loading calendar...
             </div>
@@ -235,23 +363,51 @@ export function HolidayCalendar({
                     const isCurrentMonth = isSameMonth(day, currentDate);
                     const isToday = isSameDay(day, new Date());
                     const isSelected = selectedDate && isSameDay(day, selectedDate);
+                    const dayType = getDayTypeForDate(day);
+                    
+                    // Get background color based on day type
+                    let dayTypeBg = '';
+                    let dayTypeBorder = '';
+                    if (enableDayTypeMarking && isCurrentMonth && dayType) {
+                      const colors = DAY_TYPE_COLORS[dayType];
+                      dayTypeBg = colors.bg;
+                      dayTypeBorder = `border-l-4 ${colors.border}`;
+                    }
 
                     return (
                       <div
                         key={dayIndex}
                         onClick={() => handleDayClick(day)}
+                        onContextMenu={(e) => handleDayTypeToggle(day, e)}
                         className={cn(
-                          "min-h-[100px] p-1 border-r last:border-r-0 cursor-pointer transition-colors hover:bg-muted/50",
+                          "min-h-[100px] p-1 border-r last:border-r-0 cursor-pointer transition-colors",
                           !isCurrentMonth && "bg-muted/20 text-muted-foreground",
-                          isSelected && "bg-primary/10",
-                          dayHolidays.length > 0 && isCurrentMonth && "bg-accent/30"
+                          isSelected && "ring-2 ring-primary ring-inset",
+                          dayHolidays.length > 0 && isCurrentMonth && !dayType && "bg-accent/30",
+                          dayTypeBg,
+                          dayTypeBorder,
+                          "hover:opacity-80"
                         )}
+                        title={enableDayTypeMarking ? "Right-click to toggle day type" : undefined}
                       >
-                        <div className={cn(
-                          "flex items-center justify-center w-7 h-7 rounded-full text-sm mb-1",
-                          isToday && "bg-primary text-primary-foreground font-bold"
-                        )}>
-                          {format(day, 'd')}
+                        <div className="flex items-center justify-between mb-1">
+                          <div className={cn(
+                            "flex items-center justify-center w-7 h-7 rounded-full text-sm",
+                            isToday && "bg-primary text-primary-foreground font-bold"
+                          )}>
+                            {format(day, 'd')}
+                          </div>
+                          {enableDayTypeMarking && isCurrentMonth && dayType && (
+                            <Badge 
+                              variant="outline" 
+                              className={cn(
+                                "text-[10px] px-1 py-0 h-4",
+                                DAY_TYPE_COLORS[dayType].text
+                              )}
+                            >
+                              {dayType === 'working' ? 'W' : dayType === 'weekend' ? 'WE' : 'H'}
+                            </Badge>
+                          )}
                         </div>
                         <div className="space-y-1">
                           {dayHolidays.slice(0, 2).map(holiday => {
@@ -293,7 +449,27 @@ export function HolidayCalendar({
 
       {/* Sidebar */}
       <div className="space-y-4">
-        {/* Legend */}
+        {/* Day Type Legend */}
+        {enableDayTypeMarking && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Day Types (Right-click to toggle)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {(['working', 'weekend', 'holiday'] as CalendarDayType[]).map(type => {
+                const colors = DAY_TYPE_COLORS[type];
+                return (
+                  <div key={type} className="flex items-center gap-2">
+                    <div className={cn("w-4 h-4 rounded border-l-4", colors.bg, colors.border)} />
+                    <span className="text-sm">{DAY_TYPE_LABELS[type]}</span>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Holiday Types Legend */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Holiday Types</CardTitle>
@@ -320,7 +496,7 @@ export function HolidayCalendar({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[300px]">
+            <ScrollArea className="h-[200px]">
               {upcomingHolidays.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No upcoming holidays</p>
               ) : (

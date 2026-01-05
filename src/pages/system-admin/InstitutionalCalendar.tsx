@@ -130,6 +130,8 @@ export default function InstitutionalCalendar() {
               allowedTypes={['company', 'national', 'optional']}
               title="Company Holiday Calendar"
               isMutating={createCompanyMutation.isPending || updateCompanyMutation.isPending || deleteCompanyMutation.isPending}
+              calendarType="company"
+              enableDayTypeMarking={true}
             />
           </TabsContent>
 
@@ -180,6 +182,9 @@ export default function InstitutionalCalendar() {
                 allowedTypes={['institution', 'academic', 'exam']}
                 title={`${selectedInstitution?.name || 'Institution'} Holidays`}
                 isMutating={createInstitutionMutation.isPending || updateInstitutionMutation.isPending || deleteInstitutionMutation.isPending}
+                calendarType="institution"
+                institutionId={selectedInstitutionId}
+                enableDayTypeMarking={true}
               />
             )}
           </TabsContent>
