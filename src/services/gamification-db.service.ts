@@ -338,15 +338,18 @@ export const gamificationDbService = {
           last_activity_date: today
         });
       
-      // Award XP for first streak day (no activityId for daily_streak - handled by date check)
+      // Award XP for first streak day - check if already awarded today
       if (institutionId) {
-        await this.awardXP({
-          studentId,
-          institutionId,
-          activityType: 'daily_streak',
-          points: 2,
-          description: 'Daily streak bonus (Day 1)'
-        });
+        const alreadyAwarded = await this.hasStreakXPToday(studentId, today);
+        if (!alreadyAwarded) {
+          await this.awardXP({
+            studentId,
+            institutionId,
+            activityType: 'daily_streak',
+            points: 2,
+            description: 'Daily streak bonus (Day 1)'
+          });
+        }
       }
       return;
     }
@@ -374,16 +377,33 @@ export const gamificationDbService = {
       })
       .eq('student_id', studentId);
     
-    // Award XP for streak (no activityId for daily_streak - duplicate prevention via date check above)
+    // Award XP for streak - check if already awarded today to prevent duplicates
     if (institutionId) {
-      await this.awardXP({
-        studentId,
-        institutionId,
-        activityType: 'daily_streak',
-        points: 2,
-        description: `Daily streak bonus (Day ${newStreak})`
-      });
+      const alreadyAwarded = await this.hasStreakXPToday(studentId, today);
+      if (!alreadyAwarded) {
+        await this.awardXP({
+          studentId,
+          institutionId,
+          activityType: 'daily_streak',
+          points: 2,
+          description: `Daily streak bonus (Day ${newStreak})`
+        });
+      }
     }
+  },
+
+  // Helper to check if streak XP was already awarded today
+  async hasStreakXPToday(studentId: string, today: string): Promise<boolean> {
+    const { data } = await supabase
+      .from('student_xp_transactions')
+      .select('id')
+      .eq('student_id', studentId)
+      .eq('activity_type', 'daily_streak')
+      .gte('earned_at', `${today}T00:00:00`)
+      .lt('earned_at', `${today}T23:59:59.999`)
+      .limit(1);
+    
+    return (data && data.length > 0);
   },
 
   // ============ ACTIVITY LOGS ============

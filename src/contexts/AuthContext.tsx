@@ -3,6 +3,7 @@ import { User, UserRole } from '@/types';
 import { SystemAdminFeature, ALL_SYSTEM_ADMIN_FEATURES } from '@/types/permissions';
 import { supabase } from '@/integrations/supabase/client';
 import { logLogin, logLogout } from '@/services/systemLog.service';
+import { gamificationDbService } from '@/services/gamification-db.service';
 
 interface AuthContextType {
   user: User | null;
@@ -171,6 +172,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setTimeout(() => {
           logLogin(userId, userData.name, userData.email, userData.role);
         }, 100);
+        
+        // Update streak on login for students (deferred to avoid blocking)
+        if (userData.role === 'student' && institutionId) {
+          setTimeout(() => {
+            gamificationDbService.updateStreak(userId, institutionId);
+          }, 200);
+        }
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
