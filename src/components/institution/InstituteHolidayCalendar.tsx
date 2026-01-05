@@ -63,6 +63,9 @@ export function InstituteHolidayCalendar({ institutionId, institutionName }: Pro
       allowedTypes={['institution', 'academic', 'exam']}
       title={institutionName ? `${institutionName} Holidays` : 'Institution Holidays'}
       isMutating={createMutation.isPending || updateMutation.isPending || deleteMutation.isPending}
+      calendarType="institution"
+      institutionId={institutionId}
+      enableDayTypeMarking={true}
     />
   );
 }
