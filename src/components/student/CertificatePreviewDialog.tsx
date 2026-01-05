@@ -5,6 +5,7 @@ import { StudentCertificate } from '@/types/gamification';
 import { gamificationDbService } from '@/services/gamification-db.service';
 import { Download, Share2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface CertificatePreviewDialogProps {
   open: boolean;
@@ -20,38 +21,61 @@ export function CertificatePreviewDialog({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [loading, setLoading] = useState(true);
   const [template, setTemplate] = useState<any>(null);
+  const [templateLoaded, setTemplateLoaded] = useState(false);
 
+  // Reset state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setLoading(true);
+      setTemplate(null);
+      setTemplateLoaded(false);
+    }
+  }, [open]);
+
+  // Load template when dialog opens
   useEffect(() => {
     if (open && certificate) {
-      loadTemplateAndDraw();
+      loadTemplate();
     }
   }, [open, certificate]);
 
-  const loadTemplateAndDraw = async () => {
-    setLoading(true);
-    try {
-      // Fetch templates from database
-      const templates = await gamificationDbService.getCertificateTemplates();
-      const foundTemplate = templates.find(t => t.id === certificate.template_id) || templates[0];
-      
-      if (foundTemplate) {
-        setTemplate(foundTemplate);
-        await drawCertificate(foundTemplate);
+  // Draw on canvas AFTER template is loaded and canvas is in DOM
+  useEffect(() => {
+    if (!templateLoaded || !canvasRef.current) return;
+
+    const draw = async () => {
+      if (template) {
+        await drawCertificate(template);
       } else {
-        // Draw a default certificate if no template found
         drawDefaultCertificate();
       }
+      setLoading(false);
+    };
+
+    draw();
+  }, [templateLoaded, template]);
+
+  const loadTemplate = async () => {
+    setLoading(true);
+    setTemplateLoaded(false);
+    try {
+      const templates = await gamificationDbService.getCertificateTemplates();
+      const foundTemplate = templates.find(t => t.id === certificate.template_id) || templates[0];
+      setTemplate(foundTemplate || null);
     } catch (error) {
       console.error('Error loading template:', error);
-      drawDefaultCertificate();
+      setTemplate(null);
     } finally {
-      setLoading(false);
+      setTemplateLoaded(true);
     }
   };
 
   const drawDefaultCertificate = () => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      console.error('Canvas not available for default certificate');
+      return;
+    }
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -121,23 +145,34 @@ export function CertificatePreviewDialog({
   const drawCertificate = (tmpl: any): Promise<void> => {
     return new Promise((resolve) => {
       const canvas = canvasRef.current;
-      if (!canvas) { resolve(); return; }
+      if (!canvas) {
+        console.error('Canvas not available for template certificate');
+        resolve();
+        return;
+      }
 
       const ctx = canvas.getContext('2d');
-      if (!ctx) { resolve(); return; }
+      if (!ctx) {
+        resolve();
+        return;
+      }
 
       canvas.width = tmpl.default_width || 1200;
       canvas.height = tmpl.default_height || 900;
 
       if (tmpl.template_image_url) {
         const img = new Image();
-        img.crossOrigin = 'anonymous';
+        // Only set crossOrigin for external URLs, not for data URLs (Base64)
+        if (!tmpl.template_image_url.startsWith('data:')) {
+          img.crossOrigin = 'anonymous';
+        }
         img.onload = () => {
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           drawTextOnCertificate(ctx, tmpl);
           resolve();
         };
-        img.onerror = () => {
+        img.onerror = (e) => {
+          console.error('Failed to load template image:', e);
           drawDefaultCertificate();
           resolve();
         };
@@ -229,13 +264,17 @@ export function CertificatePreviewDialog({
           <DialogTitle>Certificate Preview</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          {loading ? (
-            <div className="flex items-center justify-center h-[450px] bg-muted rounded">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <canvas ref={canvasRef} className="w-full border rounded" />
-          )}
+          <div className="relative min-h-[450px]">
+            {loading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-muted rounded z-10">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            )}
+            <canvas 
+              ref={canvasRef} 
+              className={cn("w-full border rounded", loading && "invisible")} 
+            />
+          </div>
           
           <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
             <div className="space-y-1">
