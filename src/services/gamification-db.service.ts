@@ -243,6 +243,9 @@ export const gamificationDbService = {
           case 'assessments':
             shouldAward = (activityCounts['assessment_completion'] || 0) >= threshold;
             break;
+          case 'assignments':
+            shouldAward = (activityCounts['assignment_submission'] || 0) >= threshold;
+            break;
           case 'streak':
             shouldAward = (streak?.current_streak || 0) >= threshold;
             break;
@@ -255,7 +258,8 @@ export const gamificationDbService = {
           case 'custom':
             // Handle specific badge types
             if (criteria.description?.includes('100%')) {
-              shouldAward = (activityCounts['assessment_perfect_score'] || 0) >= threshold;
+              shouldAward = (activityCounts['assessment_perfect_score'] || 0) >= threshold ||
+                           (activityCounts['assignment_perfect_score'] || 0) >= threshold;
             } else if (criteria.description?.includes('award')) {
               shouldAward = (activityCounts['project_award'] || 0) >= threshold;
             }

@@ -15,6 +15,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { assignmentService, AssignmentWithClasses, AssignmentSubmission } from '@/services/assignment.service';
 import { supabase } from '@/integrations/supabase/client';
+import { gamificationDbService } from '@/services/gamification-db.service';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Loader2, FileText, ExternalLink, User, CheckCircle, Clock, Award } from 'lucide-react';
@@ -103,6 +104,20 @@ export function AssignmentSubmissionsDialog({
     setSavingGrade(true);
     try {
       await assignmentService.gradeSubmission(gradingSubmission, gradeData.marks, gradeData.feedback);
+      
+      // Trigger badge check for the student after grading
+      const submission = submissions.find(s => s.id === gradingSubmission);
+      if (submission) {
+        try {
+          await gamificationDbService.checkAndAwardBadges(
+            submission.student_id, 
+            submission.institution_id
+          );
+        } catch (badgeError) {
+          console.error('Error checking badges:', badgeError);
+        }
+      }
+      
       toast.success('Grade saved successfully! XP awarded to student.');
       setGradingSubmission(null);
       loadSubmissions();
