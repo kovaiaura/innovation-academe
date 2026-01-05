@@ -24,7 +24,12 @@ export const XPRuleEditor = ({ rules, onUpdate }: XPRuleEditorProps) => {
     level_completion: 'Level Completion (Certificate)',
     project_membership: 'Project Team Membership',
     project_award: 'Project Award/Achievement',
-    session_attendance: 'Session Attendance'
+    project_completion: 'Project Completion',
+    session_attendance: 'Session Attendance',
+    daily_streak: 'Daily Login Streak',
+    assignment_submission: 'Assignment Submission',
+    assignment_pass: 'Assignment Pass (50%+)',
+    assignment_perfect_score: 'Scoring 100% in Assignment'
   };
 
   const handleEdit = (rule: XPRule) => {
