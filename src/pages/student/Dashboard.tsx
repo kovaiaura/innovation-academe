@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Link, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { gamificationDbService } from '@/services/gamification-db.service';
+import { useStudentStreak } from '@/hooks/useStudentStreak';
 import { format } from 'date-fns';
 
 interface StudentGamification {
@@ -77,6 +78,9 @@ export default function StudentDashboard() {
   const [completedProjects, setCompletedProjects] = useState(0);
   const [recentAssessments, setRecentAssessments] = useState<RecentAssessment[]>([]);
   const [recentAssignments, setRecentAssignments] = useState<RecentAssignment[]>([]);
+  
+  // Use realtime streak hook
+  const { streak: realtimeStreak } = useStudentStreak(user?.id, user?.institution_id);
 
   const gamificationPath = tenantId ? `/tenant/${tenantId}/student/gamification` : '/student/gamification';
 
@@ -211,7 +215,7 @@ export default function StudentDashboard() {
       setGamification({
         total_points: totalXP,
         current_rank: myRank,
-        streak_days: streak?.current_streak || 0,
+        streak_days: realtimeStreak?.current_streak || streak?.current_streak || 0,
         badges_earned: studentBadges.map(b => ({
           id: b.badge?.id || '',
           name: b.badge?.name || '',
@@ -477,7 +481,7 @@ export default function StudentDashboard() {
               <Flame className="h-4 w-4 text-orange-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{gamification?.streak_days || 0} days</div>
+              <div className="text-2xl font-bold">{realtimeStreak?.current_streak || gamification?.streak_days || 0} days</div>
               <p className="text-xs text-muted-foreground">Keep it going!</p>
             </CardContent>
           </Card>

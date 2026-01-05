@@ -8,6 +8,7 @@ import { Trophy, Award, TrendingUp, Flame, Medal, Lock, Loader2 } from 'lucide-r
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { gamificationDbService } from '@/services/gamification-db.service';
+import { useStudentStreak } from '@/hooks/useStudentStreak';
 
 interface GamificationData {
   total_points: number;
@@ -52,6 +53,9 @@ export default function Gamification() {
   const [data, setData] = useState<GamificationData | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardScope, setLeaderboardScope] = useState<'class' | 'institution'>('class');
+  
+  // Use realtime streak hook
+  const { streak: realtimeStreak } = useStudentStreak(user?.id, user?.institution_id);
 
   useEffect(() => {
     if (user?.id) {
@@ -251,7 +255,7 @@ export default function Gamification() {
               <Flame className="h-4 w-4 text-orange-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{data?.streak_days || 0} days</div>
+              <div className="text-2xl font-bold">{realtimeStreak?.current_streak || data?.streak_days || 0} days</div>
               <p className="text-xs text-muted-foreground">Keep it going!</p>
             </CardContent>
           </Card>
