@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranding } from '@/contexts/BrandingContext';
 import logoImage from '@/assets/logo.png';
 import { 
   Home, Users, User, Settings, LogOut, ChevronLeft, ChevronDown,
@@ -179,6 +180,7 @@ const menuItems: MenuItem[] = [
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const { user, logout } = useAuth();
+  const { branding } = useBranding();
   const location = useLocation();
   const [officerProfile, setOfficerProfile] = useState<OfficerDetails | null>(null);
   const [teacherProfile, setTeacherProfile] = useState<SchoolTeacher | null>(null);
@@ -362,19 +364,48 @@ export function Sidebar() {
     >
       {/* Logo Section */}
       <div className="flex h-16 items-center justify-between border-b border-meta-dark-lighter px-4">
-        {!collapsed && (
+        {!collapsed ? (
           <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full overflow-hidden bg-[#2d437f]">
-              <img src={logoImage} alt="CR Logo" className="h-full w-full object-contain p-1" />
+            <div 
+              className="flex h-10 w-10 items-center justify-center rounded-full overflow-hidden"
+              style={{ backgroundColor: branding.sidebar_logo_bg || '#2d437f' }}
+            >
+              <img 
+                src={branding.logo_collapsed_url || logoImage} 
+                alt="Logo" 
+                className="h-full w-full object-contain p-1" 
+              />
             </div>
-            <span className="text-xl font-bold">Meta-INNOVA</span>
+            {branding.logo_expanded_url ? (
+              <img 
+                src={branding.logo_expanded_url} 
+                alt="Site Logo" 
+                className="h-8 max-w-[120px] object-contain" 
+              />
+            ) : (
+              <span className="text-xl font-bold">Meta-INNOVA</span>
+            )}
+          </div>
+        ) : (
+          <div 
+            className="flex h-10 w-10 items-center justify-center rounded-full overflow-hidden mx-auto"
+            style={{ backgroundColor: branding.sidebar_logo_bg || '#2d437f' }}
+          >
+            <img 
+              src={branding.logo_collapsed_url || logoImage} 
+              alt="Logo" 
+              className="h-full w-full object-contain p-1" 
+            />
           </div>
         )}
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setCollapsed(!collapsed)}
-          className="text-white hover:bg-meta-dark-lighter hover:text-meta-accent"
+          className={cn(
+            "text-white hover:bg-meta-dark-lighter hover:text-meta-accent",
+            collapsed && "absolute right-2"
+          )}
         >
           <ChevronLeft className={cn('h-5 w-5 transition-transform', collapsed && 'rotate-180')} />
         </Button>

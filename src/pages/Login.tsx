@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranding } from '@/contexts/BrandingContext';
 import { authService } from '@/services/auth.service';
 import { getMultiRoleDashboardPath } from '@/utils/roleHelpers';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
+  const { branding } = useBranding();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,10 +86,17 @@ export default function Login() {
     >
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full overflow-hidden" style={{ backgroundColor: '#051c2d' }}>
-            <img src={logoImage} alt="CR Logo" className="h-full w-full object-contain p-2" />
+          <div 
+            className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full overflow-hidden" 
+            style={{ backgroundColor: branding.sidebar_logo_bg || '#051c2d' }}
+          >
+            <img 
+              src={branding.logo_collapsed_url || logoImage} 
+              alt="Logo" 
+              className="h-full w-full object-contain p-2" 
+            />
           </div>
-          <CardTitle className="text-2xl font-bold">Meta-INNOVA LMS</CardTitle>
+          <CardTitle className="text-2xl font-bold">{branding.site_title || 'Meta-INNOVA LMS'}</CardTitle>
           <CardDescription>
             Enter your credentials to access your account
           </CardDescription>

@@ -11,7 +11,8 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Settings, Plug, Database, Shield, HardDrive, RefreshCw, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
+import { Settings, Plug, Database, Shield, HardDrive, RefreshCw, CheckCircle2, AlertTriangle, Clock, Paintbrush } from 'lucide-react';
+import { BrandingTab } from '@/components/system-config/BrandingTab';
 import { 
   useStorageStats, 
   useDatabaseStats, 
@@ -85,8 +86,12 @@ export default function SystemConfig() {
           </Button>
         </div>
 
-        <Tabs defaultValue="integrations" className="space-y-6">
-          <TabsList>
+        <Tabs defaultValue="branding" className="space-y-6">
+          <TabsList className="flex-wrap">
+            <TabsTrigger value="branding">
+              <Paintbrush className="mr-2 h-4 w-4" />
+              Branding
+            </TabsTrigger>
             <TabsTrigger value="integrations">
               <Plug className="mr-2 h-4 w-4" />
               Integrations
@@ -108,6 +113,11 @@ export default function SystemConfig() {
               Security
             </TabsTrigger>
           </TabsList>
+
+          {/* Branding Tab */}
+          <TabsContent value="branding">
+            <BrandingTab />
+          </TabsContent>
 
           {/* Integrations Tab */}
           <TabsContent value="integrations" className="space-y-6">
