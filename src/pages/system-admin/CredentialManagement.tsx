@@ -101,7 +101,7 @@ export default function CredentialManagement() {
   // Filter students
   const filteredStudents = students.filter(student =>
     student.student_name.toLowerCase().includes(studentSearch.toLowerCase()) ||
-    student.student_id.toLowerCase().includes(studentSearch.toLowerCase())
+    student.roll_number.toLowerCase().includes(studentSearch.toLowerCase())
   );
 
   // Get unique positions from meta employees
@@ -793,7 +793,7 @@ export default function CredentialManagement() {
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        placeholder="Search by student ID or name..."
+                        placeholder="Search by roll number or name..."
                         value={studentSearch}
                         onChange={(e) => setStudentSearch(e.target.value)}
                         className="pl-10"
@@ -829,11 +829,10 @@ export default function CredentialManagement() {
                                 onCheckedChange={(checked) => toggleAllStudents(!!checked)}
                               />
                             </TableHead>
-                            <TableHead>Student ID</TableHead>
+                            <TableHead>Roll Number</TableHead>
                             <TableHead>Name</TableHead>
                             <TableHead>Email</TableHead>
                             <TableHead>Class</TableHead>
-                            <TableHead>Section</TableHead>
                             <TableHead>Credential Status</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                           </TableRow>
@@ -841,7 +840,7 @@ export default function CredentialManagement() {
                         <TableBody>
                           {studentsLoading ? (
                             <TableRow>
-                              <TableCell colSpan={8} className="text-center py-8">
+                              <TableCell colSpan={7} className="text-center py-8">
                                 <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                               </TableCell>
                             </TableRow>
@@ -855,11 +854,10 @@ export default function CredentialManagement() {
                                     disabled={!student.user_id || (!student.email && !student.parent_email)}
                                   />
                                 </TableCell>
-                                <TableCell className="font-medium">{student.student_id}</TableCell>
+                                <TableCell className="font-medium">{student.roll_number || '-'}</TableCell>
                                 <TableCell>{student.student_name}</TableCell>
                                 <TableCell>{student.email || student.parent_email || '-'}</TableCell>
                                 <TableCell>{student.class_name || '-'}</TableCell>
-                                <TableCell>{student.section || '-'}</TableCell>
                                 <TableCell>
                                   {getCredentialStatusBadge(student.password_changed, student.must_change_password, !!student.user_id)}
                                 </TableCell>
@@ -892,7 +890,7 @@ export default function CredentialManagement() {
                             ))
                           ) : (
                             <TableRow>
-                              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                                 No students found
                               </TableCell>
                             </TableRow>

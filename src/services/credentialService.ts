@@ -38,12 +38,12 @@ export interface CredentialStudent {
   id: string;
   user_id: string | null;
   student_id: string;
+  roll_number: string;
   student_name: string;
   email: string | null;
   parent_email: string | null;
   class_id: string | null;
   class_name: string | null;
-  section: string | null;
   institution_id: string;
   password_changed: boolean;
   must_change_password: boolean;
@@ -209,14 +209,14 @@ export const credentialService = {
         id,
         user_id,
         student_id,
+        roll_number,
         student_name,
         email,
         parent_email,
         class_id,
         institution_id,
         classes:class_id (
-          class_name,
-          section
+          class_name
         )
       `)
       .eq('institution_id', institutionId)
@@ -256,12 +256,12 @@ export const credentialService = {
         id: student.id,
         user_id: student.user_id,
         student_id: student.student_id || '',
+        roll_number: student.roll_number || '',
         student_name: student.student_name,
         email: student.email,
         parent_email: student.parent_email,
         class_id: student.class_id,
         class_name: classInfo?.class_name || null,
-        section: classInfo?.section || null,
         institution_id: student.institution_id,
         password_changed: student.user_id ? (profileMap.get(student.user_id)?.password_changed || false) : false,
         must_change_password: student.user_id ? (profileMap.get(student.user_id)?.must_change_password || false) : false,
