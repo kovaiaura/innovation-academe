@@ -255,10 +255,10 @@ export function useClasses(institutionId?: string) {
     },
   });
 
-  // Delete class mutation
+  // Delete class mutation - using cascade delete edge function
   const deleteClassMutation = useMutation({
     mutationFn: async ({ id, institution_id }: { id: string; institution_id: string }) => {
-      console.log('[Classes] Deleting class:', id);
+      console.log('[Classes] Deleting class with cascade:', id);
       
       // Verify authentication
       const authCheck = await verifyAuth();
@@ -266,18 +266,29 @@ export function useClasses(institutionId?: string) {
         throw new Error(authCheck.error);
       }
 
-      const { error } = await supabase
-        .from('classes')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('[Classes] Delete error:', error);
-        throw new Error(`Failed to delete class: ${error.message}`);
-      }
+      const { data: { session } } = await supabase.auth.getSession();
       
-      console.log('[Classes] Deleted successfully');
-      return id;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-class-cascade`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ classId: id, institutionId: institution_id }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('[Classes] Delete error:', errorData);
+        throw new Error(errorData.error || 'Failed to delete class');
+      }
+
+      const result = await response.json();
+      console.log('[Classes] Cascade delete completed:', result);
+      return { id, ...result };
     },
     onMutate: async ({ id, institution_id }) => {
       await queryClient.cancelQueries({ queryKey: ['classes', institution_id] });

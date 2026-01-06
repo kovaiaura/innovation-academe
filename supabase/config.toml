@@ -23,3 +23,9 @@ verify_jwt = false
 
 [functions.set-user-password]
 verify_jwt = false
+
+[functions.delete-institution-cascade]
+verify_jwt = false
+
+[functions.delete-class-cascade]
+verify_jwt = false

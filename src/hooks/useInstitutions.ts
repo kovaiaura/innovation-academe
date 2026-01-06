@@ -488,10 +488,10 @@ export function useInstitutions() {
     },
   });
 
-  // Delete institution mutation with improved error handling
+  // Delete institution mutation - using cascade delete edge function
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      console.log('[Institutions] Deleting institution:', id);
+      console.log('[Institutions] Deleting institution with cascade:', id);
       
       // Verify authentication
       const authCheck = await verifyAuthAndRole('super_admin');
@@ -499,18 +499,29 @@ export function useInstitutions() {
         throw new Error(authCheck.error);
       }
 
-      const { error } = await supabase
-        .from('institutions')
-        .delete()
-        .eq('id', id);
-      
-      if (error) {
-        console.error('[Institutions] Delete error:', error);
-        throw new Error(`Delete failed: ${error.message}`);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-institution-cascade`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ institutionId: id }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('[Institutions] Delete error:', errorData);
+        throw new Error(errorData.error || 'Failed to delete institution');
       }
-      
-      console.log('[Institutions] Deleted successfully');
-      return id;
+
+      const result = await response.json();
+      console.log('[Institutions] Cascade delete completed:', result);
+      return { id, ...result };
     },
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ['institutions'] });
@@ -529,8 +540,11 @@ export function useInstitutions() {
       }
       toast.error(err.message || 'Failed to delete institution');
     },
-    onSuccess: () => {
-      toast.success('Institution deleted successfully');
+    onSuccess: (result) => {
+      const message = result.studentsDeleted 
+        ? `Institution deleted with ${result.studentsDeleted} students and ${result.classesDeleted} classes`
+        : 'Institution deleted successfully';
+      toast.success(message);
       queryClient.invalidateQueries({ queryKey: ['institutions'] });
     },
   });
