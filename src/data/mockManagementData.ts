@@ -38,12 +38,12 @@ export const mockCriticalActions: CriticalAction[] = [
   },
   {
     id: '4',
-    type: 'approval',
-    title: 'Leave Approvals',
-    description: 'Faculty and staff leave requests pending review',
-    count: 5,
+    type: 'info',
+    title: 'Officers on Leave',
+    description: 'Staff members currently on approved leave',
+    count: 2,
     urgency: 'low',
-    deadline: 'Review by this week',
+    deadline: 'Returns this week',
     link: '/tenant/springfield/management/teachers',
     icon: ClipboardCheck
   }

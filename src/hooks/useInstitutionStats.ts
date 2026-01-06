@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface OfficerOnLeave {
+  officerName: string;
+  startDate: string;
+  endDate: string;
+  leaveType: string;
+}
+
 export interface InstitutionStats {
   totalStudents: number;
   totalClasses: number;
@@ -8,7 +15,8 @@ export interface InstitutionStats {
   activeProjects: number;
   totalCourses: number;
   totalOfficers: number;
-  pendingLeaves: number;
+  officersOnLeave: number;
+  officersOnLeaveDetails: OfficerOnLeave[];
   pendingPurchases: number;
   totalXP: number;
   totalBadges: number;
@@ -21,7 +29,7 @@ export interface InstitutionStats {
 
 export interface CriticalActionItem {
   id: string;
-  type: 'purchase' | 'approval' | 'deadline' | 'payroll';
+  type: 'purchase' | 'info' | 'deadline' | 'payroll';
   title: string;
   description: string;
   count: number;
@@ -63,7 +71,8 @@ export function useInstitutionStats(institutionSlug: string | undefined) {
     activeProjects: 0,
     totalCourses: 0,
     totalOfficers: 0,
-    pendingLeaves: 0,
+    officersOnLeave: 0,
+    officersOnLeaveDetails: [],
     pendingPurchases: 0,
     totalXP: 0,
     totalBadges: 0,
@@ -125,7 +134,6 @@ export function useInstitutionStats(institutionSlug: string | undefined) {
           activeProjectsResult,
           coursesResult,
           officersResult,
-          pendingLeavesResult,
           pendingPurchasesResult,
           xpResult,
           badgesResult,
@@ -144,8 +152,6 @@ export function useInstitutionStats(institutionSlug: string | undefined) {
           supabase.from('course_institution_assignments').select('*', { count: 'exact', head: true }).eq('institution_id', institutionId),
           // Officers assigned to this institution
           supabase.from('officers').select('id, full_name, assigned_institutions').contains('assigned_institutions', [institutionId]),
-          // Pending leaves for institution officers
-          supabase.from('leave_applications').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
           // Pending purchase requests
           supabase.from('purchase_requests').select('id, total_estimated_cost', { count: 'exact' }).eq('institution_id', institutionId).eq('status', 'pending'),
           // Total XP earned
@@ -176,6 +182,28 @@ export function useInstitutionStats(institutionSlug: string | undefined) {
         const officers = officersResult.data || [];
         setAssignedOfficers(officers.map(o => o.full_name));
 
+        // Fetch officers currently on approved leave today
+        const today = new Date().toISOString().split('T')[0];
+        const officerIds = officers.map(o => o.id);
+        
+        let officersOnLeaveDetails: OfficerOnLeave[] = [];
+        if (officerIds.length > 0) {
+          const { data: activeLeaves } = await supabase
+            .from('leave_applications')
+            .select('applicant_name, start_date, end_date, leave_type')
+            .eq('status', 'approved')
+            .lte('start_date', today)
+            .gte('end_date', today)
+            .in('officer_id', officerIds);
+          
+          officersOnLeaveDetails = (activeLeaves || []).map(l => ({
+            officerName: l.applicant_name || 'Unknown',
+            startDate: l.start_date,
+            endDate: l.end_date,
+            leaveType: l.leave_type || 'Leave',
+          }));
+        }
+
         setStats({
           totalStudents: studentsResult.count || 0,
           totalClasses: classesResult.count || 0,
@@ -183,7 +211,8 @@ export function useInstitutionStats(institutionSlug: string | undefined) {
           activeProjects: activeProjectsResult.count || 0,
           totalCourses: coursesResult.count || 0,
           totalOfficers: officers.length,
-          pendingLeaves: pendingLeavesResult.count || 0,
+          officersOnLeave: officersOnLeaveDetails.length,
+          officersOnLeaveDetails,
           pendingPurchases: pendingPurchasesResult.count || 0,
           totalXP,
           totalBadges: badgesResult.count || 0,
@@ -210,14 +239,15 @@ export function useInstitutionStats(institutionSlug: string | undefined) {
           });
         }
 
-        if ((pendingLeavesResult.count || 0) > 0) {
+        // Show officers currently on leave as informational notice
+        if (officersOnLeaveDetails.length > 0) {
           actions.push({
-            id: 'leave',
-            type: 'approval',
-            title: 'Leave Approvals',
-            description: 'Officer leave requests pending review',
-            count: pendingLeavesResult.count || 0,
-            urgency: (pendingLeavesResult.count || 0) > 3 ? 'high' : 'low',
+            id: 'leave-notice',
+            type: 'info',
+            title: 'Officers on Leave Today',
+            description: officersOnLeaveDetails.map(o => o.officerName).join(', '),
+            count: officersOnLeaveDetails.length,
+            urgency: 'low',
             link: `/tenant/${institutionSlug}/management/teachers`,
           });
         }
