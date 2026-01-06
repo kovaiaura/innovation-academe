@@ -8,10 +8,11 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Student } from "@/types/student";
 import { InstitutionClass } from "@/types/institution";
-import { generateRollNumber, generateAdmissionNumber, validatePhoneNumber } from "@/utils/studentHelpers";
+import { generateAdmissionNumber } from "@/utils/studentHelpers";
 import { idGenerationService } from '@/services/id-generation.service';
+import { useRollNumberGenerator } from '@/hooks/useRollNumberGenerator';
 import { useState, useEffect } from "react";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -37,6 +38,8 @@ export function AddStudentToClassDialog({
   mode = 'add',
   student,
 }: AddStudentToClassDialogProps) {
+  const { generateRollNumber } = useRollNumberGenerator(institutionId);
+  
   const [formData, setFormData] = useState({
     student_name: '',
     email: '',
@@ -58,6 +61,7 @@ export function AddStudentToClassDialog({
   const [admissionDate, setAdmissionDate] = useState<Date>(new Date());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingRoll, setIsGeneratingRoll] = useState(false);
 
   useEffect(() => {
     if (mode === 'edit' && student) {
@@ -72,42 +76,52 @@ export function AddStudentToClassDialog({
         blood_group: student.blood_group || '',
         admission_date: student.admission_date,
         previous_school: student.previous_school || '',
-        parent_name: student.parent_name,
-        parent_phone: student.parent_phone,
-        address: student.address,
+        parent_name: student.parent_name || '',
+        parent_phone: student.parent_phone || '',
+        address: student.address || '',
         status: student.status,
       });
       setDobDate(new Date(student.date_of_birth));
       setAdmissionDate(new Date(student.admission_date));
-    } else if (mode === 'add') {
-      // Auto-generate for new student
-      const rollNum = generateRollNumber(classData.class_name, 'A', existingStudents);
-      const admNum = generateAdmissionNumber(existingStudents, institutionId);
+    } else if (mode === 'add' && isOpen) {
+      // Auto-generate roll number for new student
+      const initializeForm = async () => {
+        setIsGeneratingRoll(true);
+        try {
+          const rollNum = await generateRollNumber();
+          const admNum = generateAdmissionNumber(existingStudents, institutionId);
+          
+          setFormData({
+            student_name: '',
+            email: '',
+            password: '',
+            roll_number: rollNum,
+            admission_number: admNum,
+            date_of_birth: '',
+            gender: 'male',
+            blood_group: '',
+            admission_date: format(new Date(), 'yyyy-MM-dd'),
+            previous_school: '',
+            parent_name: '',
+            parent_phone: '',
+            address: '',
+            status: 'active',
+          });
+        } finally {
+          setIsGeneratingRoll(false);
+        }
+        setDobDate(undefined);
+        setAdmissionDate(new Date());
+      };
       
-      setFormData({
-        student_name: '',
-        email: '',
-        password: '',
-        roll_number: rollNum,
-        admission_number: admNum,
-        date_of_birth: '',
-        gender: 'male',
-        blood_group: '',
-        admission_date: format(new Date(), 'yyyy-MM-dd'),
-        previous_school: '',
-        parent_name: '',
-        parent_phone: '',
-        address: '',
-        status: 'active',
-      });
-      setDobDate(undefined);
-      setAdmissionDate(new Date());
+      initializeForm();
     }
   }, [mode, student, isOpen, classData, existingStudents, institutionId]);
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
+    // Only required: Full Name, Email, Password, Date of Birth, Gender
     if (!formData.student_name.trim()) newErrors.student_name = 'Name is required';
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
@@ -120,21 +134,14 @@ export function AddStudentToClassDialog({
       newErrors.password = 'Password must be at least 6 characters';
     }
     if (!formData.date_of_birth) newErrors.date_of_birth = 'Date of birth is required';
-    if (!formData.blood_group) newErrors.blood_group = 'Blood group is required';
-    if (!formData.parent_name.trim()) newErrors.parent_name = 'Parent name is required';
-    if (!formData.parent_phone.trim()) {
-      newErrors.parent_phone = 'Parent phone is required';
-    } else if (!validatePhoneNumber(formData.parent_phone)) {
-      newErrors.parent_phone = 'Invalid phone number format';
-    }
 
     // Age validation
     if (formData.date_of_birth) {
       const dob = new Date(formData.date_of_birth);
       const today = new Date();
       const age = today.getFullYear() - dob.getFullYear();
-      if (age < 3 || age > 20) {
-        newErrors.date_of_birth = 'Age must be between 3 and 20 years';
+      if (age < 3 || age > 25) {
+        newErrors.date_of_birth = 'Age must be between 3 and 25 years';
       }
     }
 
@@ -164,7 +171,10 @@ export function AddStudentToClassDialog({
         class_id: classData.id,
         class: classData.class_name,
         section: 'A',
-        blood_group: formData.blood_group,
+        blood_group: formData.blood_group || null,
+        parent_name: formData.parent_name || null,
+        parent_phone: formData.parent_phone || null,
+        address: formData.address || null,
         avatar: student?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.student_name}`,
       };
 
@@ -278,10 +288,10 @@ export function AddStudentToClassDialog({
               </div>
 
               <div>
-                <Label>Blood Group *</Label>
+                <Label>Blood Group</Label>
                 <Select value={formData.blood_group} onValueChange={(value) => setFormData({ ...formData, blood_group: value })}>
-                  <SelectTrigger className={errors.blood_group ? 'border-destructive' : ''}>
-                    <SelectValue placeholder="Select blood group" />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select blood group (optional)" />
                   </SelectTrigger>
                   <SelectContent>
                     {bloodGroups.map(bg => (
@@ -289,7 +299,6 @@ export function AddStudentToClassDialog({
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.blood_group && <p className="text-xs text-destructive mt-1">{errors.blood_group}</p>}
               </div>
             </div>
           </div>
@@ -309,8 +318,13 @@ export function AddStudentToClassDialog({
               </div>
 
               <div>
-                <Label>Roll Number</Label>
-                <Input value={formData.roll_number} disabled className="bg-muted" />
+                <Label>Roll Number (Auto-generated)</Label>
+                <div className="relative">
+                  <Input value={formData.roll_number} disabled className="bg-muted" />
+                  {isGeneratingRoll && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
               </div>
 
               <div>
@@ -351,34 +365,32 @@ export function AddStudentToClassDialog({
                 <Input
                   value={formData.previous_school}
                   onChange={(e) => setFormData({ ...formData, previous_school: e.target.value })}
+                  placeholder="Optional"
                 />
               </div>
             </div>
           </div>
 
-          {/* Parent/Guardian Information */}
+          {/* Parent/Guardian Information (Optional) */}
           <div>
-            <h3 className="font-semibold mb-3">Parent/Guardian Information</h3>
+            <h3 className="font-semibold mb-3">Parent/Guardian Information (Optional)</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <Label>Parent Name *</Label>
+                <Label>Parent Name</Label>
                 <Input
                   value={formData.parent_name}
                   onChange={(e) => setFormData({ ...formData, parent_name: e.target.value })}
-                  className={errors.parent_name ? 'border-destructive' : ''}
+                  placeholder="Optional"
                 />
-                {errors.parent_name && <p className="text-xs text-destructive mt-1">{errors.parent_name}</p>}
               </div>
 
               <div>
-                <Label>Phone *</Label>
+                <Label>Phone</Label>
                 <Input
                   value={formData.parent_phone}
                   onChange={(e) => setFormData({ ...formData, parent_phone: e.target.value })}
-                  placeholder="+91-9876543210"
-                  className={errors.parent_phone ? 'border-destructive' : ''}
+                  placeholder="+91-9876543210 (Optional)"
                 />
-                {errors.parent_phone && <p className="text-xs text-destructive mt-1">{errors.parent_phone}</p>}
               </div>
 
               <div className="col-span-2">
@@ -387,6 +399,7 @@ export function AddStudentToClassDialog({
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   rows={2}
+                  placeholder="Optional"
                 />
               </div>
             </div>
@@ -412,7 +425,7 @@ export function AddStudentToClassDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting}>
+            <Button onClick={handleSubmit} disabled={isSubmitting || isGeneratingRoll}>
               {isSubmitting ? 'Saving...' : mode === 'add' ? 'Add Student' : 'Update Student'}
             </Button>
           </div>

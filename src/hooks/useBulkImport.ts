@@ -52,8 +52,17 @@ export function useBulkImportStudents(institutionId: string, classId: string) {
       }
 
       try {
-        // Reserve ID range for all students
+        // Reserve ID range for student IDs
         const { start: startCounter } = await reserveIdRange('student', validStudents.length);
+        
+        // Reserve ID range for roll numbers
+        const { data: rollRangeData } = await supabase.rpc('reserve_id_range', {
+          p_institution_id: institutionId,
+          p_entity_type: 'roll_number',
+          p_count: validStudents.length,
+        });
+        const rollStartCounter = rollRangeData?.[0]?.start_counter || 1;
+        
         const currentYear = new Date().getFullYear();
         
         // Get institution code for student IDs
@@ -115,10 +124,14 @@ export function useBulkImportStudents(institutionId: string, classId: string) {
             }
 
             const counter = startCounter + counterOffset;
+            const rollCounter = rollStartCounter + counterOffset;
             counterOffset++;
 
             // Generate student ID
             const studentId = `${institutionCode}-${currentYear}-${String(counter).padStart(4, '0')}`;
+            
+            // Generate roll number (auto-generated, not from CSV)
+            const rollNumber = `${institutionCode}-${currentYear}-${String(rollCounter).padStart(4, '0')}`;
 
             // Create auth user if option enabled and email/password provided
             let userId: string | null = null;
@@ -151,8 +164,8 @@ export function useBulkImportStudents(institutionId: string, classId: string) {
               student_name: student.student_name,
               email: student.email || null,
               user_id: userId,
-              roll_number: student.roll_number || null,
-              admission_number: student.admission_number || null,
+              roll_number: rollNumber, // Auto-generated
+              admission_number: `ADM-${currentYear}-${String(counter).padStart(4, '0')}`,
               date_of_birth: student.date_of_birth || null,
               gender: student.gender?.toLowerCase() || 'male',
               blood_group: student.blood_group || null,
