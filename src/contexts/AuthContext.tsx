@@ -120,25 +120,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (roles.includes('super_admin')) {
           allowedFeatures = ALL_SYSTEM_ADMIN_FEATURES;
         } 
-        // CEOs get all features
-        else if (profileData.is_ceo === true) {
-          allowedFeatures = ALL_SYSTEM_ADMIN_FEATURES;
-        }
-        // System admins get features based on their position
+        // System admins (including CEO) get features based on their position
         else if (roles.includes('system_admin') && profileData.position_id) {
           const { data: positionData } = await supabase
             .from('positions')
-            .select('visible_features, is_ceo_position')
+            .select('visible_features')
             .eq('id', profileData.position_id)
             .maybeSingle();
           
           if (positionData) {
-            // CEO position also gets all features
-            if (positionData.is_ceo_position) {
-              allowedFeatures = ALL_SYSTEM_ADMIN_FEATURES;
-            } else {
-              allowedFeatures = (positionData.visible_features as SystemAdminFeature[]) || [];
-            }
+            // CEO and other positions use their saved visible_features
+            // CEO's visible_features will always include 'position_management' (protected in EditPositionDialog)
+            allowedFeatures = (positionData.visible_features as SystemAdminFeature[]) || [];
           }
         }
         

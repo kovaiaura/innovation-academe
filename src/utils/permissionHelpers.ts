@@ -11,13 +11,11 @@ export const canAccessFeature = (user: User | null, feature: SystemAdminFeature)
   // Super admins can access all system admin features
   if (hasAnyRole(user, ['super_admin'])) return true;
 
-  // CEOs can access all features
-  if (user.is_ceo === true) return true;
-
   // Only system admins have position-based feature access
   if (!hasAnyRole(user, ['system_admin'])) return false;
 
   // Check allowed_features from user object (populated at login from database)
+  // This includes CEO who respects their position's visible_features
   if (!user.allowed_features || user.allowed_features.length === 0) return false;
 
   return user.allowed_features.includes(feature);
@@ -33,13 +31,10 @@ export const getAccessibleFeatures = (user: User | null): SystemAdminFeature[] =
   // Super admins can access all system admin features
   if (hasAnyRole(user, ['super_admin'])) return ALL_SYSTEM_ADMIN_FEATURES;
 
-  // CEOs can access all features
-  if (user.is_ceo === true) return ALL_SYSTEM_ADMIN_FEATURES;
-
   // Only system admins have feature access
   if (!hasAnyRole(user, ['system_admin'])) return [];
 
-  // Return allowed_features from user object
+  // Return allowed_features from user object (includes CEO)
   return user.allowed_features || [];
 };
 
