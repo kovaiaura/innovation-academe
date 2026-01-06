@@ -3,17 +3,17 @@ import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { 
   Building2, Users, BookOpen, Target, Trophy, RefreshCw, 
-  GraduationCap, FileText, Award, TrendingUp, BarChart3, Loader2 
+  GraduationCap, FileText, Award, TrendingUp, BarChart3, Loader2, Globe 
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
+import { SDG_GOALS, getSDGByNumber } from '@/services/sdg.service';
 
 interface InstitutionStats {
   id: string;
@@ -21,6 +21,13 @@ interface InstitutionStats {
   studentCount: number;
   classCount: number;
   courseCount: number;
+}
+
+interface SDGStats {
+  activeSDGs: number[];
+  sdgCounts: Record<number, number>;
+  totalSDGProjects: number;
+  studentsInSDGProjects: number;
 }
 
 interface Stats {
@@ -39,6 +46,7 @@ interface Stats {
   totalXP: number;
   xpTransactions: number;
   institutionStats: InstitutionStats[];
+  sdgStats: SDGStats;
   isLoading: boolean;
 }
 
@@ -61,6 +69,12 @@ export default function CEOAnalyticsDashboard() {
     totalXP: 0,
     xpTransactions: 0,
     institutionStats: [],
+    sdgStats: {
+      activeSDGs: [],
+      sdgCounts: {},
+      totalSDGProjects: 0,
+      studentsInSDGProjects: 0,
+    },
     isLoading: true,
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -80,6 +94,8 @@ export default function CEOAnalyticsDashboard() {
         assignmentSubmissionsRes,
         xpRes,
         institutionListRes,
+        projectsWithSDGRes,
+        projectMembersRes,
       ] = await Promise.all([
         supabase.from('institutions').select('id', { count: 'exact', head: true }),
         supabase.from('students').select('id', { count: 'exact', head: true }),
@@ -92,6 +108,8 @@ export default function CEOAnalyticsDashboard() {
         supabase.from('assignment_submissions').select('id, marks_obtained', { count: 'exact' }),
         supabase.from('student_xp_transactions').select('points_earned', { count: 'exact' }),
         supabase.from('institutions').select('id, name'),
+        supabase.from('projects').select('id, sdg_goals'),
+        supabase.from('project_members').select('project_id, student_id'),
       ]);
 
       // Calculate assessment stats
@@ -121,6 +139,33 @@ export default function CEOAnalyticsDashboard() {
       if (xpRes.data) {
         totalXP = xpRes.data.reduce((sum, t) => sum + (t.points_earned || 0), 0);
       }
+
+      // Calculate SDG stats
+      const sdgCounts: Record<number, number> = {};
+      const activeSDGsSet = new Set<number>();
+      let totalSDGProjects = 0;
+      const sdgProjectIds: string[] = [];
+
+      if (projectsWithSDGRes.data) {
+        projectsWithSDGRes.data.forEach(p => {
+          const goals = p.sdg_goals as number[] | null;
+          if (goals && goals.length > 0) {
+            totalSDGProjects++;
+            sdgProjectIds.push(p.id);
+            goals.forEach(g => {
+              activeSDGsSet.add(g);
+              sdgCounts[g] = (sdgCounts[g] || 0) + 1;
+            });
+          }
+        });
+      }
+
+      // Calculate unique students in SDG projects
+      const studentsInSDGProjects = new Set(
+        (projectMembersRes.data || [])
+          .filter(m => sdgProjectIds.includes(m.project_id))
+          .map(m => m.student_id)
+      ).size;
 
       // Get institution-level stats
       const institutionStats: InstitutionStats[] = [];
@@ -158,6 +203,12 @@ export default function CEOAnalyticsDashboard() {
         totalXP: totalXP,
         xpTransactions: xpRes.count || 0,
         institutionStats,
+        sdgStats: {
+          activeSDGs: Array.from(activeSDGsSet).sort((a, b) => a - b),
+          sdgCounts,
+          totalSDGProjects,
+          studentsInSDGProjects,
+        },
         isLoading: false,
       });
     } catch (error) {
@@ -454,6 +505,101 @@ export default function CEOAnalyticsDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* SDG Progress Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5" />
+              SDG Progress & Impact
+            </CardTitle>
+            <CardDescription>Sustainable Development Goals metrics for investor pitching</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* SDG KPI Cards */}
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="p-4 rounded-lg bg-muted/50 space-y-1">
+                <p className="text-sm text-muted-foreground">Active SDGs</p>
+                <p className="text-2xl font-bold">{stats.sdgStats.activeSDGs.length}/17</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/50 space-y-1">
+                <p className="text-sm text-muted-foreground">SDG Projects</p>
+                <p className="text-2xl font-bold">{stats.sdgStats.totalSDGProjects}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/50 space-y-1">
+                <p className="text-sm text-muted-foreground">Students Impacted</p>
+                <p className="text-2xl font-bold">{stats.sdgStats.studentsInSDGProjects}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/50 space-y-1">
+                <p className="text-sm text-muted-foreground">SDG Coverage</p>
+                <p className="text-2xl font-bold">{Math.round((stats.sdgStats.activeSDGs.length / 17) * 100)}%</p>
+              </div>
+            </div>
+
+            {/* SDG Distribution Chart */}
+            {stats.sdgStats.activeSDGs.length > 0 ? (
+              <div className="grid gap-6 md:grid-cols-2">
+                <div>
+                  <h4 className="font-medium mb-4">Projects per SDG Goal</h4>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={stats.sdgStats.activeSDGs.map(num => {
+                      const sdg = getSDGByNumber(num);
+                      return {
+                        name: `SDG ${num}`,
+                        projects: stats.sdgStats.sdgCounts[num] || 0,
+                        fill: sdg?.color || 'hsl(var(--chart-1))'
+                      };
+                    })}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="name" className="text-xs" />
+                      <YAxis className="text-xs" />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
+                        }} 
+                      />
+                      <Bar dataKey="projects" name="Projects">
+                        {stats.sdgStats.activeSDGs.map((num, index) => {
+                          const sdg = getSDGByNumber(num);
+                          return <Cell key={`cell-${index}`} fill={sdg?.color || COLORS[index % COLORS.length]} />;
+                        })}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div>
+                  <h4 className="font-medium mb-4">Active SDG Goals</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {stats.sdgStats.activeSDGs.map(num => {
+                      const sdg = getSDGByNumber(num);
+                      if (!sdg) return null;
+                      return (
+                        <div 
+                          key={num}
+                          className="p-3 rounded-lg text-white text-sm flex items-center gap-2"
+                          style={{ backgroundColor: sdg.color }}
+                        >
+                          <span className="font-bold">SDG {num}</span>
+                          <span className="truncate text-xs">{sdg.title}</span>
+                          <Badge variant="secondary" className="ml-auto bg-white/20 text-white">
+                            {stats.sdgStats.sdgCounts[num]}
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-32 text-muted-foreground">
+                No SDG data available yet. Start by assigning SDG goals to projects.
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Institution Details Table */}
         <Card>
