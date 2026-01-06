@@ -46,11 +46,12 @@ serve(async (req: Request) => {
     }
 
     // Check if user has system_admin or super_admin role
-    const { data: roleData, error: roleError } = await adminClient
+    const allowedRoles = ['system_admin', 'super_admin'];
+    const { data: roles, error: roleError } = await adminClient
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .maybeSingle();
+      .in('role', allowedRoles);
 
     if (roleError) {
       console.error('[ResetPassword] Role check error:', roleError);
@@ -60,9 +61,8 @@ serve(async (req: Request) => {
       );
     }
 
-    const allowedRoles = ['system_admin', 'super_admin'];
-    if (!roleData || !allowedRoles.includes(roleData.role)) {
-      console.error('[ResetPassword] Insufficient permissions:', roleData?.role);
+    if (!roles || roles.length === 0) {
+      console.error('[ResetPassword] Insufficient permissions for user:', user.id);
       return new Response(
         JSON.stringify({ error: 'Insufficient permissions. Only CEO/System Admin can reset institution passwords.' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
