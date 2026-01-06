@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Search, Plus, Building2, Upload, Calendar, FileText, AlertCircle, CheckCircle, Clock, DollarSign, Users, Shield, TrendingUp, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Search, Plus, Building2, Upload, Calendar, FileText, AlertCircle, CheckCircle, Clock, DollarSign, Users, Shield, TrendingUp, Lock, Eye, EyeOff, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import ViewMouDialog from '@/components/institution/ViewMouDialog';
 import { PinLockDialog } from '@/components/system-admin/PinLockDialog';
@@ -46,7 +46,9 @@ export default function InstitutionManagement() {
     isLoading, 
     createInstitution, 
     updateInstitution,
-    isCreating 
+    deleteInstitution,
+    isCreating,
+    isDeleting
   } = useInstitutions();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -398,17 +400,34 @@ export default function InstitutionManagement() {
                         </TableCell>
                         <TableCell>{getStatusBadge(inst.subscription_status)}</TableCell>
                         <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingInstitution(inst);
-                              setIsEditDialogOpen(true);
-                            }}
-                          >
-                            Edit
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingInstitution(inst);
+                                setIsEditDialogOpen(true);
+                              }}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              disabled={isDeleting}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const confirmMessage = `Are you sure you want to delete "${inst.name}"?\n\nThis will permanently delete:\n• All classes in this institution\n• All students and their progress\n• All attendance records\n• All course assignments\n\nOfficers will be unassigned but NOT deleted.\n\nThis action CANNOT be undone.`;
+                                
+                                if (window.confirm(confirmMessage)) {
+                                  deleteInstitution(inst.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

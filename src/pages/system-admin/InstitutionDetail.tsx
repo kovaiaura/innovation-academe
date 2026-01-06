@@ -145,12 +145,11 @@ export default function InstitutionDetail() {
     const classToDelete = classesWithCounts.find(c => c.id === classId);
     const studentsInClass = classToDelete?.student_count || 0;
     
-    if (studentsInClass > 0) {
-      toast.error(`Cannot delete class with ${studentsInClass} students. Please move or delete students first.`);
-      return;
-    }
+    const confirmMessage = studentsInClass > 0
+      ? `Delete class "${classToDelete?.class_name}" with ${studentsInClass} students?\n\nThis will permanently delete:\n• All students in this class\n• All student progress and submissions\n• All attendance records\n\nThis action cannot be undone.`
+      : `Delete class "${classToDelete?.class_name}"? This action cannot be undone.`;
     
-    if (window.confirm(`Delete class "${classToDelete?.class_name}"? This action cannot be undone.`)) {
+    if (window.confirm(confirmMessage)) {
       try {
         await deleteClass({ id: classId, institution_id: institutionId! });
       } catch (error) {
