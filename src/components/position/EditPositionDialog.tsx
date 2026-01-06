@@ -166,18 +166,26 @@ export function EditPositionDialog({
             <Label className="mb-3 block">Visible Sidebar Menus *</Label>
             <ScrollArea className="h-40 border rounded-md p-4">
               <div className="space-y-3">
-                {allFeatures.map((feature) => (
-                  <div key={feature.value} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`edit-${feature.value}`}
-                      checked={formData.visible_features.includes(feature.value)}
-                      onCheckedChange={() => handleFeatureToggle(feature.value)}
-                    />
-                    <Label htmlFor={`edit-${feature.value}`} className="cursor-pointer font-normal">
-                      {feature.label}
-                    </Label>
-                  </div>
-                ))}
+                {allFeatures.map((feature) => {
+                  const isProtectedForCEO = position?.is_ceo_position && feature.value === 'position_management';
+                  return (
+                    <div key={feature.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-${feature.value}`}
+                        checked={formData.visible_features.includes(feature.value)}
+                        onCheckedChange={() => handleFeatureToggle(feature.value)}
+                        disabled={isProtectedForCEO}
+                      />
+                      <Label 
+                        htmlFor={`edit-${feature.value}`} 
+                        className={`cursor-pointer font-normal ${isProtectedForCEO ? 'text-muted-foreground' : ''}`}
+                      >
+                        {feature.label}
+                        {isProtectedForCEO && <span className="text-xs ml-1">(Required for CEO)</span>}
+                      </Label>
+                    </div>
+                  );
+                })}
               </div>
             </ScrollArea>
             <p className="text-xs text-muted-foreground mt-2">

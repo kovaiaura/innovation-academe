@@ -74,7 +74,8 @@ export const positionService = {
     if (pos.is_ceo_position) {
       if (data.position_name && data.position_name !== pos.position_name) throw new Error('Cannot rename CEO position');
       let features = data.visible_features || (pos.visible_features as SystemAdminFeature[]);
-      if (!features.includes('credential_management')) features = [...features, 'credential_management'];
+      // Enforce position_management for CEO (non-negotiable)
+      if (!features.includes('position_management')) features = [...features, 'position_management'];
       const { error } = await positionsTable().update({ display_name: data.display_name || pos.display_name, description: data.description || pos.description, visible_features: features }).eq('id', id);
       if (error) throw error;
       return;

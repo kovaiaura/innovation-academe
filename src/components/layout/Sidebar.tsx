@@ -292,8 +292,12 @@ export function Sidebar() {
       // CEO-only items
       if (item.ceoOnly && !isCEO(user)) return false;
       
-      // Feature-based items
-      if (item.feature && !canAccessFeature(user, item.feature)) return false;
+      // Feature-based items: Check DIRECTLY against user.allowed_features
+      // This ensures sidebar visibility respects position settings even for super_admin users
+      if (item.feature) {
+        const userFeatures = user.allowed_features || [];
+        if (!userFeatures.includes(item.feature)) return false;
+      }
       
       // Leave Approval menu: only show if user is an approver in the approval chain
       if (item.feature === 'leave_approvals' && !isApprover) return false;
