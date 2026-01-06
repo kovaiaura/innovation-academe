@@ -8,7 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Student } from "@/types/student";
 import { InstitutionClass } from "@/types/institution";
-import { generateAdmissionNumber } from "@/utils/studentHelpers";
+
 import { idGenerationService } from '@/services/id-generation.service';
 import { useRollNumberGenerator } from '@/hooks/useRollNumberGenerator';
 import { useState, useEffect } from "react";
@@ -89,7 +89,7 @@ export function AddStudentToClassDialog({
         email: '',
         password: '',
         roll_number: '', // Will be auto-generated at submit
-        admission_number: generateAdmissionNumber(existingStudents, institutionId),
+        admission_number: '',
         date_of_birth: '',
         gender: 'male',
         blood_group: '',
@@ -318,8 +318,12 @@ export function AddStudentToClassDialog({
               </div>
 
               <div>
-                <Label>Admission Number</Label>
-                <Input value={formData.admission_number} disabled className="bg-muted" />
+                <Label>Admission Number (Optional)</Label>
+                <Input
+                  value={formData.admission_number}
+                  onChange={(e) => setFormData({ ...formData, admission_number: e.target.value })}
+                  placeholder="Enter admission number (optional)"
+                />
               </div>
 
               <div>

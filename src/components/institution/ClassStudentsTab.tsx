@@ -135,12 +135,7 @@ export function ClassStudentsTab({
                                 {student.student_name.split(' ').map(n => n[0]).join('')}
                               </AvatarFallback>
                             </Avatar>
-                            <div>
-                              <div className="font-medium">{student.student_name}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {student.admission_number}
-                              </div>
-                            </div>
+                            <div className="font-medium">{student.student_name}</div>
                           </div>
                         </TableCell>
                         <TableCell>{student.roll_number || '-'}</TableCell>
