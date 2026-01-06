@@ -65,13 +65,16 @@ export function useBulkImportStudents(institutionId: string, classId: string) {
         
         const currentYear = new Date().getFullYear();
         
-        // Get institution code for student IDs
+        // Get institution settings for prefix/suffix
         const { data: instData } = await supabase
           .from('institutions')
-          .select('code, slug')
+          .select('code, slug, settings')
           .eq('id', institutionId)
           .single();
         
+        const settings = (instData?.settings || {}) as { student_id_prefix?: string; student_id_suffix?: string };
+        const rollPrefix = settings.student_id_prefix || 'STU';
+        const rollSuffix = settings.student_id_suffix || '';
         const institutionCode = instData?.code || instData?.slug?.toUpperCase() || 'STU';
 
         // Check for existing students by email if needed
@@ -130,8 +133,10 @@ export function useBulkImportStudents(institutionId: string, classId: string) {
             // Generate student ID
             const studentId = `${institutionCode}-${currentYear}-${String(counter).padStart(4, '0')}`;
             
-            // Generate roll number (auto-generated, not from CSV)
-            const rollNumber = `${institutionCode}-${currentYear}-${String(rollCounter).padStart(4, '0')}`;
+            // Generate roll number using settings prefix/suffix
+            const rollNumber = rollSuffix 
+              ? `${rollPrefix}-${currentYear}-${String(rollCounter).padStart(4, '0')}-${rollSuffix}`
+              : `${rollPrefix}-${currentYear}-${String(rollCounter).padStart(4, '0')}`;
 
             // Create auth user if option enabled and email/password provided
             let userId: string | null = null;
