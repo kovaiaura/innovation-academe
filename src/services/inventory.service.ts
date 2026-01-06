@@ -42,10 +42,20 @@ export async function addInventoryItem(
   itemData: AddInventoryItemData,
   userId: string
 ): Promise<InventoryItem> {
+  // Get the next sl_no for this institution using atomic counter
+  const { data: nextSlNo, error: slNoError } = await supabase
+    .rpc('get_next_id', { 
+      p_institution_id: institutionId, 
+      p_entity_type: 'inventory_item' 
+    });
+
+  if (slNoError) throw slNoError;
+
   const { data, error } = await supabase
     .from('inventory_items')
     .insert({
       institution_id: institutionId,
+      sl_no: nextSlNo,
       name: itemData.name,
       description: itemData.description || null,
       unit_price: itemData.unit_price,
