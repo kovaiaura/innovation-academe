@@ -331,6 +331,20 @@ Deno.serve(async (req) => {
       .eq('institution_id', institutionId);
     if (!countersError) deletionLog.push('id_counters');
 
+    // 29b. Delete assignments (the main assignments table)
+    const { error: assignmentsError } = await adminClient
+      .from('assignments')
+      .delete()
+      .eq('institution_id', institutionId);
+    if (!assignmentsError) deletionLog.push('assignments');
+
+    // 29c. Delete assessments
+    const { error: assessmentsError } = await adminClient
+      .from('assessments')
+      .delete()
+      .eq('institution_id', institutionId);
+    if (!assessmentsError) deletionLog.push('assessments');
+
     // 30. Delete officer_attendance for this institution
     const { error: offAttError } = await adminClient
       .from('officer_attendance')
