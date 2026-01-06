@@ -133,7 +133,7 @@ export default function ManagementAnalytics() {
       attempts?.forEach(attempt => {
         const classInfo = attempt.classes as any;
         if (!classInfo) return;
-        const className = `${classInfo.class_name}${classInfo.section ? ' ' + classInfo.section : ''}`;
+        const className = classInfo.class_name;
         
         if (!classMap.has(className)) {
           classMap.set(className, { scores: [], passed: 0, total: 0 });

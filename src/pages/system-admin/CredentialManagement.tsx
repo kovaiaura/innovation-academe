@@ -883,7 +883,15 @@ export default function CredentialManagement() {
                                       </Button>
                                     </div>
                                   ) : (
-                                    <span className="text-sm text-muted-foreground">No account</span>
+                                    <Button
+                                      size="sm"
+                                      variant="default"
+                                      onClick={() => handleSetPassword(student.id, student.student_name, student.email || student.parent_email || '', 'student')}
+                                      disabled={!student.email && !student.parent_email}
+                                    >
+                                      <Key className="h-4 w-4 mr-1" />
+                                      Create Account
+                                    </Button>
                                   )}
                                 </TableCell>
                               </TableRow>

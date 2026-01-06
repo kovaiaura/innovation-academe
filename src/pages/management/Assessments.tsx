@@ -82,11 +82,10 @@ export default function ManagementAssessments() {
         // Extract unique classes
         const classesMap = new Map<string, { id: string; name: string }>();
         classAssignments.forEach(ca => {
-          const classInfo = ca.classes as any;
-          if (classInfo) {
-            const name = `${classInfo.class_name}${classInfo.section ? ' ' + classInfo.section : ''}`;
-            classesMap.set(ca.class_id, { id: ca.class_id, name });
-          }
+        const classInfo = ca.classes as any;
+        if (classInfo) {
+          classesMap.set(ca.class_id, { id: ca.class_id, name: classInfo.class_name });
+        }
         });
         setAvailableClasses(Array.from(classesMap.values()));
 
@@ -96,7 +95,7 @@ export default function ManagementAssessments() {
           const assignedClasses = assignedClassAssignments
             .map(ca => {
               const classInfo = ca.classes as any;
-              return classInfo ? `${classInfo.class_name}${classInfo.section ? ' ' + classInfo.section : ''}` : '';
+              return classInfo ? classInfo.class_name : '';
             })
             .filter(Boolean);
 
