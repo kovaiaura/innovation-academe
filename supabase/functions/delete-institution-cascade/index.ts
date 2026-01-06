@@ -345,6 +345,27 @@ Deno.serve(async (req) => {
       .eq('institution_id', institutionId);
     if (!assessmentsError) deletionLog.push('assessments');
 
+    // 29d. Delete invoices (and invoice_line_items)
+    const { data: invoices } = await adminClient
+      .from('invoices')
+      .select('id')
+      .eq('institution_id', institutionId);
+    const invoiceIds = (invoices || []).map(i => i.id);
+
+    if (invoiceIds.length > 0) {
+      const { error: invoiceItemsError } = await adminClient
+        .from('invoice_line_items')
+        .delete()
+        .in('invoice_id', invoiceIds);
+      if (!invoiceItemsError) deletionLog.push('invoice_line_items');
+    }
+
+    const { error: invoicesError } = await adminClient
+      .from('invoices')
+      .delete()
+      .eq('institution_id', institutionId);
+    if (!invoicesError) deletionLog.push('invoices');
+
     // 30. Delete officer_attendance for this institution
     const { error: offAttError } = await adminClient
       .from('officer_attendance')
