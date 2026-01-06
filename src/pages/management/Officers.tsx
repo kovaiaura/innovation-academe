@@ -8,11 +8,13 @@ import { Search, UserCheck, Calendar, Mail, Phone, Briefcase, Loader2, Users } f
 import { useState, useMemo } from "react";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { OfficerDetailsDialog } from "@/components/officer/OfficerDetailsDialog";
+import { OfficersOnLeaveSection } from "@/components/management/OfficersOnLeaveSection";
 import { useCurrentUserInstitutionDetails } from "@/hooks/useCurrentUserInstitution";
 import { useOfficersByInstitution } from "@/hooks/useInstitutionOfficers";
 import { useOfficer } from "@/hooks/useOfficers";
 import { useOfficerTeachingHours } from "@/hooks/useOfficerTeachingHours";
 import { useStudents } from "@/hooks/useStudents";
+import { useOfficersOnLeave } from "@/hooks/useOfficersOnLeave";
 import { OfficerDetails } from "@/services/systemadmin.service";
 
 const Officers = () => {
@@ -25,6 +27,7 @@ const Officers = () => {
   const { data: selectedOfficerDetails } = useOfficer(selectedOfficerId || '');
   const { data: teachingHoursMap = {} } = useOfficerTeachingHours(institutionId || undefined);
   const { students } = useStudents(institutionId || undefined);
+  const { data: officersOnLeave = [], isLoading: isLoadingLeaves } = useOfficersOnLeave(institutionId || undefined);
 
   const filteredOfficers = useMemo(() => {
     if (!searchQuery) return officers;
@@ -152,6 +155,8 @@ const Officers = () => {
             </CardContent>
           </Card>
         </div>
+
+        <OfficersOnLeaveSection leaves={officersOnLeave} isLoading={isLoadingLeaves} />
 
         <Card>
           <CardHeader>
