@@ -1,5 +1,10 @@
 import { supabase } from '@/integrations/supabase/client';
 
+interface InstitutionSettings {
+  student_id_prefix?: string;
+  student_id_suffix?: string;
+}
+
 export function useRollNumberGenerator(institutionId: string) {
   const generateRollNumber = async (): Promise<string> => {
     try {
@@ -11,20 +16,24 @@ export function useRollNumberGenerator(institutionId: string) {
 
       if (error) throw error;
 
-      // Get institution code for prefix
+      // Get institution settings for prefix/suffix
       const { data: instData } = await supabase
         .from('institutions')
-        .select('code, slug')
+        .select('settings')
         .eq('id', institutionId)
         .single();
 
-      const prefix = instData?.code || instData?.slug?.toUpperCase() || 'STU';
+      const settings = (instData?.settings || {}) as InstitutionSettings;
+      const prefix = settings.student_id_prefix || 'STU';
+      const suffix = settings.student_id_suffix || '';
       const year = new Date().getFullYear();
       const paddedCounter = String(counter).padStart(4, '0');
 
-      return `${prefix}-${year}-${paddedCounter}`;
+      // Format: PREFIX-YEAR-COUNTER or PREFIX-YEAR-COUNTER-SUFFIX
+      return suffix 
+        ? `${prefix}-${year}-${paddedCounter}-${suffix}`
+        : `${prefix}-${year}-${paddedCounter}`;
     } catch (error) {
-      // Fallback to timestamp-based ID if database fails
       return `ROLL-${Date.now()}`;
     }
   };
@@ -40,14 +49,16 @@ export function useRollNumberGenerator(institutionId: string) {
 
       if (error) throw error;
 
-      // Get institution code for prefix
+      // Get institution settings for prefix/suffix
       const { data: instData } = await supabase
         .from('institutions')
-        .select('code, slug')
+        .select('settings')
         .eq('id', institutionId)
         .single();
 
-      const prefix = instData?.code || instData?.slug?.toUpperCase() || 'STU';
+      const settings = (instData?.settings || {}) as InstitutionSettings;
+      const prefix = settings.student_id_prefix || 'STU';
+      const suffix = settings.student_id_suffix || '';
       const year = new Date().getFullYear();
       
       const startCounter = data?.[0]?.start_counter || 1;
@@ -55,12 +66,14 @@ export function useRollNumberGenerator(institutionId: string) {
       
       for (let i = 0; i < count; i++) {
         const paddedCounter = String(startCounter + i).padStart(4, '0');
-        rollNumbers.push(`${prefix}-${year}-${paddedCounter}`);
+        const rollNumber = suffix 
+          ? `${prefix}-${year}-${paddedCounter}-${suffix}`
+          : `${prefix}-${year}-${paddedCounter}`;
+        rollNumbers.push(rollNumber);
       }
 
       return rollNumbers;
     } catch (error) {
-      // Fallback to timestamp-based IDs
       return Array.from({ length: count }, (_, i) => `ROLL-${Date.now()}-${i}`);
     }
   };

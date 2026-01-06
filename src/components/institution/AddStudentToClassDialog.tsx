@@ -61,7 +61,6 @@ export function AddStudentToClassDialog({
   const [admissionDate, setAdmissionDate] = useState<Date>(new Date());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGeneratingRoll, setIsGeneratingRoll] = useState(false);
 
   useEffect(() => {
     if (mode === 'edit' && student) {
@@ -84,39 +83,27 @@ export function AddStudentToClassDialog({
       setDobDate(new Date(student.date_of_birth));
       setAdmissionDate(new Date(student.admission_date));
     } else if (mode === 'add' && isOpen) {
-      // Auto-generate roll number for new student
-      const initializeForm = async () => {
-        setIsGeneratingRoll(true);
-        try {
-          const rollNum = await generateRollNumber();
-          const admNum = generateAdmissionNumber(existingStudents, institutionId);
-          
-          setFormData({
-            student_name: '',
-            email: '',
-            password: '',
-            roll_number: rollNum,
-            admission_number: admNum,
-            date_of_birth: '',
-            gender: 'male',
-            blood_group: '',
-            admission_date: format(new Date(), 'yyyy-MM-dd'),
-            previous_school: '',
-            parent_name: '',
-            parent_phone: '',
-            address: '',
-            status: 'active',
-          });
-        } finally {
-          setIsGeneratingRoll(false);
-        }
-        setDobDate(undefined);
-        setAdmissionDate(new Date());
-      };
-      
-      initializeForm();
+      // Reset form for new student - roll number will be generated at submit time
+      setFormData({
+        student_name: '',
+        email: '',
+        password: '',
+        roll_number: '', // Will be auto-generated at submit
+        admission_number: generateAdmissionNumber(existingStudents, institutionId),
+        date_of_birth: '',
+        gender: 'male',
+        blood_group: '',
+        admission_date: format(new Date(), 'yyyy-MM-dd'),
+        previous_school: '',
+        parent_name: '',
+        parent_phone: '',
+        address: '',
+        status: 'active',
+      });
+      setDobDate(undefined);
+      setAdmissionDate(new Date());
     }
-  }, [mode, student, isOpen, classData, existingStudents, institutionId]);
+  }, [mode, student, isOpen, existingStudents, institutionId]);
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -157,6 +144,9 @@ export function AddStudentToClassDialog({
 
     setIsSubmitting(true);
     try {
+      // Generate roll number at submit time for uniqueness
+      const rollNum = mode === 'add' ? await generateRollNumber() : formData.roll_number;
+      
       // Generate student_id using ID generation service
       const idResponse = await idGenerationService.generateId({
         entity_type: 'student',
@@ -165,6 +155,7 @@ export function AddStudentToClassDialog({
 
       const studentData = {
         ...formData,
+        roll_number: rollNum,
         student_id: idResponse.success ? idResponse.data.id : `STU-TEMP-${Date.now()}`,
         email: formData.email,
         institution_id: institutionId,
@@ -319,12 +310,11 @@ export function AddStudentToClassDialog({
 
               <div>
                 <Label>Roll Number (Auto-generated)</Label>
-                <div className="relative">
-                  <Input value={formData.roll_number} disabled className="bg-muted" />
-                  {isGeneratingRoll && (
-                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-                  )}
-                </div>
+                <Input 
+                  value={mode === 'edit' ? formData.roll_number : 'Will be generated on save'} 
+                  disabled 
+                  className="bg-muted text-muted-foreground" 
+                />
               </div>
 
               <div>
@@ -425,7 +415,7 @@ export function AddStudentToClassDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting || isGeneratingRoll}>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting ? 'Saving...' : mode === 'add' ? 'Add Student' : 'Update Student'}
             </Button>
           </div>
