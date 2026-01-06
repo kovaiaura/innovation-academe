@@ -163,4 +163,67 @@ export const reportService = {
 
     if (error) throw error;
   },
+
+  async publishReport(id: string): Promise<Report> {
+    const { data, error } = await supabase
+      .from('reports')
+      .update({
+        is_published: true,
+        published_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      ...data,
+      trainers: parseTrainers(data.trainers),
+      activities: parseActivities(data.activities),
+      report_type: data.report_type as 'activity' | 'monthly',
+      status: data.status as 'draft' | 'final',
+    };
+  },
+
+  async unpublishReport(id: string): Promise<Report> {
+    const { data, error } = await supabase
+      .from('reports')
+      .update({
+        is_published: false,
+        published_at: null,
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      ...data,
+      trainers: parseTrainers(data.trainers),
+      activities: parseActivities(data.activities),
+      report_type: data.report_type as 'activity' | 'monthly',
+      status: data.status as 'draft' | 'final',
+    };
+  },
+
+  async getPublishedReportsForInstitution(institutionId: string): Promise<Report[]> {
+    const { data, error } = await supabase
+      .from('reports')
+      .select('*')
+      .eq('institution_id', institutionId)
+      .eq('is_published', true)
+      .order('published_at', { ascending: false });
+
+    if (error) throw error;
+
+    return (data || []).map(row => ({
+      ...row,
+      trainers: parseTrainers(row.trainers),
+      activities: parseActivities(row.activities),
+      report_type: row.report_type as 'activity' | 'monthly',
+      status: row.status as 'draft' | 'final',
+    }));
+  },
 };

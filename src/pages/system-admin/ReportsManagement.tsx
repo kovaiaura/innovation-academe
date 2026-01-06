@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Search, MoreHorizontal, Eye, Download, Trash2, FileText, Loader2 } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, Eye, Download, Trash2, FileText, Loader2, Send, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { Report } from '@/types/report';
 import { reportService } from '@/services/report.service';
@@ -48,6 +48,9 @@ export default function ReportsManagement() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [reportToPublish, setReportToPublish] = useState<Report | null>(null);
+  const [publishAction, setPublishAction] = useState<'publish' | 'unpublish'>('publish');
 
   useEffect(() => {
     fetchReports();
@@ -114,6 +117,33 @@ export default function ReportsManagement() {
     } finally {
       setDeleteDialogOpen(false);
       setReportToDelete(null);
+    }
+  };
+
+  const handlePublishClick = (report: Report, action: 'publish' | 'unpublish') => {
+    setReportToPublish(report);
+    setPublishAction(action);
+    setPublishDialogOpen(true);
+  };
+
+  const handlePublishConfirm = async () => {
+    if (!reportToPublish) return;
+    
+    try {
+      if (publishAction === 'publish') {
+        await reportService.publishReport(reportToPublish.id);
+        toast.success('Report published successfully');
+      } else {
+        await reportService.unpublishReport(reportToPublish.id);
+        toast.success('Report unpublished successfully');
+      }
+      fetchReports();
+    } catch (error) {
+      console.error('Error publishing report:', error);
+      toast.error(`Failed to ${publishAction} report`);
+    } finally {
+      setPublishDialogOpen(false);
+      setReportToPublish(null);
     }
   };
 
@@ -203,9 +233,16 @@ export default function ReportsManagement() {
                       </TableCell>
                       <TableCell>{report.hours_handled || '-'}</TableCell>
                       <TableCell>
-                        <Badge variant={report.status === 'final' ? 'default' : 'secondary'}>
-                          {report.status}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={report.status === 'final' ? 'default' : 'secondary'}>
+                            {report.status}
+                          </Badge>
+                          {report.is_published && (
+                            <Badge variant="outline" className="text-green-600 border-green-600">
+                              Published
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {new Date(report.created_at).toLocaleDateString()}
@@ -224,6 +261,15 @@ export default function ReportsManagement() {
                             <DropdownMenuItem onClick={() => handleDownloadReport(report)}>
                               <Download className="h-4 w-4 mr-2" /> Download PDF
                             </DropdownMenuItem>
+                            {report.is_published ? (
+                              <DropdownMenuItem onClick={() => handlePublishClick(report, 'unpublish')}>
+                                <EyeOff className="h-4 w-4 mr-2" /> Unpublish
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem onClick={() => handlePublishClick(report, 'publish')}>
+                                <Send className="h-4 w-4 mr-2" /> Publish
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem
                               onClick={() => handleDeleteClick(report)}
                               className="text-destructive focus:text-destructive"
@@ -269,6 +315,28 @@ export default function ReportsManagement() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {publishAction === 'publish' ? 'Publish Report' : 'Unpublish Report'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {publishAction === 'publish' 
+                ? `Are you sure you want to publish this report? It will become visible to ${reportToPublish?.client_name}'s management.`
+                : `Are you sure you want to unpublish this report? It will no longer be visible to ${reportToPublish?.client_name}'s management.`
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePublishConfirm}>
+              {publishAction === 'publish' ? 'Publish' : 'Unpublish'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
