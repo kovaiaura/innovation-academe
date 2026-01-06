@@ -35,17 +35,17 @@ export const getRoleDashboardPath = (role: UserRole, tenantSlug?: string): strin
   return `${basePath}/dashboard`;
 };
 
-// Get dashboard path for multi-role user (prioritizes system_admin for CEO)
+// Get dashboard path for multi-role user (prioritizes super_admin for CEO)
 export const getMultiRoleDashboardPath = (user: User, tenantSlug?: string): string => {
   const roles = user.roles || [user.role];
   
-  // Priority: system_admin > super_admin > others
-  // System-level admins don't need tenant slug
+  // Priority: super_admin > system_admin > others
+  // CEO (super_admin) goes to CEO Analytics Dashboard
+  if (roles.includes('super_admin')) {
+    return '/super-admin/ceo-analytics';
+  }
   if (roles.includes('system_admin')) {
     return '/system-admin/dashboard';
-  }
-  if (roles.includes('super_admin')) {
-    return '/super-admin/dashboard';
   }
   
   // For tenant-level roles, require tenant slug
