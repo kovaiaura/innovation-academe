@@ -64,8 +64,7 @@ export default function ManagementAssignments() {
       classAssignments.forEach(ca => {
         const classInfo = ca.classes as any;
         if (classInfo) {
-          const name = `${classInfo.class_name}${classInfo.section ? ' ' + classInfo.section : ''}`;
-          classesMap.set(ca.class_id, { id: ca.class_id, name });
+          classesMap.set(ca.class_id, { id: ca.class_id, name: classInfo.class_name });
         }
       });
       setAvailableClasses(Array.from(classesMap.values()));
@@ -91,7 +90,7 @@ export default function ManagementAssignments() {
         const classes = assignedClassAssignments
           .map(ca => {
             const classInfo = ca.classes as any;
-            return classInfo ? { id: ca.class_id, name: `${classInfo.class_name}${classInfo.section ? ' ' + classInfo.section : ''}` } : null;
+            return classInfo ? { id: ca.class_id, name: classInfo.class_name } : null;
           })
           .filter(Boolean) as { id: string; name: string }[];
 

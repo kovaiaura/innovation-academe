@@ -316,19 +316,8 @@ export default function Students() {
                   <SelectItem value="all">All Classes</SelectItem>
                   {classesWithCounts.map(cls => (
                     <SelectItem key={cls.id} value={cls.id}>
-                      {cls.class_name} {cls.section ? `- ${cls.section}` : ''} ({cls.student_count || 0})
+                      {cls.class_name} ({cls.student_count || 0})
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={sectionFilter} onValueChange={setSectionFilter}>
-                <SelectTrigger className="w-[130px]">
-                  <SelectValue placeholder="All Sections" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Sections</SelectItem>
-                  {sections.map(sec => (
-                    <SelectItem key={sec} value={sec}>Section {sec}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -394,7 +383,7 @@ export default function Students() {
                           <div>
                             <CardTitle className="text-lg">
                               {group.classInfo 
-                                ? `${group.classInfo.class_name}${group.classInfo.section ? ` - Section ${group.classInfo.section}` : ''}`
+                                ? group.classInfo.class_name
                                 : 'Unassigned Students'
                               }
                             </CardTitle>
