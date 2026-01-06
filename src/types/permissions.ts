@@ -24,6 +24,11 @@ export type SystemAdminFeature =
   | 'inventory_management'
   | 'attendance_payroll'
   | 'leave_approvals'
+  | 'leave_management'
+  | 'company_holidays'
+  | 'payroll_management'
+  | 'global_approval_config'
+  | 'ats_management'
   | 'institutional_calendar'
   | 'reports_analytics'
   | 'sdg_management'
@@ -33,7 +38,13 @@ export type SystemAdminFeature =
   | 'gamification'
   | 'id_configuration'
   | 'survey_feedback'
-  | 'performance_ratings';
+  | 'performance_ratings'
+  | 'webinar_management'
+  | 'crm_clients'
+  | 'news_feeds'
+  | 'ask_metova'
+  | 'settings'
+  | 'position_management';
 
 export const ALL_SYSTEM_ADMIN_FEATURES: SystemAdminFeature[] = [
   'institution_management',
@@ -46,6 +57,11 @@ export const ALL_SYSTEM_ADMIN_FEATURES: SystemAdminFeature[] = [
   'inventory_management',
   'attendance_payroll',
   'leave_approvals',
+  'leave_management',
+  'company_holidays',
+  'payroll_management',
+  'global_approval_config',
+  'ats_management',
   'institutional_calendar',
   'reports_analytics',
   'sdg_management',
@@ -56,6 +72,12 @@ export const ALL_SYSTEM_ADMIN_FEATURES: SystemAdminFeature[] = [
   'id_configuration',
   'survey_feedback',
   'performance_ratings',
+  'webinar_management',
+  'crm_clients',
+  'news_feeds',
+  'ask_metova',
+  'settings',
+  'position_management',
 ];
 
 export interface PositionPermissions {

@@ -73,7 +73,7 @@ const menuItems: MenuItem[] = [
   { label: 'Institution Management', icon: <Building2 className="h-5 w-5" />, path: '/institutions', roles: ['system_admin'], feature: 'institution_management' },
   { label: 'Course Management', icon: <BookOpen className="h-5 w-5" />, path: '/course-management', roles: ['system_admin'], feature: 'course_management' },
   { label: 'Assessment Management', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['system_admin'], feature: 'assessment_management' },
-  { label: 'Assignment Management', icon: <FileText className="h-5 w-5" />, path: '/assignments', roles: ['system_admin'] },
+  { label: 'Assignment Management', icon: <FileText className="h-5 w-5" />, path: '/assignments', roles: ['system_admin'], feature: 'assignment_management' },
   { label: 'Events Management', icon: <Trophy className="h-5 w-5" />, path: '/event-management', roles: ['system_admin'], feature: 'event_management' },
   // Officers Management
   { label: 'Officer Management', icon: <Users className="h-5 w-5" />, path: '/officers', roles: ['system_admin'], feature: 'officer_management' },
@@ -81,15 +81,15 @@ const menuItems: MenuItem[] = [
   { label: 'Project Management', icon: <Target className="h-5 w-5" />, path: '/project-management', roles: ['system_admin'], feature: 'project_management' },
   // Inventory & Purchase
   { label: 'Inventory Management', icon: <Package className="h-5 w-5" />, path: '/inventory-management', roles: ['system_admin'], feature: 'inventory_management' },
-  { label: 'Payroll Management', icon: <PieChart className="h-5 w-5" />, path: '/payroll-management', roles: ['system_admin'], ceoOnly: true },
+  { label: 'Payroll Management', icon: <PieChart className="h-5 w-5" />, path: '/payroll-management', roles: ['system_admin'], feature: 'payroll_management', ceoOnly: true },
   // Leave Approval (separate menu for approvers based on approval chain)
   { label: 'Leave Approval', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-approvals', roles: ['system_admin'], feature: 'leave_approvals' },
-  { label: 'Global Approval Config', icon: <Shield className="h-5 w-5" />, path: '/global-approval-config', roles: ['system_admin'], ceoOnly: true },
+  { label: 'Global Approval Config', icon: <Shield className="h-5 w-5" />, path: '/global-approval-config', roles: ['system_admin'], feature: 'global_approval_config', ceoOnly: true },
   // Unified Leave menu for all system admins
-  { label: 'Leave', icon: <CalendarDays className="h-5 w-5" />, path: '/leave', roles: ['system_admin'] },
-  { label: 'Company Holidays', icon: <Calendar className="h-5 w-5" />, path: '/company-holidays', roles: ['system_admin'] },
+  { label: 'Leave', icon: <CalendarDays className="h-5 w-5" />, path: '/leave', roles: ['system_admin'], feature: 'leave_management' },
+  { label: 'Company Holidays', icon: <Calendar className="h-5 w-5" />, path: '/company-holidays', roles: ['system_admin'], feature: 'company_holidays' },
   // Position Management (CEO only)
-  { label: 'Position Management', icon: <Shield className="h-5 w-5" />, path: '/position-management', roles: ['system_admin'], ceoOnly: true },
+  { label: 'Position Management', icon: <Shield className="h-5 w-5" />, path: '/position-management', roles: ['system_admin'], feature: 'position_management', ceoOnly: true },
   // Credential Management (Feature-based permissions)
   { label: 'Credential Management', icon: <Key className="h-5 w-5" />, path: '/credential-management', roles: ['system_admin'], feature: 'credential_management' },
   // Task Management & Task Allotment (Feature-based permissions)
@@ -97,8 +97,8 @@ const menuItems: MenuItem[] = [
   { label: 'Task Allotment', icon: <ListTodo className="h-5 w-5" />, path: '/tasks', roles: ['system_admin'], feature: 'task_allotment' },
   // Gamification
   { label: 'Gamification', icon: <Trophy className="h-5 w-5" />, path: '/gamification', roles: ['system_admin'], feature: 'gamification' },
-  { label: 'ATS Management', icon: <Briefcase className="h-5 w-5" />, path: '/hr-management', roles: ['system_admin'], ceoOnly: true },
-  { label: 'Webinar Management', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['system_admin'] },
+  { label: 'ATS Management', icon: <Briefcase className="h-5 w-5" />, path: '/hr-management', roles: ['system_admin'], feature: 'ats_management', ceoOnly: true },
+  { label: 'Webinar Management', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['system_admin'], feature: 'webinar_management' },
   // Reports & Invoice
   { label: 'Reports Management', icon: <FileText className="h-5 w-5" />, path: '/reports-management', roles: ['system_admin'], feature: 'reports_analytics' },
   { label: 'Invoice Management', icon: <FileText className="h-5 w-5" />, path: '/reports', roles: ['system_admin'], feature: 'reports_analytics' },
@@ -107,10 +107,10 @@ const menuItems: MenuItem[] = [
   // CRM & Ask Metova
   { label: 'Surveys & Feedback', icon: <MessageCircle className="h-5 w-5" />, path: '/survey-feedback', roles: ['system_admin'], feature: 'survey_feedback' },
   { label: 'Performance & Ratings', icon: <Star className="h-5 w-5" />, path: '/performance-ratings', roles: ['system_admin'], feature: 'performance_ratings' },
-  { label: 'CRM & Clients', icon: <Phone className="h-5 w-5" />, path: '/crm', roles: ['system_admin'] },
-  { label: 'News & Feeds', icon: <Newspaper className="h-5 w-5" />, path: '/news-feeds', roles: ['system_admin'] },
-  { label: 'Ask Metova', icon: <MessageSquare className="h-5 w-5" />, path: '/ask-metova', roles: ['system_admin'] },
-  { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['system_admin'] },
+  { label: 'CRM & Clients', icon: <Phone className="h-5 w-5" />, path: '/crm', roles: ['system_admin'], feature: 'crm_clients' },
+  { label: 'News & Feeds', icon: <Newspaper className="h-5 w-5" />, path: '/news-feeds', roles: ['system_admin'], feature: 'news_feeds' },
+  { label: 'Ask Metova', icon: <MessageSquare className="h-5 w-5" />, path: '/ask-metova', roles: ['system_admin'], feature: 'ask_metova' },
+  { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['system_admin'], feature: 'settings' },
   // Teacher menu items
   { label: 'My Courses', icon: <BookOpen className="h-5 w-5" />, path: '/courses', roles: ['teacher'] },
   { label: 'Grades', icon: <Award className="h-5 w-5" />, path: '/grades', roles: ['teacher'] },
