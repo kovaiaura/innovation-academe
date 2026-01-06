@@ -38,8 +38,13 @@ const allFeatures: { value: SystemAdminFeature; label: string }[] = [
   { value: 'inventory_management', label: 'Inventory Management' },
   { value: 'attendance_payroll', label: 'Attendance and Payroll' },
   { value: 'leave_approvals', label: 'Leave Approvals' },
+  { value: 'leave_management', label: 'Leave Management' },
+  { value: 'company_holidays', label: 'Company Holidays' },
+  { value: 'payroll_management', label: 'Payroll Management' },
+  { value: 'global_approval_config', label: 'Global Approval Config' },
+  { value: 'ats_management', label: 'ATS Management' },
   { value: 'institutional_calendar', label: 'Institutional Calendar' },
-  { value: 'reports_analytics', label: 'Invoice Management' },
+  { value: 'reports_analytics', label: 'Reports & Invoice' },
   { value: 'sdg_management', label: 'SDG Management' },
   { value: 'task_management', label: 'Task Management (Create & Assign)' },
   { value: 'task_allotment', label: 'Task Allotment (View Assigned)' },
@@ -48,6 +53,12 @@ const allFeatures: { value: SystemAdminFeature; label: string }[] = [
   { value: 'id_configuration', label: 'ID Configuration' },
   { value: 'survey_feedback', label: 'Surveys & Feedback' },
   { value: 'performance_ratings', label: 'Performance & Ratings' },
+  { value: 'webinar_management', label: 'Webinar Management' },
+  { value: 'crm_clients', label: 'CRM & Clients' },
+  { value: 'news_feeds', label: 'News & Feeds' },
+  { value: 'ask_metova', label: 'Ask Metova' },
+  { value: 'settings', label: 'Settings' },
+  { value: 'position_management', label: 'Position Management' },
 ];
 
 export function CreatePositionDialog({
