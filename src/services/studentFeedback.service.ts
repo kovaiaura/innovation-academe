@@ -66,7 +66,7 @@ export async function getFeedbackList(filters?: FeedbackFilters) {
         title
       ),
       officers:related_officer_id (
-        name
+        full_name
       )
     `)
     .order('submitted_at', { ascending: false });
@@ -106,7 +106,7 @@ export async function getFeedbackById(feedbackId: string) {
         title
       ),
       officers:related_officer_id (
-        name
+        full_name
       )
     `)
     .eq('id', feedbackId)

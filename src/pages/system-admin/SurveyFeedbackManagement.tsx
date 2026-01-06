@@ -467,6 +467,15 @@ export default function SurveyFeedbackManagement() {
           onOpenChange={setCreateSurveyOpen}
           onSubmit={handleCreateSurvey}
         />
+
+        {/* Survey Analytics Dialog */}
+        <SurveyAnalytics
+          surveyId={selectedSurveyId}
+          surveyTitle={filteredSurveys.find((s: any) => s.id === selectedSurveyId)?.title}
+          surveyStatus={filteredSurveys.find((s: any) => s.id === selectedSurveyId)?.status}
+          open={analyticsOpen}
+          onOpenChange={setAnalyticsOpen}
+        />
       </div>
     </Layout>
   );
