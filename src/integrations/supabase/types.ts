@@ -4890,7 +4890,9 @@ export type Database = {
           hours_unit: string | null
           id: string
           institution_id: string | null
+          is_published: boolean | null
           portion_covered_percentage: number | null
+          published_at: string | null
           report_date: string
           report_month: string
           report_type: string
@@ -4914,7 +4916,9 @@ export type Database = {
           hours_unit?: string | null
           id?: string
           institution_id?: string | null
+          is_published?: boolean | null
           portion_covered_percentage?: number | null
+          published_at?: string | null
           report_date?: string
           report_month: string
           report_type?: string
@@ -4938,7 +4942,9 @@ export type Database = {
           hours_unit?: string | null
           id?: string
           institution_id?: string | null
+          is_published?: boolean | null
           portion_covered_percentage?: number | null
+          published_at?: string | null
           report_date?: string
           report_month?: string
           report_type?: string
