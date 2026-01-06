@@ -231,31 +231,23 @@ export function useInstitutions() {
         throw error;
       }
       
-      // Fetch actual user counts for each institution from profiles + user_roles
+      // Fetch actual student counts directly from students table
       const institutionIds = (data || []).map(i => i.id);
       
-      // Get student counts per institution
-      const { data: userCounts, error: countError } = await supabase
-        .from('profiles')
-        .select('institution_id, id')
-        .in('institution_id', institutionIds);
+      // Count students per institution directly from students table
+      const studentCountPromises = institutionIds.map(async (instId) => {
+        const { count, error } = await supabase
+          .from('students')
+          .select('*', { count: 'exact', head: true })
+          .eq('institution_id', instId);
+        
+        return { institutionId: instId, count: count || 0 };
+      });
       
-      // Also check user_roles for student role
-      const { data: studentRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .eq('role', 'student');
-      
-      // Create a set of student user IDs
-      const studentUserIds = new Set((studentRoles || []).map(r => r.user_id));
-      
-      // Count students per institution
+      const studentCounts = await Promise.all(studentCountPromises);
       const institutionStudentCounts: Record<string, number> = {};
-      (userCounts || []).forEach(profile => {
-        if (profile.institution_id && studentUserIds.has(profile.id)) {
-          institutionStudentCounts[profile.institution_id] = 
-            (institutionStudentCounts[profile.institution_id] || 0) + 1;
-        }
+      studentCounts.forEach(({ institutionId, count }) => {
+        institutionStudentCounts[institutionId] = count;
       });
       
       console.log('[Institutions] Fetched:', data?.length || 0, 'institutions');
