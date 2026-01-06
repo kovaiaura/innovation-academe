@@ -20,6 +20,9 @@ import { useInstitutionPerformanceMetrics } from "@/hooks/useInstitutionPerforma
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { ActivityReportPDF } from "@/components/reports/pdf/ActivityReportPDF";
+import { pdf } from "@react-pdf/renderer";
+import { toast } from "sonner";
 
 // Hook to get institution ID from slug
 function useInstitutionId(slug: string | undefined) {
@@ -128,12 +131,34 @@ const PerformanceAnalyticsTab = ({ institutionId }: { institutionId: string | un
 // Monthly Reports Tab - Now uses real published reports
 const MonthlyReportsTab = ({ institutionId }: { institutionId: string | undefined }) => {
   const [typeFilter, setTypeFilter] = useState("all");
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const { data: publishedReports, isLoading } = usePublishedReports(institutionId);
 
   const filteredReports = (publishedReports || []).filter((report) => {
     if (typeFilter === "all") return true;
     return report.report_type?.toLowerCase() === typeFilter;
   });
+
+  const handleDownloadReport = async (report: any) => {
+    try {
+      setDownloadingId(report.id);
+      const blob = await pdf(<ActivityReportPDF report={report} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${report.client_name}_${report.report_month}_Report.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success('Report downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading report:', error);
+      toast.error('Failed to download report');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -199,16 +224,19 @@ const MonthlyReportsTab = ({ institutionId }: { institutionId: string | undefine
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        {report.generated_pdf_url && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => window.open(report.generated_pdf_url, '_blank')}
-                          >
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleDownloadReport(report)}
+                          disabled={downloadingId === report.id}
+                        >
+                          {downloadingId === report.id ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
                             <Download className="h-4 w-4 mr-2" />
-                            Download PDF
-                          </Button>
-                        )}
+                          )}
+                          Download PDF
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -216,30 +244,6 @@ const MonthlyReportsTab = ({ institutionId }: { institutionId: string | undefine
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-// Export Data Tab - Placeholder with message
-const ExportDataTab = () => {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Export Data</h2>
-          <p className="text-muted-foreground">Download reports in PDF, CSV, or Excel format</p>
-        </div>
-      </div>
-
-      <Card className="border-dashed">
-        <CardContent className="py-12 text-center">
-          <Download className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <p className="text-muted-foreground">Data export functionality coming soon.</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            You will be able to export student data, attendance records, and performance reports.
-          </p>
         </CardContent>
       </Card>
     </div>
@@ -272,23 +276,19 @@ const Reports = () => {
         
         <div>
           <h1 className="text-3xl font-bold">Reports</h1>
-          <p className="text-muted-foreground">Performance analytics, reports, and data exports</p>
+          <p className="text-muted-foreground">Performance analytics and reports</p>
         </div>
 
         <Tabs defaultValue="analytics" className="w-full">
-          <TabsList className="grid w-full max-w-2xl grid-cols-3">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="analytics">Performance Analytics</TabsTrigger>
             <TabsTrigger value="reports">Monthly Reports</TabsTrigger>
-            <TabsTrigger value="export">Export Data</TabsTrigger>
           </TabsList>
           <TabsContent value="analytics" className="mt-6">
             <PerformanceAnalyticsTab institutionId={institutionId} />
           </TabsContent>
           <TabsContent value="reports" className="mt-6">
             <MonthlyReportsTab institutionId={institutionId} />
-          </TabsContent>
-          <TabsContent value="export" className="mt-6">
-            <ExportDataTab />
           </TabsContent>
         </Tabs>
       </div>
