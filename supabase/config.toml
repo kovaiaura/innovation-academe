@@ -4,10 +4,10 @@ project_id = "ftadmxcxzhptngqbbqpk"
 verify_jwt = false
 
 [functions.reset-institution-admin-password]
-verify_jwt = true
+verify_jwt = false
 
 [functions.create-institution-admin]
-verify_jwt = true
+verify_jwt = false
 
 [functions.create-student-user]
 verify_jwt = false
