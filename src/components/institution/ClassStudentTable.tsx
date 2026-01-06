@@ -139,7 +139,7 @@ export function ClassStudentTable({ students, onEditStudent, institutionCode, cl
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
-                        <AvatarImage src={student.avatar} alt={student.student_name} />
+                        <AvatarImage src={student.avatar || undefined} alt={student.student_name} />
                         <AvatarFallback>{getInitials(student.student_name)}</AvatarFallback>
                       </Avatar>
                       <div>
