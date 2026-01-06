@@ -293,7 +293,7 @@ export function BulkUploadStudentsToClassDialog({
               </Card>
             </div>
 
-            {(duplicates.rollNumbers.length > 0 || duplicates.admissionNumbers.length > 0 || duplicates.emails.length > 0) && (
+            {duplicates.emails.length > 0 && (
               <Card className="border-orange-500">
                 <CardHeader>
                   <CardTitle className="text-sm flex items-center gap-2 text-orange-700 dark:text-orange-300">
@@ -302,12 +302,7 @@ export function BulkUploadStudentsToClassDialog({
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-orange-700 dark:text-orange-300 space-y-1">
-                  {duplicates.rollNumbers.length > 0 && (
-                    <p>Duplicate roll numbers: {duplicates.rollNumbers.join(', ')}</p>
-                  )}
-                  {duplicates.emails.length > 0 && (
-                    <p>Duplicate emails: {duplicates.emails.join(', ')}</p>
-                  )}
+                  <p>Duplicate emails: {duplicates.emails.join(', ')}</p>
                 </CardContent>
               </Card>
             )}
@@ -324,8 +319,8 @@ export function BulkUploadStudentsToClassDialog({
                         <TableHead>Row</TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead>Email</TableHead>
-                        <TableHead>Roll Number</TableHead>
                         <TableHead>Gender</TableHead>
+                        <TableHead>DOB</TableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -335,8 +330,8 @@ export function BulkUploadStudentsToClassDialog({
                           <TableCell>{row.rowIndex}</TableCell>
                           <TableCell>{row.student_name}</TableCell>
                           <TableCell className="text-xs">{row.email}</TableCell>
-                          <TableCell>{row.roll_number}</TableCell>
                           <TableCell className="capitalize">{row.gender}</TableCell>
+                          <TableCell className="text-xs">{row.date_of_birth}</TableCell>
                           <TableCell>
                             {row.validation.isValid ? (
                               <Badge variant="default" className="bg-green-500">Valid</Badge>
