@@ -1,4 +1,4 @@
-export type IdEntityType = 'employee' | 'institution' | 'student';
+export type IdEntityType = 'employee' | 'institution' | 'student' | 'roll_number';
 
 export interface IdConfiguration {
   id: string;

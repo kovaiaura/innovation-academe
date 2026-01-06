@@ -4,14 +4,13 @@ export interface ParsedRow {
   student_name: string;
   email: string;
   password: string;
-  roll_number: string;
-  admission_number: string;
   date_of_birth: string;
   gender: 'male' | 'female' | 'other';
-  parent_name: string;
-  parent_phone: string;
-  address: string;
+  // Optional fields
   blood_group?: string;
+  parent_name?: string;
+  parent_phone?: string;
+  address?: string;
   previous_school?: string;
 }
 
@@ -22,8 +21,6 @@ export interface ValidationResult {
 }
 
 export interface DuplicateInfo {
-  rollNumbers: string[];
-  admissionNumbers: string[];
   emails: string[];
 }
 
@@ -47,7 +44,7 @@ export function validateRow(row: ParsedRow, rowIndex: number): ValidationResult 
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // Required field validation
+  // Required field validation - Only 5 fields are mandatory
   if (!row.student_name?.trim()) {
     errors.push('Student name is required');
   } else if (row.student_name.length < 2 || row.student_name.length > 100) {
@@ -69,16 +66,6 @@ export function validateRow(row: ParsedRow, rowIndex: number): ValidationResult 
     errors.push('Password must be at least 6 characters');
   }
 
-  if (!row.roll_number?.trim()) {
-    errors.push('Roll number is required');
-  } else if (row.roll_number.length < 1 || row.roll_number.length > 30) {
-    errors.push('Roll number must be 1-30 characters');
-  }
-
-  if (!row.admission_number?.trim()) {
-    errors.push('Admission number is required');
-  }
-
   // Date validation
   if (!row.date_of_birth) {
     errors.push('Date of birth is required');
@@ -88,8 +75,8 @@ export function validateRow(row: ParsedRow, rowIndex: number): ValidationResult 
       errors.push('Invalid date format (use YYYY-MM-DD)');
     } else {
       const age = new Date().getFullYear() - dob.getFullYear();
-      if (age < 4 || age > 25) {
-        warnings.push('Student age should typically be between 4 and 25 years');
+      if (age < 3 || age > 25) {
+        warnings.push('Student age should typically be between 3 and 25 years');
       }
     }
   }
@@ -99,24 +86,16 @@ export function validateRow(row: ParsedRow, rowIndex: number): ValidationResult 
     errors.push('Gender must be male, female, or other');
   }
 
-  if (!row.parent_name?.trim()) {
-    errors.push('Parent name is required');
-  }
-
-  // Phone validation
-  const phoneRegex = /^[\+]?[0-9\s\-()]{10,20}$/;
-  if (!row.parent_phone || !phoneRegex.test(row.parent_phone)) {
-    errors.push('Valid parent phone number is required');
-  }
-
-  if (!row.address?.trim() || row.address.length < 10) {
-    errors.push('Address is required (minimum 10 characters)');
-  }
-
-  // Blood group validation (optional)
+  // Optional field validations (only warnings, not errors)
   const validBloodGroups = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
   if (row.blood_group && !validBloodGroups.includes(row.blood_group.toUpperCase())) {
     warnings.push('Invalid blood group format');
+  }
+
+  // Phone validation (optional)
+  const phoneRegex = /^[\+]?[0-9\s\-()]{10,20}$/;
+  if (row.parent_phone && !phoneRegex.test(row.parent_phone)) {
+    warnings.push('Parent phone number format may be invalid');
   }
 
   return {
@@ -127,33 +106,11 @@ export function validateRow(row: ParsedRow, rowIndex: number): ValidationResult 
 }
 
 export function findDuplicates(data: ParsedRow[]): DuplicateInfo {
-  const rollNumbers = new Map<string, number>();
-  const admissionNumbers = new Map<string, number>();
   const emails = new Map<string, number>();
-  const duplicateRolls: string[] = [];
-  const duplicateAdmissions: string[] = [];
   const duplicateEmails: string[] = [];
 
   data.forEach((row, index) => {
-    const rollNum = row.roll_number?.trim();
-    const admNum = row.admission_number?.trim();
     const email = row.email?.trim()?.toLowerCase();
-
-    if (rollNum) {
-      if (rollNumbers.has(rollNum)) {
-        duplicateRolls.push(rollNum);
-      } else {
-        rollNumbers.set(rollNum, index);
-      }
-    }
-
-    if (admNum) {
-      if (admissionNumbers.has(admNum)) {
-        duplicateAdmissions.push(admNum);
-      } else {
-        admissionNumbers.set(admNum, index);
-      }
-    }
 
     if (email) {
       if (emails.has(email)) {
@@ -165,8 +122,6 @@ export function findDuplicates(data: ParsedRow[]): DuplicateInfo {
   });
 
   return {
-    rollNumbers: [...new Set(duplicateRolls)],
-    admissionNumbers: [...new Set(duplicateAdmissions)],
     emails: [...new Set(duplicateEmails)]
   };
 }
@@ -176,14 +131,12 @@ export function generateTemplate(): Blob {
     'student_name',
     'email',
     'password',
-    'roll_number',
-    'admission_number',
     'date_of_birth',
     'gender',
+    'blood_group',
     'parent_name',
     'parent_phone',
     'address',
-    'blood_group',
     'previous_school'
   ];
 
@@ -191,18 +144,20 @@ export function generateTemplate(): Blob {
     'John Doe',
     'john.doe@school.com',
     'Student@123',
-    'MSA-5-A-001-KGA',
-    'ADM-2025-001',
     '2010-05-15',
     'male',
+    'O+',
     'Mr. Robert Doe',
     '+91-98765-43210',
     '123 Main St, New Delhi',
-    'O+',
     'XYZ School'
   ];
 
+  // Add header comment explaining required vs optional
+  const headerComment = '# Required: student_name, email, password, date_of_birth, gender | Optional: blood_group, parent_name, parent_phone, address, previous_school';
+  
   const csvContent = [
+    headerComment,
     headers.join(','),
     exampleRow.map(cell => `"${cell}"`).join(',')
   ].join('\n');
