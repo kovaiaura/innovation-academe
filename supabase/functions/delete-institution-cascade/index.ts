@@ -380,7 +380,14 @@ Deno.serve(async (req) => {
       .eq('institution_id', institutionId);
     if (!eventClassError) deletionLog.push('event_class_assignments');
 
-    // 32. Update officers - remove institution from assigned_institutions array
+    // 32. Delete officer_institution_assignments
+    const { error: oiaError } = await adminClient
+      .from('officer_institution_assignments')
+      .delete()
+      .eq('institution_id', institutionId);
+    if (!oiaError) deletionLog.push('officer_institution_assignments');
+
+    // 33. Update officers - remove institution from assigned_institutions array
     const { data: officers } = await adminClient
       .from('officers')
       .select('id, assigned_institutions')
