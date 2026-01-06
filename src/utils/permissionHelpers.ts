@@ -4,38 +4,47 @@ import { SystemAdminFeature, ALL_SYSTEM_ADMIN_FEATURES } from '@/types/permissio
 /**
  * Check if user can access a specific feature.
  * Uses user.allowed_features which is populated at login time from the database.
+ * 
+ * IMPORTANT: For users with system_admin role + position, access is determined by
+ * their position's visible_features, even if they also have super_admin role.
+ * This ensures CEO sidebar visibility respects position selections.
  */
 export const canAccessFeature = (user: User | null, feature: SystemAdminFeature): boolean => {
   if (!user) return false;
 
-  // Super admins can access all system admin features
+  // If user has system_admin role, check position-based features
+  // This takes precedence over super_admin to respect position selections
+  if (hasAnyRole(user, ['system_admin'])) {
+    if (!user.allowed_features || user.allowed_features.length === 0) return false;
+    return user.allowed_features.includes(feature);
+  }
+
+  // Pure super_admin (not system_admin) can access all features
   if (hasAnyRole(user, ['super_admin'])) return true;
 
-  // Only system admins have position-based feature access
-  if (!hasAnyRole(user, ['system_admin'])) return false;
-
-  // Check allowed_features from user object (populated at login from database)
-  // This includes CEO who respects their position's visible_features
-  if (!user.allowed_features || user.allowed_features.length === 0) return false;
-
-  return user.allowed_features.includes(feature);
+  return false;
 };
 
 /**
  * Get all features the user can access.
  * Uses user.allowed_features which is populated at login time from the database.
+ * 
+ * IMPORTANT: For users with system_admin role + position, features are determined by
+ * their position's visible_features, even if they also have super_admin role.
  */
 export const getAccessibleFeatures = (user: User | null): SystemAdminFeature[] => {
   if (!user) return [];
 
-  // Super admins can access all system admin features
+  // If user has system_admin role, return position-based features
+  // This takes precedence over super_admin to respect position selections
+  if (hasAnyRole(user, ['system_admin'])) {
+    return user.allowed_features || [];
+  }
+
+  // Pure super_admin (not system_admin) can access all features
   if (hasAnyRole(user, ['super_admin'])) return ALL_SYSTEM_ADMIN_FEATURES;
 
-  // Only system admins have feature access
-  if (!hasAnyRole(user, ['system_admin'])) return [];
-
-  // Return allowed_features from user object (includes CEO)
-  return user.allowed_features || [];
+  return [];
 };
 
 /**
