@@ -8,6 +8,7 @@ import { gamificationDbService } from '@/services/gamification-db.service';
 import { useAuth } from '@/contexts/AuthContext';
 import { StudentCertificate } from '@/types/gamification';
 import { Award, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DBCertificate {
   id: string;
@@ -41,7 +42,20 @@ export default function Certificates() {
       
       try {
         setLoading(true);
-        const data = await gamificationDbService.getStudentCertificates(user.id);
+        
+        // First get the student record ID
+        const { data: studentRecord } = await supabase
+          .from('students')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (!studentRecord?.id) {
+          setLoading(false);
+          return;
+        }
+        
+        const data = await gamificationDbService.getStudentCertificates(studentRecord.id);
         
         // Transform DB data to StudentCertificate format
         const transformedCerts: StudentCertificate[] = (data as DBCertificate[]).map(cert => ({

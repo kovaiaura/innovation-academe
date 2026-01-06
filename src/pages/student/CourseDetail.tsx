@@ -6,11 +6,28 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStudentCourses } from '@/hooks/useClassCourseAssignments';
 import { LMSCourseViewer } from '@/components/student/LMSCourseViewer';
 import { useLevelCompletionCertificate } from '@/hooks/useLevelCompletionCertificate';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function StudentCourseDetail() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  // Fetch the student record ID (different from user.id/profile ID)
+  const { data: studentRecord } = useQuery({
+    queryKey: ['student-record', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from('students')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!user?.id
+  });
 
   // Fetch student courses from Supabase
   const { data: assignedCourses, isLoading } = useStudentCourses(user?.id, user?.class_id);
@@ -20,9 +37,9 @@ export default function StudentCourseDetail() {
   const course = courseAssignment?.course;
   const modules = courseAssignment?.modules || [];
 
-  // Auto-issue certificates when levels are completed
+  // Auto-issue certificates when levels are completed (using student record ID)
   useLevelCompletionCertificate(
-    user?.id,
+    studentRecord?.id,
     modules,
     user?.institution_id,
     course?.title
