@@ -15,6 +15,7 @@ import Unauthorized from "./pages/Unauthorized";
 import SuperAdminDashboard from "./pages/super-admin/Dashboard";
 import SuperAdminSystemConfig from "./pages/super-admin/SystemConfig";
 import SuperAdminAuditLogs from "./pages/super-admin/AuditLogs";
+import CEOAnalyticsDashboard from "./pages/super-admin/CEOAnalyticsDashboard";
 import SystemAdminDashboard from "./pages/system-admin/Dashboard";
 import InstitutionManagement from "./pages/system-admin/InstitutionManagement";
 import InvoiceManagement from "./pages/system-admin/InvoiceManagement";
@@ -203,6 +204,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['super_admin']}>
                   <SuperAdminAuditLogs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/super-admin/ceo-analytics"
+              element={
+                <ProtectedRoute allowedRoles={['super_admin']}>
+                  <CEOAnalyticsDashboard />
                 </ProtectedRoute>
               }
             />
