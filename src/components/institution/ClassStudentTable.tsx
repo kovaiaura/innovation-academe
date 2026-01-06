@@ -142,10 +142,7 @@ export function ClassStudentTable({ students, onEditStudent, institutionCode, cl
                         <AvatarImage src={student.avatar || undefined} alt={student.student_name} />
                         <AvatarFallback>{getInitials(student.student_name)}</AvatarFallback>
                       </Avatar>
-                      <div>
-                        <div className="font-medium">{student.student_name}</div>
-                        <div className="text-sm text-muted-foreground">{student.admission_number}</div>
-                      </div>
+                      <div className="font-medium">{student.student_name}</div>
                     </div>
                   </TableCell>
                   <TableCell className="font-mono text-sm">{student.roll_number}</TableCell>
