@@ -34,7 +34,7 @@ export function SurveyCard({ survey, isCompleted, onTakeSurvey }: SurveyCardProp
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              <span>{survey.questions.length} questions</span>
+              <span>{(survey as any).survey_questions?.length ?? survey.questions?.length ?? 0} questions</span>
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
