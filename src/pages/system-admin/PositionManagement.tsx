@@ -34,7 +34,7 @@ import {
 import { Copy, AlertTriangle } from 'lucide-react';
 
 export default function PositionManagement() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [positions, setPositions] = useState<CustomPosition[]>([]);
   const [selectedPosition, setSelectedPosition] = useState<CustomPosition | null>(null);
   const [positionUsers, setPositionUsers] = useState<User[]>([]);
@@ -166,6 +166,11 @@ export default function PositionManagement() {
       toast.success('Position updated successfully');
       setIsEditDialogOpen(false);
       loadAllData();
+      
+      // If the edited position is the current user's position, refresh user data immediately
+      if (selectedPosition.id === user?.position_id) {
+        await refreshUser();
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to update position');
     } finally {
