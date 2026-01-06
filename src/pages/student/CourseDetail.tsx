@@ -5,6 +5,7 @@ import { BookOpen, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudentCourses } from '@/hooks/useClassCourseAssignments';
 import { LMSCourseViewer } from '@/components/student/LMSCourseViewer';
+import { useLevelCompletionCertificate } from '@/hooks/useLevelCompletionCertificate';
 
 export default function StudentCourseDetail() {
   const { courseId } = useParams();
@@ -18,6 +19,14 @@ export default function StudentCourseDetail() {
   const courseAssignment = assignedCourses?.find(a => a.course_id === courseId);
   const course = courseAssignment?.course;
   const modules = courseAssignment?.modules || [];
+
+  // Auto-issue certificates when levels are completed
+  useLevelCompletionCertificate(
+    user?.id,
+    modules,
+    user?.institution_id,
+    course?.title
+  );
 
   if (isLoading) {
     return (
