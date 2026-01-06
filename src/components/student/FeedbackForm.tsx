@@ -55,11 +55,11 @@ export function FeedbackForm({ onSubmit }: FeedbackFormProps) {
       if (!profile?.institution_id) return [];
       const { data, error } = await supabase
         .from('officers')
-        .select('id, name')
+        .select('id, full_name')
         .contains('assigned_institutions', [profile.institution_id])
-        .order('name');
+        .order('full_name');
       if (error) throw error;
-      return data || [];
+      return data?.map(o => ({ id: o.id, name: o.full_name })) || [];
     },
     enabled: !!profile?.institution_id,
   });
@@ -149,7 +149,7 @@ export function FeedbackForm({ onSubmit }: FeedbackFormProps) {
                       <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="" disabled>No courses available</SelectItem>
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">No courses available</div>
                   )}
                 </SelectContent>
               </Select>
@@ -169,7 +169,7 @@ export function FeedbackForm({ onSubmit }: FeedbackFormProps) {
                       <SelectItem key={officer.id} value={officer.id}>{officer.name}</SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="" disabled>No officers available</SelectItem>
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">No officers available</div>
                   )}
                 </SelectContent>
               </Select>
