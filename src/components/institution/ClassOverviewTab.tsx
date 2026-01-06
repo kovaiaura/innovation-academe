@@ -141,38 +141,6 @@ export function ClassOverviewTab({
         </CardContent>
       </Card>
 
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-          <CardDescription>Latest updates and actions in this class</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="w-2 h-2 mt-2 rounded-full bg-primary" />
-              <div className="flex-1">
-                <p className="text-sm font-medium">New student enrolled</p>
-                <p className="text-xs text-muted-foreground">2 hours ago</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-2 h-2 mt-2 rounded-full bg-primary" />
-              <div className="flex-1">
-                <p className="text-sm font-medium">Attendance marked</p>
-                <p className="text-xs text-muted-foreground">5 hours ago</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-2 h-2 mt-2 rounded-full bg-primary" />
-              <div className="flex-1">
-                <p className="text-sm font-medium">New course assigned</p>
-                <p className="text-xs text-muted-foreground">1 day ago</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

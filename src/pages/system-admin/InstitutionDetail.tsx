@@ -15,7 +15,7 @@ import { InstitutionAnalyticsTab } from '@/components/institution/InstitutionAna
 import { InstitutionTimetableTab } from '@/components/institution/InstitutionTimetableTab';
 import { InstituteHolidayCalendar } from '@/components/institution/InstituteHolidayCalendar';
 import { InstitutionClass } from '@/types/student';
-import { getInstitutionAnalytics } from '@/data/mockInstitutionAnalytics';
+import { useInstitutionAnalytics } from '@/hooks/useInstitutionAnalytics';
 import { toast } from 'sonner';
 import { useInstitutions } from '@/hooks/useInstitutions';
 import { useClasses } from '@/hooks/useClasses';
@@ -23,6 +23,42 @@ import { useStudents } from '@/hooks/useStudents';
 import { useInstitutionPeriods, useInstitutionTimetable } from '@/hooks/useTimetable';
 import { useOfficersByInstitution, useAvailableOfficers, useOfficerAssignment } from '@/hooks/useInstitutionOfficers';
 import { PeriodConfig, InstitutionTimetableAssignment } from '@/types/institution';
+import { Loader2 } from 'lucide-react';
+
+// Analytics content wrapper component
+function InstitutionAnalyticsContent({ institutionId, institutionName }: { institutionId: string; institutionName: string }) {
+  const { data: analytics, isLoading } = useInstitutionAnalytics(institutionId);
+  
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin mb-2" />
+          <p className="text-muted-foreground">Loading analytics...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (!analytics) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <p className="text-muted-foreground">No data available yet. Analytics will appear once students and attendance records are added.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  return (
+    <InstitutionAnalyticsTab
+      institutionId={institutionId}
+      institutionName={institutionName}
+      analytics={analytics}
+      onGenerateReport={async () => { toast.success('Report generated'); }}
+    />
+  );
+}
 
 export default function InstitutionDetail() {
   const { institutionId } = useParams();
@@ -487,20 +523,10 @@ export default function InstitutionDetail() {
 
           {/* Analytics Tab */}
           <TabsContent value="analytics" className="space-y-6">
-            {getInstitutionAnalytics(institutionId!) ? (
-              <InstitutionAnalyticsTab
-                institutionId={institutionId!}
-                institutionName={institution.name}
-                analytics={getInstitutionAnalytics(institutionId!)!}
-                onGenerateReport={async (options) => { toast.success('Report generated'); }}
-              />
-            ) : (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <p className="text-muted-foreground">Analytics data not available for this institution</p>
-                </CardContent>
-              </Card>
-            )}
+            <InstitutionAnalyticsContent
+              institutionId={institutionId!}
+              institutionName={institution.name}
+            />
           </TabsContent>
 
           {/* Timetable Tab */}

@@ -10,13 +10,13 @@ import { ClassStudentsTab } from '@/components/institution/ClassStudentsTab';
 import { ClassCoursesTab } from '@/components/institution/ClassCoursesTab';
 import { ClassAnalyticsTab } from '@/components/institution/ClassAnalyticsTab';
 import { getCourseAssignmentsByClass } from '@/data/mockClassCourseAssignments';
-import { getClassAnalytics } from '@/data/mockClassAnalytics';
+import { useClassAnalytics } from '@/hooks/useClassAnalytics';
 import { useInstitutions } from '@/hooks/useInstitutions';
 import { useClasses } from '@/hooks/useClasses';
 import { useStudents } from '@/hooks/useStudents';
 import { useBulkImportStudents } from '@/hooks/useBulkImport';
 import { useIdCounter } from '@/hooks/useTimetable';
-import { ClassCourseAssignment, ClassAnalytics } from '@/types/institution';
+import { ClassCourseAssignment } from '@/types/institution';
 import { Student, InstitutionClass } from '@/types/student';
 import { toast } from 'sonner';
 import { parseCSV, validateRow } from '@/utils/csvParser';
@@ -29,21 +29,17 @@ export default function ClassDetail() {
   const { students, isLoading: isLoadingStudents, createStudent, updateStudent, deleteStudent } = useStudents(institutionId, classId);
   const { bulkImport, progress, isImporting } = useBulkImportStudents(institutionId || '', classId || '');
   const { getNextId } = useIdCounter(institutionId);
+  const { data: analytics, isLoading: isLoadingAnalytics } = useClassAnalytics(classId, institutionId);
   
   const [courseAssignments, setCourseAssignments] = useState<ClassCourseAssignment[]>([]);
-  const [analytics, setAnalytics] = useState<ClassAnalytics | null>(null);
 
   const institution = institutions.find(inst => inst.id === institutionId);
   const classData = classesWithCounts.find(c => c.id === classId);
 
-  // Load mock data for courses and analytics (can be replaced with DB hooks later)
+  // Load mock data for courses (can be replaced with DB hooks later)
   useState(() => {
     if (classId) {
       setCourseAssignments(getCourseAssignmentsByClass(classId));
-      const analyticsData = getClassAnalytics(classId);
-      if (analyticsData) {
-        setAnalytics(analyticsData);
-      }
     }
   });
 
