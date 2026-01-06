@@ -248,7 +248,7 @@ export function useInstitutionStats(institutionSlug: string | undefined) {
             description: officersOnLeaveDetails.map(o => o.officerName).join(', '),
             count: officersOnLeaveDetails.length,
             urgency: 'low',
-            link: `/tenant/${institutionSlug}/management/teachers`,
+            link: `/tenant/${institutionSlug}/management/officers`,
           });
         }
 
