@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 export interface CriticalAction {
   id: string;
-  type: 'purchase' | 'payroll' | 'deadline' | 'approval';
+  type: 'purchase' | 'payroll' | 'deadline' | 'info';
   title: string;
   description: string;
   count: number;

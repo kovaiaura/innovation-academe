@@ -1,9 +1,8 @@
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
-  Users, BookOpen, GraduationCap, TrendingUp, AlertCircle, Award, 
-  CheckCircle, Target, Briefcase, MapPin, Clock, Trophy, 
-  Shield, BarChart, Star, Zap, Rocket, FolderKanban, UserCog,
+  Users, BookOpen, GraduationCap, AlertCircle, 
+  CheckCircle, FolderKanban, UserCog,
   ClipboardCheck, ShoppingCart, CalendarCheck, Sparkles, Medal
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -121,139 +120,15 @@ const Dashboard = () => {
       bgColor: stats.pendingPurchases > 0 ? "bg-red-500/10" : "bg-green-500/10" 
     },
     { 
-      title: "Pending Leaves", 
-      value: stats.pendingLeaves.toString(), 
+      title: "Officers on Leave", 
+      value: stats.officersOnLeave.toString(), 
       icon: CalendarCheck,
-      description: stats.pendingLeaves > 0 ? "Awaiting approval" : "All clear",
-      color: stats.pendingLeaves > 0 ? "text-amber-500" : "text-green-500", 
-      bgColor: stats.pendingLeaves > 0 ? "bg-amber-500/10" : "bg-green-500/10" 
+      description: stats.officersOnLeave > 0 
+        ? stats.officersOnLeaveDetails.map(o => o.officerName).slice(0, 2).join(', ') + (stats.officersOnLeaveDetails.length > 2 ? '...' : '')
+        : "All present today",
+      color: stats.officersOnLeave > 0 ? "text-amber-500" : "text-green-500", 
+      bgColor: stats.officersOnLeave > 0 ? "bg-amber-500/10" : "bg-green-500/10" 
     },
-  ];
-
-  // ROI Highlights - Platform marketing content (static)
-  const roiHighlights = [
-    {
-      title: "Time Saved on Administration",
-      value: "40 hours/week",
-      description: "Automated attendance, grading, and reporting reduce manual workload",
-      icon: Clock,
-      benefit: "Cost Savings",
-      color: "text-emerald-500",
-      bgColor: "bg-emerald-500/10"
-    },
-    {
-      title: "Improved Student Outcomes",
-      value: "+23% Performance",
-      description: "Gamification and personalized learning paths increase engagement",
-      icon: TrendingUp,
-      benefit: "Academic Excellence",
-      color: "text-blue-500",
-      bgColor: "bg-blue-500/10"
-    },
-    {
-      title: "Parent Satisfaction",
-      value: "4.8/5 Rating",
-      description: "Real-time progress tracking increases parent trust",
-      icon: Users,
-      benefit: "Reputation",
-      color: "text-purple-500",
-      bgColor: "bg-purple-500/10"
-    },
-    {
-      title: "Accreditation Ready",
-      value: "100% Compliant",
-      description: "Comprehensive audit logs and SDG alignment support requirements",
-      icon: Shield,
-      benefit: "Compliance",
-      color: "text-orange-500",
-      bgColor: "bg-orange-500/10"
-    }
-  ];
-
-  // Platform Features (static)
-  const platformFeatures = [
-    {
-      category: "Learning Management",
-      features: [
-        "STEM Courses with modular content",
-        "Assignment & Assessment management",
-        "Real-time progress tracking",
-        "Certificate generation"
-      ],
-      icon: BookOpen,
-      color: "text-blue-500",
-      bgColor: "bg-blue-500/10"
-    },
-    {
-      category: "Student Engagement",
-      features: [
-        "Gamification with XP & badges",
-        "Project-based learning",
-        "Event participation tracking",
-        "Portfolio & resume builder"
-      ],
-      icon: Trophy,
-      color: "text-purple-500",
-      bgColor: "bg-purple-500/10"
-    },
-    {
-      category: "Operations Management",
-      features: [
-        "GPS-based attendance & payroll",
-        "Inventory & purchase management",
-        "Leave & schedule management",
-        "Automated invoicing"
-      ],
-      icon: Briefcase,
-      color: "text-orange-500",
-      bgColor: "bg-orange-500/10"
-    },
-    {
-      category: "Analytics & Reporting",
-      features: [
-        "Real-time dashboards",
-        "SDG impact tracking",
-        "Performance analytics",
-        "Compliance reports"
-      ],
-      icon: BarChart,
-      color: "text-green-500",
-      bgColor: "bg-green-500/10"
-    }
-  ];
-
-  // Competitive Advantages (static)
-  const competitiveAdvantages = [
-    {
-      advantage: "All-in-One Platform",
-      description: "LMS + ERP + Project Management in one unified system",
-      badge: "No Integration Hassles",
-      icon: Zap
-    },
-    {
-      advantage: "STEM-Focused Curriculum",
-      description: "Industry-relevant courses from Electronics to AI to Entrepreneurship",
-      badge: "Future-Ready Skills",
-      icon: Rocket
-    },
-    {
-      advantage: "Automated Operations",
-      description: "GPS attendance, auto-grading, invoice generation reduce overhead",
-      badge: "40% Cost Reduction",
-      icon: Clock
-    },
-    {
-      advantage: "Accreditation Support",
-      description: "SDG alignment, audit logs, and compliance reporting built-in",
-      badge: "Inspection Ready",
-      icon: Shield
-    },
-    {
-      advantage: "Student Portfolio Builder",
-      description: "Automatic resume generation with projects, certificates, and skills",
-      badge: "Career Advantage",
-      icon: Star
-    }
   ];
 
   // Map critical actions to the expected format for CriticalActionsCard
@@ -268,7 +143,7 @@ const Dashboard = () => {
     amount: action.amount,
     link: action.link,
     icon: action.type === 'purchase' ? ShoppingCart : 
-          action.type === 'approval' ? CalendarCheck :
+          action.type === 'info' ? CalendarCheck :
           action.type === 'deadline' ? ClipboardCheck : AlertCircle
   }));
 
@@ -412,133 +287,6 @@ const Dashboard = () => {
           <LeaderboardSection institutionId={institution.id} />
         )}
 
-        {/* ROI Highlights */}
-        <div>
-          <div className="mb-4">
-            <h2 className="text-2xl font-bold">Return on Investment</h2>
-            <p className="text-sm text-muted-foreground">How Meta-Innova delivers measurable value</p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {roiHighlights.map((roi) => {
-              const Icon = roi.icon;
-              return (
-                <Card key={roi.title} className="hover:shadow-lg transition-shadow border-2">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className={`${roi.bgColor} p-3 rounded-lg`}>
-                        <Icon className={`h-5 w-5 ${roi.color}`} />
-                      </div>
-                      <Badge variant="outline" className="text-xs">{roi.benefit}</Badge>
-                    </div>
-                    <CardTitle className="text-lg mt-3">{roi.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                      {roi.value}
-                    </div>
-                    <p className="text-xs text-muted-foreground">{roi.description}</p>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Platform Features */}
-        <div>
-          <div className="mb-4">
-            <h2 className="text-2xl font-bold">Platform Capabilities</h2>
-            <p className="text-sm text-muted-foreground">Complete suite of features for modern education</p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {platformFeatures.map((feature) => {
-              const Icon = feature.icon;
-              return (
-                <Card key={feature.category} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className={`${feature.bgColor} p-3 rounded-lg w-fit`}>
-                      <Icon className={`h-6 w-6 ${feature.color}`} />
-                    </div>
-                    <CardTitle className="text-lg mt-3">{feature.category}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {feature.features.map((item, idx) => (
-                        <li key={idx} className="text-sm flex items-start gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Competitive Advantages */}
-        <div>
-          <div className="mb-4">
-            <h2 className="text-2xl font-bold">Why Choose Meta-Innova</h2>
-            <p className="text-sm text-muted-foreground">Competitive advantages that set us apart</p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {competitiveAdvantages.map((adv) => {
-              const Icon = adv.icon;
-              return (
-                <Card key={adv.advantage} className="hover:shadow-lg transition-shadow border-primary/20">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <Icon className="h-6 w-6 text-primary" />
-                      <Badge className="text-xs bg-primary/10 text-primary hover:bg-primary/20">{adv.badge}</Badge>
-                    </div>
-                    <CardTitle className="text-lg mt-3">{adv.advantage}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">{adv.description}</p>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Common management tasks</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Button variant="outline" asChild className="h-auto flex-col gap-2 py-4">
-                <Link to={tenant?.slug ? `/tenant/${tenant.slug}/management/students` : '/management/students'}>
-                  <Users className="h-5 w-5" />
-                  <span className="text-sm">Manage People</span>
-                </Link>
-              </Button>
-              <Button variant="outline" asChild className="h-auto flex-col gap-2 py-4">
-                <Link to={tenant?.slug ? `/tenant/${tenant.slug}/management/courses` : '/management/courses'}>
-                  <BookOpen className="h-5 w-5" />
-                  <span className="text-sm">Manage Courses</span>
-                </Link>
-              </Button>
-              <Button variant="outline" asChild className="h-auto flex-col gap-2 py-4">
-                <Link to={tenant?.slug ? `/tenant/${tenant.slug}/management/inventory` : '/management/inventory'}>
-                  <Briefcase className="h-5 w-5" />
-                  <span className="text-sm">Inventory</span>
-                </Link>
-              </Button>
-              <Button variant="outline" asChild className="h-auto flex-col gap-2 py-4">
-                <Link to={tenant?.slug ? `/tenant/${tenant.slug}/management/reports` : '/management/reports'}>
-                  <BarChart className="h-5 w-5" />
-                  <span className="text-sm">Reports</span>
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </Layout>
   );
