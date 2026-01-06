@@ -39,6 +39,7 @@ export function useUserProfilePhoto(userId: string | undefined) {
 }
 
 export async function updateProfilePhoto(userId: string, photoUrl: string | null) {
+  // Update profiles table - the database trigger will sync to students/officers
   const { error } = await supabase
     .from('profiles')
     .update({ avatar: photoUrl })
