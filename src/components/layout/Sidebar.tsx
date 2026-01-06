@@ -392,14 +392,7 @@ export function Sidebar() {
             </Button>
           </div>
         ) : (
-          <div className="flex flex-col items-center w-full gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full overflow-hidden">
-              <img 
-                src={branding.logo_collapsed_url || logoImage} 
-                alt="Logo" 
-                className="h-full w-full object-contain" 
-              />
-            </div>
+          <div className="flex items-center justify-center w-full">
             <Button
               variant="ghost"
               size="icon"
