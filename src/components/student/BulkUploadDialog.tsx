@@ -369,7 +369,7 @@ export function BulkUploadDialog({ isOpen, onOpenChange, institutionId, classId,
             </Card>
 
             {/* Duplicate Warning */}
-            {(duplicates.rollNumbers.length > 0 || duplicates.admissionNumbers.length > 0) && (
+            {duplicates.emails.length > 0 && (
               <Card className="border-orange-500 bg-orange-50 dark:bg-orange-950">
                 <CardHeader>
                   <CardTitle className="text-sm flex items-center gap-2 text-orange-700 dark:text-orange-300">
@@ -378,12 +378,7 @@ export function BulkUploadDialog({ isOpen, onOpenChange, institutionId, classId,
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-orange-700 dark:text-orange-300">
-                  {duplicates.rollNumbers.length > 0 && (
-                    <p>Duplicate roll numbers: {duplicates.rollNumbers.join(', ')}</p>
-                  )}
-                  {duplicates.admissionNumbers.length > 0 && (
-                    <p>Duplicate admission numbers: {duplicates.admissionNumbers.join(', ')}</p>
-                  )}
+                  <p>Duplicate emails: {duplicates.emails.join(', ')}</p>
                 </CardContent>
               </Card>
             )}
@@ -400,9 +395,9 @@ export function BulkUploadDialog({ isOpen, onOpenChange, institutionId, classId,
                       <TableRow>
                         <TableHead>Row</TableHead>
                         <TableHead>Name</TableHead>
-                        <TableHead>Roll Number</TableHead>
+                        <TableHead>Email</TableHead>
                         <TableHead>Gender</TableHead>
-                        <TableHead>Parent Name</TableHead>
+                        <TableHead>DOB</TableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -411,9 +406,9 @@ export function BulkUploadDialog({ isOpen, onOpenChange, institutionId, classId,
                         <TableRow key={row.rowIndex} className={!row.validation.isValid ? 'bg-destructive/10' : ''}>
                           <TableCell>{row.rowIndex}</TableCell>
                           <TableCell>{row.student_name}</TableCell>
-                          <TableCell>{row.roll_number}</TableCell>
+                          <TableCell className="text-xs">{row.email}</TableCell>
                           <TableCell className="capitalize">{row.gender}</TableCell>
-                          <TableCell>{row.parent_name}</TableCell>
+                          <TableCell className="text-xs">{row.date_of_birth}</TableCell>
                           <TableCell>
                             {row.validation.isValid ? (
                               <Badge variant="default" className="bg-green-500">Valid</Badge>
