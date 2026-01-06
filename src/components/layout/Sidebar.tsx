@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useBranding } from '@/contexts/BrandingContext';
 import logoImage from '@/assets/logo.png';
 import { 
-  Home, Users, User, Settings, LogOut, ChevronLeft, ChevronDown,
+  Home, Users, User, Settings, LogOut, ChevronLeft, ChevronRight, ChevronDown,
   BookOpen, Target, Calendar, Award, BarChart,
   Building2, FileText, Trophy, Package, UserCheck, GraduationCap,
   MessageSquare, MessageCircle, Bell, Video, Newspaper,
@@ -366,14 +366,11 @@ export function Sidebar() {
       <div className="flex h-16 items-center justify-between border-b border-meta-dark-lighter px-4">
         {!collapsed ? (
           <div className="flex items-center gap-2">
-            <div 
-              className="flex h-10 w-10 items-center justify-center rounded-full overflow-hidden"
-              style={{ backgroundColor: branding.sidebar_logo_bg || '#2d437f' }}
-            >
+            <div className="flex h-10 w-10 items-center justify-center rounded-full overflow-hidden">
               <img 
                 src={branding.logo_collapsed_url || logoImage} 
                 alt="Logo" 
-                className="h-full w-full object-contain p-1" 
+                className="h-full w-full object-contain" 
               />
             </div>
             {branding.logo_expanded_url ? (
@@ -385,30 +382,34 @@ export function Sidebar() {
             ) : (
               <span className="text-xl font-bold">Meta-INNOVA</span>
             )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCollapsed(true)}
+              className="text-white hover:bg-meta-dark-lighter hover:text-meta-accent ml-auto"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
           </div>
         ) : (
-          <div 
-            className="flex h-10 w-10 items-center justify-center rounded-full overflow-hidden mx-auto"
-            style={{ backgroundColor: branding.sidebar_logo_bg || '#2d437f' }}
-          >
-            <img 
-              src={branding.logo_collapsed_url || logoImage} 
-              alt="Logo" 
-              className="h-full w-full object-contain p-1" 
-            />
+          <div className="flex flex-col items-center w-full gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full overflow-hidden">
+              <img 
+                src={branding.logo_collapsed_url || logoImage} 
+                alt="Logo" 
+                className="h-full w-full object-contain" 
+              />
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCollapsed(false)}
+              className="text-white hover:bg-meta-dark-lighter hover:text-meta-accent"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </Button>
           </div>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setCollapsed(!collapsed)}
-          className={cn(
-            "text-white hover:bg-meta-dark-lighter hover:text-meta-accent",
-            collapsed && "absolute right-2"
-          )}
-        >
-          <ChevronLeft className={cn('h-5 w-5 transition-transform', collapsed && 'rotate-180')} />
-        </Button>
       </div>
 
       {/* Navigation */}
@@ -486,7 +487,7 @@ export function Sidebar() {
               subtitle={user.roles && user.roles.length > 1 
                 ? user.roles.map(r => r.replace('_', ' ')).join(', ')
                 : user.role?.replace('_', ' ')}
-              profilePath={getFullPath('/profile', user.role as UserRole)}
+              profilePath={user.is_ceo ? getFullPath('/settings', 'system_admin' as UserRole) : getFullPath('/profile', user.role as UserRole)}
               collapsed={collapsed}
             />
           </>
