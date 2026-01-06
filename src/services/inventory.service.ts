@@ -42,6 +42,24 @@ export async function addInventoryItem(
   itemData: AddInventoryItemData,
   userId: string
 ): Promise<InventoryItem> {
+  // Check if there are any active inventory items for this institution
+  const { count, error: countError } = await supabase
+    .from('inventory_items')
+    .select('*', { count: 'exact', head: true })
+    .eq('institution_id', institutionId)
+    .eq('status', 'active');
+
+  if (countError) throw countError;
+
+  // If no active items exist, reset the counter to 0 so next item gets sl_no 1
+  if (count === 0) {
+    await supabase
+      .from('id_counters')
+      .update({ current_counter: 0, updated_at: new Date().toISOString() })
+      .eq('institution_id', institutionId)
+      .eq('entity_type', 'inventory_item');
+  }
+
   // Get the next sl_no for this institution using atomic counter
   const { data: nextSlNo, error: slNoError } = await supabase
     .rpc('get_next_id', { 
