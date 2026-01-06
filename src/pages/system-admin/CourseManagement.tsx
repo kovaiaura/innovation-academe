@@ -470,6 +470,22 @@ export default function CourseManagement() {
                   </Button>
                 </div>
 
+                <Separator className="my-4" />
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Target className="h-4 w-4" />
+                    SDG Goals
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Select the UN Sustainable Development Goals that this course addresses
+                  </p>
+                  <SDGGoalSelector
+                    selectedGoals={newCourse.sdg_goals}
+                    onChange={(goals) => setNewCourse({ ...newCourse, sdg_goals: goals })}
+                  />
+                </div>
+
               </CardContent>
             </Card>
 
