@@ -551,7 +551,8 @@ export default function InstitutionDetail() {
               periods={transformedPeriods}
               timetableData={transformedTimetable}
               onSavePeriods={async (newPeriods) => {
-                await savePeriods(newPeriods);
+                const saved = await savePeriods(newPeriods);
+                return saved || [];
               }}
               onSaveTimetable={async (assignments) => {
                 await saveTimetable(assignments);

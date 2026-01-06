@@ -21,7 +21,7 @@ interface InstitutionTimetableTabProps {
   assignedOfficers: OfficerAssignment[];
   periods: PeriodConfig[];
   timetableData: InstitutionTimetableAssignment[];
-  onSavePeriods: (periods: PeriodConfig[]) => Promise<void>;
+  onSavePeriods: (periods: PeriodConfig[]) => Promise<PeriodConfig[]>;
   onSaveTimetable: (assignments: InstitutionTimetableAssignment[]) => Promise<void>;
 }
 
@@ -63,7 +63,7 @@ export const InstitutionTimetableTab = ({
     }
 
     const newPeriod: PeriodConfig = {
-      id: `period-${Date.now()}`,
+      id: crypto.randomUUID(),
       institution_id: institutionId,
       label: periodLabel,
       start_time: periodStartTime,
@@ -122,8 +122,32 @@ export const InstitutionTimetableTab = ({
   const handleSavePeriodConfig = async () => {
     setIsSaving(true);
     try {
-      await onSavePeriods(periods);
-      toast.success('Period configuration saved');
+      // Save periods and get the new UUIDs back from database
+      const savedPeriods = await onSavePeriods(periods);
+      
+      // Create a mapping from old temporary IDs to new database UUIDs
+      const idMapping = new Map<string, string>();
+      periods.forEach((oldPeriod, index) => {
+        if (savedPeriods && savedPeriods[index]) {
+          idMapping.set(oldPeriod.id, savedPeriods[index].id);
+        }
+      });
+      
+      // Update local periods with new UUIDs from database
+      if (savedPeriods && savedPeriods.length > 0) {
+        setPeriods(savedPeriods);
+      }
+      
+      // Update timetable assignments to use new period UUIDs
+      if (idMapping.size > 0) {
+        setTimetableData(prevData => 
+          prevData.map(assignment => ({
+            ...assignment,
+            period_id: idMapping.get(assignment.period_id) || assignment.period_id
+          }))
+        );
+      }
+      
       setIsPeriodConfigOpen(false);
     } catch (error) {
       toast.error('Failed to save period configuration');
@@ -173,7 +197,7 @@ export const InstitutionTimetableTab = ({
     );
 
     const assignment: InstitutionTimetableAssignment = {
-      id: existingIndex >= 0 ? timetableData[existingIndex].id : `assignment-${Date.now()}`,
+      id: existingIndex >= 0 ? timetableData[existingIndex].id : crypto.randomUUID(),
       institution_id: institutionId,
       academic_year: '2024-25',
       day: selectedCell.day,
