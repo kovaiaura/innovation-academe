@@ -15,6 +15,13 @@ export interface DatabaseOfficer {
   created_at: string | null;
 }
 
+interface OfficerAssignmentRecord {
+  officer_id: string;
+  institution_id: string;
+  assigned_at: string;
+  officers: DatabaseOfficer;
+}
+
 // Hook to get officers assigned to a specific institution
 export function useOfficersByInstitution(institutionId: string | undefined) {
   const [officers, setOfficers] = useState<OfficerAssignment[]>([]);
@@ -30,24 +37,39 @@ export function useOfficersByInstitution(institutionId: string | undefined) {
 
     setIsLoading(true);
     try {
+      // Query the junction table with officer details
       const { data, error } = await supabase
-        .from('officers')
-        .select('*')
-        .contains('assigned_institutions', [institutionId]);
+        .from('officer_institution_assignments')
+        .select(`
+          officer_id,
+          institution_id,
+          assigned_at,
+          officers (
+            id,
+            full_name,
+            email,
+            phone,
+            employee_id,
+            profile_photo_url,
+            status
+          )
+        `)
+        .eq('institution_id', institutionId)
+        .eq('status', 'active');
 
       if (error) throw error;
 
-      const mappedOfficers: OfficerAssignment[] = (data || []).map((officer: DatabaseOfficer) => ({
-        officer_id: officer.id,
-        officer_name: officer.full_name,
-        employee_id: officer.employee_id || 'N/A',
-        email: officer.email,
-        phone: officer.phone || '',
-        avatar: officer.profile_photo_url || undefined,
-        assigned_date: officer.created_at || new Date().toISOString(),
+      const mappedOfficers: OfficerAssignment[] = (data || []).map((record: any) => ({
+        officer_id: record.officers.id,
+        officer_name: record.officers.full_name,
+        employee_id: record.officers.employee_id || 'N/A',
+        email: record.officers.email,
+        phone: record.officers.phone || '',
+        avatar: record.officers.profile_photo_url || undefined,
+        assigned_date: record.assigned_at, // Use the actual assignment date
         total_courses: 0,
         total_teaching_hours: 0,
-        status: officer.status as 'active' | 'inactive',
+        status: record.officers.status as 'active' | 'inactive',
       }));
 
       setOfficers(mappedOfficers);
@@ -81,21 +103,30 @@ export function useAvailableOfficers(institutionId: string | undefined) {
 
     setIsLoading(true);
     try {
-      // Get all active officers
-      const { data: allOfficers, error: fetchError } = await supabase
+      // Get officers already assigned to this institution
+      const { data: assignedOfficers } = await supabase
+        .from('officer_institution_assignments')
+        .select('officer_id')
+        .eq('institution_id', institutionId)
+        .eq('status', 'active');
+
+      const assignedOfficerIds = (assignedOfficers || []).map(a => a.officer_id);
+
+      // Get all active officers not in the assigned list
+      let query = supabase
         .from('officers')
         .select('*')
         .eq('status', 'active');
 
+      if (assignedOfficerIds.length > 0) {
+        query = query.not('id', 'in', `(${assignedOfficerIds.join(',')})`);
+      }
+
+      const { data: allOfficers, error: fetchError } = await query;
+
       if (fetchError) throw fetchError;
 
-      // Filter out officers already assigned to this institution
-      const available = (allOfficers || []).filter((officer: DatabaseOfficer) => {
-        const assignedInstitutions = officer.assigned_institutions || [];
-        return !assignedInstitutions.includes(institutionId);
-      });
-
-      const mappedOfficers: OfficerAssignment[] = available.map((officer: DatabaseOfficer) => ({
+      const mappedOfficers: OfficerAssignment[] = (allOfficers || []).map((officer: DatabaseOfficer) => ({
         officer_id: officer.id,
         officer_name: officer.full_name,
         employee_id: officer.employee_id || 'N/A',
@@ -137,7 +168,19 @@ export function useOfficerAssignment(institutionId: string | undefined) {
 
     setIsAssigning(true);
     try {
-      // First get the current assigned_institutions
+      // Insert into the junction table
+      const { error: insertError } = await supabase
+        .from('officer_institution_assignments')
+        .insert({
+          officer_id: officerId,
+          institution_id: institutionId,
+          assigned_at: new Date().toISOString(),
+          status: 'active'
+        });
+
+      if (insertError) throw insertError;
+
+      // Also update the officers.assigned_institutions array for backward compatibility
       const { data: officer, error: fetchError } = await supabase
         .from('officers')
         .select('assigned_institutions')
@@ -148,7 +191,6 @@ export function useOfficerAssignment(institutionId: string | undefined) {
 
       const currentInstitutions = officer?.assigned_institutions || [];
       
-      // Add the new institution if not already present
       if (!currentInstitutions.includes(institutionId)) {
         const updatedInstitutions = [...currentInstitutions, institutionId];
         
@@ -175,7 +217,16 @@ export function useOfficerAssignment(institutionId: string | undefined) {
 
     setIsRemoving(true);
     try {
-      // First get the current assigned_institutions
+      // Delete from the junction table
+      const { error: deleteError } = await supabase
+        .from('officer_institution_assignments')
+        .delete()
+        .eq('officer_id', officerId)
+        .eq('institution_id', institutionId);
+
+      if (deleteError) throw deleteError;
+
+      // Also update the officers.assigned_institutions array for backward compatibility
       const { data: officer, error: fetchError } = await supabase
         .from('officers')
         .select('assigned_institutions')
@@ -185,8 +236,6 @@ export function useOfficerAssignment(institutionId: string | undefined) {
       if (fetchError) throw fetchError;
 
       const currentInstitutions = officer?.assigned_institutions || [];
-      
-      // Remove the institution
       const updatedInstitutions = currentInstitutions.filter(
         (id: string) => id !== institutionId
       );
