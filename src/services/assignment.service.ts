@@ -143,7 +143,7 @@ export const assignmentService = {
     };
   },
 
-  async createAssignment(formData: AssignmentFormData): Promise<Assignment> {
+  async createAssignment(formData: AssignmentFormData, role: string = 'system_admin'): Promise<Assignment> {
     const { data: userData } = await supabase.auth.getUser();
     
     const { data, error } = await (supabase as any)
@@ -160,7 +160,7 @@ export const assignmentService = {
         passing_marks: formData.passing_marks || 40,
         allow_resubmit: formData.allow_resubmit !== false,
         created_by: userData?.user?.id,
-        created_by_role: 'system_admin'
+        created_by_role: role
       })
       .select()
       .single();
@@ -182,6 +182,45 @@ export const assignmentService = {
     }
 
     return data;
+  },
+
+  async getAssignmentsForInstitution(institutionId: string): Promise<AssignmentWithClasses[]> {
+    const { data, error } = await (supabase as any)
+      .from('assignments')
+      .select('*')
+      .eq('institution_id', institutionId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const assignmentIds = (data || []).map((a: Assignment) => a.id);
+    if (assignmentIds.length === 0) return [];
+
+    const { data: classAssignments } = await (supabase as any)
+      .from('assignment_class_assignments')
+      .select('assignment_id, class_id, classes:class_id(id, class_name, section)')
+      .in('assignment_id', assignmentIds);
+
+    // Get submissions count
+    const { data: submissions } = await (supabase as any)
+      .from('assignment_submissions')
+      .select('assignment_id')
+      .in('assignment_id', assignmentIds);
+
+    return (data || []).map((assignment: Assignment) => {
+      const assignedClasses = (classAssignments || [])
+        .filter((ca: any) => ca.assignment_id === assignment.id)
+        .map((ca: any) => ca.classes)
+        .filter(Boolean);
+      
+      const submissionsCount = (submissions || []).filter((s: any) => s.assignment_id === assignment.id).length;
+
+      return {
+        ...assignment,
+        classes: assignedClasses,
+        submissions_count: submissionsCount
+      };
+    });
   },
 
   async updateAssignment(id: string, formData: Partial<AssignmentFormData>): Promise<Assignment> {

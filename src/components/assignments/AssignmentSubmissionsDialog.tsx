@@ -134,9 +134,22 @@ export function AssignmentSubmissionsDialog({
     setGradeData({ marks: 0, feedback: '' });
   };
 
-  const openPDF = (url: string) => {
-    // URL is already a full public URL, open directly
-    window.open(url, '_blank');
+  const openPDF = async (url: string) => {
+    try {
+      // Fetch the PDF as a blob to bypass ad blockers
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+      
+      // Clean up the blob URL after a delay
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (error) {
+      console.error('Error opening PDF:', error);
+      toast.error('Failed to open PDF. Try disabling ad blocker.');
+      // Fallback to direct URL
+      window.open(url, '_blank');
+    }
   };
 
   if (!assignment) return null;

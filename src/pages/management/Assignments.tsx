@@ -5,33 +5,46 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, Calendar, Search, Users, BarChart, Filter, Eye } from 'lucide-react';
+import { FileText, Calendar, Search, Users, BarChart, Filter, Plus, Pencil, Trash2, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { assignmentService, AssignmentWithClasses, AssignmentFormData } from '@/services/assignment.service';
 import { format, isPast, isFuture } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
+import { ManagementAssignmentFormDialog } from '@/components/assignments/ManagementAssignmentFormDialog';
+import { AssignmentSubmissionsDialog } from '@/components/assignments/AssignmentSubmissionsDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
-interface AssignmentWithClasses {
-  id: string;
-  title: string;
-  description: string | null;
-  start_date: string;
-  submission_end_date: string;
-  status: string;
-  total_marks: number | null;
-  classes: { id: string; name: string }[];
-  submissions_count: number;
-  graded_count: number;
+interface AssignmentWithClassesExtended extends AssignmentWithClasses {
+  graded_count?: number;
 }
 
 export default function ManagementAssignments() {
   const { user } = useAuth();
-  const [assignments, setAssignments] = useState<AssignmentWithClasses[]>([]);
+  const [assignments, setAssignments] = useState<AssignmentWithClassesExtended[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [availableClasses, setAvailableClasses] = useState<{ id: string; name: string }[]>([]);
   const institutionId = user?.institution_id || user?.tenant_id;
+
+  // Dialog states
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [editingAssignment, setEditingAssignment] = useState<AssignmentWithClasses | null>(null);
+  const [submissionsDialogOpen, setSubmissionsDialogOpen] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<AssignmentWithClasses | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingAssignment, setDeletingAssignment] = useState<AssignmentWithClasses | null>(null);
 
   useEffect(() => {
     if (institutionId) {
@@ -43,80 +56,94 @@ export default function ManagementAssignments() {
     try {
       setLoading(true);
       
-      // Fetch assignment class assignments
-      const { data: classAssignments } = await supabase
-        .from('assignment_class_assignments')
-        .select(`
-          assignment_id,
-          class_id,
-          classes:class_id (class_name, section)
-        `)
-        .eq('institution_id', institutionId);
-
-      if (!classAssignments || classAssignments.length === 0) {
-        setAssignments([]);
-        setLoading(false);
-        return;
+      // Use the service to get assignments for this institution
+      const data = await assignmentService.getAssignmentsForInstitution(institutionId!);
+      
+      // Fetch graded counts
+      const assignmentIds = data.map(a => a.id);
+      let gradedCounts: Record<string, number> = {};
+      
+      if (assignmentIds.length > 0) {
+        const { data: submissions } = await supabase
+          .from('assignment_submissions')
+          .select('assignment_id, status')
+          .eq('institution_id', institutionId)
+          .in('assignment_id', assignmentIds);
+        
+        if (submissions) {
+          submissions.forEach(s => {
+            if (s.status === 'graded') {
+              gradedCounts[s.assignment_id] = (gradedCounts[s.assignment_id] || 0) + 1;
+            }
+          });
+        }
       }
 
       // Extract unique classes
       const classesMap = new Map<string, { id: string; name: string }>();
-      classAssignments.forEach(ca => {
-        const classInfo = ca.classes as any;
-        if (classInfo) {
-          classesMap.set(ca.class_id, { id: ca.class_id, name: classInfo.class_name });
-        }
+      data.forEach(a => {
+        a.classes.forEach(c => {
+          classesMap.set(c.id, { id: c.id, name: c.class_name });
+        });
       });
       setAvailableClasses(Array.from(classesMap.values()));
 
-      // Get unique assignment IDs
-      const assignmentIds = [...new Set(classAssignments.map(a => a.assignment_id))];
+      // Add graded counts to assignments
+      const assignmentsWithGraded = data.map(a => ({
+        ...a,
+        graded_count: gradedCounts[a.id] || 0
+      }));
 
-      // Fetch assignment details
-      const { data: assignmentData } = await supabase
-        .from('assignments')
-        .select('*')
-        .in('id', assignmentIds);
-
-      // Fetch submission counts
-      const { data: submissions } = await supabase
-        .from('assignment_submissions')
-        .select('assignment_id, status')
-        .eq('institution_id', institutionId);
-
-      // Combine data
-      const assignmentsWithClasses: AssignmentWithClasses[] = (assignmentData || []).map(assignment => {
-        const assignedClassAssignments = classAssignments.filter(ca => ca.assignment_id === assignment.id);
-        const classes = assignedClassAssignments
-          .map(ca => {
-            const classInfo = ca.classes as any;
-            return classInfo ? { id: ca.class_id, name: classInfo.class_name } : null;
-          })
-          .filter(Boolean) as { id: string; name: string }[];
-
-        const assignmentSubmissions = submissions?.filter(s => s.assignment_id === assignment.id) || [];
-        const gradedSubmissions = assignmentSubmissions.filter(s => s.status === 'graded');
-
-        return {
-          id: assignment.id,
-          title: assignment.title,
-          description: assignment.description,
-          start_date: assignment.start_date,
-          submission_end_date: assignment.submission_end_date,
-          status: assignment.status,
-          total_marks: assignment.total_marks,
-          classes,
-          submissions_count: assignmentSubmissions.length,
-          graded_count: gradedSubmissions.length,
-        };
-      });
-
-      setAssignments(assignmentsWithClasses);
+      setAssignments(assignmentsWithGraded);
     } catch (error) {
       console.error('Error loading assignments:', error);
+      toast.error('Failed to load assignments');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCreateAssignment = async (formData: AssignmentFormData, role: string) => {
+    await assignmentService.createAssignment(formData, role);
+    toast.success('Assignment created successfully');
+    loadAssignments();
+  };
+
+  const handleUpdateAssignment = async (formData: AssignmentFormData) => {
+    if (!editingAssignment) return;
+    await assignmentService.updateAssignment(editingAssignment.id, formData);
+    toast.success('Assignment updated successfully');
+    setEditingAssignment(null);
+    loadAssignments();
+  };
+
+  const handleDeleteAssignment = async () => {
+    if (!deletingAssignment) return;
+    try {
+      await assignmentService.deleteAssignment(deletingAssignment.id);
+      toast.success('Assignment deleted successfully');
+      setDeletingAssignment(null);
+      setDeleteDialogOpen(false);
+      loadAssignments();
+    } catch (error) {
+      console.error('Error deleting assignment:', error);
+      toast.error('Failed to delete assignment');
+    }
+  };
+
+  const handleViewSubmissions = (assignment: AssignmentWithClasses) => {
+    setSelectedAssignment(assignment);
+    setSubmissionsDialogOpen(true);
+  };
+
+  const handleEditAssignment = (assignment: AssignmentWithClasses) => {
+    setEditingAssignment(assignment);
+    setFormDialogOpen(true);
+  };
+
+  const handleDeleteClick = (assignment: AssignmentWithClasses) => {
+    setDeletingAssignment(assignment);
+    setDeleteDialogOpen(true);
   };
 
   const filteredAssignments = assignments.filter(a => {
@@ -125,7 +152,7 @@ export default function ManagementAssignments() {
     return matchesSearch && matchesClass;
   });
 
-  const getStatusBadge = (assignment: AssignmentWithClasses) => {
+  const getStatusBadge = (assignment: AssignmentWithClassesExtended) => {
     if (assignment.status === 'draft') {
       return <Badge variant="secondary">Draft</Badge>;
     }
@@ -157,9 +184,15 @@ export default function ManagementAssignments() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Assignments Overview</h1>
-          <p className="text-muted-foreground">Monitor all assignments across your institution</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Assignments Management</h1>
+            <p className="text-muted-foreground">Create and manage assignments for your institution</p>
+          </div>
+          <Button onClick={() => { setEditingAssignment(null); setFormDialogOpen(true); }}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Assignment
+          </Button>
         </div>
 
         {/* Stats */}
@@ -236,9 +269,15 @@ export default function ManagementAssignments() {
             <CardContent className="flex flex-col items-center justify-center py-12">
               <FileText className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">No assignments found</h3>
-              <p className="text-muted-foreground text-center">
-                {searchQuery ? 'Try adjusting your search' : 'No assignments have been created yet'}
+              <p className="text-muted-foreground text-center mb-4">
+                {searchQuery ? 'Try adjusting your search' : 'Create your first assignment to get started'}
               </p>
+              {!searchQuery && (
+                <Button onClick={() => { setEditingAssignment(null); setFormDialogOpen(true); }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Assignment
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -267,7 +306,7 @@ export default function ManagementAssignments() {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <FileText className="h-4 w-4" />
-                    <span>{assignment.submissions_count} submissions ({assignment.graded_count} graded)</span>
+                    <span>{assignment.submissions_count || 0} submissions ({assignment.graded_count || 0} graded)</span>
                   </div>
                   {assignment.total_marks && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -275,12 +314,79 @@ export default function ManagementAssignments() {
                       <span>Total marks: {assignment.total_marks}</span>
                     </div>
                   )}
+                  
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-2 pt-2 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleViewSubmissions(assignment)}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      Submissions
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEditAssignment(assignment)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteClick(assignment)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
       </div>
+
+      {/* Create/Edit Assignment Dialog */}
+      <ManagementAssignmentFormDialog
+        open={formDialogOpen}
+        onOpenChange={(open) => {
+          setFormDialogOpen(open);
+          if (!open) setEditingAssignment(null);
+        }}
+        institutionId={institutionId || ''}
+        assignment={editingAssignment}
+        onSubmit={editingAssignment 
+          ? async (data) => handleUpdateAssignment(data)
+          : handleCreateAssignment
+        }
+      />
+
+      {/* Submissions Dialog */}
+      <AssignmentSubmissionsDialog
+        open={submissionsDialogOpen}
+        onOpenChange={setSubmissionsDialogOpen}
+        assignment={selectedAssignment}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Assignment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deletingAssignment?.title}"? This action cannot be undone and will also delete all submissions.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteAssignment} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }
