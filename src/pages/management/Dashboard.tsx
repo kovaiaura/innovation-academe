@@ -3,20 +3,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { 
   Users, BookOpen, GraduationCap, TrendingUp, AlertCircle, Award, 
   CheckCircle, Target, Briefcase, MapPin, Clock, Trophy, 
-  Shield, BarChart, Star, Zap, Rocket
+  Shield, BarChart, Star, Zap, Rocket, FolderKanban, UserCog,
+  ClipboardCheck, ShoppingCart, CalendarCheck, Sparkles, Medal
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { authService } from "@/services/auth.service";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { CriticalActionsCard } from "@/components/management/CriticalActionsCard";
 import { LeaderboardSection } from "@/components/management/LeaderboardSection";
-import { mockCriticalActions } from "@/data/mockManagementData";
-import { getInstitutionBySlug } from "@/data/mockInstitutionData";
-import { useLocation } from "react-router-dom";
+import { useInstitutionStats } from "@/hooks/useInstitutionStats";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -25,72 +25,117 @@ const Dashboard = () => {
   // Extract institution from URL
   const location = useLocation();
   const institutionSlug = location.pathname.split('/')[2];
-  const institution = getInstitutionBySlug(institutionSlug);
+  
+  // Fetch real data
+  const { loading, institution, stats, criticalActions, assignedOfficers } = useInstitutionStats(institutionSlug);
 
-  // Platform Value Metrics - What makes this LMS attractive
-  const platformValueMetrics = [
+  // Core metrics from real data
+  const coreMetrics = [
     { 
-      title: "Student Engagement Rate", 
-      value: "94%", 
-      change: "+12%", 
-      icon: TrendingUp,
-      description: "Students actively using the platform daily",
-      color: "text-green-500", 
-      bgColor: "bg-green-500/10" 
-    },
-    { 
-      title: "Course Completion Rate", 
-      value: "87%", 
-      change: "+18%", 
-      icon: CheckCircle,
-      description: "Students completing assigned courses on time",
+      title: "Total Students", 
+      value: stats.totalStudents.toLocaleString(), 
+      icon: Users,
+      description: "Enrolled students",
       color: "text-blue-500", 
       bgColor: "bg-blue-500/10" 
     },
     { 
-      title: "Project-Based Learning", 
-      value: "45", 
-      change: "+23", 
-      icon: Target,
-      description: "Active innovation projects this term",
+      title: "Total Classes", 
+      value: stats.totalClasses.toString(), 
+      icon: GraduationCap,
+      description: "Active classes",
       color: "text-purple-500", 
       bgColor: "bg-purple-500/10" 
     },
     { 
-      title: "Industry Connections", 
-      value: "12", 
-      change: "+4", 
-      icon: Briefcase,
-      description: "Partner companies for events & mentorship",
+      title: "Courses Assigned", 
+      value: stats.totalCourses.toString(), 
+      icon: BookOpen,
+      description: "Available courses",
+      color: "text-green-500", 
+      bgColor: "bg-green-500/10" 
+    },
+    { 
+      title: "Active Projects", 
+      value: `${stats.activeProjects} / ${stats.totalProjects}`, 
+      icon: FolderKanban,
+      description: "Student projects",
       color: "text-orange-500", 
       bgColor: "bg-orange-500/10" 
     },
     {
-      title: "Certification Rate",
-      value: "78%",
-      change: "+15%",
-      icon: Award,
-      description: "Students earning course certificates",
+      title: "Assigned Officers",
+      value: stats.totalOfficers.toString(),
+      icon: UserCog,
+      description: "Teaching staff",
       color: "text-indigo-500",
       bgColor: "bg-indigo-500/10"
     },
     {
-      title: "Attendance Tracking",
-      value: "Real-time",
-      change: "GPS Verified",
-      icon: MapPin,
-      description: "Automated attendance with GPS validation",
+      title: "Assessment Attempts",
+      value: stats.assessmentAttempts.toString(),
+      icon: ClipboardCheck,
+      description: `Avg: ${stats.avgAssessmentScore}%`,
       color: "text-teal-500",
       bgColor: "bg-teal-500/10"
     }
   ];
 
-  // ROI Highlights - Why this platform saves money and improves outcomes
+  // Gamification metrics
+  const gamificationMetrics = [
+    { 
+      title: "Total XP Earned", 
+      value: stats.totalXP.toLocaleString(), 
+      icon: Sparkles,
+      description: "Across all students",
+      color: "text-yellow-500", 
+      bgColor: "bg-yellow-500/10" 
+    },
+    { 
+      title: "Badges Awarded", 
+      value: stats.totalBadges.toString(), 
+      icon: Medal,
+      description: "Student achievements",
+      color: "text-pink-500", 
+      bgColor: "bg-pink-500/10" 
+    },
+    { 
+      title: "Assignment Submissions", 
+      value: stats.assignmentSubmissions.toString(), 
+      icon: CheckCircle,
+      description: `Avg: ${stats.avgAssignmentMarks}%`,
+      color: "text-emerald-500", 
+      bgColor: "bg-emerald-500/10" 
+    },
+  ];
+
+  // Operations metrics
+  const operationsMetrics = [
+    { 
+      title: "Pending Purchases", 
+      value: stats.pendingPurchases.toString(), 
+      amount: stats.pendingPurchaseAmount,
+      icon: ShoppingCart,
+      description: stats.pendingPurchaseAmount > 0 ? `₹${stats.pendingPurchaseAmount.toLocaleString()}` : "No pending",
+      color: stats.pendingPurchases > 0 ? "text-red-500" : "text-green-500", 
+      bgColor: stats.pendingPurchases > 0 ? "bg-red-500/10" : "bg-green-500/10" 
+    },
+    { 
+      title: "Pending Leaves", 
+      value: stats.pendingLeaves.toString(), 
+      icon: CalendarCheck,
+      description: stats.pendingLeaves > 0 ? "Awaiting approval" : "All clear",
+      color: stats.pendingLeaves > 0 ? "text-amber-500" : "text-green-500", 
+      bgColor: stats.pendingLeaves > 0 ? "bg-amber-500/10" : "bg-green-500/10" 
+    },
+  ];
+
+  // ROI Highlights - Platform marketing content (static)
   const roiHighlights = [
     {
       title: "Time Saved on Administration",
       value: "40 hours/week",
-      description: "Automated attendance, grading, and reporting reduce manual administrative workload",
+      description: "Automated attendance, grading, and reporting reduce manual workload",
       icon: Clock,
       benefit: "Cost Savings",
       color: "text-emerald-500",
@@ -99,7 +144,7 @@ const Dashboard = () => {
     {
       title: "Improved Student Outcomes",
       value: "+23% Performance",
-      description: "Gamification and personalized learning paths increase student engagement and grades",
+      description: "Gamification and personalized learning paths increase engagement",
       icon: TrendingUp,
       benefit: "Academic Excellence",
       color: "text-blue-500",
@@ -108,7 +153,7 @@ const Dashboard = () => {
     {
       title: "Parent Satisfaction",
       value: "4.8/5 Rating",
-      description: "Real-time progress tracking and transparent communication increase parent trust",
+      description: "Real-time progress tracking increases parent trust",
       icon: Users,
       benefit: "Reputation",
       color: "text-purple-500",
@@ -117,7 +162,7 @@ const Dashboard = () => {
     {
       title: "Accreditation Ready",
       value: "100% Compliant",
-      description: "Comprehensive audit logs and SDG alignment support accreditation requirements",
+      description: "Comprehensive audit logs and SDG alignment support requirements",
       icon: Shield,
       benefit: "Compliance",
       color: "text-orange-500",
@@ -125,12 +170,12 @@ const Dashboard = () => {
     }
   ];
 
-  // Platform Features Showcase
+  // Platform Features (static)
   const platformFeatures = [
     {
       category: "Learning Management",
       features: [
-        "23 STEM Courses with modular content",
+        "STEM Courses with modular content",
         "Assignment & Assessment management",
         "Real-time progress tracking",
         "Certificate generation"
@@ -177,43 +222,7 @@ const Dashboard = () => {
     }
   ];
 
-  // Impact Metrics - Success stories
-  const impactMetrics = [
-    {
-      metric: "Student Projects Completed",
-      value: "124",
-      period: "This Academic Year",
-      trend: "+45% vs last year",
-      icon: Target,
-      color: "text-purple-500"
-    },
-    {
-      metric: "Innovation Events Participated",
-      value: "8",
-      period: "This Term",
-      trend: "3 National-level competitions",
-      icon: Trophy,
-      color: "text-yellow-500"
-    },
-    {
-      metric: "SDG Goals Addressed",
-      value: "12/17",
-      period: "Through Curriculum",
-      trend: "Highest in region",
-      icon: Target,
-      color: "text-green-500"
-    },
-    {
-      metric: "Student Employability Score",
-      value: "8.2/10",
-      period: "Based on Skills Tracking",
-      trend: "+1.8 points improvement",
-      icon: TrendingUp,
-      color: "text-blue-500"
-    }
-  ];
-
-  // Competitive Advantages
+  // Competitive Advantages (static)
   const competitiveAdvantages = [
     {
       advantage: "All-in-One Platform",
@@ -223,7 +232,7 @@ const Dashboard = () => {
     },
     {
       advantage: "STEM-Focused Curriculum",
-      description: "23 industry-relevant courses from Electronics to AI to Entrepreneurship",
+      description: "Industry-relevant courses from Electronics to AI to Entrepreneurship",
       badge: "Future-Ready Skills",
       icon: Rocket
     },
@@ -247,26 +256,34 @@ const Dashboard = () => {
     }
   ];
 
-  const departmentPerformance = [
-    { name: "Computer Science", teachers: 28, students: 520, performance: 88, trend: "up" },
-    { name: "Electronics", teachers: 24, students: 450, performance: 85, trend: "up" },
-    { name: "Mechanical", teachers: 26, students: 480, performance: 82, trend: "stable" },
-    { name: "Civil", teachers: 22, students: 390, performance: 84, trend: "up" },
-    { name: "Electrical", teachers: 23, students: 425, performance: 86, trend: "up" },
-  ];
+  // Map critical actions to the expected format for CriticalActionsCard
+  const mappedCriticalActions = criticalActions.map(action => ({
+    id: action.id,
+    type: action.type,
+    title: action.title,
+    description: action.description,
+    count: action.count,
+    urgency: action.urgency,
+    deadline: action.deadline,
+    amount: action.amount,
+    link: action.link,
+    icon: action.type === 'purchase' ? ShoppingCart : 
+          action.type === 'approval' ? CalendarCheck :
+          action.type === 'deadline' ? ClipboardCheck : AlertCircle
+  }));
 
-  const alerts = [
-    { type: "warning", message: "3 faculty members pending performance review", icon: AlertCircle },
-    { type: "info", message: "Semester exam schedule due in 7 days", icon: Award },
-    { type: "success", message: "All departments meeting attendance targets", icon: TrendingUp },
-  ];
-
-  const recentActivities = [
-    { id: '1', title: 'New batch enrollment completed', time: '2 hours ago', type: 'enrollment' },
-    { id: '2', title: 'Semester exam schedule published', time: '5 hours ago', type: 'academic' },
-    { id: '3', title: 'Faculty development workshop scheduled', time: '1 day ago', type: 'event' },
-    { id: '4', title: 'Student placement drive initiated', time: '2 days ago', type: 'placement' },
-  ];
+  if (loading) {
+    return (
+      <Layout>
+        <div className="space-y-6">
+          <Skeleton className="h-32 w-full" />
+          <div className="grid gap-4 md:grid-cols-3">
+            {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-32" />)}
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -274,29 +291,29 @@ const Dashboard = () => {
         {institution && (
           <InstitutionHeader 
             institutionName={institution.name}
-            establishedYear={institution.established_year}
-            location={institution.location}
-            totalStudents={institution.total_students}
-            academicYear={institution.academic_year}
+            establishedYear={institution.settings?.established_year}
+            location={institution.address?.city || institution.address?.location}
+            totalStudents={stats.totalStudents}
+            academicYear={institution.settings?.academic_year || "2024-25"}
             userRole="Management Portal"
-            assignedOfficers={institution.assigned_officers.map(o => o.officer_name)}
+            assignedOfficers={assignedOfficers}
           />
         )}
         
-        {/* Welcome Section with Value Proposition */}
+        {/* Welcome Section */}
         <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background rounded-lg p-6 border">
-          <h1 className="text-3xl font-bold mb-2">Your Innovation Platform Dashboard</h1>
-          <p className="text-muted-foreground text-lg">Welcome back, {user?.name}! See how Meta-Innova transforms education management</p>
+          <h1 className="text-3xl font-bold mb-2">Institution Dashboard</h1>
+          <p className="text-muted-foreground text-lg">Welcome back, {user?.name}! Here's your institution's real-time performance</p>
         </div>
 
-        {/* Platform Value Metrics */}
+        {/* Core Metrics - Real Data */}
         <div>
           <div className="mb-4">
-            <h2 className="text-2xl font-bold">Platform Performance</h2>
-            <p className="text-sm text-muted-foreground">Real-time metrics showing platform impact and engagement</p>
+            <h2 className="text-2xl font-bold">Core Metrics</h2>
+            <p className="text-sm text-muted-foreground">Real-time institution statistics</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {platformValueMetrics.map((metric) => {
+            {coreMetrics.map((metric) => {
               const Icon = metric.icon;
               return (
                 <Card key={metric.title} className="hover:shadow-lg transition-shadow">
@@ -308,16 +325,92 @@ const Dashboard = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{metric.value}</div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="secondary" className="text-xs">{metric.change}</Badge>
-                      <p className="text-xs text-muted-foreground">{metric.description}</p>
-                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{metric.description}</p>
                   </CardContent>
                 </Card>
               );
             })}
           </div>
         </div>
+
+        {/* Gamification & Academic Performance */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Gamification */}
+          <div>
+            <div className="mb-4">
+              <h2 className="text-xl font-bold">Gamification</h2>
+              <p className="text-sm text-muted-foreground">Student engagement metrics</p>
+            </div>
+            <div className="grid gap-4">
+              {gamificationMetrics.map((metric) => {
+                const Icon = metric.icon;
+                return (
+                  <Card key={metric.title} className="hover:shadow-lg transition-shadow">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
+                      <div className={`${metric.bgColor} p-2 rounded-lg`}>
+                        <Icon className={`h-4 w-4 ${metric.color}`} />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{metric.value}</div>
+                      <p className="text-xs text-muted-foreground mt-1">{metric.description}</p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Operations */}
+          <div>
+            <div className="mb-4">
+              <h2 className="text-xl font-bold">Operations Status</h2>
+              <p className="text-sm text-muted-foreground">Pending actions overview</p>
+            </div>
+            <div className="grid gap-4">
+              {operationsMetrics.map((metric) => {
+                const Icon = metric.icon;
+                return (
+                  <Card key={metric.title} className="hover:shadow-lg transition-shadow">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
+                      <div className={`${metric.bgColor} p-2 rounded-lg`}>
+                        <Icon className={`h-4 w-4 ${metric.color}`} />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{metric.value}</div>
+                      <p className="text-xs text-muted-foreground mt-1">{metric.description}</p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Critical Actions Section - Real Data */}
+        {mappedCriticalActions.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold">Critical Actions</h2>
+                <p className="text-sm text-muted-foreground">Items requiring immediate attention</p>
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {mappedCriticalActions.map((action) => (
+                <CriticalActionsCard key={action.id} action={action} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Student Leaderboards - Already uses real data */}
+        {institution && (
+          <LeaderboardSection institutionId={institution.id} />
+        )}
 
         {/* ROI Highlights */}
         <div>
@@ -351,22 +444,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Critical Actions Section */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-2xl font-bold">Critical Actions</h2>
-              <p className="text-sm text-muted-foreground">Items requiring immediate attention</p>
-            </div>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {mockCriticalActions.map((action) => (
-              <CriticalActionsCard key={action.id} action={action} />
-            ))}
-          </div>
-        </div>
-
-        {/* Platform Features Showcase */}
+        {/* Platform Features */}
         <div>
           <div className="mb-4">
             <h2 className="text-2xl font-bold">Platform Capabilities</h2>
@@ -399,32 +477,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Impact Metrics */}
-        <div>
-          <div className="mb-4">
-            <h2 className="text-2xl font-bold">Impact & Success Stories</h2>
-            <p className="text-sm text-muted-foreground">Real results from your institution</p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {impactMetrics.map((impact) => {
-              const Icon = impact.icon;
-              return (
-                <Card key={impact.metric} className="hover:shadow-lg transition-shadow bg-gradient-to-br from-background to-muted/20">
-                  <CardHeader>
-                    <Icon className={`h-8 w-8 ${impact.color} mb-2`} />
-                    <CardTitle className="text-sm font-medium">{impact.metric}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold mb-1">{impact.value}</div>
-                    <p className="text-xs text-muted-foreground mb-2">{impact.period}</p>
-                    <Badge variant="secondary" className="text-xs">{impact.trend}</Badge>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Competitive Advantages */}
         <div>
           <div className="mb-4">
@@ -450,98 +502,6 @@ const Dashboard = () => {
               );
             })}
           </div>
-        </div>
-
-        {/* Student Leaderboards */}
-        {institution && (
-          <LeaderboardSection institutionId={institution.id} />
-        )}
-
-        {/* Department Performance */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Department Performance</CardTitle>
-            <CardDescription>Overview of all academic departments</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {departmentPerformance.map((dept) => (
-                <div key={dept.name} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{dept.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {dept.teachers} Teachers • {dept.students} Students
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{dept.performance}%</span>
-                      <TrendingUp className={`h-4 w-4 ${dept.trend === 'up' ? 'text-green-500' : 'text-muted-foreground'}`} />
-                    </div>
-                  </div>
-                  <Progress value={dept.performance} className="h-2" />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recent Activities and Alerts */}
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* Recent Activities */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activities</CardTitle>
-              <CardDescription>Latest updates and changes</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {recentActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-start gap-3">
-                    <div className="bg-primary/10 p-2 rounded-lg">
-                      <GraduationCap className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{activity.title}</p>
-                      <p className="text-xs text-muted-foreground">{activity.time}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Alerts */}
-          <Card>
-            <CardHeader>
-              <CardTitle>System Alerts</CardTitle>
-              <CardDescription>Important notifications</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {alerts.map((alert, index) => {
-                  const Icon = alert.icon;
-                  return (
-                    <div
-                      key={index}
-                      className={`flex items-start gap-3 p-3 rounded-lg ${
-                        alert.type === 'warning' ? 'bg-yellow-500/10' :
-                        alert.type === 'success' ? 'bg-green-500/10' :
-                        'bg-blue-500/10'
-                      }`}
-                    >
-                      <Icon className={`h-4 w-4 mt-0.5 ${
-                        alert.type === 'warning' ? 'text-yellow-500' :
-                        alert.type === 'success' ? 'text-green-500' :
-                        'text-blue-500'
-                      }`} />
-                      <p className="text-sm">{alert.message}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Quick Actions */}
