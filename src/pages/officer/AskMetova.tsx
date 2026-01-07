@@ -4,6 +4,7 @@ import { ChatInput } from "@/components/student/ChatInput";
 import { ChatSidebar } from "@/components/student/ChatSidebar";
 import { TypingIndicator } from "@/components/student/TypingIndicator";
 import { AIDisabledBanner } from "@/components/ask-metova/AIDisabledBanner";
+import { PromptUsageIndicator } from "@/components/ask-metova/PromptUsageIndicator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -20,6 +21,8 @@ export default function OfficerAskMetova() {
     currentMessages,
     isLoading,
     isAIDisabled,
+    isLimitExceeded,
+    promptUsage,
     scrollAreaRef,
     sendMessage,
     handleNewChat,
@@ -27,6 +30,8 @@ export default function OfficerAskMetova() {
     handleClearHistory,
     userName
   } = useAskMetova('officer');
+
+  const isInputDisabled = isLoading || isAIDisabled || isLimitExceeded;
 
   const suggestedPrompts = [
     { icon: <TrendingUp className="h-5 w-5" />, text: "How is Class 6A performing this month?" },
@@ -59,8 +64,8 @@ export default function OfficerAskMetova() {
             {suggestedPrompts.map((prompt, index) => (
               <Card
                 key={index}
-                className={`p-4 transition-colors group ${isAIDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent cursor-pointer'}`}
-                onClick={() => !isAIDisabled && sendMessage(prompt.text)}
+                className={`p-4 transition-colors group ${isInputDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent cursor-pointer'}`}
+                onClick={() => !isInputDisabled && sendMessage(prompt.text)}
               >
                 <div className="flex items-start gap-3">
                   <div className="text-primary mt-0.5">
@@ -118,6 +123,14 @@ export default function OfficerAskMetova() {
             </div>
           )}
 
+          {promptUsage && (
+            <PromptUsageIndicator 
+              used={promptUsage.used} 
+              limit={promptUsage.limit} 
+              limitEnabled={promptUsage.limit_enabled} 
+            />
+          )}
+
           <ScrollArea ref={scrollAreaRef} className="flex-1 p-6">
             <div className="max-w-4xl mx-auto space-y-6">
               {currentMessages.length === 0 ? (
@@ -145,10 +158,12 @@ export default function OfficerAskMetova() {
           </ScrollArea>
 
           <div className="border-t p-4 bg-background">
-            <ChatInput onSend={sendMessage} disabled={isLoading || isAIDisabled} />
-            {isAIDisabled && (
+            <ChatInput onSend={sendMessage} disabled={isInputDisabled} />
+            {(isAIDisabled || isLimitExceeded) && (
               <p className="text-xs text-destructive text-center mt-2">
-                AI Assistant is currently disabled by the administrator.
+                {isAIDisabled 
+                  ? 'AI Assistant is currently disabled by the administrator.'
+                  : 'You have reached your monthly prompt limit.'}
               </p>
             )}
           </div>

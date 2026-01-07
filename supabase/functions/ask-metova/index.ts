@@ -21,6 +21,8 @@ interface AISettings {
   enabled: boolean;
   custom_api_key: string;
   model: string;
+  prompt_limit_enabled: boolean;
+  monthly_prompt_limit: number;
 }
 
 async function getAISettings(): Promise<AISettings> {
@@ -37,13 +39,89 @@ async function getAISettings(): Promise<AISettings> {
       return {
         enabled: settings.enabled ?? true,
         custom_api_key: settings.custom_api_key || '',
-        model: settings.model || 'gpt-4o-mini'
+        model: settings.model || 'gpt-4o-mini',
+        prompt_limit_enabled: settings.prompt_limit_enabled ?? false,
+        monthly_prompt_limit: settings.monthly_prompt_limit ?? 10
       };
     }
   } catch (e) {
     console.error('Error fetching AI settings:', e);
   }
-  return { enabled: true, custom_api_key: '', model: 'gpt-4o-mini' };
+  return { enabled: true, custom_api_key: '', model: 'gpt-4o-mini', prompt_limit_enabled: false, monthly_prompt_limit: 10 };
+}
+
+// Check and update user prompt usage
+async function checkAndUpdateUsage(userId: string, role: string, limit: number): Promise<{ allowed: boolean; used: number; limit: number }> {
+  const supabase = getSupabaseClient();
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  
+  try {
+    // Get current usage for this month
+    const { data: usage } = await supabase
+      .from('ai_prompt_usage')
+      .select('id, prompt_count')
+      .eq('user_id', userId)
+      .eq('month', currentMonth)
+      .eq('year', currentYear)
+      .single();
+    
+    const currentCount = usage?.prompt_count || 0;
+    
+    if (currentCount >= limit) {
+      return { allowed: false, used: currentCount, limit };
+    }
+    
+    // Increment usage
+    if (usage) {
+      await supabase
+        .from('ai_prompt_usage')
+        .update({ 
+          prompt_count: currentCount + 1, 
+          updated_at: now.toISOString() 
+        })
+        .eq('id', usage.id);
+    } else {
+      await supabase
+        .from('ai_prompt_usage')
+        .insert({
+          user_id: userId,
+          role: role,
+          prompt_count: 1,
+          month: currentMonth,
+          year: currentYear
+        });
+    }
+    
+    return { allowed: true, used: currentCount + 1, limit };
+  } catch (e) {
+    console.error('Error checking/updating usage:', e);
+    // On error, allow the request but log it
+    return { allowed: true, used: 0, limit };
+  }
+}
+
+// Get user's current usage (without incrementing)
+async function getUserUsage(userId: string): Promise<{ used: number; month: number; year: number }> {
+  const supabase = getSupabaseClient();
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  
+  try {
+    const { data } = await supabase
+      .from('ai_prompt_usage')
+      .select('prompt_count')
+      .eq('user_id', userId)
+      .eq('month', currentMonth)
+      .eq('year', currentYear)
+      .single();
+    
+    return { used: data?.prompt_count || 0, month: currentMonth, year: currentYear };
+  } catch (e) {
+    return { used: 0, month: currentMonth, year: currentYear };
+  }
 }
 
 // ==================== CONTEXT FETCHERS ====================
@@ -1217,7 +1295,27 @@ serve(async (req) => {
   }
 
   try {
-    const { message, role, conversationHistory, userId } = await req.json();
+    const { message, role, conversationHistory, userId, action } = await req.json();
+
+    // Handle usage check action (for frontend to display usage)
+    if (action === 'check_usage') {
+      const aiSettings = await getAISettings();
+      if (!userId) {
+        return new Response(JSON.stringify({ used: 0, limit: aiSettings.monthly_prompt_limit, limit_enabled: aiSettings.prompt_limit_enabled }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const usage = await getUserUsage(userId);
+      return new Response(JSON.stringify({ 
+        used: usage.used, 
+        limit: aiSettings.monthly_prompt_limit, 
+        limit_enabled: aiSettings.prompt_limit_enabled,
+        month: usage.month,
+        year: usage.year
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     if (!message) {
       throw new Error('Message is required');
@@ -1234,6 +1332,26 @@ serve(async (req) => {
         status: 503,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Check prompt limit if enabled
+    if (aiSettings.prompt_limit_enabled && userId) {
+      const validRoles = ['student', 'officer', 'system_admin'];
+      const userRole = validRoles.includes(role) ? role : 'student';
+      
+      const usageCheck = await checkAndUpdateUsage(userId, userRole, aiSettings.monthly_prompt_limit);
+      
+      if (!usageCheck.allowed) {
+        return new Response(JSON.stringify({ 
+          error: `You've reached your monthly limit of ${usageCheck.limit} prompts. Your limit resets on the 1st of next month.`,
+          limit_exceeded: true,
+          used: usageCheck.used,
+          limit: usageCheck.limit
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     // Use custom API key if provided, otherwise use default
@@ -1313,12 +1431,20 @@ ${dataContext}
     const data = await response.json();
     const aiContent = data.choices[0].message.content;
 
+    // Get updated usage to return to frontend
+    let promptUsage = null;
+    if (aiSettings.prompt_limit_enabled && userId) {
+      const usage = await getUserUsage(userId);
+      promptUsage = { used: usage.used, limit: aiSettings.monthly_prompt_limit };
+    }
+
     console.log(`Successfully generated response for ${userRole}`);
 
     return new Response(JSON.stringify({ 
       content: aiContent,
       context: [userRole, 'ai_generated'],
-      dataSources
+      dataSources,
+      promptUsage
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

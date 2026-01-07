@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Save, Bot, Key, AlertTriangle, CheckCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Save, Bot, Key, AlertTriangle, CheckCircle, Eye, EyeOff, Loader2, Gauge } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -15,12 +15,16 @@ interface AISettings {
   enabled: boolean;
   custom_api_key: string;
   model: string;
+  prompt_limit_enabled: boolean;
+  monthly_prompt_limit: number;
 }
 
 const defaultSettings: AISettings = {
   enabled: true,
   custom_api_key: '',
-  model: 'gpt-4o-mini'
+  model: 'gpt-4o-mini',
+  prompt_limit_enabled: false,
+  monthly_prompt_limit: 10
 };
 
 export function AISettingsTab() {
@@ -288,6 +292,54 @@ export function AISettingsTab() {
               </SelectContent>
             </Select>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Usage Limits */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Gauge className="h-5 w-5" />
+            Usage Limits
+          </CardTitle>
+          <CardDescription>
+            Control how many prompts each user can send per month to manage API costs
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-base">Enable Monthly Prompt Limit</Label>
+              <p className="text-sm text-muted-foreground">
+                Limit each user to a set number of prompts per month
+              </p>
+            </div>
+            <Switch
+              checked={settings.prompt_limit_enabled}
+              onCheckedChange={(checked) => setSettings({ ...settings, prompt_limit_enabled: checked })}
+            />
+          </div>
+          
+          {settings.prompt_limit_enabled && (
+            <div className="space-y-2 pt-4 border-t">
+              <Label htmlFor="monthly-limit">Monthly Limit per User</Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  id="monthly-limit"
+                  type="number"
+                  min="1"
+                  max="1000"
+                  value={settings.monthly_prompt_limit}
+                  onChange={(e) => setSettings({ ...settings, monthly_prompt_limit: parseInt(e.target.value) || 10 })}
+                  className="w-24"
+                />
+                <span className="text-sm text-muted-foreground">prompts per month</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Users will see their remaining prompts and be notified when approaching the limit. Resets on the 1st of each month.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

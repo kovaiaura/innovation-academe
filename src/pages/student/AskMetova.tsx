@@ -5,6 +5,7 @@ import { ChatInput } from "@/components/student/ChatInput";
 import { ChatSidebar } from "@/components/student/ChatSidebar";
 import { TypingIndicator } from "@/components/student/TypingIndicator";
 import { AIDisabledBanner } from "@/components/ask-metova/AIDisabledBanner";
+import { PromptUsageIndicator } from "@/components/ask-metova/PromptUsageIndicator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { PanelLeftClose, PanelLeft } from "lucide-react";
@@ -20,6 +21,8 @@ export default function AskMetova() {
     currentMessages,
     isLoading,
     isAIDisabled,
+    isLimitExceeded,
+    promptUsage,
     scrollAreaRef,
     sendMessage,
     handleNewChat,
@@ -27,6 +30,8 @@ export default function AskMetova() {
     handleClearHistory,
     userName
   } = useAskMetova('student');
+
+  const isInputDisabled = isLoading || isAIDisabled || isLimitExceeded;
 
   return (
     <Layout>
@@ -68,6 +73,14 @@ export default function AskMetova() {
             </div>
           )}
 
+          {promptUsage && (
+            <PromptUsageIndicator 
+              used={promptUsage.used} 
+              limit={promptUsage.limit} 
+              limitEnabled={promptUsage.limit_enabled} 
+            />
+          )}
+
           <ScrollArea ref={scrollAreaRef} className="flex-1 p-6">
             <div className="max-w-4xl mx-auto space-y-6">
               {currentMessages.length === 0 ? (
@@ -95,10 +108,12 @@ export default function AskMetova() {
           </ScrollArea>
 
           <div className="border-t p-4 bg-background">
-            <ChatInput onSend={sendMessage} disabled={isLoading || isAIDisabled} />
-            {isAIDisabled && (
+            <ChatInput onSend={sendMessage} disabled={isInputDisabled} />
+            {(isAIDisabled || isLimitExceeded) && (
               <p className="text-xs text-destructive text-center mt-2">
-                AI Assistant is currently disabled by the administrator.
+                {isAIDisabled 
+                  ? 'AI Assistant is currently disabled by the administrator.'
+                  : 'You have reached your monthly prompt limit.'}
               </p>
             )}
           </div>
