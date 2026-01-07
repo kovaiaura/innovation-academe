@@ -42,6 +42,27 @@ const Attendance = () => {
     enabled: !!tenantId,
   });
 
+  // Fetch actual student count from students table
+  const { data: studentCount = 0 } = useQuery({
+    queryKey: ['institution-student-count', institution?.id],
+    queryFn: async () => {
+      if (!institution?.id) return 0;
+      
+      const { count, error } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .eq('institution_id', institution.id)
+        .eq('status', 'active');
+      
+      if (error) {
+        console.error('[Attendance] Failed to fetch student count:', error);
+        return 0;
+      }
+      return count || 0;
+    },
+    enabled: !!institution?.id,
+  });
+
   // Fetch today's quick stats
   const { data: todayStats } = useQuery({
     queryKey: ['attendance-today-stats', institution?.id],
@@ -114,7 +135,7 @@ const Attendance = () => {
           institutionName={institution.name}
           establishedYear={institution.established_year}
           location={institution.location}
-          totalStudents={institution.total_students}
+          totalStudents={studentCount}
           academicYear="2024-25"
           userRole="Management Portal"
           assignedOfficers={[]}
