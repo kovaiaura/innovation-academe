@@ -120,6 +120,8 @@ export default function LeaveApprovals() {
       leaveApplicationService.approveApplication(id, comments),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leave-applications-all'] });
+      queryClient.invalidateQueries({ queryKey: ['leave-balances-yearly-rpc'] });
+      queryClient.invalidateQueries({ queryKey: ['leave-balance'] });
       toast.success('Leave application approved');
       handleCloseDialog();
     },
@@ -189,9 +191,18 @@ export default function LeaveApprovals() {
       
       const { error } = await supabase.from('leave_applications').update(updateData).eq('id', id);
       if (error) throw error;
+      
+      // Apply leave to balance using backend function (bypasses RLS)
+      if (isFinalApproval) {
+        await supabase.rpc('apply_leave_application_to_balance', {
+          p_application_id: id
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leave-applications-all'] });
+      queryClient.invalidateQueries({ queryKey: ['leave-balances-yearly-rpc'] });
+      queryClient.invalidateQueries({ queryKey: ['leave-balance'] });
       toast.success('Leave approved with LOP');
       handleCloseDialog();
     },

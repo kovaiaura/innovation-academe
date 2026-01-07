@@ -6221,6 +6221,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_leave_application_to_balance: {
+        Args: { p_application_id: string }
+        Returns: undefined
+      }
       apply_sequential_unlocks: {
         Args: { p_class_module_assignment_id: string }
         Returns: undefined
