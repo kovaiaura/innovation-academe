@@ -11,10 +11,22 @@ export function useOfficerTeachingHours(institutionId?: string) {
     queryFn: async (): Promise<TeachingHoursMap> => {
       if (!institutionId) return {};
 
-      // Fetch all completed sessions for the institution
+      // Fetch all completed sessions with period info via timetable assignment
       const { data: completedSessions, error } = await supabase
         .from('class_session_attendance')
-        .select('officer_id, period_time, period_label, timetable_assignment_id')
+        .select(`
+          officer_id, 
+          period_time, 
+          period_label, 
+          timetable_assignment_id,
+          institution_timetable_assignments!inner(
+            period_id,
+            institution_periods!inner(
+              start_time,
+              end_time
+            )
+          )
+        `)
         .eq('institution_id', institutionId)
         .eq('is_session_completed', true);
 
@@ -48,9 +60,27 @@ export function useOfficerTeachingHours(institutionId?: string) {
           }
         }
 
-        // If we couldn't parse period_time, default to 45 minutes per session
+        // If period_time not available or unparseable, use the joined period times
+        if (durationMinutes <= 0 && session.institution_timetable_assignments) {
+          const timetable = session.institution_timetable_assignments as any;
+          const period = timetable.institution_periods;
+          
+          if (period?.start_time && period?.end_time) {
+            // Parse time strings like "09:00:00" or "09:00"
+            const parseTime = (timeStr: string): number => {
+              const parts = timeStr.split(':');
+              return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+            };
+            
+            const startMins = parseTime(period.start_time);
+            const endMins = parseTime(period.end_time);
+            durationMinutes = endMins - startMins;
+          }
+        }
+
+        // Fallback to 55 minutes (typical innovation period length)
         if (durationMinutes <= 0) {
-          durationMinutes = 45;
+          durationMinutes = 55;
         }
 
         // Convert to hours and add to officer's total
