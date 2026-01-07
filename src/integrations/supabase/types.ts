@@ -3561,6 +3561,7 @@ export type Database = {
           created_by_name: string
           download_count: number | null
           file_name: string
+          file_path: string | null
           file_size: number | null
           id: string
           institution_id: string | null
@@ -3577,6 +3578,7 @@ export type Database = {
           created_by_name: string
           download_count?: number | null
           file_name: string
+          file_path?: string | null
           file_size?: number | null
           id?: string
           institution_id?: string | null
@@ -3593,6 +3595,7 @@ export type Database = {
           created_by_name?: string
           download_count?: number | null
           file_name?: string
+          file_path?: string | null
           file_size?: number | null
           id?: string
           institution_id?: string | null
@@ -6238,6 +6241,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_newsletter_downloads: {
+        Args: { newsletter_id: string }
+        Returns: undefined
       }
       initialize_leave_balance: {
         Args: {
