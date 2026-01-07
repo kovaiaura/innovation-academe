@@ -19,7 +19,7 @@ import {
 import { toast } from 'sonner';
 import { leaveApplicationService, leaveBalanceService } from '@/services/leave.service';
 import { leaveCalculationService } from '@/services/leaveCalculation.service';
-import { companyHolidayService } from '@/services/holiday.service';
+import { calendarDayTypeService } from '@/services/calendarDayType.service';
 import { useAuth } from '@/contexts/AuthContext';
 import { LeaveHolidayCalendar, calculateLeaveDaysExcludingHolidays } from '@/components/leave/LeaveHolidayCalendar';
 import { 
@@ -89,10 +89,10 @@ export default function Leave() {
     enabled: !!user?.id
   });
 
-  // Fetch company holidays for staff
+  // Fetch company holidays from calendar_day_types
   const { data: companyHolidays = [], isLoading: holidaysLoading } = useQuery({
-    queryKey: ['company-holidays', currentYear],
-    queryFn: () => companyHolidayService.getByYear(currentYear),
+    queryKey: ['company-calendar-holidays', currentYear],
+    queryFn: () => calendarDayTypeService.getHolidaysForYear('company', currentYear),
   });
 
   // Calculate leave days excluding holidays

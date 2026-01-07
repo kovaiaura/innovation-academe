@@ -5,10 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CalendarDays, Gift } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { CompanyHoliday, InstitutionHoliday } from '@/types/leave';
+
+// Simple holiday type that works with both old and new calendar system
+export interface SimpleHoliday {
+  id: string;
+  date: string;
+  name: string;
+  end_date?: string;
+  holiday_type?: string;
+}
 
 interface LeaveHolidayCalendarProps {
-  holidays: (CompanyHoliday | InstitutionHoliday)[];
+  holidays: SimpleHoliday[];
   selectedRange?: { from?: Date; to?: Date };
   userType: 'staff' | 'officer';
   isLoading?: boolean;
@@ -191,7 +199,7 @@ export function LeaveHolidayCalendar({
 export function countHolidaysInRange(
   startDate: string,
   endDate: string,
-  holidays: (CompanyHoliday | InstitutionHoliday)[]
+  holidays: SimpleHoliday[]
 ): number {
   const start = parseISO(startDate);
   const end = parseISO(endDate);
@@ -216,7 +224,7 @@ export function countHolidaysInRange(
 export function calculateLeaveDaysExcludingHolidays(
   startDate: string,
   endDate: string,
-  holidays: (CompanyHoliday | InstitutionHoliday)[]
+  holidays: SimpleHoliday[]
 ): { totalCalendarDays: number; holidaysInRange: number; actualLeaveDays: number } {
   const start = parseISO(startDate);
   const end = parseISO(endDate);

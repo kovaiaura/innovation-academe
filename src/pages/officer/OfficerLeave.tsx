@@ -20,7 +20,7 @@ import {
 import { toast } from 'sonner';
 import { leaveApplicationService, leaveBalanceService } from '@/services/leave.service';
 import { leaveCalculationService } from '@/services/leaveCalculation.service';
-import { institutionHolidayService } from '@/services/holiday.service';
+import { calendarDayTypeService } from '@/services/calendarDayType.service';
 import { substituteAssignmentService, AffectedTimetableSlot, AvailableSubstitute } from '@/services/substituteAssignment.service';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -93,10 +93,10 @@ export default function OfficerLeave() {
     enabled: !!user?.id
   });
 
-  // Fetch institution holidays for the officer's institution
+  // Fetch institution holidays from calendar_day_types
   const { data: institutionHolidays = [] } = useQuery({
-    queryKey: ['institution-holidays', institutionId, currentYear],
-    queryFn: () => institutionHolidayService.getByYear(institutionId!, currentYear),
+    queryKey: ['institution-calendar-holidays', institutionId, currentYear],
+    queryFn: () => calendarDayTypeService.getHolidaysForYear('institution', currentYear, institutionId),
     enabled: !!institutionId
   });
 
