@@ -109,15 +109,22 @@ export function HolidayCalendar({
         setDayTypes(types);
         
         // Also fetch descriptions for holidays
-        const { data } = await import('@/integrations/supabase/client').then(m => 
-          m.supabase
+        const { data } = await import('@/integrations/supabase/client').then(m => {
+          let query = m.supabase
             .from('calendar_day_types')
             .select('date, description')
             .eq('calendar_type', calendarType)
             .eq('day_type', 'holiday')
             .gte('date', `${year - 1}-01-01`)
-            .lte('date', `${year + 2}-12-31`)
-        );
+            .lte('date', `${year + 2}-12-31`);
+          
+          // Add institution_id filter for institution calendars
+          if (calendarType === 'institution' && institutionId) {
+            query = query.eq('institution_id', institutionId);
+          }
+          
+          return query;
+        });
         
         if (data) {
           const descMap = new Map<string, string>();
