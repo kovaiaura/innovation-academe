@@ -1,35 +1,56 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { gamificationDbService } from '@/services/gamification-db.service';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ModuleData {
   id: string; // This is class_module_assignment.id
-  module?: { id: string; title: string }; // The actual course_modules record
+  module?: { id: string; title: string; course_id?: string }; // The actual course_modules record
   isModuleCompleted?: boolean;
 }
 
+interface UseLevelCompletionCertificateParams {
+  studentRecordId: string | undefined;  // students.id
+  studentUserId: string | undefined;    // profiles.id (auth user ID)
+  modules: ModuleData[] | undefined;
+  institutionId: string | undefined;
+  courseId: string | undefined;
+  courseTitle: string | undefined;
+  classAssignmentId: string | undefined;
+}
+
 export function useLevelCompletionCertificate(
-  studentId: string | undefined,
+  studentRecordId: string | undefined,
   modules: ModuleData[] | undefined,
   institutionId: string | undefined,
-  courseTitle: string | undefined
+  courseTitle: string | undefined,
+  courseId?: string,
+  classAssignmentId?: string
 ) {
+  const { user } = useAuth();
+  const studentUserId = user?.id; // This is profiles.id (auth user ID)
+  
   // Track processed modules by course_modules.id (not class_module_assignment.id)
   const processedModulesRef = useRef<Set<string>>(new Set());
 
   const checkAndIssueCertificates = useCallback(async () => {
-    if (!studentId || !modules || !institutionId) {
-      console.log('[Certificate Hook] Missing required params:', { studentId: !!studentId, modules: modules?.length, institutionId: !!institutionId });
+    if (!studentRecordId || !studentUserId || !modules || !institutionId) {
+      console.log('[Certificate Hook] Missing required params:', { 
+        studentRecordId: !!studentRecordId, 
+        studentUserId: !!studentUserId,
+        modules: modules?.length, 
+        institutionId: !!institutionId 
+      });
       return;
     }
 
-    console.log('[Certificate Hook] Checking', modules.length, 'modules for student:', studentId);
+    console.log('[Certificate Hook] Checking', modules.length, 'modules for student:', studentRecordId);
 
     for (const moduleData of modules) {
       // Get the actual course module ID (not class assignment ID)
       const courseModuleId = moduleData.module?.id;
       const moduleName = moduleData.module?.title || 'Level';
+      const moduleCourseId = moduleData.module?.course_id || courseId;
 
       // Skip if no course module ID
       if (!courseModuleId) {
@@ -51,11 +72,11 @@ export function useLevelCompletionCertificate(
 
       console.log('[Certificate Hook] Checking certificate for completed module:', moduleName, '(', courseModuleId, ')');
 
-      // Check if certificate already exists in database
+      // Check if certificate already exists in database (using studentUserId for certificates)
       const { data: existing, error: checkError } = await supabase
         .from('student_certificates')
         .select('id')
-        .eq('student_id', studentId)
+        .eq('student_id', studentUserId)
         .eq('activity_type', 'level')
         .eq('activity_id', courseModuleId)
         .maybeSingle();
@@ -71,57 +92,44 @@ export function useLevelCompletionCertificate(
         continue;
       }
 
-      // Get the level/module completion template
-      const { data: template, error: templateError } = await supabase
-        .from('certificate_templates')
-        .select('id, name')
-        .or('category.eq.module,category.eq.level')
-        .eq('is_active', true)
-        .limit(1)
-        .maybeSingle();
-
-      if (templateError) {
-        console.error('[Certificate Hook] Error fetching template:', templateError);
-        continue;
-      }
-
-      if (!template) {
-        console.warn('[Certificate Hook] No active level/module certificate template found');
-        processedModulesRef.current.add(courseModuleId);
-        continue;
-      }
-
-      console.log('[Certificate Hook] Issuing certificate with template:', template.name);
-
+      // Call edge function to issue certificate (server-side validation and issuance)
+      console.log('[Certificate Hook] Calling edge function to issue certificate for:', moduleName);
+      
       try {
-        // Issue certificate to database
-        await gamificationDbService.issueCertificate({
-          studentId,
-          templateId: template.id,
-          activityType: 'level',
-          activityId: courseModuleId,
-          activityName: `${moduleName}${courseTitle ? ` - ${courseTitle}` : ''}`,
-          institutionId,
+        const { data, error } = await supabase.functions.invoke('issue-completion-certificates', {
+          body: {
+            studentRecordId,
+            studentUserId,
+            classAssignmentId: classAssignmentId || moduleData.id, // Use class_module_assignment.id as fallback
+            courseId: moduleCourseId,
+            moduleId: courseModuleId,
+            institutionId,
+            courseName: courseTitle,
+            moduleName
+          }
         });
 
-        // Award XP for level completion
-        await gamificationDbService.awardLevelCompletionXP(
-          studentId, 
-          institutionId, 
-          courseModuleId, 
-          moduleName
-        );
+        if (error) {
+          console.error('[Certificate Hook] Edge function error:', error);
+          processedModulesRef.current.add(courseModuleId);
+          continue;
+        }
 
         processedModulesRef.current.add(courseModuleId);
-        toast.success(`🎉 Certificate earned for completing ${moduleName}!`);
-        console.log('[Certificate Hook] Certificate issued successfully for:', moduleName);
+        
+        if (data?.issued) {
+          toast.success(`🎉 Certificate earned for completing ${moduleName}!`);
+          console.log('[Certificate Hook] Certificate issued successfully for:', moduleName);
+        } else {
+          console.log('[Certificate Hook] Certificate not issued:', data?.message);
+        }
       } catch (error) {
         console.error('[Certificate Hook] Failed to issue level certificate:', error);
         // Still mark as processed to avoid repeated errors
         processedModulesRef.current.add(courseModuleId);
       }
     }
-  }, [studentId, modules, institutionId, courseTitle]);
+  }, [studentRecordId, studentUserId, modules, institutionId, courseTitle, courseId, classAssignmentId]);
 
   useEffect(() => {
     checkAndIssueCertificates();

@@ -43,19 +43,8 @@ export default function Certificates() {
       try {
         setLoading(true);
         
-        // First get the student record ID
-        const { data: studentRecord } = await supabase
-          .from('students')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        
-        if (!studentRecord?.id) {
-          setLoading(false);
-          return;
-        }
-        
-        const data = await gamificationDbService.getStudentCertificates(studentRecord.id);
+        // Use user.id (profile/auth ID) directly - certificates are stored with profile ID
+        const data = await gamificationDbService.getStudentCertificates(user.id);
         
         // Transform DB data to StudentCertificate format
         const transformedCerts: StudentCertificate[] = (data as DBCertificate[]).map(cert => ({
