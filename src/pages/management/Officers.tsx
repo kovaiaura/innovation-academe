@@ -15,6 +15,7 @@ import { useOfficer } from "@/hooks/useOfficers";
 import { useOfficerTeachingHours } from "@/hooks/useOfficerTeachingHours";
 import { useStudents } from "@/hooks/useStudents";
 import { useOfficersOnLeave } from "@/hooks/useOfficersOnLeave";
+import { useMonthlySessionsCount } from "@/hooks/useMonthlySessionsCount";
 import { OfficerDetails } from "@/services/systemadmin.service";
 
 const Officers = () => {
@@ -28,6 +29,7 @@ const Officers = () => {
   const { data: teachingHoursMap = {} } = useOfficerTeachingHours(institutionId || undefined);
   const { students } = useStudents(institutionId || undefined);
   const { data: officersOnLeave = [], isLoading: isLoadingLeaves } = useOfficersOnLeave(institutionId || undefined);
+  const { data: monthlySessionsCount = 0, isLoading: isLoadingMonthlySessions } = useMonthlySessionsCount(institutionId || undefined);
 
   const filteredOfficers = useMemo(() => {
     if (!searchQuery) return officers;
@@ -150,7 +152,7 @@ const Officers = () => {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">-</div>
+              <div className="text-2xl font-bold">{isLoadingMonthlySessions ? '-' : monthlySessionsCount}</div>
               <p className="text-xs text-muted-foreground">Sessions conducted</p>
             </CardContent>
           </Card>
