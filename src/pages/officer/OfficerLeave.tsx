@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, eachDayOfInterval } from 'date-fns';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -93,26 +93,59 @@ export default function OfficerLeave() {
     enabled: !!user?.id
   });
 
-  // Fetch institution holidays from calendar_day_types
+  // Fetch institution holidays from calendar_day_types (for display)
   const { data: institutionHolidays = [] } = useQuery({
     queryKey: ['institution-calendar-holidays', institutionId, currentYear],
     queryFn: () => calendarDayTypeService.getHolidaysForYear('institution', currentYear, institutionId),
     enabled: !!institutionId
   });
 
-  // Calculate leave days excluding holidays
+  // Fetch institution calendar non-working days (weekends + holidays) for leave calculation
+  const { data: institutionNonWorkingDays = { weekends: [], holidays: [] } } = useQuery({
+    queryKey: ['institution-non-working-days', institutionId, dateRange?.from, dateRange?.to],
+    queryFn: () => {
+      if (!dateRange?.from || !dateRange?.to) return { weekends: [], holidays: [] };
+      return calendarDayTypeService.getNonWorkingDaysInRange(
+        'institution',
+        format(dateRange.from, 'yyyy-MM-dd'),
+        format(dateRange.to, 'yyyy-MM-dd'),
+        institutionId
+      );
+    },
+    enabled: !!institutionId && !!dateRange?.from && !!dateRange?.to
+  });
+
+  // Calculate leave days excluding weekends AND holidays from institution calendar
   const leaveCalculation = useMemo(() => {
     if (!dateRange?.from || !dateRange?.to) {
-      return { totalCalendarDays: 0, holidaysInRange: 0, actualLeaveDays: 0 };
+      return { totalCalendarDays: 0, weekendsInRange: 0, holidaysInRange: 0, actualLeaveDays: 0 };
     }
     
-    const holidayDates = institutionHolidays.map(h => h.date);
-    return leaveApplicationService.calculateLeaveDaysExcludingHolidays(
-      format(dateRange.from, 'yyyy-MM-dd'),
-      format(dateRange.to, 'yyyy-MM-dd'),
-      holidayDates
-    );
-  }, [dateRange, institutionHolidays]);
+    const start = parseISO(format(dateRange.from, 'yyyy-MM-dd'));
+    const end = parseISO(format(dateRange.to, 'yyyy-MM-dd'));
+    const days = eachDayOfInterval({ start, end });
+    const totalCalendarDays = days.length;
+    
+    // Count weekends from calendar data
+    const weekendsInRange = days.filter((day) =>
+      institutionNonWorkingDays.weekends.some((wd) => format(parseISO(wd), 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd'))
+    ).length;
+    
+    // Count holidays (excluding days already counted as weekends)
+    const holidaysInRange = days.filter((day) => {
+      const dayStr = format(day, 'yyyy-MM-dd');
+      const isWeekend = institutionNonWorkingDays.weekends.some((wd) => format(parseISO(wd), 'yyyy-MM-dd') === dayStr);
+      if (isWeekend) return false;
+      return institutionNonWorkingDays.holidays.some((hd) => format(parseISO(hd), 'yyyy-MM-dd') === dayStr);
+    }).length;
+    
+    return {
+      totalCalendarDays,
+      weekendsInRange,
+      holidaysInRange,
+      actualLeaveDays: Math.max(0, totalCalendarDays - weekendsInRange - holidaysInRange)
+    };
+  }, [dateRange, institutionNonWorkingDays]);
 
   const applyMutation = useMutation({
     mutationFn: leaveApplicationService.applyLeave,
@@ -493,10 +526,16 @@ export default function OfficerLeave() {
                             <div className="text-sm text-muted-foreground mt-2 space-y-1">
                               <p>From: {format(dateRange.from, 'PPP')}</p>
                               <p>To: {format(dateRange.to, 'PPP')}</p>
-                              <p>Working Days: {leaveCalculation.actualLeaveDays}</p>
-                              {leaveCalculation.holidaysInRange > 0 && (
-                                <p className="text-green-600">Holidays excluded: {leaveCalculation.holidaysInRange}</p>
-                              )}
+                              <div className="pt-2 border-t mt-2 space-y-1">
+                                <p>Calendar days: {leaveCalculation.totalCalendarDays}</p>
+                                {leaveCalculation.weekendsInRange > 0 && (
+                                  <p className="text-blue-600">🗓️ Weekends excluded: -{leaveCalculation.weekendsInRange}</p>
+                                )}
+                                {leaveCalculation.holidaysInRange > 0 && (
+                                  <p className="text-green-600">🎁 Holidays excluded: -{leaveCalculation.holidaysInRange}</p>
+                                )}
+                                <p className="font-semibold text-foreground">Actual Leave Days: {leaveCalculation.actualLeaveDays}</p>
+                              </div>
                             </div>
                           </div>
                         )}

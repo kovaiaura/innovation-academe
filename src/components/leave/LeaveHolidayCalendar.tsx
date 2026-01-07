@@ -220,7 +220,7 @@ export function countHolidaysInRange(
   ).length;
 }
 
-// Calculate leave days excluding holidays
+// Calculate leave days excluding holidays only (legacy function for backward compatibility)
 export function calculateLeaveDaysExcludingHolidays(
   startDate: string,
   endDate: string,
@@ -236,6 +236,46 @@ export function calculateLeaveDaysExcludingHolidays(
 
   return {
     totalCalendarDays,
+    holidaysInRange,
+    actualLeaveDays,
+  };
+}
+
+// Calculate actual leave days excluding both weekends AND holidays from calendar
+export function calculateActualLeaveDays(
+  startDate: string,
+  endDate: string,
+  weekendDates: string[],
+  holidayDates: string[]
+): { 
+  totalCalendarDays: number; 
+  weekendsInRange: number; 
+  holidaysInRange: number; 
+  actualLeaveDays: number 
+} {
+  const start = parseISO(startDate);
+  const end = parseISO(endDate);
+  const rangeDays = eachDayOfInterval({ start, end });
+  const totalCalendarDays = rangeDays.length;
+  
+  // Count weekends that fall within the range (using calendar data, not day of week)
+  const weekendsInRange = rangeDays.filter((day) =>
+    weekendDates.some((wd) => format(parseISO(wd), 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd'))
+  ).length;
+  
+  // Count holidays that fall within the range (excluding days already counted as weekends)
+  const holidaysInRange = rangeDays.filter((day) => {
+    const dayStr = format(day, 'yyyy-MM-dd');
+    const isWeekend = weekendDates.some((wd) => format(parseISO(wd), 'yyyy-MM-dd') === dayStr);
+    if (isWeekend) return false; // Don't double count
+    return holidayDates.some((hd) => format(parseISO(hd), 'yyyy-MM-dd') === dayStr);
+  }).length;
+  
+  const actualLeaveDays = Math.max(0, totalCalendarDays - weekendsInRange - holidaysInRange);
+
+  return {
+    totalCalendarDays,
+    weekendsInRange,
     holidaysInRange,
     actualLeaveDays,
   };
