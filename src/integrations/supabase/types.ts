@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_prompt_usage: {
+        Row: {
+          created_at: string
+          id: string
+          month: number
+          prompt_count: number
+          role: string
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          month: number
+          prompt_count?: number
+          role?: string
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          month?: number
+          prompt_count?: number
+          role?: string
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       appraisal_projects: {
         Row: {
           appraisal_id: string

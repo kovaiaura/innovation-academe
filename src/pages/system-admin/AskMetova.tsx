@@ -8,6 +8,7 @@ import { ChatMessage } from '@/components/student/ChatMessage';
 import { ChatSidebar } from '@/components/student/ChatSidebar';
 import { TypingIndicator } from '@/components/student/TypingIndicator';
 import { AIDisabledBanner } from '@/components/ask-metova/AIDisabledBanner';
+import { PromptUsageIndicator } from '@/components/ask-metova/PromptUsageIndicator';
 import { useAskMetova } from '@/hooks/useAskMetova';
 import { 
   BarChart3, 
@@ -30,12 +31,16 @@ export default function SystemAdminAskMetova() {
     currentMessages,
     isLoading,
     isAIDisabled,
+    isLimitExceeded,
+    promptUsage,
     scrollAreaRef,
     sendMessage,
     handleNewChat,
     handleSelectConversation,
     handleClearHistory
   } = useAskMetova('system_admin');
+
+  const isInputDisabled = isLoading || isAIDisabled || isLimitExceeded;
 
   const suggestedPrompts = [
     {
@@ -93,8 +98,8 @@ export default function SystemAdminAskMetova() {
             {suggestedPrompts.map((item, index) => (
               <Card
                 key={index}
-                className={`p-4 transition-colors ${isAIDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent cursor-pointer'}`}
-                onClick={() => !isAIDisabled && sendMessage(item.prompt)}
+                className={`p-4 transition-colors ${isInputDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent cursor-pointer'}`}
+                onClick={() => !isInputDisabled && sendMessage(item.prompt)}
               >
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2 text-primary">
@@ -166,6 +171,14 @@ export default function SystemAdminAskMetova() {
             </div>
           )}
 
+          {promptUsage && (
+            <PromptUsageIndicator 
+              used={promptUsage.used} 
+              limit={promptUsage.limit} 
+              limitEnabled={promptUsage.limit_enabled} 
+            />
+          )}
+
           <ScrollArea ref={scrollAreaRef} className="flex-1">
             <div className="p-6 space-y-6 max-w-4xl mx-auto">
               {currentMessages.length === 0 ? (
@@ -190,10 +203,12 @@ export default function SystemAdminAskMetova() {
 
           <div className="border-t p-4 bg-background">
             <div className="max-w-4xl mx-auto">
-              <ChatInput onSend={sendMessage} disabled={isLoading || isAIDisabled} />
+              <ChatInput onSend={sendMessage} disabled={isInputDisabled} />
               <p className="text-xs text-muted-foreground text-center mt-2">
                 {isAIDisabled 
                   ? 'AI Assistant is currently disabled by the administrator.'
+                  : isLimitExceeded
+                  ? 'You have reached your monthly prompt limit.'
                   : 'Ask Metova can generate reports and insights based on your data. Always verify important information.'}
               </p>
             </div>

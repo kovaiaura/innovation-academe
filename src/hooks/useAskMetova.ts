@@ -19,6 +19,12 @@ export interface ChatConversation {
   messages: ChatMessage[];
 }
 
+export interface PromptUsage {
+  used: number;
+  limit: number;
+  limit_enabled: boolean;
+}
+
 type Role = 'student' | 'officer' | 'system_admin';
 
 const STORAGE_KEYS: Record<Role, string> = {
@@ -34,14 +40,17 @@ export function useAskMetova(role: Role) {
   const [currentMessages, setCurrentMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isAIDisabled, setIsAIDisabled] = useState(false);
+  const [isLimitExceeded, setIsLimitExceeded] = useState(false);
+  const [promptUsage, setPromptUsage] = useState<PromptUsage | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const storageKey = STORAGE_KEYS[role];
 
-  // Check AI enabled status on mount
+  // Check AI enabled status and usage on mount
   useEffect(() => {
     checkAIStatus();
-  }, []);
+    checkUsage();
+  }, [user?.id]);
 
   const checkAIStatus = async () => {
     try {
@@ -57,6 +66,33 @@ export function useAskMetova(role: Role) {
       }
     } catch (e) {
       console.error('Error checking AI status:', e);
+    }
+  };
+
+  const checkUsage = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('ask-metova', {
+        body: {
+          action: 'check_usage',
+          userId: user?.id
+        }
+      });
+
+      if (!error && data) {
+        setPromptUsage({
+          used: data.used || 0,
+          limit: data.limit || 10,
+          limit_enabled: data.limit_enabled || false
+        });
+        
+        if (data.limit_enabled && data.used >= data.limit) {
+          setIsLimitExceeded(true);
+        } else {
+          setIsLimitExceeded(false);
+        }
+      }
+    } catch (e) {
+      console.error('Error checking usage:', e);
     }
   };
 
@@ -123,6 +159,18 @@ export function useAskMetova(role: Role) {
       return;
     }
 
+    // Check if limit exceeded before sending
+    if (isLimitExceeded) {
+      const limitMessage: ChatMessage = {
+        id: `msg-${Date.now()}-limit`,
+        role: 'assistant',
+        content: `⚠️ **Monthly Prompt Limit Reached**\n\nYou've used all ${promptUsage?.limit || 10} prompts for this month. Your limit will reset on the 1st of next month.\n\nPlease contact your administrator if you need additional prompts.`,
+        timestamp: new Date().toISOString()
+      };
+      setCurrentMessages([...currentMessages, limitMessage]);
+      return;
+    }
+
     const userMessage: ChatMessage = {
       id: `msg-${Date.now()}`,
       role: 'user',
@@ -161,6 +209,20 @@ export function useAskMetova(role: Role) {
         return;
       }
 
+      // Check if limit exceeded from the response
+      if (data?.limit_exceeded) {
+        setIsLimitExceeded(true);
+        setPromptUsage(prev => prev ? { ...prev, used: data.used } : { used: data.used, limit: data.limit, limit_enabled: true });
+        const limitMessage: ChatMessage = {
+          id: `msg-${Date.now()}-limit`,
+          role: 'assistant',
+          content: `⚠️ **Monthly Prompt Limit Reached**\n\nYou've used all ${data.limit} prompts for this month. Your limit will reset on the 1st of next month.\n\nPlease contact your administrator if you need additional prompts.`,
+          timestamp: new Date().toISOString()
+        };
+        setCurrentMessages([...messagesWithUser, limitMessage]);
+        return;
+      }
+
       if (data?.error) {
         throw new Error(data.error);
       }
@@ -175,6 +237,15 @@ export function useAskMetova(role: Role) {
 
       const newMessages = [...messagesWithUser, aiResponse];
       setCurrentMessages(newMessages);
+
+      // Update prompt usage from response
+      if (data?.promptUsage) {
+        setPromptUsage(prev => ({
+          used: data.promptUsage.used,
+          limit: data.promptUsage.limit,
+          limit_enabled: prev?.limit_enabled ?? true
+        }));
+      }
 
       // Save to localStorage
       if (activeConversationId) {
@@ -207,7 +278,7 @@ export function useAskMetova(role: Role) {
     } finally {
       setIsLoading(false);
     }
-  }, [currentMessages, role, user?.id, activeConversationId, conversations, storageKey, isAIDisabled]);
+  }, [currentMessages, role, user?.id, activeConversationId, conversations, storageKey, isAIDisabled, isLimitExceeded, promptUsage]);
 
   return {
     conversations,
@@ -215,6 +286,8 @@ export function useAskMetova(role: Role) {
     currentMessages,
     isLoading,
     isAIDisabled,
+    isLimitExceeded,
+    promptUsage,
     scrollAreaRef,
     sendMessage,
     handleNewChat,
