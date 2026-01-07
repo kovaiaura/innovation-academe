@@ -11,161 +11,1013 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Fetch real data context for system admin
-async function fetchSystemAdminContext(): Promise<string> {
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-  
-  const contextParts: string[] = [];
+// Helper to create supabase client
+function getSupabaseClient() {
+  return createClient(supabaseUrl, supabaseServiceKey);
+}
+
+// ==================== CONTEXT FETCHERS ====================
+
+// 1. Institution Context
+async function fetchInstitutionContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 📍 INSTITUTIONS'];
   
   try {
-    // Fetch institutions with student counts
     const { data: institutions } = await supabase
       .from('institutions')
-      .select('id, name, status, current_users, max_users, contract_expiry_date, contract_value')
+      .select('id, name, status, current_users, max_users, contract_expiry_date, contract_value, type, code')
       .order('name');
     
-    if (institutions && institutions.length > 0) {
-      contextParts.push('## Institutions in the System');
+    if (institutions?.length) {
+      parts.push(`Total Institutions: ${institutions.length}`);
       for (const inst of institutions) {
-        contextParts.push(`- **${inst.name}**: Status: ${inst.status}, Contract Value: ₹${inst.contract_value || 0}, Expiry: ${inst.contract_expiry_date || 'Not set'}`);
+        parts.push(`- **${inst.name}** (${inst.code || 'N/A'}): Type: ${inst.type || 'N/A'}, Status: ${inst.status}, Users: ${inst.current_users || 0}/${inst.max_users || 'unlimited'}, Contract: ₹${(inst.contract_value || 0).toLocaleString()}, Expiry: ${inst.contract_expiry_date || 'Not set'}`);
       }
     } else {
-      contextParts.push('## Institutions: No institutions found in the system yet.');
+      parts.push('No institutions found in the system.');
     }
 
-    // Fetch student counts per institution
-    const { data: studentCounts } = await supabase
-      .from('profiles')
-      .select('institution_id, institutions(name)')
-      .not('institution_id', 'is', null);
+    // Fetch classes per institution
+    const { data: classes } = await supabase
+      .from('classes')
+      .select('id, institution_id, class_name, status');
     
-    if (studentCounts && studentCounts.length > 0) {
-      const countMap: Record<string, number> = {};
-      for (const s of studentCounts) {
-        const inst = s.institutions as unknown as { name: string } | null;
-        const instName = inst?.name || 'Unknown';
-        countMap[instName] = (countMap[instName] || 0) + 1;
+    if (classes?.length) {
+      const classCount: Record<string, number> = {};
+      for (const c of classes) {
+        classCount[c.institution_id] = (classCount[c.institution_id] || 0) + 1;
       }
-      contextParts.push('\n## Student Counts by Institution');
-      for (const [name, count] of Object.entries(countMap)) {
-        contextParts.push(`- ${name}: ${count} students`);
+      parts.push('\n**Classes per Institution:**');
+      for (const inst of (institutions || [])) {
+        parts.push(`- ${inst.name}: ${classCount[inst.id] || 0} classes`);
       }
     }
-
-    // Fetch officers count
-    const { count: officersCount } = await supabase
-      .from('officers')
-      .select('*', { count: 'exact', head: true });
-    
-    contextParts.push(`\n## Staff Overview`);
-    contextParts.push(`- Total Officers/Trainers: ${officersCount || 0}`);
-
-    // Fetch CRM contracts summary
-    const { data: contracts } = await supabase
-      .from('crm_contracts')
-      .select('status, contract_value, institution_name');
-    
-    if (contracts && contracts.length > 0) {
-      const totalValue = contracts.reduce((sum, c) => sum + (c.contract_value || 0), 0);
-      const activeContracts = contracts.filter(c => c.status === 'active').length;
-      contextParts.push(`\n## CRM Contracts`);
-      contextParts.push(`- Total Contracts: ${contracts.length}`);
-      contextParts.push(`- Active Contracts: ${activeContracts}`);
-      contextParts.push(`- Total Contract Value: ₹${totalValue.toLocaleString()}`);
-    } else {
-      contextParts.push(`\n## CRM Contracts: No contracts found yet.`);
-    }
-
-    // Fetch communication logs count
-    const { count: commLogsCount } = await supabase
-      .from('communication_logs')
-      .select('*', { count: 'exact', head: true });
-    
-    contextParts.push(`\n## Communications`);
-    contextParts.push(`- Total Communication Logs: ${commLogsCount || 0}`);
-
-    // Fetch courses count
-    const { count: coursesCount } = await supabase
-      .from('courses')
-      .select('*', { count: 'exact', head: true });
-    
-    contextParts.push(`\n## Courses`);
-    contextParts.push(`- Total Courses: ${coursesCount || 0}`);
-
-    // Fetch events count
-    const { count: eventsCount } = await supabase
-      .from('events')
-      .select('*', { count: 'exact', head: true });
-    
-    contextParts.push(`\n## Events`);
-    contextParts.push(`- Total Events: ${eventsCount || 0}`);
-
-  } catch (error) {
-    console.error('Error fetching context:', error);
-    contextParts.push('Note: Some data could not be fetched. Please try again.');
+  } catch (e) {
+    console.error('Institution context error:', e);
+    parts.push('Error fetching institution data.');
   }
-
-  return contextParts.join('\n');
+  
+  return parts.join('\n');
 }
 
-// Fetch real data context for officer
-async function fetchOfficerContext(): Promise<string> {
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-  
-  const contextParts: string[] = [];
+// 2. Student/Profile Context
+async function fetchStudentProfileContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 👥 STUDENTS & PROFILES'];
   
   try {
-    // Fetch classes count
-    const { count: classesCount } = await supabase
-      .from('classes')
-      .select('*', { count: 'exact', head: true });
+    const { data: profiles, count } = await supabase
+      .from('profiles')
+      .select('institution_id, institutions(name)', { count: 'exact' })
+      .not('institution_id', 'is', null);
     
-    contextParts.push(`## Overview`);
-    contextParts.push(`- Total Classes: ${classesCount || 0}`);
-
-    // Fetch assessments count
-    const { count: assessmentsCount } = await supabase
-      .from('assessments')
-      .select('*', { count: 'exact', head: true });
+    parts.push(`Total Students/Users: ${count || 0}`);
     
-    contextParts.push(`- Total Assessments: ${assessmentsCount || 0}`);
-
-    // Fetch assignments count  
-    const { count: assignmentsCount } = await supabase
-      .from('assignments')
-      .select('*', { count: 'exact', head: true });
-    
-    contextParts.push(`- Total Assignments: ${assignmentsCount || 0}`);
-
-  } catch (error) {
-    console.error('Error fetching officer context:', error);
+    if (profiles?.length) {
+      const countMap: Record<string, number> = {};
+      for (const p of profiles) {
+        const inst = p.institutions as unknown as { name: string } | null;
+        const name = inst?.name || 'Unassigned';
+        countMap[name] = (countMap[name] || 0) + 1;
+      }
+      parts.push('**By Institution:**');
+      for (const [name, cnt] of Object.entries(countMap).sort((a, b) => b[1] - a[1])) {
+        parts.push(`- ${name}: ${cnt} students`);
+      }
+    }
+  } catch (e) {
+    console.error('Student context error:', e);
   }
-
-  return contextParts.join('\n');
+  
+  return parts.join('\n');
 }
 
-// Fetch real data context for student
-async function fetchStudentContext(): Promise<string> {
-  const contextParts: string[] = [];
-  contextParts.push('## Your Learning Dashboard');
-  contextParts.push('- Access your courses, assignments, and assessments from your dashboard.');
-  contextParts.push('- Check your progress and upcoming deadlines regularly.');
-  return contextParts.join('\n');
+// 3. Officer Context
+async function fetchOfficerContextData(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 👨‍🏫 OFFICERS (Trainers/Innovation Officers)'];
+  
+  try {
+    const { data: officers, count } = await supabase
+      .from('officers')
+      .select('id, name, email, designation, department, status, officer_type', { count: 'exact' });
+    
+    parts.push(`Total Officers: ${count || 0}`);
+    
+    if (officers?.length) {
+      const byStatus: Record<string, number> = {};
+      const byDept: Record<string, number> = {};
+      for (const o of officers) {
+        byStatus[o.status || 'unknown'] = (byStatus[o.status || 'unknown'] || 0) + 1;
+        byDept[o.department || 'Unassigned'] = (byDept[o.department || 'Unassigned'] || 0) + 1;
+      }
+      parts.push('**By Status:**');
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+      parts.push('**By Department:**');
+      for (const [d, c] of Object.entries(byDept).slice(0, 10)) parts.push(`- ${d}: ${c}`);
+    }
+  } catch (e) {
+    console.error('Officer context error:', e);
+  }
+  
+  return parts.join('\n');
 }
 
-const baseSystemPrompts: Record<string, string> = {
-  student: `You are Metova, a friendly and supportive AI learning assistant for students. You help students with:
-- Tracking their course progress and grades
-- Understanding their assignments and deadlines
-- Analyzing their attendance patterns
-- Providing study tips and learning strategies
-- Career guidance and skill development advice
-- Project support and innovation ideas
+// 4. Course Context
+async function fetchCourseContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 📚 COURSES'];
+  
+  try {
+    const { data: courses, count } = await supabase
+      .from('courses')
+      .select('id, title, status, category, difficulty', { count: 'exact' });
+    
+    parts.push(`Total Courses: ${count || 0}`);
+    
+    if (courses?.length) {
+      const byStatus: Record<string, number> = {};
+      const byCategory: Record<string, number> = {};
+      for (const c of courses) {
+        byStatus[c.status || 'unknown'] = (byStatus[c.status || 'unknown'] || 0) + 1;
+        byCategory[c.category || 'Uncategorized'] = (byCategory[c.category || 'Uncategorized'] || 0) + 1;
+      }
+      parts.push('**By Status:**');
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+      parts.push('**By Category:**');
+      for (const [cat, c] of Object.entries(byCategory).slice(0, 8)) parts.push(`- ${cat}: ${c}`);
+      parts.push('**Recent Courses:**');
+      for (const c of courses.slice(0, 5)) parts.push(`- ${c.title} (${c.status})`);
+    }
 
-Be encouraging, clear, and helpful. Use markdown formatting for better readability. 
-Keep responses concise but informative. Address the student directly and be supportive of their learning journey.`,
+    // Course assignments to institutions
+    const { count: assignmentCount } = await supabase
+      .from('course_institution_assignments')
+      .select('*', { count: 'exact', head: true });
+    parts.push(`\nCourse-Institution Assignments: ${assignmentCount || 0}`);
+  } catch (e) {
+    console.error('Course context error:', e);
+  }
+  
+  return parts.join('\n');
+}
 
-  officer: `You are Metova, an AI assistant for Innovation Officers (teachers/trainers). You help officers with:
+// 5. Assessment Context
+async function fetchAssessmentContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 📝 ASSESSMENTS'];
+  
+  try {
+    const { data: assessments, count } = await supabase
+      .from('assessments')
+      .select('id, title, status, start_time, end_time, pass_percentage', { count: 'exact' });
+    
+    parts.push(`Total Assessments: ${count || 0}`);
+    
+    if (assessments?.length) {
+      const byStatus: Record<string, number> = {};
+      for (const a of assessments) {
+        byStatus[a.status || 'unknown'] = (byStatus[a.status || 'unknown'] || 0) + 1;
+      }
+      parts.push('**By Status:**');
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+      
+      // Upcoming assessments
+      const now = new Date().toISOString();
+      const upcoming = assessments.filter(a => a.start_time && a.start_time > now).slice(0, 5);
+      if (upcoming.length) {
+        parts.push('**Upcoming:**');
+        for (const a of upcoming) parts.push(`- ${a.title} (starts: ${new Date(a.start_time).toLocaleDateString()})`);
+      }
+    }
+
+    // Assessment attempts stats
+    const { data: attempts } = await supabase
+      .from('assessment_attempts')
+      .select('passed, percentage');
+    
+    if (attempts?.length) {
+      const passed = attempts.filter(a => a.passed).length;
+      const avgScore = attempts.reduce((sum, a) => sum + (a.percentage || 0), 0) / attempts.length;
+      parts.push(`\n**Attempt Stats:** Total: ${attempts.length}, Passed: ${passed} (${((passed/attempts.length)*100).toFixed(1)}%), Avg Score: ${avgScore.toFixed(1)}%`);
+    }
+  } catch (e) {
+    console.error('Assessment context error:', e);
+  }
+  
+  return parts.join('\n');
+}
+
+// 6. Assignment Context
+async function fetchAssignmentContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 📋 ASSIGNMENTS'];
+  
+  try {
+    const { data: assignments, count } = await supabase
+      .from('assignments')
+      .select('id, title, status, start_date, submission_end_date, total_marks', { count: 'exact' });
+    
+    parts.push(`Total Assignments: ${count || 0}`);
+    
+    if (assignments?.length) {
+      const byStatus: Record<string, number> = {};
+      for (const a of assignments) {
+        byStatus[a.status || 'unknown'] = (byStatus[a.status || 'unknown'] || 0) + 1;
+      }
+      parts.push('**By Status:**');
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+    }
+
+    // Submissions stats
+    const { data: submissions } = await supabase
+      .from('assignment_submissions')
+      .select('status, marks_obtained');
+    
+    if (submissions?.length) {
+      const byStatus: Record<string, number> = {};
+      for (const s of submissions) {
+        byStatus[s.status || 'unknown'] = (byStatus[s.status || 'unknown'] || 0) + 1;
+      }
+      parts.push('**Submissions by Status:**');
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+    } else {
+      parts.push('No submissions yet.');
+    }
+  } catch (e) {
+    console.error('Assignment context error:', e);
+  }
+  
+  return parts.join('\n');
+}
+
+// 7. Events Context
+async function fetchEventsContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 🎉 EVENTS'];
+  
+  try {
+    const { data: events, count } = await supabase
+      .from('events')
+      .select('id, title, status, event_type, event_start, event_end, current_participants, max_participants', { count: 'exact' });
+    
+    parts.push(`Total Events: ${count || 0}`);
+    
+    if (events?.length) {
+      const byStatus: Record<string, number> = {};
+      const byType: Record<string, number> = {};
+      for (const e of events) {
+        byStatus[e.status || 'unknown'] = (byStatus[e.status || 'unknown'] || 0) + 1;
+        byType[e.event_type || 'other'] = (byType[e.event_type || 'other'] || 0) + 1;
+      }
+      parts.push('**By Status:**');
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+      parts.push('**By Type:**');
+      for (const [t, c] of Object.entries(byType)) parts.push(`- ${t}: ${c}`);
+      
+      // Upcoming events
+      const now = new Date().toISOString();
+      const upcoming = events.filter(e => e.event_start && e.event_start > now).slice(0, 5);
+      if (upcoming.length) {
+        parts.push('**Upcoming Events:**');
+        for (const e of upcoming) parts.push(`- ${e.title} (${e.event_type}) - ${new Date(e.event_start).toLocaleDateString()}`);
+      }
+    }
+
+    // Event registrations
+    const { count: regCount } = await supabase
+      .from('event_interests')
+      .select('*', { count: 'exact', head: true });
+    parts.push(`\nTotal Event Registrations: ${regCount || 0}`);
+  } catch (e) {
+    console.error('Events context error:', e);
+  }
+  
+  return parts.join('\n');
+}
+
+// 8. Projects Context
+async function fetchProjectsContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 🚀 INNOVATION PROJECTS'];
+  
+  try {
+    const { data: projects, count } = await supabase
+      .from('projects')
+      .select('id, title, status, sdg_goals, institution_id, institutions(name)', { count: 'exact' });
+    
+    parts.push(`Total Projects: ${count || 0}`);
+    
+    if (projects?.length) {
+      const byStatus: Record<string, number> = {};
+      const sdgCount: Record<string, number> = {};
+      for (const p of projects) {
+        byStatus[p.status || 'unknown'] = (byStatus[p.status || 'unknown'] || 0) + 1;
+        if (p.sdg_goals && Array.isArray(p.sdg_goals)) {
+          for (const g of p.sdg_goals) sdgCount[g] = (sdgCount[g] || 0) + 1;
+        }
+      }
+      parts.push('**By Status:**');
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+      if (Object.keys(sdgCount).length) {
+        parts.push('**SDG Goals Coverage:**');
+        for (const [g, c] of Object.entries(sdgCount).slice(0, 8)) parts.push(`- SDG ${g}: ${c} projects`);
+      }
+    }
+
+    // Project awards
+    const { data: awards } = await supabase
+      .from('project_achievements')
+      .select('id, title, achievement_type');
+    
+    if (awards?.length) {
+      parts.push(`\n**Project Awards/Achievements:** ${awards.length}`);
+    }
+  } catch (e) {
+    console.error('Projects context error:', e);
+  }
+  
+  return parts.join('\n');
+}
+
+// 9. Inventory Context
+async function fetchInventoryContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 📦 INVENTORY'];
+  
+  try {
+    const { data: items, count } = await supabase
+      .from('inventory_items')
+      .select('id, name, category, current_stock, institution_id', { count: 'exact' });
+    
+    parts.push(`Total Inventory Items: ${count || 0}`);
+    
+    if (items?.length) {
+      const byCategory: Record<string, number> = {};
+      let lowStock = 0;
+      for (const i of items) {
+        byCategory[i.category || 'Uncategorized'] = (byCategory[i.category || 'Uncategorized'] || 0) + 1;
+        if ((i.current_stock || 0) < 5) lowStock++;
+      }
+      parts.push('**By Category:**');
+      for (const [c, n] of Object.entries(byCategory).slice(0, 8)) parts.push(`- ${c}: ${n}`);
+      parts.push(`\n⚠️ Low Stock Items: ${lowStock}`);
+    }
+
+    // Purchase requests
+    const { data: requests } = await supabase
+      .from('purchase_requests')
+      .select('status');
+    
+    if (requests?.length) {
+      const byStatus: Record<string, number> = {};
+      for (const r of requests) byStatus[r.status || 'unknown'] = (byStatus[r.status || 'unknown'] || 0) + 1;
+      parts.push('**Purchase Requests:**');
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+    }
+
+    // Inventory issues
+    const { data: issues } = await supabase
+      .from('inventory_issues')
+      .select('status');
+    
+    if (issues?.length) {
+      const open = issues.filter(i => i.status === 'open' || i.status === 'pending').length;
+      parts.push(`\nOpen Inventory Issues: ${open}`);
+    }
+  } catch (e) {
+    console.error('Inventory context error:', e);
+  }
+  
+  return parts.join('\n');
+}
+
+// 10. Payroll Context
+async function fetchPayrollContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 💰 PAYROLL'];
+  
+  try {
+    const { data: payrolls } = await supabase
+      .from('payroll_records')
+      .select('status, net_salary, month, year');
+    
+    if (payrolls?.length) {
+      const byStatus: Record<string, number> = {};
+      let totalPaid = 0;
+      let totalPending = 0;
+      for (const p of payrolls) {
+        byStatus[p.status || 'unknown'] = (byStatus[p.status || 'unknown'] || 0) + 1;
+        if (p.status === 'paid') totalPaid += p.net_salary || 0;
+        else totalPending += p.net_salary || 0;
+      }
+      parts.push(`Total Records: ${payrolls.length}`);
+      parts.push('**By Status:**');
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+      parts.push(`\nTotal Paid: ₹${totalPaid.toLocaleString()}`);
+      parts.push(`Pending: ₹${totalPending.toLocaleString()}`);
+    } else {
+      parts.push('No payroll records found.');
+    }
+  } catch (e) {
+    console.error('Payroll context error:', e);
+  }
+  
+  return parts.join('\n');
+}
+
+// 11. Leave Context
+async function fetchLeaveContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 🏖️ LEAVE MANAGEMENT'];
+  
+  try {
+    const { data: leaves } = await supabase
+      .from('leave_applications')
+      .select('status, leave_type, start_date, end_date');
+    
+    if (leaves?.length) {
+      const byStatus: Record<string, number> = {};
+      const byType: Record<string, number> = {};
+      for (const l of leaves) {
+        byStatus[l.status || 'unknown'] = (byStatus[l.status || 'unknown'] || 0) + 1;
+        byType[l.leave_type || 'other'] = (byType[l.leave_type || 'other'] || 0) + 1;
+      }
+      parts.push(`Total Applications: ${leaves.length}`);
+      parts.push('**By Status:**');
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+      parts.push('**By Type:**');
+      for (const [t, c] of Object.entries(byType)) parts.push(`- ${t}: ${c}`);
+    } else {
+      parts.push('No leave applications found.');
+    }
+
+    // Company holidays
+    const { data: holidays } = await supabase
+      .from('company_holidays')
+      .select('name, date, holiday_type')
+      .gte('date', new Date().toISOString().split('T')[0])
+      .order('date')
+      .limit(5);
+    
+    if (holidays?.length) {
+      parts.push('\n**Upcoming Holidays:**');
+      for (const h of holidays) parts.push(`- ${h.name} (${h.holiday_type}) - ${h.date}`);
+    }
+  } catch (e) {
+    console.error('Leave context error:', e);
+  }
+  
+  return parts.join('\n');
+}
+
+// 12. Task Context
+async function fetchTaskContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## ✅ CRM TASKS'];
+  
+  try {
+    const { data: tasks } = await supabase
+      .from('crm_tasks')
+      .select('status, priority, due_date, task_type');
+    
+    if (tasks?.length) {
+      const byStatus: Record<string, number> = {};
+      const byPriority: Record<string, number> = {};
+      let overdue = 0;
+      const today = new Date().toISOString().split('T')[0];
+      
+      for (const t of tasks) {
+        byStatus[t.status || 'unknown'] = (byStatus[t.status || 'unknown'] || 0) + 1;
+        byPriority[t.priority || 'normal'] = (byPriority[t.priority || 'normal'] || 0) + 1;
+        if (t.due_date && t.due_date < today && t.status !== 'completed') overdue++;
+      }
+      parts.push(`Total Tasks: ${tasks.length}`);
+      parts.push('**By Status:**');
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+      parts.push('**By Priority:**');
+      for (const [p, c] of Object.entries(byPriority)) parts.push(`- ${p}: ${c}`);
+      parts.push(`\n⚠️ Overdue Tasks: ${overdue}`);
+    } else {
+      parts.push('No tasks found.');
+    }
+  } catch (e) {
+    console.error('Task context error:', e);
+  }
+  
+  return parts.join('\n');
+}
+
+// 13. Gamification Context
+async function fetchGamificationContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 🎮 GAMIFICATION'];
+  
+  try {
+    const { data: badges, count: badgeCount } = await supabase
+      .from('gamification_badges')
+      .select('name, category, xp_reward, is_active', { count: 'exact' });
+    
+    parts.push(`Total Badges: ${badgeCount || 0}`);
+    if (badges?.length) {
+      const active = badges.filter(b => b.is_active).length;
+      parts.push(`Active Badges: ${active}`);
+    }
+
+    // XP transactions
+    const { data: xpData } = await supabase
+      .from('student_xp_transactions')
+      .select('points_earned, activity_type');
+    
+    if (xpData?.length) {
+      const totalXP = xpData.reduce((sum, x) => sum + (x.points_earned || 0), 0);
+      const byActivity: Record<string, number> = {};
+      for (const x of xpData) {
+        byActivity[x.activity_type || 'other'] = (byActivity[x.activity_type || 'other'] || 0) + (x.points_earned || 0);
+      }
+      parts.push(`\nTotal XP Distributed: ${totalXP.toLocaleString()}`);
+      parts.push('**XP by Activity:**');
+      for (const [a, p] of Object.entries(byActivity).slice(0, 5)) parts.push(`- ${a}: ${p} XP`);
+    }
+  } catch (e) {
+    console.error('Gamification context error:', e);
+  }
+  
+  return parts.join('\n');
+}
+
+// 14. ATS/Recruitment Context
+async function fetchATSContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 👔 RECRUITMENT (ATS)'];
+  
+  try {
+    const { data: jobs } = await supabase
+      .from('job_postings')
+      .select('status, department, job_type');
+    
+    if (jobs?.length) {
+      const byStatus: Record<string, number> = {};
+      for (const j of jobs) byStatus[j.status || 'unknown'] = (byStatus[j.status || 'unknown'] || 0) + 1;
+      parts.push(`Total Job Postings: ${jobs.length}`);
+      parts.push('**By Status:**');
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+    } else {
+      parts.push('No job postings found.');
+    }
+
+    // Applications
+    const { data: apps } = await supabase
+      .from('job_applications')
+      .select('status');
+    
+    if (apps?.length) {
+      const byStatus: Record<string, number> = {};
+      for (const a of apps) byStatus[a.status || 'unknown'] = (byStatus[a.status || 'unknown'] || 0) + 1;
+      parts.push(`\nTotal Applications: ${apps.length}`);
+      parts.push('**By Status:**');
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+    }
+
+    // Interviews
+    const { data: interviews } = await supabase
+      .from('candidate_interviews')
+      .select('status, scheduled_date')
+      .gte('scheduled_date', new Date().toISOString().split('T')[0])
+      .order('scheduled_date')
+      .limit(5);
+    
+    if (interviews?.length) {
+      parts.push('\n**Upcoming Interviews:**');
+      for (const i of interviews) parts.push(`- ${i.scheduled_date} (${i.status})`);
+    }
+  } catch (e) {
+    console.error('ATS context error:', e);
+  }
+  
+  return parts.join('\n');
+}
+
+// 15. Invoice Context
+async function fetchInvoiceContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 🧾 INVOICES & REVENUE'];
+  
+  try {
+    const { data: invoices } = await supabase
+      .from('institution_invoices')
+      .select('status, total_amount, paid_amount, due_date');
+    
+    if (invoices?.length) {
+      const byStatus: Record<string, number> = {};
+      let totalRevenue = 0;
+      let totalPending = 0;
+      
+      for (const inv of invoices) {
+        byStatus[inv.status || 'unknown'] = (byStatus[inv.status || 'unknown'] || 0) + 1;
+        if (inv.status === 'paid') totalRevenue += inv.total_amount || 0;
+        else totalPending += (inv.total_amount || 0) - (inv.paid_amount || 0);
+      }
+      parts.push(`Total Invoices: ${invoices.length}`);
+      parts.push('**By Status:**');
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+      parts.push(`\n💵 Total Revenue (Paid): ₹${totalRevenue.toLocaleString()}`);
+      parts.push(`📋 Pending Receivables: ₹${totalPending.toLocaleString()}`);
+    } else {
+      parts.push('No invoices found.');
+    }
+  } catch (e) {
+    console.error('Invoice context error:', e);
+  }
+  
+  return parts.join('\n');
+}
+
+// 16. CRM Context
+async function fetchCRMContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 🤝 CRM & CONTRACTS'];
+  
+  try {
+    const { data: contracts } = await supabase
+      .from('crm_contracts')
+      .select('status, contract_type, contract_value, institution_name, renewal_date, renewal_status');
+    
+    if (contracts?.length) {
+      const byStatus: Record<string, number> = {};
+      const byRenewal: Record<string, number> = {};
+      let totalValue = 0;
+      
+      for (const c of contracts) {
+        byStatus[c.status || 'unknown'] = (byStatus[c.status || 'unknown'] || 0) + 1;
+        byRenewal[c.renewal_status || 'unknown'] = (byRenewal[c.renewal_status || 'unknown'] || 0) + 1;
+        totalValue += c.contract_value || 0;
+      }
+      parts.push(`Total Contracts: ${contracts.length}`);
+      parts.push('**By Status:**');
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+      parts.push('**Renewal Status:**');
+      for (const [r, c] of Object.entries(byRenewal)) parts.push(`- ${r}: ${c}`);
+      parts.push(`\n💰 Total Contract Value: ₹${totalValue.toLocaleString()}`);
+      
+      // Upcoming renewals
+      const today = new Date().toISOString().split('T')[0];
+      const nextMonth = new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0];
+      const upcomingRenewals = contracts.filter(c => c.renewal_date && c.renewal_date >= today && c.renewal_date <= nextMonth);
+      if (upcomingRenewals.length) {
+        parts.push('\n⏰ **Renewals in Next 30 Days:**');
+        for (const c of upcomingRenewals) parts.push(`- ${c.institution_name}: ${c.renewal_date}`);
+      }
+    } else {
+      parts.push('No contracts found.');
+    }
+
+    // Communication logs
+    const { count: commCount } = await supabase
+      .from('communication_logs')
+      .select('*', { count: 'exact', head: true });
+    parts.push(`\n📞 Total Communication Logs: ${commCount || 0}`);
+  } catch (e) {
+    console.error('CRM context error:', e);
+  }
+  
+  return parts.join('\n');
+}
+
+// 17. Newsletter Context
+async function fetchNewsletterContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 📰 NEWSLETTERS'];
+  
+  try {
+    const { data: newsletters, count } = await supabase
+      .from('newsletters')
+      .select('id, title, status, download_count, published_at', { count: 'exact' });
+    
+    parts.push(`Total Newsletters: ${count || 0}`);
+    
+    if (newsletters?.length) {
+      const published = newsletters.filter(n => n.status === 'published').length;
+      const totalDownloads = newsletters.reduce((sum, n) => sum + (n.download_count || 0), 0);
+      parts.push(`Published: ${published}`);
+      parts.push(`Total Downloads: ${totalDownloads}`);
+      
+      // Recent newsletters
+      const recent = newsletters.filter(n => n.published_at).slice(0, 3);
+      if (recent.length) {
+        parts.push('\n**Recent:**');
+        for (const n of recent) parts.push(`- ${n.title} (${n.download_count || 0} downloads)`);
+      }
+    }
+  } catch (e) {
+    console.error('Newsletter context error:', e);
+  }
+  
+  return parts.join('\n');
+}
+
+// 18. Performance/HR Ratings Context
+async function fetchPerformanceContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## ⭐ PERFORMANCE RATINGS'];
+  
+  try {
+    const { data: ratings, count } = await supabase
+      .from('hr_ratings')
+      .select('period, year, total_stars_quarter, trainer_name', { count: 'exact' });
+    
+    parts.push(`Total Rating Records: ${count || 0}`);
+    
+    if (ratings?.length) {
+      const byYear: Record<number, number> = {};
+      let totalStars = 0;
+      for (const r of ratings) {
+        byYear[r.year] = (byYear[r.year] || 0) + 1;
+        totalStars += r.total_stars_quarter || 0;
+      }
+      parts.push('**By Year:**');
+      for (const [y, c] of Object.entries(byYear)) parts.push(`- ${y}: ${c} records`);
+      parts.push(`\nTotal Stars Awarded: ${totalStars}`);
+    }
+
+    // Appraisals
+    const { data: appraisals } = await supabase
+      .from('performance_appraisals')
+      .select('status, rating');
+    
+    if (appraisals?.length) {
+      const byStatus: Record<string, number> = {};
+      for (const a of appraisals) byStatus[a.status || 'unknown'] = (byStatus[a.status || 'unknown'] || 0) + 1;
+      parts.push(`\n**Appraisals:** ${appraisals.length}`);
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+    }
+  } catch (e) {
+    console.error('Performance context error:', e);
+  }
+  
+  return parts.join('\n');
+}
+
+// 19. Survey Context
+async function fetchSurveyContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 📊 SURVEYS & FEEDBACK'];
+  
+  try {
+    const { data: surveys, count } = await supabase
+      .from('surveys')
+      .select('id, title, status, created_at', { count: 'exact' });
+    
+    parts.push(`Total Surveys: ${count || 0}`);
+    
+    if (surveys?.length) {
+      const byStatus: Record<string, number> = {};
+      for (const s of surveys) byStatus[s.status || 'unknown'] = (byStatus[s.status || 'unknown'] || 0) + 1;
+      parts.push('**By Status:**');
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+    }
+
+    // Survey responses
+    const { count: responseCount } = await supabase
+      .from('survey_responses')
+      .select('*', { count: 'exact', head: true });
+    parts.push(`\nTotal Responses: ${responseCount || 0}`);
+
+    // Feedback
+    const { data: feedback } = await supabase
+      .from('student_feedback')
+      .select('status, rating');
+    
+    if (feedback?.length) {
+      const avgRating = feedback.filter(f => f.rating).reduce((sum, f) => sum + (f.rating || 0), 0) / feedback.filter(f => f.rating).length;
+      parts.push(`\n**Student Feedback:** ${feedback.length} entries`);
+      if (!isNaN(avgRating)) parts.push(`Average Rating: ${avgRating.toFixed(1)}/5`);
+    }
+  } catch (e) {
+    console.error('Survey context error:', e);
+  }
+  
+  return parts.join('\n');
+}
+
+// 20. Reports Context
+async function fetchReportsContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 📄 MONTHLY REPORTS'];
+  
+  try {
+    const { data: reports, count } = await supabase
+      .from('monthly_reports')
+      .select('id, status, month, year, institution_id', { count: 'exact' });
+    
+    parts.push(`Total Reports: ${count || 0}`);
+    
+    if (reports?.length) {
+      const byStatus: Record<string, number> = {};
+      for (const r of reports) byStatus[r.status || 'unknown'] = (byStatus[r.status || 'unknown'] || 0) + 1;
+      parts.push('**By Status:**');
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+    }
+  } catch (e) {
+    console.error('Reports context error:', e);
+  }
+  
+  return parts.join('\n');
+}
+
+// 21. Attendance Context
+async function fetchAttendanceContext(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = ['## 📅 ATTENDANCE'];
+  
+  try {
+    // Class session attendance
+    const { data: sessions, count } = await supabase
+      .from('class_session_attendance')
+      .select('students_present, students_absent, students_late, date', { count: 'exact' });
+    
+    parts.push(`Total Attendance Records: ${count || 0}`);
+    
+    if (sessions?.length) {
+      let totalPresent = 0, totalAbsent = 0, totalLate = 0;
+      for (const s of sessions) {
+        totalPresent += s.students_present || 0;
+        totalAbsent += s.students_absent || 0;
+        totalLate += s.students_late || 0;
+      }
+      const total = totalPresent + totalAbsent;
+      const attendanceRate = total > 0 ? ((totalPresent / total) * 100).toFixed(1) : 'N/A';
+      parts.push(`\n**Overall Stats:**`);
+      parts.push(`- Present: ${totalPresent}`);
+      parts.push(`- Absent: ${totalAbsent}`);
+      parts.push(`- Late: ${totalLate}`);
+      parts.push(`- Attendance Rate: ${attendanceRate}%`);
+    }
+
+    // Officer attendance
+    const { count: officerAttendance } = await supabase
+      .from('officer_attendance')
+      .select('*', { count: 'exact', head: true });
+    parts.push(`\nOfficer Attendance Records: ${officerAttendance || 0}`);
+  } catch (e) {
+    console.error('Attendance context error:', e);
+  }
+  
+  return parts.join('\n');
+}
+
+// ==================== MAIN CONTEXT BUILDER ====================
+
+async function fetchSystemAdminContext(): Promise<{ context: string; sources: string[] }> {
+  const sources: string[] = [];
+  
+  try {
+    // Fetch all contexts in parallel for efficiency
+    const [
+      institutionCtx,
+      studentCtx,
+      officerCtx,
+      courseCtx,
+      assessmentCtx,
+      assignmentCtx,
+      eventsCtx,
+      projectsCtx,
+      inventoryCtx,
+      payrollCtx,
+      leaveCtx,
+      taskCtx,
+      gamificationCtx,
+      atsCtx,
+      invoiceCtx,
+      crmCtx,
+      newsletterCtx,
+      performanceCtx,
+      surveyCtx,
+      reportsCtx,
+      attendanceCtx
+    ] = await Promise.all([
+      fetchInstitutionContext(),
+      fetchStudentProfileContext(),
+      fetchOfficerContextData(),
+      fetchCourseContext(),
+      fetchAssessmentContext(),
+      fetchAssignmentContext(),
+      fetchEventsContext(),
+      fetchProjectsContext(),
+      fetchInventoryContext(),
+      fetchPayrollContext(),
+      fetchLeaveContext(),
+      fetchTaskContext(),
+      fetchGamificationContext(),
+      fetchATSContext(),
+      fetchInvoiceContext(),
+      fetchCRMContext(),
+      fetchNewsletterContext(),
+      fetchPerformanceContext(),
+      fetchSurveyContext(),
+      fetchReportsContext(),
+      fetchAttendanceContext()
+    ]);
+
+    sources.push(
+      'institutions', 'students', 'officers', 'courses', 'assessments', 
+      'assignments', 'events', 'projects', 'inventory', 'payroll', 
+      'leave', 'tasks', 'gamification', 'ats', 'invoices', 
+      'crm', 'newsletters', 'performance', 'surveys', 'reports', 'attendance'
+    );
+
+    const fullContext = [
+      institutionCtx,
+      studentCtx,
+      officerCtx,
+      courseCtx,
+      assessmentCtx,
+      assignmentCtx,
+      eventsCtx,
+      projectsCtx,
+      inventoryCtx,
+      payrollCtx,
+      leaveCtx,
+      taskCtx,
+      gamificationCtx,
+      atsCtx,
+      invoiceCtx,
+      crmCtx,
+      newsletterCtx,
+      performanceCtx,
+      surveyCtx,
+      reportsCtx,
+      attendanceCtx
+    ].join('\n\n');
+
+    return { context: fullContext, sources };
+  } catch (error) {
+    console.error('Error building system admin context:', error);
+    return { context: 'Error fetching data. Please try again.', sources: [] };
+  }
+}
+
+// Officer and Student context (simpler)
+async function fetchOfficerContextSimple(): Promise<string> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = [];
+  
+  try {
+    const { count: classesCount } = await supabase.from('classes').select('*', { count: 'exact', head: true });
+    const { count: assessmentsCount } = await supabase.from('assessments').select('*', { count: 'exact', head: true });
+    const { count: assignmentsCount } = await supabase.from('assignments').select('*', { count: 'exact', head: true });
+    
+    parts.push(`## Overview`);
+    parts.push(`- Total Classes: ${classesCount || 0}`);
+    parts.push(`- Total Assessments: ${assessmentsCount || 0}`);
+    parts.push(`- Total Assignments: ${assignmentsCount || 0}`);
+  } catch (e) {
+    console.error('Officer context error:', e);
+  }
+  
+  return parts.join('\n');
+}
+
+async function fetchStudentContextSimple(): Promise<string> {
+  return `## Your Learning Dashboard
+- Access your courses, assignments, and assessments from your dashboard.
+- Check your progress and upcoming deadlines regularly.
+- Earn XP and badges by completing activities!`;
+}
+
+// ==================== SYSTEM PROMPTS ====================
+
+const systemAdminPrompt = `You are Metova, an AI Business Intelligence assistant for System Administrators at Metova Academy.
+
+You have access to REAL DATA from the following modules:
+
+1. **Institution Management** - Partner schools/institutions, their contracts, student enrollments, classes
+2. **Student Management** - Student profiles, enrollments by institution
+3. **Officer Management** - Innovation Officers (trainers), departments, attendance
+4. **Course Management** - Training courses, modules, sessions, content, assignments to institutions
+5. **Assessment Management** - Quizzes, tests, attempts, pass rates
+6. **Assignment Management** - Homework, project assignments, submissions, grading
+7. **Events Management** - Competitions, hackathons, workshops, registrations
+8. **Project Management** - Student innovation projects, SDG mapping, achievements
+9. **Inventory Management** - Lab equipment, purchase requests, stock levels
+10. **Payroll Management** - Staff salaries, payment status, pending amounts
+11. **Leave Management** - Leave applications, approvals, company holidays
+12. **Task Management** - CRM tasks, priorities, overdue tracking
+13. **Gamification** - Student XP, badges, activity rewards
+14. **Recruitment (ATS)** - Job postings, applications, interviews, offers
+15. **Invoice Management** - Billing, revenue tracking, receivables
+16. **CRM & Contracts** - Client relationships, contract renewals, communications
+17. **Newsletters** - Published newsletters, download statistics
+18. **Performance Ratings** - Staff appraisals, HR ratings, star awards
+19. **Surveys & Feedback** - Student surveys, feedback, ratings
+20. **Monthly Reports** - Institution progress reports
+21. **Attendance** - Class attendance, officer attendance records
+
+Provide comprehensive, data-driven insights. Use markdown formatting with tables, bullet points, and clear sections.
+Be professional and focus on actionable business intelligence that helps with decision-making.`;
+
+const officerPrompt = `You are Metova, an AI assistant for Innovation Officers (teachers/trainers). You help officers with:
 - Tracking student performance across their classes
 - Identifying students who need additional support
 - Monitoring innovation project progress
@@ -173,20 +1025,17 @@ Keep responses concise but informative. Address the student directly and be supp
 - Comparing performance between classes
 - Suggesting intervention strategies
 
-Provide data-driven insights and actionable recommendations. Use markdown formatting with tables when appropriate.
-Be professional and focus on helping officers make informed decisions about their students.`,
+Provide data-driven insights and actionable recommendations. Use markdown formatting with tables when appropriate.`;
 
-  system_admin: `You are Metova, an AI Business Intelligence assistant for System Administrators. You help admins with:
-- Staff attendance and performance tracking
-- Institution performance metrics and analytics
-- CRM activities, contract renewals, and communications
-- Revenue reports and financial insights
-- Inventory management and operational metrics
-- Project tracking and resource allocation
+const studentPrompt = `You are Metova, a friendly and supportive AI learning assistant for students. You help students with:
+- Tracking their course progress and grades
+- Understanding their assignments and deadlines
+- Analyzing their attendance patterns
+- Providing study tips and learning strategies
+- Career guidance and skill development advice
+- Project support and innovation ideas
 
-Provide comprehensive, data-driven insights. Use markdown formatting with tables, bullet points, and clear sections.
-Be professional and focus on actionable business intelligence that helps with decision-making.`
-};
+Be encouraging, clear, and helpful. Keep responses concise but informative.`;
 
 const dataGroundingRules = `
 
@@ -197,10 +1046,12 @@ CRITICAL DATA GROUNDING RULES:
 4. Never use placeholder names like "Institution A/B/C/D" or made-up numbers.
 5. If a data section says "No data found" or shows zero counts, acknowledge this honestly.
 6. When providing summaries, cite the actual numbers from the context.
+7. If data is missing for a module, say "No [module] data found yet" instead of guessing.
 `;
 
+// ==================== MAIN HANDLER ====================
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -219,35 +1070,34 @@ serve(async (req) => {
     const validRoles = ['student', 'officer', 'system_admin'];
     const userRole = validRoles.includes(role) ? role : 'student';
     
-    // Fetch real data context based on role
     let dataContext = '';
-    const dataSources: string[] = [];
+    let dataSources: string[] = [];
+    let basePrompt = '';
     
     if (userRole === 'system_admin') {
-      dataContext = await fetchSystemAdminContext();
-      dataSources.push('institutions', 'students', 'officers', 'contracts', 'communications', 'courses', 'events');
+      const result = await fetchSystemAdminContext();
+      dataContext = result.context;
+      dataSources = result.sources;
+      basePrompt = systemAdminPrompt;
     } else if (userRole === 'officer') {
-      dataContext = await fetchOfficerContext();
-      dataSources.push('classes', 'assessments', 'assignments');
+      dataContext = await fetchOfficerContextSimple();
+      dataSources = ['classes', 'assessments', 'assignments'];
+      basePrompt = officerPrompt;
     } else {
-      dataContext = await fetchStudentContext();
-      dataSources.push('learning_dashboard');
+      dataContext = await fetchStudentContextSimple();
+      dataSources = ['learning_dashboard'];
+      basePrompt = studentPrompt;
     }
 
-    // Build the complete system prompt with data grounding
-    const systemPrompt = baseSystemPrompts[userRole] + dataGroundingRules + `
+    const systemPrompt = basePrompt + dataGroundingRules + `
 
 === REAL DATA CONTEXT (Use ONLY this data) ===
 ${dataContext}
 === END OF REAL DATA CONTEXT ===
 `;
 
-    // Build messages array with conversation history
-    const messages = [
-      { role: 'system', content: systemPrompt }
-    ];
+    const messages = [{ role: 'system', content: systemPrompt }];
 
-    // Add conversation history if provided (last 10 messages for context)
     if (conversationHistory && Array.isArray(conversationHistory)) {
       const recentHistory = conversationHistory.slice(-10);
       for (const msg of recentHistory) {
@@ -258,11 +1108,9 @@ ${dataContext}
       }
     }
 
-    // Add current message
     messages.push({ role: 'user', content: message });
 
-    console.log(`Processing ask-metova request for role: ${userRole}, userId: ${userId || 'anonymous'}`);
-    console.log(`Data context length: ${dataContext.length} chars`);
+    console.log(`Processing ask-metova for role: ${userRole}, context length: ${dataContext.length} chars`);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -274,7 +1122,7 @@ ${dataContext}
         model: 'gpt-4o-mini',
         messages,
         temperature: 0.7,
-        max_tokens: 1024
+        max_tokens: 2048
       }),
     });
 
@@ -292,17 +1140,15 @@ ${dataContext}
     return new Response(JSON.stringify({ 
       content: aiContent,
       context: [userRole, 'ai_generated'],
-      dataSources: dataSources
+      dataSources
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error: unknown) {
     console.error('Error in ask-metova function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An error occurred while processing your request';
-    return new Response(JSON.stringify({ 
-      error: errorMessage
-    }), {
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+    return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
