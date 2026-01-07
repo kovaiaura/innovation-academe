@@ -12,7 +12,7 @@ import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
-import SuperAdminDashboard from "./pages/super-admin/Dashboard";
+// SuperAdminDashboard removed - using CEOAnalyticsDashboard as dashboard
 import SuperAdminSystemConfig from "./pages/super-admin/SystemConfig";
 import SuperAdminAuditLogs from "./pages/super-admin/AuditLogs";
 import CEOAnalyticsDashboard from "./pages/super-admin/CEOAnalyticsDashboard";
@@ -187,7 +187,7 @@ const App = () => (
               path="/super-admin/dashboard"
               element={
                 <ProtectedRoute allowedRoles={['super_admin']}>
-                  <SuperAdminDashboard />
+                  <CEOAnalyticsDashboard />
                 </ProtectedRoute>
               }
             />
@@ -204,14 +204,6 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['super_admin']}>
                   <SuperAdminAuditLogs />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/super-admin/ceo-analytics"
-              element={
-                <ProtectedRoute allowedRoles={['super_admin']}>
-                  <CEOAnalyticsDashboard />
                 </ProtectedRoute>
               }
             />
