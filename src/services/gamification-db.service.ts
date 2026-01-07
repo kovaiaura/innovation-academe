@@ -823,5 +823,138 @@ export const gamificationDbService = {
 
   async awardProjectAwardXP(studentId: string, institutionId: string, projectId: string, awardName: string): Promise<void> {
     await this.awardXP({ studentId, institutionId, activityType: 'project_award', activityId: projectId, points: 150, description: `Project award: ${awardName}` });
+  },
+
+  // ============ CERTIFICATE AUTO-ISSUANCE ============
+  async checkAndIssueLevelCertificate(params: {
+    studentId: string;
+    institutionId: string;
+    moduleId: string;
+    moduleName: string;
+    courseTitle: string;
+    isModuleCompleted: boolean;
+  }): Promise<{ issued: boolean; message: string }> {
+    const { studentId, institutionId, moduleId, moduleName, courseTitle, isModuleCompleted } = params;
+    
+    // Only proceed if module is completed
+    if (!isModuleCompleted) {
+      return { issued: false, message: 'Module not yet completed' };
+    }
+
+    // Check if certificate already exists
+    const { data: existing } = await supabase
+      .from('student_certificates')
+      .select('id')
+      .eq('student_id', studentId)
+      .eq('activity_type', 'level')
+      .eq('activity_id', moduleId)
+      .maybeSingle();
+
+    if (existing) {
+      return { issued: false, message: 'Certificate already issued' };
+    }
+
+    // Get active level/module certificate template
+    const { data: template } = await supabase
+      .from('certificate_templates')
+      .select('id')
+      .or('category.eq.module,category.eq.level')
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+
+    if (!template) {
+      console.warn('No active level/module certificate template found');
+      return { issued: false, message: 'No certificate template available' };
+    }
+
+    try {
+      // Issue certificate
+      await this.issueCertificate({
+        studentId,
+        templateId: template.id,
+        activityType: 'level',
+        activityId: moduleId,
+        activityName: `${moduleName} - ${courseTitle}`,
+        institutionId,
+      });
+
+      // Award XP for level completion
+      await this.awardLevelCompletionXP(studentId, institutionId, moduleId, moduleName);
+
+      return { issued: true, message: `Certificate issued for ${moduleName}` };
+    } catch (error) {
+      console.error('Failed to issue level certificate:', error);
+      return { issued: false, message: 'Failed to issue certificate' };
+    }
+  },
+
+  async checkAndIssueCourseCompletionCertificate(params: {
+    studentId: string;
+    institutionId: string;
+    courseId: string;
+    courseTitle: string;
+    allModulesCompleted: boolean;
+  }): Promise<{ issued: boolean; message: string }> {
+    const { studentId, institutionId, courseId, courseTitle, allModulesCompleted } = params;
+    
+    // Only proceed if all modules are completed
+    if (!allModulesCompleted) {
+      return { issued: false, message: 'Not all modules completed' };
+    }
+
+    // Check if course completion certificate already exists
+    const { data: existing } = await supabase
+      .from('student_certificates')
+      .select('id')
+      .eq('student_id', studentId)
+      .eq('activity_type', 'course')
+      .eq('activity_id', courseId)
+      .maybeSingle();
+
+    if (existing) {
+      return { issued: false, message: 'Course certificate already issued' };
+    }
+
+    // Get active course certificate template
+    const { data: template } = await supabase
+      .from('certificate_templates')
+      .select('id')
+      .eq('category', 'course')
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+
+    if (!template) {
+      console.warn('No active course certificate template found');
+      return { issued: false, message: 'No course certificate template available' };
+    }
+
+    try {
+      // Issue certificate
+      await this.issueCertificate({
+        studentId,
+        templateId: template.id,
+        activityType: 'course',
+        activityId: courseId,
+        activityName: courseTitle,
+        institutionId,
+      });
+
+      // Award XP for course completion (higher than level)
+      await this.awardXP({
+        studentId,
+        institutionId,
+        activityType: 'course_completion',
+        activityId: courseId,
+        points: 500,
+        description: `Course completed: ${courseTitle}`
+      });
+
+      return { issued: true, message: `Course certificate issued for ${courseTitle}` };
+    } catch (error) {
+      console.error('Failed to issue course certificate:', error);
+      return { issued: false, message: 'Failed to issue certificate' };
+    }
   }
 };

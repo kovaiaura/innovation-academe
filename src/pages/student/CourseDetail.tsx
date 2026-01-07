@@ -8,6 +8,7 @@ import { LMSCourseViewer } from '@/components/student/LMSCourseViewer';
 import { useLevelCompletionCertificate } from '@/hooks/useLevelCompletionCertificate';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useEffect } from 'react';
 
 export default function StudentCourseDetail() {
   const { courseId } = useParams();
@@ -38,12 +39,24 @@ export default function StudentCourseDetail() {
   const modules = courseAssignment?.modules || [];
 
   // Auto-issue certificates when levels are completed (using student record ID)
-  useLevelCompletionCertificate(
+  const { recheckCertificates } = useLevelCompletionCertificate(
     studentRecord?.id,
     modules,
     user?.institution_id,
     course?.title
   );
+
+  // Recheck certificates whenever modules completion status changes
+  useEffect(() => {
+    const completedCount = modules.filter(m => m.isModuleCompleted).length;
+    if (completedCount > 0 && studentRecord?.id) {
+      // Debounce the recheck to avoid too many calls
+      const timer = setTimeout(() => {
+        recheckCertificates();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [modules, studentRecord?.id, recheckCertificates]);
 
   if (isLoading) {
     return (

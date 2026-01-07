@@ -565,7 +565,7 @@ export function useStudentCourses(userId?: string, classId?: string) {
   });
 }
 
-// Mark content as completed
+// Mark content as completed with certificate check
 export function useMarkContentComplete() {
   const queryClient = useQueryClient();
 
@@ -575,11 +575,24 @@ export function useMarkContentComplete() {
       contentId,
       classAssignmentId,
       watchPercentage = 100,
+      // Optional params for certificate check
+      moduleId,
+      moduleName,
+      courseId,
+      courseTitle,
+      institutionId,
+      checkModuleCompletion,
     }: {
       studentId: string;
       contentId: string;
       classAssignmentId: string;
       watchPercentage?: number;
+      moduleId?: string;
+      moduleName?: string;
+      courseId?: string;
+      courseTitle?: string;
+      institutionId?: string;
+      checkModuleCompletion?: () => Promise<{ isModuleCompleted: boolean; allModulesCompleted: boolean }>;
     }) => {
       const { error } = await supabase
         .from('student_content_completions')
@@ -592,10 +605,63 @@ export function useMarkContentComplete() {
         });
 
       if (error) throw error;
+      
+      // Return the extra params for use in onSuccess
+      return { moduleId, moduleName, courseId, courseTitle, institutionId, studentId, checkModuleCompletion };
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['student-courses'] });
       toast.success('Progress saved');
+      
+      // Check for certificate issuance if params provided
+      if (data?.checkModuleCompletion && data?.moduleId && data?.institutionId) {
+        try {
+          // Import dynamically to avoid circular deps
+          const { gamificationDbService } = await import('@/services/gamification-db.service');
+          
+          // Wait for query invalidation to settle, then check completion status
+          setTimeout(async () => {
+            try {
+              const completionStatus = await data.checkModuleCompletion!();
+              
+              // Check for level/module certificate
+              if (completionStatus.isModuleCompleted && data.moduleId && data.moduleName && data.courseTitle) {
+                const result = await gamificationDbService.checkAndIssueLevelCertificate({
+                  studentId: data.studentId,
+                  institutionId: data.institutionId!,
+                  moduleId: data.moduleId,
+                  moduleName: data.moduleName,
+                  courseTitle: data.courseTitle,
+                  isModuleCompleted: true,
+                });
+                
+                if (result.issued) {
+                  toast.success(`🎉 Certificate earned for completing ${data.moduleName}!`);
+                }
+              }
+              
+              // Check for course completion certificate
+              if (completionStatus.allModulesCompleted && data.courseId && data.courseTitle) {
+                const courseResult = await gamificationDbService.checkAndIssueCourseCompletionCertificate({
+                  studentId: data.studentId,
+                  institutionId: data.institutionId!,
+                  courseId: data.courseId,
+                  courseTitle: data.courseTitle,
+                  allModulesCompleted: true,
+                });
+                
+                if (courseResult.issued) {
+                  toast.success(`🏆 Course certificate earned for completing ${data.courseTitle}!`);
+                }
+              }
+            } catch (certError) {
+              console.error('Certificate check failed:', certError);
+            }
+          }, 500);
+        } catch (importError) {
+          console.error('Failed to import gamification service:', importError);
+        }
+      }
     },
     onError: (error: any) => {
       toast.error(`Failed to save progress: ${error.message}`);

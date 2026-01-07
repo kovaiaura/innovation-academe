@@ -1,11 +1,29 @@
 import { CertificateTemplate, StudentCertificate } from '@/types/gamification';
 import { Student } from '@/types/student';
 
+// Extended template type with additional position fields
+interface ExtendedCertificateTemplate extends CertificateTemplate {
+  course_name_position?: {
+    x: number;
+    y: number;
+    fontSize: number;
+    color: string;
+  };
+  level_title_position?: {
+    x: number;
+    y: number;
+    fontSize: number;
+    color: string;
+  };
+}
+
 export const certificateService = {
-  // Generate certificate image with student name overlay
+  // Generate certificate image with all placeholder overlays
   generateCertificateImage: async (
-    template: CertificateTemplate,
-    studentName: string
+    template: ExtendedCertificateTemplate,
+    studentName: string,
+    courseName?: string,
+    levelTitle?: string
   ): Promise<string> => {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
@@ -30,6 +48,20 @@ export const certificateService = {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(studentName, template.name_position.x, template.name_position.y);
+        
+        // Draw course name if position is defined
+        if (courseName && template.course_name_position) {
+          ctx.font = `${template.course_name_position.fontSize}px sans-serif`;
+          ctx.fillStyle = template.course_name_position.color;
+          ctx.fillText(courseName, template.course_name_position.x, template.course_name_position.y);
+        }
+        
+        // Draw level/module title if position is defined
+        if (levelTitle && template.level_title_position) {
+          ctx.font = `${template.level_title_position.fontSize}px sans-serif`;
+          ctx.fillStyle = template.level_title_position.color;
+          ctx.fillText(levelTitle, template.level_title_position.x, template.level_title_position.y);
+        }
         
         // Draw date if date_position exists
         if (template.date_position) {
