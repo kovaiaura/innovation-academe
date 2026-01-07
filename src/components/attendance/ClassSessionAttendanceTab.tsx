@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,9 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar, Users, UserCheck, Clock, CheckCircle2, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Users, UserCheck, Clock, CheckCircle2, Download, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { useInstitutionClassAttendance, useClassAttendanceRealtime, aggregateClassAttendanceStats } from '@/hooks/useClassSessionAttendance';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MonthlySessionsSummary } from './MonthlySessionsSummary';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ClassSessionAttendanceTabProps {
   institutionId?: string;
@@ -29,8 +32,10 @@ interface ClassSessionAttendanceTabProps {
 
 export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttendanceTabProps) {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [viewMode, setViewMode] = useState<'day' | 'month'>('day');
+  const [viewMode, setViewMode] = useState<'day' | 'month'>('month');
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedClassFilter, setSelectedClassFilter] = useState<string>('all');
+  const [selectedOfficerFilter, setSelectedOfficerFilter] = useState<string>('all');
   
   // Calculate date range based on view mode
   const startDate = viewMode === 'day' ? selectedDate : format(startOfMonth(currentMonth), 'yyyy-MM-dd');
@@ -40,8 +45,72 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
   
   // Enable realtime updates
   useClassAttendanceRealtime(institutionId);
+
+  // Fetch classes for filter
+  const { data: classes = [] } = useQuery({
+    queryKey: ['institution-classes', institutionId],
+    queryFn: async () => {
+      if (!institutionId) return [];
+      const { data, error } = await supabase
+        .from('classes')
+        .select('id, class_name')
+        .eq('institution_id', institutionId)
+        .eq('status', 'active')
+        .order('display_order');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!institutionId,
+  });
+
+  // Fetch officers for filter
+  const { data: officers = [] } = useQuery({
+    queryKey: ['institution-officers', institutionId],
+    queryFn: async () => {
+      if (!institutionId) return [];
+      const { data, error } = await supabase
+        .from('officers')
+        .select('id, full_name')
+        .contains('assigned_institutions', [institutionId])
+        .eq('status', 'active');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!institutionId,
+  });
+
+  // Filter data based on selections
+  const filteredData = useMemo(() => {
+    if (!attendanceData) return [];
+    
+    return attendanceData.filter(record => {
+      if (selectedClassFilter !== 'all' && record.class_id !== selectedClassFilter) {
+        return false;
+      }
+      if (selectedOfficerFilter !== 'all' && record.officer_id !== selectedOfficerFilter) {
+        return false;
+      }
+      return true;
+    });
+  }, [attendanceData, selectedClassFilter, selectedOfficerFilter]);
   
-  const stats = aggregateClassAttendanceStats(attendanceData || []);
+  const stats = aggregateClassAttendanceStats(filteredData || []);
+
+  // Map data for MonthlySessionsSummary
+  const sessionsForSummary = useMemo(() => {
+    return filteredData.map(record => ({
+      id: record.id,
+      date: record.date,
+      class_name: (record as any).class_name || 'Unknown',
+      officer_name: (record as any).officer_name || 'Unknown',
+      subject: record.subject || undefined,
+      period_time: record.period_time || undefined,
+      students_present: record.students_present,
+      students_absent: record.students_absent,
+      total_students: record.total_students,
+      is_session_completed: record.is_session_completed,
+    }));
+  }, [filteredData]);
   
   const handlePrevMonth = () => {
     setCurrentMonth(prev => subMonths(prev, 1));
@@ -50,13 +119,20 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
   const handleNextMonth = () => {
     setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
   };
+
+  const clearFilters = () => {
+    setSelectedClassFilter('all');
+    setSelectedOfficerFilter('all');
+  };
+
+  const hasFilters = selectedClassFilter !== 'all' || selectedOfficerFilter !== 'all';
   
   const handleExportCSV = () => {
-    if (!attendanceData || attendanceData.length === 0) return;
+    if (!filteredData || filteredData.length === 0) return;
     
     const csvContent = [
       ['Date', 'Class', 'Subject', 'Period', 'Officer', 'Total', 'Present', 'Absent', 'Late', 'Attendance %', 'Completed'],
-      ...attendanceData.map(record => [
+      ...filteredData.map(record => [
         record.date,
         (record as any).class_name || '-',
         record.subject || '-',
@@ -100,7 +176,7 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
               <Calendar className="h-5 w-5" />
               Class Session Attendance
             </CardTitle>
-            <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={!attendanceData?.length}>
+            <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={!filteredData?.length}>
               <Download className="h-4 w-4 mr-2" />
               Export CSV
             </Button>
@@ -137,6 +213,44 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
+            )}
+
+            <div className="h-6 w-px bg-border" />
+
+            {/* Filters */}
+            <Select value={selectedClassFilter} onValueChange={setSelectedClassFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="All Classes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Classes</SelectItem>
+                {classes.map(cls => (
+                  <SelectItem key={cls.id} value={cls.id}>
+                    {cls.class_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedOfficerFilter} onValueChange={setSelectedOfficerFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All Officers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Officers</SelectItem>
+                {officers.map(officer => (
+                  <SelectItem key={officer.id} value={officer.id}>
+                    {officer.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {hasFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <Filter className="h-4 w-4 mr-1" />
+                Clear filters
+              </Button>
             )}
           </div>
         </CardContent>
@@ -201,17 +315,35 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
           </CardContent>
         </Card>
       </div>
+
+      {/* Monthly Summary (only in month view) */}
+      {viewMode === 'month' && !isLoading && (
+        <MonthlySessionsSummary 
+          sessions={sessionsForSummary}
+          currentMonth={currentMonth}
+        />
+      )}
       
       {/* Attendance Table */}
       <Card>
-        <CardContent className="pt-6">
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">
+            Session Details
+            {hasFilters && (
+              <Badge variant="secondary" className="ml-2">
+                Filtered
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           {isLoading ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
-          ) : !attendanceData || attendanceData.length === 0 ? (
+          ) : !filteredData || filteredData.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
               <p className="font-medium">No class sessions completed yet</p>
@@ -234,7 +366,7 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {attendanceData.map((record) => {
+                {filteredData.map((record) => {
                   const attendanceRate = record.total_students > 0 
                     ? ((record.students_present + record.students_late) / record.total_students * 100)
                     : 0;
@@ -254,24 +386,24 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
                       </TableCell>
                       <TableCell>{(record as any).officer_name || '-'}</TableCell>
                       <TableCell className="text-center">
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800">
                           {record.students_present}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800">
                           {record.students_absent}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-300 dark:border-yellow-800">
                           {record.students_late}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
                         <span className={`font-medium ${
-                          attendanceRate >= 80 ? 'text-green-600' : 
-                          attendanceRate >= 60 ? 'text-yellow-600' : 'text-red-600'
+                          attendanceRate >= 80 ? 'text-green-600 dark:text-green-400' : 
+                          attendanceRate >= 60 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
                         }`}>
                           {attendanceRate.toFixed(1)}%
                         </span>
