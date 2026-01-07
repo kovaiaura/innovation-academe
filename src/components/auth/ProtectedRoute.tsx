@@ -30,13 +30,17 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const userRoles = user?.roles || [user?.role];
   const isAdmin = userRoles.some(role => role && ADMIN_ROLES.includes(role as UserRole));
 
-  // Active navigation when maintenance mode changes - redirect non-admins immediately
+  // Check if user's role is affected by maintenance mode
+  const userRole = user?.role;
+  const isAffectedByMaintenance = userRole && settings.maintenanceAffectedRoles.includes(userRole);
+
+  // Active navigation when maintenance mode changes - redirect affected roles immediately
   useEffect(() => {
-    if (!isLoading && !settingsLoading && isAuthenticated && settings.maintenanceMode && !isAdmin) {
-      console.log('Maintenance mode activated - actively redirecting user to maintenance page');
+    if (!isLoading && !settingsLoading && isAuthenticated && settings.maintenanceMode && isAffectedByMaintenance) {
+      console.log('Maintenance mode activated - actively redirecting user to maintenance page', { userRole });
       navigate('/maintenance', { replace: true });
     }
-  }, [settings.maintenanceMode, isAdmin, isAuthenticated, isLoading, settingsLoading, navigate]);
+  }, [settings.maintenanceMode, settings.maintenanceAffectedRoles, isAffectedByMaintenance, userRole, isAuthenticated, isLoading, settingsLoading, navigate]);
 
   if (isLoading || settingsLoading) {
     return (
@@ -51,9 +55,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Check maintenance mode - redirect non-admins to maintenance page
-  if (settings.maintenanceMode && !isAdmin) {
-    console.log('ProtectedRoute: Maintenance mode active, redirecting non-admin user');
+  // Check maintenance mode - redirect affected roles to maintenance page
+  if (settings.maintenanceMode && isAffectedByMaintenance) {
+    console.log('ProtectedRoute: Maintenance mode active, redirecting affected user', { userRole });
     return <Navigate to="/maintenance" replace />;
   }
 
