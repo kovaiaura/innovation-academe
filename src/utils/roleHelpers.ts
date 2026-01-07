@@ -40,9 +40,8 @@ export const getMultiRoleDashboardPath = (user: User, tenantSlug?: string): stri
   const roles = user.roles || [user.role];
   
   // Priority: super_admin > system_admin > others
-  // CEO (super_admin) goes to CEO Analytics Dashboard
   if (roles.includes('super_admin')) {
-    return '/super-admin/ceo-analytics';
+    return '/super-admin/dashboard';
   }
   if (roles.includes('system_admin')) {
     return '/system-admin/dashboard';

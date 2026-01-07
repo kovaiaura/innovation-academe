@@ -68,7 +68,6 @@ const menuItems: MenuItem[] = [
   // Super Admin menu items - Technical oversight
   { label: 'System Config', icon: <Settings className="h-5 w-5" />, path: '/system-config', roles: ['super_admin'] },
   { label: 'System Logs', icon: <History className="h-5 w-5" />, path: '/audit-logs', roles: ['super_admin'] },
-  { label: 'CEO Analytics', icon: <BarChart className="h-5 w-5" />, path: '/ceo-analytics', roles: ['super_admin'] },
   // System Admin menu items - Business operations
   { label: 'Institution Management', icon: <Building2 className="h-5 w-5" />, path: '/institutions', roles: ['system_admin'], feature: 'institution_management' },
   { label: 'Course Management', icon: <BookOpen className="h-5 w-5" />, path: '/course-management', roles: ['system_admin'], feature: 'course_management' },
