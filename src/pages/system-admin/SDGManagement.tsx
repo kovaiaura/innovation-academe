@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SDGDashboard from "./SDGDashboard";
 import SDGCourseMapping from "./SDGCourseMapping";
 import SDGProjectListing from "./SDGProjectListing";
+import SDGInstitutionContributions from "./SDGInstitutionContributions";
 
 export default function SDGManagement() {
   return (
@@ -16,10 +17,11 @@ export default function SDGManagement() {
         </div>
 
         <Tabs defaultValue="dashboard" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-[600px]">
+          <TabsList className="grid w-full grid-cols-4 lg:w-[800px]">
             <TabsTrigger value="dashboard">SDG Dashboard</TabsTrigger>
             <TabsTrigger value="courses">Course Mapping</TabsTrigger>
             <TabsTrigger value="projects">Project Listing</TabsTrigger>
+            <TabsTrigger value="institutions">Institution Contributions</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
@@ -32,6 +34,10 @@ export default function SDGManagement() {
 
           <TabsContent value="projects" className="space-y-6">
             <SDGProjectListing />
+          </TabsContent>
+
+          <TabsContent value="institutions" className="space-y-6">
+            <SDGInstitutionContributions />
           </TabsContent>
         </Tabs>
       </div>
