@@ -284,6 +284,48 @@ export const getHolidaysForYear = async (
   }));
 };
 
+// Get non-working days (weekends + holidays) for a date range
+export const getNonWorkingDaysInRange = async (
+  calendarType: CalendarType,
+  startDate: string,
+  endDate: string,
+  institutionId?: string
+): Promise<{ weekends: string[]; holidays: string[] }> => {
+  let query = supabase
+    .from('calendar_day_types')
+    .select('*')
+    .eq('calendar_type', calendarType)
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .in('day_type', ['weekend', 'holiday']);
+  
+  if (calendarType === 'institution' && institutionId) {
+    query = query.eq('institution_id', institutionId);
+  } else if (calendarType === 'company') {
+    query = query.is('institution_id', null);
+  }
+  
+  const { data, error } = await query;
+  
+  if (error) {
+    console.error('Error fetching non-working days:', error);
+    return { weekends: [], holidays: [] };
+  }
+  
+  const weekends: string[] = [];
+  const holidays: string[] = [];
+  
+  (data || []).forEach((entry) => {
+    if (entry.day_type === 'weekend') {
+      weekends.push(entry.date);
+    } else if (entry.day_type === 'holiday') {
+      holidays.push(entry.date);
+    }
+  });
+  
+  return { weekends, holidays };
+};
+
 export const calendarDayTypeService = {
   getDayTypesForMonth,
   getDayTypesForRange,
@@ -292,5 +334,6 @@ export const calendarDayTypeService = {
   quickSetupMonth,
   deleteDayType,
   getWorkingDaysFromCalendar,
-  getHolidaysForYear
+  getHolidaysForYear,
+  getNonWorkingDaysInRange
 };

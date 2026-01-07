@@ -21,7 +21,7 @@ import { leaveApplicationService, leaveBalanceService } from '@/services/leave.s
 import { leaveCalculationService } from '@/services/leaveCalculation.service';
 import { calendarDayTypeService } from '@/services/calendarDayType.service';
 import { useAuth } from '@/contexts/AuthContext';
-import { LeaveHolidayCalendar, calculateLeaveDaysExcludingHolidays } from '@/components/leave/LeaveHolidayCalendar';
+import { LeaveHolidayCalendar, calculateActualLeaveDays } from '@/components/leave/LeaveHolidayCalendar';
 import { 
   LeaveType, 
   LeaveStatus,
@@ -89,23 +89,35 @@ export default function Leave() {
     enabled: !!user?.id
   });
 
-  // Fetch company holidays from calendar_day_types
+  // Fetch company holidays from calendar_day_types (for display in calendar)
   const { data: companyHolidays = [], isLoading: holidaysLoading } = useQuery({
     queryKey: ['company-calendar-holidays', currentYear],
     queryFn: () => calendarDayTypeService.getHolidaysForYear('company', currentYear),
   });
 
-  // Calculate leave days excluding holidays
+  // Fetch company calendar non-working days (weekends + holidays) for leave calculation
+  const { data: companyNonWorkingDays = { weekends: [], holidays: [] } } = useQuery({
+    queryKey: ['company-non-working-days', formData.start_date, formData.end_date],
+    queryFn: () => calendarDayTypeService.getNonWorkingDaysInRange(
+      'company',
+      formData.start_date,
+      formData.end_date
+    ),
+    enabled: !!formData.start_date && !!formData.end_date
+  });
+
+  // Calculate leave days excluding weekends AND holidays from company calendar
   const leaveCalculation = useMemo(() => {
     if (!formData.start_date || !formData.end_date) {
-      return { totalCalendarDays: 0, holidaysInRange: 0, actualLeaveDays: 0 };
+      return { totalCalendarDays: 0, weekendsInRange: 0, holidaysInRange: 0, actualLeaveDays: 0 };
     }
-    return calculateLeaveDaysExcludingHolidays(
+    return calculateActualLeaveDays(
       formData.start_date,
       formData.end_date,
-      companyHolidays
+      companyNonWorkingDays.weekends,
+      companyNonWorkingDays.holidays
     );
-  }, [formData.start_date, formData.end_date, companyHolidays]);
+  }, [formData.start_date, formData.end_date, companyNonWorkingDays]);
 
   const applyMutation = useMutation({
     mutationFn: leaveApplicationService.applyLeave,
@@ -628,6 +640,14 @@ export default function Leave() {
                           <span className="text-muted-foreground">Calendar days selected</span>
                           <span>{leaveCalculation.totalCalendarDays}</span>
                         </div>
+                        {leaveCalculation.weekendsInRange > 0 && (
+                          <div className="flex justify-between text-blue-600">
+                            <span className="flex items-center gap-1">
+                              🗓️ Weekends (excluded)
+                            </span>
+                            <span>-{leaveCalculation.weekendsInRange}</span>
+                          </div>
+                        )}
                         {leaveCalculation.holidaysInRange > 0 && (
                           <div className="flex justify-between text-green-600">
                             <span className="flex items-center gap-1">

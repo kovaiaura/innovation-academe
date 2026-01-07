@@ -152,7 +152,7 @@ export const leaveApplicationService = {
     return days.length; // Count all calendar days
   },
 
-  // Calculate leave days excluding holidays
+  // Calculate leave days excluding holidays only (legacy)
   calculateLeaveDaysExcludingHolidays: (
     startDate: string,
     endDate: string,
@@ -173,6 +173,28 @@ export const leaveApplicationService = {
       holidaysInRange,
       actualLeaveDays: Math.max(0, totalCalendarDays - holidaysInRange),
     };
+  },
+
+  // Calculate actual working days excluding weekends AND holidays from calendar
+  calculateActualWorkingDays: (
+    startDate: string,
+    endDate: string,
+    weekendDates: string[],
+    holidayDates: string[]
+  ): number => {
+    const start = parseISO(startDate);
+    const end = parseISO(endDate);
+    const days = eachDayOfInterval({ start, end });
+    
+    // Count non-working days
+    const nonWorkingDays = days.filter((day) => {
+      const dayStr = format(day, 'yyyy-MM-dd');
+      const isWeekend = weekendDates.some((wd) => format(parseISO(wd), 'yyyy-MM-dd') === dayStr);
+      const isHoliday = holidayDates.some((hd) => format(parseISO(hd), 'yyyy-MM-dd') === dayStr);
+      return isWeekend || isHoliday;
+    }).length;
+    
+    return Math.max(0, days.length - nonWorkingDays);
   },
 
   getApprovalChain: async (applicantType: UserType, applicantPositionId?: string | null): Promise<LeaveApprovalHierarchy[]> => {
@@ -229,7 +251,35 @@ export const leaveApplicationService = {
 
     const isOfficer = !!officer;
     const applicantType: UserType = isOfficer ? 'officer' : 'staff';
-    const totalDays = leaveApplicationService.calculateWorkingDays(input.start_date, input.end_date);
+    
+    // Determine calendar type and institution ID for fetching non-working days
+    const calendarType = isOfficer ? 'institution' : 'company';
+    const calendarInstitutionId = isOfficer && officer?.assigned_institutions?.[0] 
+      ? officer.assigned_institutions[0] 
+      : undefined;
+    
+    // Fetch non-working days (weekends + holidays) from the appropriate calendar
+    let totalDays: number;
+    try {
+      const { getNonWorkingDaysInRange } = await import('./calendarDayType.service');
+      const nonWorkingDays = await getNonWorkingDaysInRange(
+        calendarType as 'company' | 'institution',
+        input.start_date,
+        input.end_date,
+        calendarInstitutionId
+      );
+      
+      totalDays = leaveApplicationService.calculateActualWorkingDays(
+        input.start_date,
+        input.end_date,
+        nonWorkingDays.weekends,
+        nonWorkingDays.holidays
+      );
+    } catch (error) {
+      // Fallback to simple calendar day count if calendar service fails
+      console.warn('Failed to fetch calendar data, using all calendar days:', error);
+      totalDays = leaveApplicationService.calculateWorkingDays(input.start_date, input.end_date);
+    }
 
     // Get approval chain
     const hierarchyChain = await leaveApplicationService.getApprovalChain(
