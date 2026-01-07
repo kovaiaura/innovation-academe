@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface PlatformSettings {
   maintenanceMode: boolean;
   maintenanceMessage: string;
+  maintenanceAffectedRoles: string[];
   sessionTimeoutEnabled: boolean;
   sessionTimeoutMinutes: number;
 }
@@ -18,6 +19,7 @@ interface PlatformSettingsContextType {
 const defaultSettings: PlatformSettings = {
   maintenanceMode: false,
   maintenanceMessage: 'System is under maintenance. Please check back later.',
+  maintenanceAffectedRoles: ['student', 'teacher', 'officer', 'management'],
   sessionTimeoutEnabled: true,
   sessionTimeoutMinutes: 30,
 };
@@ -54,6 +56,9 @@ export const PlatformSettingsProvider: React.FC<{ children: React.ReactNode }> =
         setSettings({
           maintenanceMode: Boolean(value.maintenance_mode),
           maintenanceMessage: String(value.maintenance_message || defaultSettings.maintenanceMessage),
+          maintenanceAffectedRoles: Array.isArray(value.maintenance_affected_roles) 
+            ? value.maintenance_affected_roles as string[]
+            : defaultSettings.maintenanceAffectedRoles,
           sessionTimeoutEnabled: Boolean(value.session_timeout_enabled),
           sessionTimeoutMinutes: Number(value.session_timeout_minutes) || 30,
         });
@@ -71,6 +76,7 @@ export const PlatformSettingsProvider: React.FC<{ children: React.ReactNode }> =
     const dbValue = {
       maintenance_mode: updatedSettings.maintenanceMode,
       maintenance_message: updatedSettings.maintenanceMessage,
+      maintenance_affected_roles: updatedSettings.maintenanceAffectedRoles,
       session_timeout_enabled: updatedSettings.sessionTimeoutEnabled,
       session_timeout_minutes: updatedSettings.sessionTimeoutMinutes,
     };
@@ -109,6 +115,9 @@ export const PlatformSettingsProvider: React.FC<{ children: React.ReactNode }> =
             setSettings({
               maintenanceMode: Boolean(value.maintenance_mode),
               maintenanceMessage: String(value.maintenance_message || defaultSettings.maintenanceMessage),
+              maintenanceAffectedRoles: Array.isArray(value.maintenance_affected_roles) 
+                ? value.maintenance_affected_roles as string[]
+                : defaultSettings.maintenanceAffectedRoles,
               sessionTimeoutEnabled: Boolean(value.session_timeout_enabled),
               sessionTimeoutMinutes: Number(value.session_timeout_minutes) || 30,
             });

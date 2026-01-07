@@ -4,15 +4,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Save, Loader2 } from 'lucide-react';
 import { usePlatformSettings } from '@/contexts/PlatformSettingsContext';
 import { toast } from 'sonner';
+
+const MAINTENANCE_ROLE_OPTIONS = [
+  { id: 'student', label: 'Students' },
+  { id: 'teacher', label: 'Teachers' },
+  { id: 'officer', label: 'Officers' },
+  { id: 'management', label: 'Management' },
+] as const;
 
 export function SystemPreferencesTab() {
   const { settings, isLoading, updateSettings } = usePlatformSettings();
   const [localSettings, setLocalSettings] = useState({
     maintenanceMode: false,
     maintenanceMessage: '',
+    maintenanceAffectedRoles: ['student', 'teacher', 'officer', 'management'] as string[],
     sessionTimeoutEnabled: true,
     sessionTimeoutMinutes: 30,
     selfRegistration: false,
@@ -29,11 +38,21 @@ export function SystemPreferencesTab() {
         ...prev,
         maintenanceMode: settings.maintenanceMode,
         maintenanceMessage: settings.maintenanceMessage,
+        maintenanceAffectedRoles: settings.maintenanceAffectedRoles,
         sessionTimeoutEnabled: settings.sessionTimeoutEnabled,
         sessionTimeoutMinutes: settings.sessionTimeoutMinutes,
       }));
     }
   }, [settings, isLoading]);
+
+  const handleRoleToggle = (roleId: string, checked: boolean) => {
+    setLocalSettings((prev) => ({
+      ...prev,
+      maintenanceAffectedRoles: checked
+        ? [...prev.maintenanceAffectedRoles, roleId]
+        : prev.maintenanceAffectedRoles.filter((r) => r !== roleId),
+    }));
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -41,6 +60,7 @@ export function SystemPreferencesTab() {
       await updateSettings({
         maintenanceMode: localSettings.maintenanceMode,
         maintenanceMessage: localSettings.maintenanceMessage,
+        maintenanceAffectedRoles: localSettings.maintenanceAffectedRoles,
         sessionTimeoutEnabled: localSettings.sessionTimeoutEnabled,
         sessionTimeoutMinutes: localSettings.sessionTimeoutMinutes,
       });
@@ -85,16 +105,39 @@ export function SystemPreferencesTab() {
           </div>
 
           {localSettings.maintenanceMode && (
-            <div className="space-y-2 pl-4 border-l-2 border-amber-500">
-              <Label htmlFor="maintenance-message">Maintenance Message</Label>
-              <Input
-                id="maintenance-message"
-                value={localSettings.maintenanceMessage}
-                onChange={(e) =>
-                  setLocalSettings((prev) => ({ ...prev, maintenanceMessage: e.target.value }))
-                }
-                placeholder="System is under maintenance..."
-              />
+            <div className="space-y-4 pl-4 border-l-2 border-amber-500">
+              <div className="space-y-2">
+                <Label htmlFor="maintenance-message">Maintenance Message</Label>
+                <Input
+                  id="maintenance-message"
+                  value={localSettings.maintenanceMessage}
+                  onChange={(e) =>
+                    setLocalSettings((prev) => ({ ...prev, maintenanceMessage: e.target.value }))
+                  }
+                  placeholder="System is under maintenance..."
+                />
+              </div>
+              
+              <div className="space-y-3">
+                <Label>Affected Roles</Label>
+                <p className="text-sm text-muted-foreground">
+                  Select which user roles will see the maintenance page
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {MAINTENANCE_ROLE_OPTIONS.map((role) => (
+                    <div key={role.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`role-${role.id}`}
+                        checked={localSettings.maintenanceAffectedRoles.includes(role.id)}
+                        onCheckedChange={(checked) => handleRoleToggle(role.id, checked as boolean)}
+                      />
+                      <Label htmlFor={`role-${role.id}`} className="text-sm font-normal cursor-pointer">
+                        {role.label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
