@@ -37,6 +37,7 @@ import { Check, X, Eye, Search, Filter, RefreshCw, Clock, CheckCircle, XCircle, 
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { LOPApprovalDialog } from "@/components/leave/LOPApprovalDialog";
+import { ApplicantLeaveBalanceCard } from "@/components/leave/ApplicantLeaveBalanceCard";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function LeaveApprovals() {
@@ -555,6 +556,15 @@ export default function LeaveApprovals() {
                 <Label className="text-muted-foreground text-sm">Reason</Label>
                 <p className="font-medium">{selectedApplication.reason}</p>
               </div>
+
+              {/* Applicant Leave Balance Card */}
+              <ApplicantLeaveBalanceCard
+                applicantId={selectedApplication.applicant_id}
+                leaveMonth={parseISO(selectedApplication.start_date).getMonth() + 1}
+                leaveYear={parseISO(selectedApplication.start_date).getFullYear()}
+                requestedDays={selectedApplication.total_days}
+                compact
+              />
 
               {selectedApplication.is_lop && (
                 <div className="p-3 bg-yellow-500/10 rounded-lg">

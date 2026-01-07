@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertTriangle } from 'lucide-react';
 import { LeaveApplication } from '@/types/leave';
 import { format, parseISO } from 'date-fns';
+import { ApplicantLeaveBalanceCard } from './ApplicantLeaveBalanceCard';
 
 interface LOPApprovalDialogProps {
   open: boolean;
@@ -79,6 +80,15 @@ export function LOPApprovalDialog({
               <Badge variant="secondary">{totalDays} day(s)</Badge>
             </div>
           </div>
+
+          {/* Applicant Leave Balance */}
+          <ApplicantLeaveBalanceCard
+            applicantId={application.applicant_id}
+            leaveMonth={parseISO(application.start_date).getMonth() + 1}
+            leaveYear={parseISO(application.start_date).getFullYear()}
+            requestedDays={totalDays}
+            compact
+          />
 
           {/* LOP Mode Selection */}
           <div className="space-y-3">
