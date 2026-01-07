@@ -10,6 +10,7 @@ import type {
   ReportIssueData,
   PurchaseRequestItem
 } from "@/types/inventory";
+import { getNotificationLink } from "./notificationLink.service";
 
 // ==================== INVENTORY ITEMS ====================
 
@@ -186,7 +187,7 @@ export async function createPurchaseRequest(
     type: 'purchase_request',
     title: 'New Purchase Request',
     message: `${requesterName} has submitted a purchase request (${codeData}) requiring your approval.`,
-    link: '/management/inventory',
+    link: getNotificationLink('management', '/inventory'),
     metadata: { request_id: data.id, request_code: codeData }
   });
 
@@ -224,7 +225,7 @@ export async function approvePurchaseRequestByInstitution(
     type: 'purchase_request',
     title: 'Purchase Request Needs Final Approval',
     message: `Purchase request ${request.request_code} from ${request.institutions?.name || 'institution'} has been approved by institution management and needs final approval.`,
-    link: '/system-admin/inventory',
+    link: getNotificationLink('system_admin', '/inventory'),
     metadata: { request_id: requestId, request_code: request.request_code }
   });
 }
@@ -261,7 +262,7 @@ export async function approvePurchaseRequestFinal(
     type: 'purchase_request',
     title: 'Purchase Request Approved',
     message: `Your purchase request ${request.request_code} has been fully approved!`,
-    link: '/officer/inventory',
+    link: getNotificationLink('officer', '/inventory'),
     metadata: { request_id: requestId, request_code: request.request_code }
   });
 }
@@ -298,7 +299,7 @@ export async function rejectPurchaseRequest(
     type: 'purchase_request',
     title: 'Purchase Request Rejected',
     message: `Your purchase request ${request.request_code} has been rejected. Reason: ${reason}`,
-    link: '/officer/inventory',
+    link: getNotificationLink('officer', '/inventory'),
     metadata: { request_id: requestId, request_code: request.request_code }
   });
 }
@@ -369,7 +370,7 @@ export async function reportInventoryIssue(
     type: 'inventory_issue',
     title: `Inventory Issue Reported: ${issueData.issue_type}`,
     message: `${reporterName} reported a ${issueData.severity || 'medium'} severity ${issueData.issue_type} issue for "${issueData.item_name}".`,
-    link: '/management/inventory',
+    link: getNotificationLink('management', '/inventory'),
     metadata: { issue_id: data.id, issue_code: codeData }
   });
 
@@ -378,7 +379,7 @@ export async function reportInventoryIssue(
     type: 'inventory_issue',
     title: `Inventory Issue: ${issueData.issue_type}`,
     message: `${reporterName} reported a ${issueData.severity || 'medium'} severity ${issueData.issue_type} issue for "${issueData.item_name}".`,
-    link: '/system-admin/inventory',
+    link: getNotificationLink('system_admin', '/inventory'),
     metadata: { issue_id: data.id, issue_code: codeData }
   });
 
@@ -426,7 +427,7 @@ export async function resolveIssue(issueId: string, userId: string, notes: strin
     type: 'inventory_issue',
     title: 'Issue Resolved',
     message: `Your reported issue (${issue.issue_code}) for "${issue.item_name}" has been resolved.`,
-    link: '/officer/inventory',
+    link: getNotificationLink('officer', '/inventory'),
     metadata: { issue_id: issueId, issue_code: issue.issue_code }
   });
 }

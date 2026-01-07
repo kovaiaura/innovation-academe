@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { notificationService } from './notification.service';
+import { getNotificationLink } from './notificationLink.service';
 
 export const gradeNotificationService = {
   /**
@@ -23,7 +24,7 @@ export const gradeNotificationService = {
         'assignment_graded',
         'Assignment Graded',
         `Your assignment "${assignmentTitle}" has been graded. Score: ${marksObtained}/${totalMarks} (${percentage}%) - ${passed ? 'Passed' : 'Failed'}`,
-        `/assignments`,
+        getNotificationLink('student', '/assignments'),
         {
           assignment_id: assignmentId,
           marks_obtained: marksObtained,
@@ -55,7 +56,7 @@ export const gradeNotificationService = {
         'assessment_graded',
         'Assessment Completed',
         `Assessment "${assessmentTitle}" completed. Score: ${percentage.toFixed(0)}% - ${passed ? 'Passed' : 'Failed'}`,
-        `/assessments`,
+        getNotificationLink('student', '/assessments'),
         {
           assessment_id: assessmentId,
           score,
@@ -86,7 +87,7 @@ export const gradeNotificationService = {
           'new_assignment_published',
           'New Assignment Available',
           `New assignment "${assignmentTitle}" is now available. Due: ${new Date(dueDate).toLocaleDateString()}${totalMarks ? ` (${totalMarks} marks)` : ''}`,
-          `/assignments`,
+          getNotificationLink('student', '/assignments'),
           {
             assignment_id: assignmentId,
             due_date: dueDate,
@@ -118,7 +119,7 @@ export const gradeNotificationService = {
           'new_assessment_published',
           'New Assessment Available',
           `New assessment "${assessmentTitle}" is now available. Duration: ${durationMinutes} minutes. Available until: ${new Date(endTime).toLocaleDateString()}`,
-          `/assessments`,
+          getNotificationLink('student', '/assessments'),
           {
             assessment_id: assessmentId,
             start_time: startTime,
