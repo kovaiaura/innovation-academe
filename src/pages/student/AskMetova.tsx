@@ -84,7 +84,10 @@ export default function AskMetova() {
           <ScrollArea ref={scrollAreaRef} className="flex-1 p-6">
             <div className="max-w-4xl mx-auto space-y-6">
               {currentMessages.length === 0 ? (
-                <WelcomeMessage />
+                <WelcomeMessage 
+                  onSendMessage={sendMessage} 
+                  disabled={isAIDisabled || isLimitExceeded}
+                />
               ) : (
                 <>
                   {currentMessages.map((message) => (

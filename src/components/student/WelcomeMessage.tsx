@@ -1,13 +1,24 @@
 import { Sparkles, BookOpen, TrendingUp, Calendar, Award } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
-export function WelcomeMessage() {
+interface WelcomeMessageProps {
+  onSendMessage?: (message: string) => void;
+  disabled?: boolean;
+}
+
+export function WelcomeMessage({ onSendMessage, disabled }: WelcomeMessageProps) {
   const suggestions = [
     { icon: BookOpen, text: "How am I doing in my courses?" },
     { icon: TrendingUp, text: "Show my progress summary" },
     { icon: Calendar, text: "What assignments are due soon?" },
     { icon: Award, text: "How can I improve my performance?" }
   ];
+
+  const handleSuggestionClick = (text: string) => {
+    if (!disabled && onSendMessage) {
+      onSendMessage(text);
+    }
+  };
 
   return (
     <div className="flex flex-col items-center justify-center h-full max-w-3xl mx-auto px-4 py-8">
@@ -30,7 +41,12 @@ export function WelcomeMessage() {
         {suggestions.map((suggestion, index) => (
           <Card 
             key={index}
-            className="p-4 hover:bg-accent cursor-pointer transition-colors flex items-center gap-3 group"
+            className={`p-4 transition-colors flex items-center gap-3 group ${
+              disabled 
+                ? 'opacity-50 cursor-not-allowed' 
+                : 'hover:bg-accent cursor-pointer'
+            }`}
+            onClick={() => handleSuggestionClick(suggestion.text)}
           >
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
               <suggestion.icon className="h-5 w-5 text-primary" />
