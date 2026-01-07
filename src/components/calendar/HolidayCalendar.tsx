@@ -462,12 +462,12 @@ export function HolidayCalendar({
                           )}
                         </div>
                         {/* Show holiday name if marked as holiday */}
-                        {dayType === 'holiday' && holidayDesc && isCurrentMonth && (
+                        {dayType === 'holiday' && isCurrentMonth && (
                           <div className={cn(
                             "text-xs px-1.5 py-0.5 rounded truncate mt-1",
                             DAY_TYPE_COLORS.holiday.text
                           )}>
-                            {holidayDesc}
+                            {holidayDesc || 'Holiday'}
                           </div>
                         )}
                       </div>

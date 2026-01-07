@@ -177,18 +177,19 @@ export const getAttendanceDaysCount = async (
   officerId: string | undefined,
   month: number,
   year: number
-): Promise<{ daysPresent: number; attendanceDates: Set<string>; totalHours: number }> => {
+): Promise<{ daysPresent: number; attendanceDates: Set<string>; totalHours: number; totalOvertimeHours: number }> => {
   const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
   const endDate = new Date(year, month, 0).toISOString().split('T')[0];
   
   let daysPresent = 0;
   let totalHours = 0;
+  let totalOvertimeHours = 0;
   const attendanceDates = new Set<string>();
   
   if (userType === 'officer' && officerId) {
     const { data } = await supabase
       .from('officer_attendance')
-      .select('date, status, total_hours_worked')
+      .select('date, status, total_hours_worked, overtime_hours')
       .eq('officer_id', officerId)
       .gte('date', startDate)
       .lte('date', endDate);
@@ -199,13 +200,14 @@ export const getAttendanceDaysCount = async (
           daysPresent++;
           attendanceDates.add(record.date);
           totalHours += record.total_hours_worked || 0;
+          totalOvertimeHours += record.overtime_hours || 0;
         }
       }
     }
   } else {
     const { data } = await supabase
       .from('staff_attendance')
-      .select('date, status, total_hours_worked')
+      .select('date, status, total_hours_worked, overtime_hours')
       .eq('user_id', userId)
       .gte('date', startDate)
       .lte('date', endDate);
@@ -216,12 +218,13 @@ export const getAttendanceDaysCount = async (
           daysPresent++;
           attendanceDates.add(record.date);
           totalHours += record.total_hours_worked || 0;
+          totalOvertimeHours += record.overtime_hours || 0;
         }
       }
     }
   }
   
-  return { daysPresent, attendanceDates, totalHours };
+  return { daysPresent, attendanceDates, totalHours, totalOvertimeHours };
 };
 
 // Get approved leave days
@@ -343,7 +346,7 @@ export const fetchAllEmployees = async (month?: number, year?: number): Promise<
         const joinDate = officer.join_date ? new Date(officer.join_date) : undefined;
         
         // Get actual attendance data
-        const { daysPresent, attendanceDates, totalHours } = await getAttendanceDaysCount(
+        const { daysPresent, attendanceDates, totalHours, totalOvertimeHours } = await getAttendanceDaysCount(
           officer.user_id || officer.id, 
           'officer', 
           officer.id, 
@@ -411,7 +414,7 @@ export const fetchAllEmployees = async (month?: number, year?: number): Promise<
           days_lop: daysLop,
           days_not_marked: daysNotMarked,
           uninformed_leave_days: daysNotMarked,
-          overtime_hours: 0,
+          overtime_hours: totalOvertimeHours,
           overtime_pending_approval: 0,
           total_hours_worked: totalHours,
           gross_salary: proratedSalary,
@@ -462,7 +465,7 @@ export const fetchAllEmployees = async (month?: number, year?: number): Promise<
         const joinDate = profile.join_date ? new Date(profile.join_date) : undefined;
         
         // Get actual attendance data
-        const { daysPresent, attendanceDates, totalHours } = await getAttendanceDaysCount(
+        const { daysPresent, attendanceDates, totalHours, totalOvertimeHours } = await getAttendanceDaysCount(
           profile.id, 
           'staff', 
           undefined, 
@@ -525,7 +528,7 @@ export const fetchAllEmployees = async (month?: number, year?: number): Promise<
           days_lop: daysLop,
           days_not_marked: daysNotMarked,
           uninformed_leave_days: daysNotMarked,
-          overtime_hours: 0,
+          overtime_hours: totalOvertimeHours,
           overtime_pending_approval: 0,
           total_hours_worked: totalHours,
           gross_salary: proratedSalary,
