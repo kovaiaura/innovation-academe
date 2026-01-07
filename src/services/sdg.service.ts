@@ -197,5 +197,152 @@ export const sdgService = {
     });
 
     return Array.from(uniqueInstitutions.values());
+  },
+
+  // Get institution-wise SDG contributions for leaderboard
+  async getInstitutionContributions() {
+    // Fetch all required data in parallel
+    const [
+      institutionsRes,
+      projectsRes,
+      projectMembersRes,
+      coursesRes,
+      courseInstitutionAssignmentsRes
+    ] = await Promise.all([
+      supabase.from('institutions').select('id, name').eq('status', 'active'),
+      supabase.from('projects').select('id, title, sdg_goals, institution_id, created_by_officer_id, status'),
+      supabase.from('project_members').select('project_id, student_id'),
+      supabase.from('courses').select('id, title, sdg_goals'),
+      supabase.from('course_institution_assignments').select('course_id, institution_id')
+    ]);
+
+    const institutions = institutionsRes.data || [];
+    const projects = projectsRes.data || [];
+    const projectMembers = projectMembersRes.data || [];
+    const courses = coursesRes.data || [];
+    const courseAssignments = courseInstitutionAssignmentsRes.data || [];
+
+    // Build course SDG map
+    const courseSdgMap = new Map<string, number[]>();
+    courses.forEach(c => {
+      const goals = c.sdg_goals as number[] | null;
+      if (goals && goals.length > 0) {
+        courseSdgMap.set(c.id, goals);
+      }
+    });
+
+    // Calculate contributions per institution
+    const contributionsList = institutions.map(inst => {
+      // Get institution's projects
+      const instProjects = projects.filter(p => p.institution_id === inst.id);
+      const sdgProjects = instProjects.filter(p => {
+        const goals = p.sdg_goals as number[] | null;
+        return goals && goals.length > 0;
+      });
+
+      // Get project IDs for this institution
+      const sdgProjectIds = sdgProjects.map(p => p.id);
+
+      // Count students in SDG projects
+      const studentsInSDGProjects = new Set(
+        projectMembers
+          .filter(m => sdgProjectIds.includes(m.project_id))
+          .map(m => m.student_id)
+      );
+
+      // Count unique officers who created SDG projects
+      const officersInvolved = new Set(
+        sdgProjects
+          .filter(p => p.created_by_officer_id)
+          .map(p => p.created_by_officer_id)
+      );
+
+      // Get courses assigned to this institution
+      const instCourseIds = courseAssignments
+        .filter(ca => ca.institution_id === inst.id)
+        .map(ca => ca.course_id);
+      
+      const sdgCoursesAssigned = instCourseIds.filter(cid => courseSdgMap.has(cid)).length;
+
+      // Collect all unique SDGs
+      const uniqueSDGs = new Set<number>();
+      sdgProjects.forEach(p => {
+        const goals = p.sdg_goals as number[] | null;
+        goals?.forEach(g => uniqueSDGs.add(g));
+      });
+      instCourseIds.forEach(cid => {
+        const courseGoals = courseSdgMap.get(cid);
+        courseGoals?.forEach(g => uniqueSDGs.add(g));
+      });
+
+      // SDG breakdown (projects per SDG)
+      const sdgBreakdown: Record<number, { projects: number }> = {};
+      sdgProjects.forEach(p => {
+        const goals = p.sdg_goals as number[] | null;
+        goals?.forEach(g => {
+          if (!sdgBreakdown[g]) sdgBreakdown[g] = { projects: 0 };
+          sdgBreakdown[g].projects++;
+        });
+      });
+
+      // Calculate contribution score
+      // Score = (SDG Projects × 3) + (Students × 1) + (SDG Courses × 2) + (Unique SDGs × 2)
+      const contributionScore =
+        (sdgProjects.length * 3) +
+        (studentsInSDGProjects.size * 1) +
+        (sdgCoursesAssigned * 2) +
+        (uniqueSDGs.size * 2);
+
+      return {
+        institution_id: inst.id,
+        institution_name: inst.name,
+        total_projects: instProjects.length,
+        sdg_projects: sdgProjects.length,
+        students_in_sdg_projects: studentsInSDGProjects.size,
+        officers_involved: officersInvolved.size,
+        courses_assigned: instCourseIds.length,
+        sdg_courses_assigned: sdgCoursesAssigned,
+        unique_sdgs: Array.from(uniqueSDGs).sort((a, b) => a - b),
+        contribution_score: contributionScore,
+        sdg_breakdown: sdgBreakdown
+      };
+    });
+
+    // Filter to only institutions with contributions and sort by score
+    const activeContributions = contributionsList
+      .filter(c => c.sdg_projects > 0 || c.sdg_courses_assigned > 0)
+      .sort((a, b) => b.contribution_score - a.contribution_score);
+
+    // Calculate global stats
+    const allSDGs = new Set<number>();
+    const allStudents = new Set<string>();
+    let totalSDGProjects = 0;
+
+    activeContributions.forEach(c => {
+      c.unique_sdgs.forEach(sdg => allSDGs.add(sdg));
+      totalSDGProjects += c.sdg_projects;
+    });
+
+    // Get all students impacted globally
+    const allSDGProjectIds = projects
+      .filter(p => {
+        const goals = p.sdg_goals as number[] | null;
+        return goals && goals.length > 0;
+      })
+      .map(p => p.id);
+    
+    projectMembers
+      .filter(m => allSDGProjectIds.includes(m.project_id))
+      .forEach(m => allStudents.add(m.student_id));
+
+    return {
+      institutions: activeContributions,
+      globalStats: {
+        total_institutions: activeContributions.length,
+        total_sdg_projects: totalSDGProjects,
+        total_sdgs_covered: allSDGs.size,
+        total_students_impacted: allStudents.size
+      }
+    };
   }
 };
