@@ -6,13 +6,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ChevronLeft, ChevronRight, Plus, Calendar, Wand2, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Wand2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { CreateHolidayInput, HolidayType, HOLIDAY_TYPE_LABELS, CalendarDayType, CalendarType } from '@/types/leave';
+import { CreateHolidayInput, CalendarDayType, CalendarType } from '@/types/leave';
 import { calendarDayTypeService } from '@/services/calendarDayType.service';
 import { toast } from 'sonner';
 
@@ -22,7 +20,7 @@ interface Holiday {
   date: string;
   end_date?: string | null;
   description?: string | null;
-  holiday_type: HolidayType;
+  holiday_type: string;
   is_paid: boolean;
   year: number;
 }
@@ -33,35 +31,35 @@ interface Props {
   onAddHoliday: (data: CreateHolidayInput) => void;
   onUpdateHoliday: (id: string, data: Partial<CreateHolidayInput>) => void;
   onDeleteHoliday: (id: string) => void;
-  allowedTypes?: HolidayType[];
+  allowedTypes?: string[];
   title?: string;
   isMutating?: boolean;
   onYearChange?: (year: number) => void;
-  // Day type marking props
   calendarType?: CalendarType;
   institutionId?: string;
   enableDayTypeMarking?: boolean;
 }
 
-const HOLIDAY_COLORS: Record<HolidayType, { bg: string; text: string; border: string }> = {
-  company: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', border: 'border-l-blue-500' },
-  national: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', border: 'border-l-green-500' },
-  optional: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-300', border: 'border-l-yellow-500' },
-  institution: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', border: 'border-l-purple-500' },
-  academic: { bg: 'bg-pink-100 dark:bg-pink-900/30', text: 'text-pink-700 dark:text-pink-300', border: 'border-l-pink-500' },
-  exam: { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-300', border: 'border-l-orange-500' }
-};
-
-const DAY_TYPE_COLORS: Record<CalendarDayType, { bg: string; text: string; border: string }> = {
-  working: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', border: 'border-green-500' },
-  weekend: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300', border: 'border-red-500' },
-  holiday: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-500' }
-};
-
-const DAY_TYPE_LABELS: Record<CalendarDayType, string> = {
-  working: 'Working Day',
-  weekend: 'Weekend',
-  holiday: 'Holiday/Leave'
+// Simplified to just 3 day types with clear colors
+const DAY_TYPE_COLORS: Record<CalendarDayType, { bg: string; text: string; border: string; label: string }> = {
+  working: { 
+    bg: 'bg-emerald-50 dark:bg-emerald-900/20', 
+    text: 'text-emerald-700 dark:text-emerald-300', 
+    border: 'border-emerald-500',
+    label: 'Working Day'
+  },
+  weekend: { 
+    bg: 'bg-slate-100 dark:bg-slate-800/50', 
+    text: 'text-slate-600 dark:text-slate-400', 
+    border: 'border-slate-400',
+    label: 'Weekend'
+  },
+  holiday: { 
+    bg: 'bg-rose-50 dark:bg-rose-900/20', 
+    text: 'text-rose-700 dark:text-rose-300', 
+    border: 'border-rose-500',
+    label: 'Holiday'
+  }
 };
 
 export function HolidayCalendar({
@@ -80,10 +78,9 @@ export function HolidayCalendar({
 }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isMarkDayDialogOpen, setIsMarkDayDialogOpen] = useState(false);
-  const [editingHoliday, setEditingHoliday] = useState<Holiday | null>(null);
   const [dayTypes, setDayTypes] = useState<Map<string, CalendarDayType>>(new Map());
+  const [dayDescriptions, setDayDescriptions] = useState<Map<string, string>>(new Map());
   const [isLoadingDayTypes, setIsLoadingDayTypes] = useState(false);
   const [markDayForm, setMarkDayForm] = useState<{
     date: string;
@@ -95,15 +92,6 @@ export function HolidayCalendar({
     dayType: 'working',
     holidayName: '',
     description: ''
-  });
-  const [formData, setFormData] = useState<CreateHolidayInput>({
-    name: '',
-    date: '',
-    end_date: '',
-    description: '',
-    holiday_type: allowedTypes[0],
-    year: new Date().getFullYear(),
-    is_paid: true
   });
 
   // Fetch day types when month or institution changes
@@ -121,6 +109,26 @@ export function HolidayCalendar({
           calendarType === 'institution' ? institutionId : undefined
         );
         setDayTypes(types);
+        
+        // Also fetch descriptions for holidays
+        const month = currentDate.getMonth() + 1;
+        const { data } = await import('@/integrations/supabase/client').then(m => 
+          m.supabase
+            .from('calendar_day_types')
+            .select('date, description')
+            .eq('calendar_type', calendarType)
+            .eq('day_type', 'holiday')
+            .gte('date', `${year - 1}-01-01`)
+            .lte('date', `${year + 2}-12-31`)
+        );
+        
+        if (data) {
+          const descMap = new Map<string, string>();
+          data.forEach((d: { date: string; description: string | null }) => {
+            if (d.description) descMap.set(d.date, d.description);
+          });
+          setDayDescriptions(descMap);
+        }
       } catch (error) {
         console.error('Error fetching day types:', error);
       } finally {
@@ -155,13 +163,31 @@ export function HolidayCalendar({
     return dayTypes.get(dateStr) || null;
   };
 
+  const getHolidayDescription = (day: Date): string | null => {
+    const dateStr = format(day, 'yyyy-MM-dd');
+    return dayDescriptions.get(dateStr) || null;
+  };
+
   const upcomingHolidays = useMemo(() => {
+    // Get upcoming holidays from day types marked as holiday
     const today = new Date();
-    return holidays
-      .filter(h => parseISO(h.date) >= today)
-      .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime())
+    const todayStr = format(today, 'yyyy-MM-dd');
+    
+    const upcoming: { date: string; name: string }[] = [];
+    dayTypes.forEach((type, dateStr) => {
+      if (type === 'holiday' && dateStr >= todayStr) {
+        const desc = dayDescriptions.get(dateStr);
+        upcoming.push({
+          date: dateStr,
+          name: desc || 'Holiday'
+        });
+      }
+    });
+    
+    return upcoming
+      .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, 5);
-  }, [holidays]);
+  }, [dayTypes, dayDescriptions]);
 
   const handlePrevMonth = () => {
     const newDate = subMonths(currentDate, 1);
@@ -187,7 +213,7 @@ export function HolidayCalendar({
     setCurrentDate(today);
   };
 
-  // Toggle day type on right-click or shift+click
+  // Toggle day type on right-click
   const handleDayTypeToggle = async (day: Date, e: React.MouseEvent) => {
     if (!enableDayTypeMarking) return;
     if (!isSameMonth(day, currentDate)) return;
@@ -216,12 +242,11 @@ export function HolidayCalendar({
         calendarType === 'institution' ? institutionId : undefined
       );
       
-      // Update local state
       const newDayTypes = new Map(dayTypes);
       newDayTypes.set(dateStr, newType);
       setDayTypes(newDayTypes);
       
-      toast.success(`Marked as ${DAY_TYPE_LABELS[newType]}`);
+      toast.success(`Marked as ${DAY_TYPE_COLORS[newType].label}`);
     } catch (error) {
       toast.error('Failed to update day type');
     }
@@ -229,30 +254,23 @@ export function HolidayCalendar({
 
   const handleDayClick = (day: Date) => {
     if (!isSameMonth(day, currentDate)) return;
+    if (!enableDayTypeMarking) return;
+    
     setSelectedDate(day);
-    const dayHolidays = getHolidaysForDay(day);
-    if (dayHolidays.length === 0 && enableDayTypeMarking) {
-      openMarkDayDialog(day);
-    } else if (dayHolidays.length === 0) {
-      openAddDialog(day);
-    }
+    openMarkDayDialog(day);
   };
 
   const openMarkDayDialog = (date?: Date) => {
     const d = date || new Date();
     const dateStr = format(d, 'yyyy-MM-dd');
     const currentType = dayTypes.get(dateStr) || 'working';
-    
-    // Check if there's a holiday on this date
-    const dayHolidays = getHolidaysForDay(d);
-    const holidayName = dayHolidays.length > 0 ? dayHolidays[0].name : '';
-    const description = dayHolidays.length > 0 ? (dayHolidays[0].description || '') : '';
+    const description = dayDescriptions.get(dateStr) || '';
     
     setMarkDayForm({
       date: dateStr,
       dayType: currentType,
-      holidayName,
-      description
+      holidayName: description,
+      description: description
     });
     setIsMarkDayDialogOpen(true);
   };
@@ -266,7 +284,7 @@ export function HolidayCalendar({
         markDayForm.date,
         markDayForm.dayType,
         calendarType === 'institution' ? institutionId : undefined,
-        markDayForm.dayType === 'holiday' ? markDayForm.description : undefined
+        markDayForm.dayType === 'holiday' ? markDayForm.holidayName : undefined
       );
       
       // Update local state
@@ -274,21 +292,13 @@ export function HolidayCalendar({
       newDayTypes.set(markDayForm.date, markDayForm.dayType);
       setDayTypes(newDayTypes);
       
-      // If marking as holiday with a name, also add to holidays table
       if (markDayForm.dayType === 'holiday' && markDayForm.holidayName) {
-        const year = parseInt(markDayForm.date.split('-')[0]);
-        onAddHoliday({
-          name: markDayForm.holidayName,
-          date: markDayForm.date,
-          end_date: '',
-          description: markDayForm.description,
-          holiday_type: calendarType === 'institution' ? 'institution' : 'company',
-          year,
-          is_paid: true
-        });
+        const newDescriptions = new Map(dayDescriptions);
+        newDescriptions.set(markDayForm.date, markDayForm.holidayName);
+        setDayDescriptions(newDescriptions);
       }
       
-      toast.success(`Day marked as ${DAY_TYPE_LABELS[markDayForm.dayType]}`);
+      toast.success(`Day marked as ${DAY_TYPE_COLORS[markDayForm.dayType].label}`);
       setIsMarkDayDialogOpen(false);
     } catch (error) {
       toast.error('Failed to mark day');
@@ -309,7 +319,6 @@ export function HolidayCalendar({
         calendarType === 'institution' ? institutionId : undefined
       );
       
-      // Refresh day types
       const types = await calendarDayTypeService.getDayTypesForRange(
         calendarType,
         year - 1,
@@ -324,61 +333,26 @@ export function HolidayCalendar({
     }
   };
 
-  const openAddDialog = (date?: Date) => {
-    setEditingHoliday(null);
-    setFormData({
-      name: '',
-      date: date ? format(date, 'yyyy-MM-dd') : '',
-      end_date: '',
-      description: '',
-      holiday_type: allowedTypes[0],
-      year: date ? date.getFullYear() : currentDate.getFullYear(),
-      is_paid: true
+  // Calculate monthly stats
+  const monthStats = useMemo(() => {
+    let workingDays = 0;
+    let weekends = 0;
+    let holidays = 0;
+    
+    const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+    monthDays.forEach(day => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const type = dayTypes.get(dateStr);
+      if (type === 'working') workingDays++;
+      else if (type === 'weekend') weekends++;
+      else if (type === 'holiday') holidays++;
     });
-    setIsDialogOpen(true);
-  };
-
-  const openEditDialog = (holiday: Holiday) => {
-    setEditingHoliday(holiday);
-    setFormData({
-      name: holiday.name,
-      date: holiday.date,
-      end_date: holiday.end_date || '',
-      description: holiday.description || '',
-      holiday_type: holiday.holiday_type,
-      year: holiday.year,
-      is_paid: holiday.is_paid
-    });
-    setIsDialogOpen(true);
-  };
-
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false);
-    setEditingHoliday(null);
-    setSelectedDate(null);
-  };
-
-  const handleSubmit = () => {
-    if (!formData.name || !formData.date) return;
-    const year = parseInt(formData.date.split('-')[0]);
-    const submitData = { ...formData, year };
-
-    if (editingHoliday) {
-      onUpdateHoliday(editingHoliday.id, submitData);
-    } else {
-      onAddHoliday(submitData);
-    }
-    handleCloseDialog();
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm('Delete this holiday?')) {
-      onDeleteHoliday(id);
-    }
-  };
+    
+    return { workingDays, weekends, holidays, total: monthDays.length };
+  }, [dayTypes, monthStart, monthEnd]);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr,300px]">
+    <div className="grid gap-6 lg:grid-cols-[1fr,280px]">
       {/* Main Calendar */}
       <Card className="overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-muted/30">
@@ -411,12 +385,6 @@ export function HolidayCalendar({
                 </Button>
               </>
             )}
-            {!enableDayTypeMarking && (
-              <Button onClick={() => openAddDialog()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Holiday
-              </Button>
-            )}
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -439,11 +407,11 @@ export function HolidayCalendar({
               {weeks.map((week, weekIndex) => (
                 <div key={weekIndex} className="grid grid-cols-7 border-b last:border-b-0">
                   {week.map((day, dayIndex) => {
-                    const dayHolidays = getHolidaysForDay(day);
                     const isCurrentMonth = isSameMonth(day, currentDate);
                     const isToday = isSameDay(day, new Date());
                     const isSelected = selectedDate && isSameDay(day, selectedDate);
                     const dayType = getDayTypeForDate(day);
+                    const holidayDesc = getHolidayDescription(day);
                     
                     // Get background color based on day type
                     let dayTypeBg = '';
@@ -460,15 +428,14 @@ export function HolidayCalendar({
                         onClick={() => handleDayClick(day)}
                         onContextMenu={(e) => handleDayTypeToggle(day, e)}
                         className={cn(
-                          "min-h-[100px] p-1 border-r last:border-r-0 cursor-pointer transition-colors",
-                          !isCurrentMonth && "bg-muted/20 text-muted-foreground",
+                          "min-h-[90px] p-2 border-r last:border-r-0 cursor-pointer transition-colors",
+                          !isCurrentMonth && "bg-muted/20 text-muted-foreground opacity-50",
                           isSelected && "ring-2 ring-primary ring-inset",
-                          dayHolidays.length > 0 && isCurrentMonth && !dayType && "bg-accent/30",
                           dayTypeBg,
                           dayTypeBorder,
                           "hover:opacity-80"
                         )}
-                        title={enableDayTypeMarking ? "Right-click to toggle day type" : undefined}
+                        title={enableDayTypeMarking ? "Click to edit, right-click to toggle" : undefined}
                       >
                         <div className="flex items-center justify-between mb-1">
                           <div className={cn(
@@ -481,42 +448,24 @@ export function HolidayCalendar({
                             <Badge 
                               variant="outline" 
                               className={cn(
-                                "text-[10px] px-1 py-0 h-4",
-                                DAY_TYPE_COLORS[dayType].text
+                                "text-[10px] px-1.5 py-0 h-5",
+                                DAY_TYPE_COLORS[dayType].text,
+                                DAY_TYPE_COLORS[dayType].bg
                               )}
                             >
-                              {dayType === 'working' ? 'W' : dayType === 'weekend' ? 'WE' : 'H'}
+                              {dayType === 'working' ? 'Work' : dayType === 'weekend' ? 'Off' : 'Holiday'}
                             </Badge>
                           )}
                         </div>
-                        <div className="space-y-1">
-                          {dayHolidays.slice(0, 2).map(holiday => {
-                            const colors = HOLIDAY_COLORS[holiday.holiday_type];
-                            return (
-                              <div
-                                key={holiday.id}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openEditDialog(holiday);
-                                }}
-                                className={cn(
-                                  "text-xs px-1.5 py-0.5 rounded truncate border-l-2",
-                                  colors.bg,
-                                  colors.text,
-                                  colors.border
-                                )}
-                                title={holiday.name}
-                              >
-                                {holiday.name}
-                              </div>
-                            );
-                          })}
-                          {dayHolidays.length > 2 && (
-                            <div className="text-xs text-muted-foreground px-1">
-                              +{dayHolidays.length - 2} more
-                            </div>
-                          )}
-                        </div>
+                        {/* Show holiday name if marked as holiday */}
+                        {dayType === 'holiday' && holidayDesc && isCurrentMonth && (
+                          <div className={cn(
+                            "text-xs px-1.5 py-0.5 rounded truncate mt-1",
+                            DAY_TYPE_COLORS.holiday.text
+                          )}>
+                            {holidayDesc}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -529,11 +478,33 @@ export function HolidayCalendar({
 
       {/* Sidebar */}
       <div className="space-y-4">
+        {/* Monthly Stats */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">This Month</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-3">
+            <div className="text-center p-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
+              <p className="text-xl font-bold text-emerald-700 dark:text-emerald-300">{monthStats.workingDays}</p>
+              <p className="text-xs text-muted-foreground">Working Days</p>
+            </div>
+            <div className="text-center p-2 rounded-lg bg-slate-100 dark:bg-slate-800/50">
+              <p className="text-xl font-bold text-slate-600 dark:text-slate-400">{monthStats.weekends}</p>
+              <p className="text-xs text-muted-foreground">Weekends</p>
+            </div>
+            <div className="text-center p-2 rounded-lg bg-rose-50 dark:bg-rose-900/20 col-span-2">
+              <p className="text-xl font-bold text-rose-700 dark:text-rose-300">{monthStats.holidays}</p>
+              <p className="text-xs text-muted-foreground">Holidays</p>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Day Type Legend */}
         {enableDayTypeMarking && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Day Types (Right-click to toggle)</CardTitle>
+              <CardTitle className="text-sm">Day Types</CardTitle>
+              <p className="text-xs text-muted-foreground">Click to edit, right-click to toggle</p>
             </CardHeader>
             <CardContent className="space-y-2">
               {(['working', 'weekend', 'holiday'] as CalendarDayType[]).map(type => {
@@ -541,31 +512,13 @@ export function HolidayCalendar({
                 return (
                   <div key={type} className="flex items-center gap-2">
                     <div className={cn("w-4 h-4 rounded border-l-4", colors.bg, colors.border)} />
-                    <span className="text-sm">{DAY_TYPE_LABELS[type]}</span>
+                    <span className="text-sm">{colors.label}</span>
                   </div>
                 );
               })}
             </CardContent>
           </Card>
         )}
-
-        {/* Holiday Types Legend */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Holiday Types</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {allowedTypes.map(type => {
-              const colors = HOLIDAY_COLORS[type];
-              return (
-                <div key={type} className="flex items-center gap-2">
-                  <div className={cn("w-3 h-3 rounded", colors.bg, colors.border, "border-l-2")} />
-                  <span className="text-sm">{HOLIDAY_TYPE_LABELS[type]}</span>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
 
         {/* Upcoming Holidays */}
         <Card>
@@ -576,33 +529,22 @@ export function HolidayCalendar({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[200px]">
+            <ScrollArea className="h-[180px]">
               {upcomingHolidays.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No upcoming holidays</p>
               ) : (
-                <div className="space-y-3">
-                  {upcomingHolidays.map(holiday => {
-                    const colors = HOLIDAY_COLORS[holiday.holiday_type];
-                    return (
-                      <div
-                        key={holiday.id}
-                        className={cn(
-                          "p-3 rounded-lg border-l-4 cursor-pointer hover:bg-muted/50 transition-colors",
-                          colors.bg,
-                          colors.border
-                        )}
-                        onClick={() => openEditDialog(holiday)}
-                      >
-                        <p className={cn("font-medium text-sm", colors.text)}>{holiday.name}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {format(parseISO(holiday.date), 'EEE, MMM d, yyyy')}
-                          {holiday.end_date && holiday.end_date !== holiday.date && (
-                            <> - {format(parseISO(holiday.end_date), 'MMM d')}</>
-                          )}
-                        </p>
-                      </div>
-                    );
-                  })}
+                <div className="space-y-2">
+                  {upcomingHolidays.map((holiday, idx) => (
+                    <div
+                      key={idx}
+                      className="p-2 rounded-lg bg-rose-50 dark:bg-rose-900/20 border-l-4 border-rose-500"
+                    >
+                      <p className="font-medium text-sm text-rose-700 dark:text-rose-300">{holiday.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {format(parseISO(holiday.date), 'EEE, MMM d, yyyy')}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               )}
             </ScrollArea>
@@ -610,89 +552,7 @@ export function HolidayCalendar({
         </Card>
       </div>
 
-      {/* Add/Edit Holiday Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingHoliday ? 'Edit Holiday' : 'Add Holiday'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Holiday Name *</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Diwali, Christmas"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Start Date *</Label>
-                <Input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>End Date</Label>
-                <Input
-                  type="date"
-                  value={formData.end_date}
-                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Type</Label>
-              <Select 
-                value={formData.holiday_type} 
-                onValueChange={(v) => setFormData({ ...formData, holiday_type: v as HolidayType })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {allowedTypes.map(type => (
-                    <SelectItem key={type} value={type}>{HOLIDAY_TYPE_LABELS[type]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Paid Holiday</Label>
-              <Switch
-                checked={formData.is_paid}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_paid: checked })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Optional description"
-                rows={2}
-              />
-            </div>
-          </div>
-          <DialogFooter className="flex gap-2">
-            {editingHoliday && (
-              <Button variant="destructive" onClick={() => handleDelete(editingHoliday.id)} disabled={isMutating}>
-                <Trash2 className="h-4 w-4 mr-1" />
-                Delete
-              </Button>
-            )}
-            <div className="flex-1" />
-            <Button variant="outline" onClick={handleCloseDialog}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={isMutating || !formData.name || !formData.date}>
-              {editingHoliday ? 'Update' : 'Add'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Mark Day Dialog */}
+      {/* Mark Day Dialog - Simplified to 3 types */}
       <Dialog open={isMarkDayDialogOpen} onOpenChange={setIsMarkDayDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -714,9 +574,6 @@ export function HolidayCalendar({
                 {(['working', 'weekend', 'holiday'] as CalendarDayType[]).map(type => {
                   const colors = DAY_TYPE_COLORS[type];
                   const isSelected = markDayForm.dayType === type;
-                  const label = type === 'holiday' 
-                    ? (calendarType === 'institution' ? 'Institution Holiday' : 'Company Holiday')
-                    : DAY_TYPE_LABELS[type];
                   return (
                     <button
                       key={type}
@@ -725,12 +582,12 @@ export function HolidayCalendar({
                       className={cn(
                         "p-3 rounded-lg border-2 transition-all text-center",
                         colors.bg,
-                        isSelected ? `${colors.border} ring-2 ring-offset-2` : "border-transparent",
+                        isSelected ? `border-primary ring-2 ring-primary ring-offset-2` : "border-transparent",
                         "hover:opacity-80"
                       )}
                     >
                       <div className={cn("text-sm font-medium", colors.text)}>
-                        {label}
+                        {colors.label}
                       </div>
                     </button>
                   );
@@ -739,25 +596,17 @@ export function HolidayCalendar({
             </div>
 
             {markDayForm.dayType === 'holiday' && (
-              <>
-                <div className="space-y-2">
-                  <Label>Holiday Name (Optional)</Label>
-                  <Input
-                    value={markDayForm.holidayName}
-                    onChange={(e) => setMarkDayForm({ ...markDayForm, holidayName: e.target.value })}
-                    placeholder="e.g., Diwali, Christmas"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Description (Optional)</Label>
-                  <Textarea
-                    value={markDayForm.description}
-                    onChange={(e) => setMarkDayForm({ ...markDayForm, description: e.target.value })}
-                    placeholder="Optional description"
-                    rows={2}
-                  />
-                </div>
-              </>
+              <div className="space-y-2">
+                <Label>Holiday Name / Description</Label>
+                <Input
+                  value={markDayForm.holidayName}
+                  onChange={(e) => setMarkDayForm({ ...markDayForm, holidayName: e.target.value })}
+                  placeholder="e.g., Diwali, Christmas, School Annual Day"
+                />
+                <p className="text-xs text-muted-foreground">
+                  This description will be shown on the calendar
+                </p>
+              </div>
             )}
           </div>
           <DialogFooter>

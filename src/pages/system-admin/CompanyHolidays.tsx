@@ -64,8 +64,8 @@ export default function CompanyHolidays() {
         <div className="flex items-center gap-3 mb-6">
           <Building2 className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold">Company Holidays</h1>
-            <p className="text-muted-foreground">Manage holiday calendar for Meta staff</p>
+            <h1 className="text-2xl font-bold">Company Calendar</h1>
+            <p className="text-muted-foreground">Manage working days, weekends, and holidays for Meta staff payroll</p>
           </div>
         </div>
 
@@ -75,8 +75,7 @@ export default function CompanyHolidays() {
           onAddHoliday={(data) => createMutation.mutate(data)}
           onUpdateHoliday={(id, data) => updateMutation.mutate({ id, data })}
           onDeleteHoliday={(id) => deleteMutation.mutate(id)}
-          allowedTypes={['company', 'national', 'optional']}
-          title="Company Holiday Calendar"
+          title="Company Calendar"
           isMutating={createMutation.isPending || updateMutation.isPending || deleteMutation.isPending}
           onYearChange={setSelectedYear}
           calendarType="company"

@@ -108,27 +108,32 @@ export default function InstitutionalCalendar() {
           <div className="flex items-center gap-3">
             <Calendar className="h-8 w-8 text-primary" />
             <div>
-              <h1 className="text-2xl font-bold">Holiday Calendar</h1>
-              <p className="text-muted-foreground">Manage company and institution holidays</p>
+              <h1 className="text-2xl font-bold">Calendar Management</h1>
+              <p className="text-muted-foreground">Manage working days, weekends, and holidays</p>
             </div>
           </div>
         </div>
 
         <Tabs defaultValue="company" className="space-y-6">
           <TabsList className="grid w-full grid-cols-2 max-w-md">
-            <TabsTrigger value="company">Company Holidays</TabsTrigger>
-            <TabsTrigger value="institution">Institution Holidays</TabsTrigger>
+            <TabsTrigger value="company">Company Calendar</TabsTrigger>
+            <TabsTrigger value="institution">Institution Calendar</TabsTrigger>
           </TabsList>
 
           <TabsContent value="company">
+            <div className="mb-4 p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground">
+                <strong>Company Calendar</strong> is used for Staff payroll calculations. 
+                Mark working days, weekends, and company holidays here.
+              </p>
+            </div>
             <HolidayCalendar
               holidays={companyHolidays}
               isLoading={loadingCompanyHolidays}
               onAddHoliday={(data) => createCompanyMutation.mutate(data)}
               onUpdateHoliday={(id, data) => updateCompanyMutation.mutate({ id, data })}
               onDeleteHoliday={(id) => deleteCompanyMutation.mutate(id)}
-              allowedTypes={['company', 'national', 'optional']}
-              title="Company Holiday Calendar"
+              title="Company Calendar"
               isMutating={createCompanyMutation.isPending || updateCompanyMutation.isPending || deleteCompanyMutation.isPending}
               calendarType="company"
               enableDayTypeMarking={true}
@@ -136,6 +141,13 @@ export default function InstitutionalCalendar() {
           </TabsContent>
 
           <TabsContent value="institution">
+            <div className="mb-4 p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground">
+                <strong>Institution Calendar</strong> is used for Innovation Officers payroll calculations. 
+                Each institution can have its own calendar for academic holidays and working days.
+              </p>
+            </div>
+            
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-2">
                 <Building2 className="h-5 w-5 text-muted-foreground" />
@@ -169,7 +181,7 @@ export default function InstitutionalCalendar() {
                 <Building2 className="h-16 w-16 text-muted-foreground/50 mb-4" />
                 <h2 className="text-xl font-semibold text-muted-foreground">Select an Institution</h2>
                 <p className="text-muted-foreground mt-2 max-w-md">
-                  Choose an institution from the dropdown above to view and manage its holiday calendar
+                  Choose an institution from the dropdown above to manage its calendar
                 </p>
               </div>
             ) : (
@@ -179,8 +191,7 @@ export default function InstitutionalCalendar() {
                 onAddHoliday={(data) => createInstitutionMutation.mutate(data)}
                 onUpdateHoliday={(id, data) => updateInstitutionMutation.mutate({ id, data })}
                 onDeleteHoliday={(id) => deleteInstitutionMutation.mutate(id)}
-                allowedTypes={['institution', 'academic', 'exam']}
-                title={`${selectedInstitution?.name || 'Institution'} Holidays`}
+                title={`${selectedInstitution?.name || 'Institution'} Calendar`}
                 isMutating={createInstitutionMutation.isPending || updateInstitutionMutation.isPending || deleteInstitutionMutation.isPending}
                 calendarType="institution"
                 institutionId={selectedInstitutionId}
