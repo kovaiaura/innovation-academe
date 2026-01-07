@@ -490,17 +490,12 @@ export const leaveApplicationService = {
       substitute_assignments: parseSubstituteAssignments(data.substitute_assignments)
     };
 
-    // Update leave balance when leave is finally approved
+    // Update leave balance when leave is finally approved using backend function
     if (isFinalApproval) {
       try {
-        await leaveBalanceService.updateBalanceOnApproval(
-          result.applicant_id,
-          result.applicant_type,
-          result.officer_id || null,
-          result.start_date,
-          result.leave_type,
-          result.paid_days
-        );
+        await supabase.rpc('apply_leave_application_to_balance', {
+          p_application_id: result.id
+        });
       } catch (balanceError) {
         console.error('Failed to update leave balance:', balanceError);
       }
