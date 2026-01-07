@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
 export type CalendarDayType = 'working' | 'weekend' | 'holiday';
 export type CalendarType = 'company' | 'institution';
@@ -23,7 +24,7 @@ export const getDayTypesForMonth = async (
   institutionId?: string
 ): Promise<Map<string, CalendarDayType>> => {
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-  const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+  const endDate = format(new Date(year, month, 0), 'yyyy-MM-dd');
   
   let query = supabase
     .from('calendar_day_types')
@@ -181,7 +182,7 @@ export const quickSetupMonth = async (
   const dayTypes: { date: string; day_type: CalendarDayType }[] = [];
   
   for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = format(d, 'yyyy-MM-dd');
     const dayOfWeek = d.getDay();
     
     if (dayOfWeek === 0 || dayOfWeek === 6) {
