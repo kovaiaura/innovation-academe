@@ -370,7 +370,7 @@ export function CertificateTemplateDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="course">Course Completion</SelectItem>
-                    <SelectItem value="module">Module Completion</SelectItem>
+                    <SelectItem value="level">Level Completion</SelectItem>
                     <SelectItem value="assignment">Assignment</SelectItem>
                     <SelectItem value="assessment">Assessment</SelectItem>
                     <SelectItem value="event">Event Participation</SelectItem>

@@ -18,6 +18,8 @@ interface CertificateTemplate {
   default_height: number | null;
   name_position: any;
   date_position: any;
+  course_name_position?: any;
+  level_title_position?: any;
   is_active: boolean | null;
   created_at: string | null;
   created_by: string | null;
@@ -65,6 +67,8 @@ export function CertificateTemplateManager() {
             default_height: template.default_height,
             name_position: template.name_position,
             date_position: template.date_position,
+            course_name_position: template.course_name_position,
+            level_title_position: template.level_title_position,
             is_active: template.is_active
           })
           .eq('id', editingTemplate.id);
@@ -84,6 +88,8 @@ export function CertificateTemplateManager() {
             default_height: template.default_height || 900,
             name_position: template.name_position || { x: 600, y: 450, fontSize: 48, color: '#1e3a8a', fontFamily: 'serif' },
             date_position: template.date_position,
+            course_name_position: template.course_name_position,
+            level_title_position: template.level_title_position,
             is_active: template.is_active ?? true,
             created_by: user?.user?.id
           });
@@ -120,7 +126,8 @@ export function CertificateTemplateManager() {
   const getCategoryColor = (category: string) => {
     switch (category) {
       case 'course': return 'bg-blue-100 text-blue-800';
-      case 'module': return 'bg-cyan-100 text-cyan-800';
+      case 'module': 
+      case 'level': return 'bg-cyan-100 text-cyan-800';
       case 'assignment': return 'bg-green-100 text-green-800';
       case 'assessment': return 'bg-purple-100 text-purple-800';
       case 'event': return 'bg-orange-100 text-orange-800';
@@ -146,7 +153,7 @@ export function CertificateTemplateManager() {
             <div>
               <CardTitle>Certificate Templates</CardTitle>
               <CardDescription>
-                Upload and manage certificate templates for courses, modules, assessments, and events
+                Upload and manage certificate templates for courses, levels, assessments, and events
               </CardDescription>
             </div>
             <Button onClick={() => { setEditingTemplate(undefined); setDialogOpen(true); }}>
@@ -193,7 +200,7 @@ export function CertificateTemplateManager() {
                       <TableCell className="font-medium">{template.name}</TableCell>
                       <TableCell>
                         <Badge className={getCategoryColor(template.category)} variant="secondary">
-                          {template.category}
+                          {template.category === 'module' ? 'level' : template.category}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">

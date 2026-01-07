@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.download-newsletter]
 verify_jwt = false
+
+[functions.issue-completion-certificates]
+verify_jwt = false

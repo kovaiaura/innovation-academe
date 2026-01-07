@@ -18,7 +18,9 @@ interface SessionCompletionResult {
     studentIds: string[],
     classAssignmentId: string,
     classId: string,
-    timetableAssignmentId?: string
+    timetableAssignmentId?: string,
+    moduleId?: string,
+    courseId?: string
   ) => Promise<boolean>;
   isLoading: boolean;
   error: string | null;
@@ -38,7 +40,9 @@ export function useSessionCompletion(): SessionCompletionResult {
     studentIds: string[],
     classAssignmentId: string,
     classId: string,
-    timetableAssignmentId?: string
+    timetableAssignmentId?: string,
+    moduleId?: string,
+    courseId?: string
   ): Promise<boolean> => {
     if (studentIds.length === 0) {
       toast.error('Please select at least one student');
@@ -85,6 +89,11 @@ export function useSessionCompletion(): SessionCompletionResult {
       // 4. Also create/update class_session_attendance for management dashboard
       await createAttendanceRecord(classId, studentIds, sessionId, timetableAssignmentId);
 
+      // 5. Trigger certificate issuance via edge function (if module/course info available)
+      if (moduleId && courseId) {
+        await triggerCertificateIssuance(studentIds, classAssignmentId, moduleId, courseId);
+      }
+
       toast.success(
         `Session marked complete for ${studentIds.length} student${studentIds.length > 1 ? 's' : ''}`
       );
@@ -100,6 +109,52 @@ export function useSessionCompletion(): SessionCompletionResult {
   };
 
   return { markSessionComplete, isLoading, error };
+}
+
+/**
+ * Triggers certificate issuance via edge function for each student
+ */
+async function triggerCertificateIssuance(
+  studentRecordIds: string[],
+  classAssignmentId: string,
+  moduleId: string,
+  courseId: string
+) {
+  try {
+    // Get student user IDs (profiles.id) for each student record
+    const { data: students } = await supabase
+      .from('students')
+      .select('id, user_id, institution_id')
+      .in('id', studentRecordIds);
+
+    if (!students || students.length === 0) return;
+
+    // Call edge function for each student
+    for (const student of students) {
+      if (!student.user_id) continue; // Skip students without linked user accounts
+
+      try {
+        const { error } = await supabase.functions.invoke('issue-completion-certificates', {
+          body: {
+            studentRecordId: student.id,
+            studentUserId: student.user_id,
+            classAssignmentId,
+            courseId,
+            moduleId,
+            institutionId: student.institution_id
+          }
+        });
+
+        if (error) {
+          console.error('Failed to issue certificate for student:', student.id, error);
+        }
+      } catch (err) {
+        console.error('Error calling certificate edge function for student:', student.id, err);
+      }
+    }
+  } catch (err) {
+    console.error('Error in triggerCertificateIssuance:', err);
+  }
 }
 
 /**

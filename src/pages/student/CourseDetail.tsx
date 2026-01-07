@@ -38,12 +38,14 @@ export default function StudentCourseDetail() {
   const course = courseAssignment?.course;
   const modules = courseAssignment?.modules || [];
 
-  // Auto-issue certificates when levels are completed (using student record ID)
+  // Auto-issue certificates when levels are completed
   const { recheckCertificates } = useLevelCompletionCertificate(
-    studentRecord?.id,
+    studentRecord?.id,     // studentRecordId
     modules,
     user?.institution_id,
-    course?.title
+    course?.title,
+    courseId,              // courseId
+    courseAssignment?.id   // classAssignmentId (course_class_assignments.id)
   );
 
   // Recheck certificates whenever modules completion status changes
