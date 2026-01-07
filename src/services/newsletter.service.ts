@@ -7,6 +7,7 @@ export interface Newsletter {
   id: string;
   title: string;
   pdf_url: string;
+  file_path: string | null;
   file_name: string;
   file_size: number | null;
   status: NewsletterStatus;
@@ -57,12 +58,13 @@ export async function uploadNewsletter(data: CreateNewsletterData): Promise<News
     .from('newsletters')
     .getPublicUrl(filePath);
   
-  // Create newsletter record
+  // Create newsletter record with file_path for Edge Function
   const { data: newsletter, error } = await supabase
     .from('newsletters')
     .insert({
       title,
       pdf_url: publicUrlData.publicUrl,
+      file_path: filePath,
       file_name: file.name,
       file_size: file.size,
       target_audience,
@@ -165,18 +167,17 @@ export async function incrementDownloadCount(id: string): Promise<void> {
   if (error) throw error;
 }
 
-// Download newsletter (returns URL and increments count)
-export async function downloadNewsletter(id: string): Promise<string> {
-  const { data: newsletter, error } = await supabase
-    .from('newsletters')
-    .select('pdf_url')
-    .eq('id', id)
-    .single();
+// Download newsletter via Edge Function (hides storage URL)
+export async function downloadNewsletter(id: string): Promise<void> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const downloadUrl = `${supabaseUrl}/functions/v1/download-newsletter?id=${id}`;
   
-  if (error) throw error;
-  
-  // Increment download count
-  await incrementDownloadCount(id);
-  
-  return newsletter.pdf_url;
+  // Create anchor element for download
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }

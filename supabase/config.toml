@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.delete-class-cascade]
 verify_jwt = false
+
+[functions.download-newsletter]
+verify_jwt = false

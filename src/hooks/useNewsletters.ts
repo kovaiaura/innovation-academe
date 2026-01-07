@@ -100,9 +100,8 @@ export function useNewsletterMutations() {
   
   const download = useMutation({
     mutationFn: downloadNewsletter,
-    onSuccess: (pdfUrl) => {
-      // Open PDF in new tab or trigger download
-      window.open(pdfUrl, '_blank');
+    onSuccess: () => {
+      // Invalidate queries to update download count
       queryClient.invalidateQueries({ queryKey: ['newsletters'] });
       queryClient.invalidateQueries({ queryKey: ['published-newsletters'] });
     },
