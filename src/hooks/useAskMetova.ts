@@ -33,9 +33,32 @@ export function useAskMetova(role: Role) {
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>();
   const [currentMessages, setCurrentMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAIDisabled, setIsAIDisabled] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const storageKey = STORAGE_KEYS[role];
+
+  // Check AI enabled status on mount
+  useEffect(() => {
+    checkAIStatus();
+  }, []);
+
+  const checkAIStatus = async () => {
+    try {
+      const { data } = await supabase
+        .from('system_configurations')
+        .select('value')
+        .eq('key', 'ask_metova_settings')
+        .single();
+
+      if (data?.value) {
+        const settings = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        setIsAIDisabled(!settings.enabled);
+      }
+    } catch (e) {
+      console.error('Error checking AI status:', e);
+    }
+  };
 
   // Load conversations from localStorage
   useEffect(() => {
@@ -88,6 +111,18 @@ export function useAskMetova(role: Role) {
   }, [storageKey]);
 
   const sendMessage = useCallback(async (content: string) => {
+    // Check if AI is disabled before sending
+    if (isAIDisabled) {
+      const disabledMessage: ChatMessage = {
+        id: `msg-${Date.now()}-disabled`,
+        role: 'assistant',
+        content: '🚫 **AI Assistant is Currently Disabled**\n\nThe AI assistant has been temporarily disabled by the administrator. Please try again later or contact your system administrator for more information.',
+        timestamp: new Date().toISOString()
+      };
+      setCurrentMessages([...currentMessages, disabledMessage]);
+      return;
+    }
+
     const userMessage: ChatMessage = {
       id: `msg-${Date.now()}`,
       role: 'user',
@@ -111,6 +146,19 @@ export function useAskMetova(role: Role) {
 
       if (error) {
         throw new Error(error.message || 'Failed to get response');
+      }
+
+      // Check if AI is disabled from the response
+      if (data?.disabled) {
+        setIsAIDisabled(true);
+        const disabledMessage: ChatMessage = {
+          id: `msg-${Date.now()}-disabled`,
+          role: 'assistant',
+          content: '🚫 **AI Assistant is Currently Disabled**\n\nThe AI assistant has been temporarily disabled by the administrator. Please try again later or contact your system administrator for more information.',
+          timestamp: new Date().toISOString()
+        };
+        setCurrentMessages([...messagesWithUser, disabledMessage]);
+        return;
       }
 
       if (data?.error) {
@@ -159,13 +207,14 @@ export function useAskMetova(role: Role) {
     } finally {
       setIsLoading(false);
     }
-  }, [currentMessages, role, user?.id, activeConversationId, conversations, storageKey]);
+  }, [currentMessages, role, user?.id, activeConversationId, conversations, storageKey, isAIDisabled]);
 
   return {
     conversations,
     activeConversationId,
     currentMessages,
     isLoading,
+    isAIDisabled,
     scrollAreaRef,
     sendMessage,
     handleNewChat,

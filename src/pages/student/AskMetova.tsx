@@ -4,6 +4,7 @@ import { ChatMessage } from "@/components/student/ChatMessage";
 import { ChatInput } from "@/components/student/ChatInput";
 import { ChatSidebar } from "@/components/student/ChatSidebar";
 import { TypingIndicator } from "@/components/student/TypingIndicator";
+import { AIDisabledBanner } from "@/components/ask-metova/AIDisabledBanner";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { PanelLeftClose, PanelLeft } from "lucide-react";
@@ -18,6 +19,7 @@ export default function AskMetova() {
     activeConversationId,
     currentMessages,
     isLoading,
+    isAIDisabled,
     scrollAreaRef,
     sendMessage,
     handleNewChat,
@@ -60,6 +62,12 @@ export default function AskMetova() {
             </div>
           </div>
 
+          {isAIDisabled && (
+            <div className="px-6 pt-4">
+              <AIDisabledBanner />
+            </div>
+          )}
+
           <ScrollArea ref={scrollAreaRef} className="flex-1 p-6">
             <div className="max-w-4xl mx-auto space-y-6">
               {currentMessages.length === 0 ? (
@@ -86,7 +94,14 @@ export default function AskMetova() {
             </div>
           </ScrollArea>
 
-          <ChatInput onSend={sendMessage} disabled={isLoading} />
+          <div className="border-t p-4 bg-background">
+            <ChatInput onSend={sendMessage} disabled={isLoading || isAIDisabled} />
+            {isAIDisabled && (
+              <p className="text-xs text-destructive text-center mt-2">
+                AI Assistant is currently disabled by the administrator.
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </Layout>

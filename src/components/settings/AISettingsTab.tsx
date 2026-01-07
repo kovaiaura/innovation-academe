@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Save, Bot, Key, AlertTriangle, CheckCircle, Eye, EyeOff } from 'lucide-react';
+import { Save, Bot, Key, AlertTriangle, CheckCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -27,6 +27,7 @@ export function AISettingsTab() {
   const [settings, setSettings] = useState<AISettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [togglingAI, setTogglingAI] = useState(false);
   const [apiKeyType, setApiKeyType] = useState<'default' | 'custom'>('default');
   const [showApiKey, setShowApiKey] = useState(false);
 
@@ -56,6 +57,45 @@ export function AISettingsTab() {
       console.error('Error parsing AI settings:', e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Immediate save when toggling AI on/off
+  const handleToggleAI = async (checked: boolean) => {
+    setTogglingAI(true);
+    const newSettings = { ...settings, enabled: checked };
+    setSettings(newSettings);
+    
+    try {
+      const { error } = await supabase
+        .from('system_configurations')
+        .upsert({
+          key: 'ask_metova_settings',
+          value: newSettings,
+          category: 'features',
+          description: 'Ask Metova AI integration settings'
+        }, { onConflict: 'key' });
+
+      if (error) throw error;
+
+      // Also sync with feature_ai for consistency
+      await supabase
+        .from('system_configurations')
+        .upsert({
+          key: 'feature_ai',
+          value: { enabled: checked },
+          category: 'features',
+          description: 'AI Features toggle'
+        }, { onConflict: 'key' });
+
+      toast.success(checked ? 'AI Assistant enabled' : 'AI Assistant disabled');
+    } catch (e) {
+      console.error('Error toggling AI:', e);
+      toast.error('Failed to update AI status');
+      // Revert on error
+      setSettings({ ...settings, enabled: !checked });
+    } finally {
+      setTogglingAI(false);
     }
   };
 
@@ -128,10 +168,15 @@ export function AISettingsTab() {
                   Disabled
                 </Badge>
               )}
-              <Switch
-                checked={settings.enabled}
-                onCheckedChange={(checked) => setSettings({ ...settings, enabled: checked })}
-              />
+              {togglingAI ? (
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              ) : (
+                <Switch
+                  checked={settings.enabled}
+                  onCheckedChange={handleToggleAI}
+                  disabled={togglingAI}
+                />
+              )}
             </div>
           </div>
         </CardContent>

@@ -7,6 +7,7 @@ import { ChatInput } from '@/components/student/ChatInput';
 import { ChatMessage } from '@/components/student/ChatMessage';
 import { ChatSidebar } from '@/components/student/ChatSidebar';
 import { TypingIndicator } from '@/components/student/TypingIndicator';
+import { AIDisabledBanner } from '@/components/ask-metova/AIDisabledBanner';
 import { useAskMetova } from '@/hooks/useAskMetova';
 import { 
   BarChart3, 
@@ -28,6 +29,7 @@ export default function SystemAdminAskMetova() {
     activeConversationId,
     currentMessages,
     isLoading,
+    isAIDisabled,
     scrollAreaRef,
     sendMessage,
     handleNewChat,
@@ -91,8 +93,8 @@ export default function SystemAdminAskMetova() {
             {suggestedPrompts.map((item, index) => (
               <Card
                 key={index}
-                className="p-4 hover:bg-accent cursor-pointer transition-colors"
-                onClick={() => sendMessage(item.prompt)}
+                className={`p-4 transition-colors ${isAIDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent cursor-pointer'}`}
+                onClick={() => !isAIDisabled && sendMessage(item.prompt)}
               >
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2 text-primary">
@@ -158,6 +160,12 @@ export default function SystemAdminAskMetova() {
             </div>
           </div>
 
+          {isAIDisabled && (
+            <div className="px-6 pt-4">
+              <AIDisabledBanner />
+            </div>
+          )}
+
           <ScrollArea ref={scrollAreaRef} className="flex-1">
             <div className="p-6 space-y-6 max-w-4xl mx-auto">
               {currentMessages.length === 0 ? (
@@ -182,9 +190,11 @@ export default function SystemAdminAskMetova() {
 
           <div className="border-t p-4 bg-background">
             <div className="max-w-4xl mx-auto">
-              <ChatInput onSend={sendMessage} disabled={isLoading} />
+              <ChatInput onSend={sendMessage} disabled={isLoading || isAIDisabled} />
               <p className="text-xs text-muted-foreground text-center mt-2">
-                Ask Metova can generate reports and insights based on your data. Always verify important information.
+                {isAIDisabled 
+                  ? 'AI Assistant is currently disabled by the administrator.'
+                  : 'Ask Metova can generate reports and insights based on your data. Always verify important information.'}
               </p>
             </div>
           </div>

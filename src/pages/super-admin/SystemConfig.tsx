@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Settings, Plug, Database, Shield, HardDrive, RefreshCw, CheckCircle2, AlertTriangle, Clock, Paintbrush } from 'lucide-react';
 import { BrandingTab } from '@/components/system-config/BrandingTab';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   useStorageStats, 
   useDatabaseStats, 
@@ -251,17 +252,46 @@ export default function SystemConfig() {
               <CardContent className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label>AI Features</Label>
+                    <Label>AI Features (Ask Metova)</Label>
                     <p className="text-sm text-muted-foreground">
                       Enable AI-powered content generation and analysis
                     </p>
                   </div>
                   <Switch
                     checked={localConfig.feature_ai.enabled}
-                    onCheckedChange={(checked) => {
+                    onCheckedChange={async (checked) => {
                       const newValue = { enabled: checked };
                       setLocalConfig({ ...localConfig, feature_ai: newValue });
-                      handleSaveConfig('feature_ai', newValue);
+                      await handleSaveConfig('feature_ai', newValue);
+                      // Also sync with ask_metova_settings for consistency
+                      try {
+                        const { data } = await supabase
+                          .from('system_configurations')
+                          .select('value')
+                          .eq('key', 'ask_metova_settings')
+                          .single();
+                        
+                        const defaultSettings = { enabled: true, custom_api_key: '', model: 'gpt-4o-mini' };
+                        const currentSettings = data?.value 
+                          ? (typeof data.value === 'string' ? JSON.parse(data.value) : data.value)
+                          : defaultSettings;
+                        const updatedSettings = { 
+                          ...defaultSettings,
+                          ...(typeof currentSettings === 'object' ? currentSettings : {}),
+                          enabled: checked 
+                        };
+                        
+                        await supabase
+                          .from('system_configurations')
+                          .upsert({
+                            key: 'ask_metova_settings',
+                            value: updatedSettings,
+                            category: 'features',
+                            description: 'Ask Metova AI integration settings'
+                          }, { onConflict: 'key' });
+                      } catch (e) {
+                        console.error('Error syncing Ask Metova settings:', e);
+                      }
                     }}
                   />
                 </div>
