@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Task } from '@/types/task';
+import { getNotificationLink } from './notificationLink.service';
 
 export type TaskNotificationType =
   | 'task_assigned'
@@ -55,13 +56,15 @@ function getRecipientRole(assignedToRole?: string): 'officer' | 'system_admin' |
  * Send notification when a task is assigned to someone
  */
 export async function sendTaskAssignedNotification(task: Task): Promise<void> {
+  const recipientRole = getRecipientRole(task.assigned_to_role);
+  
   await createNotification({
     recipientId: task.assigned_to_id,
-    recipientRole: getRecipientRole(task.assigned_to_role),
+    recipientRole,
     type: 'task_assigned',
     title: 'New Task Assigned',
     message: `You have been assigned a new task: "${task.title}" by ${task.created_by_name}`,
-    link: '/tasks',
+    link: getNotificationLink(recipientRole, '/tasks'),
     metadata: {
       task_id: task.id,
       task_title: task.title,
@@ -88,7 +91,7 @@ export async function sendTaskStatusChangeNotification(
     type: 'task_status_changed',
     title: 'Task Status Updated',
     message: `Task "${task.title}" status changed from ${formatStatus(oldStatus)} to ${formatStatus(newStatus)} by ${changedByName}`,
-    link: '/system-admin/task-management',
+    link: getNotificationLink('system_admin', '/task-management'),
     metadata: {
       task_id: task.id,
       task_title: task.title,
@@ -116,7 +119,9 @@ export async function sendTaskCommentNotification(
   const recipientRole = isCommenterCreator 
     ? getRecipientRole(task.assigned_to_role) 
     : 'system_admin';
-  const link = isCommenterCreator ? '/tasks' : '/system-admin/task-management';
+  const link = isCommenterCreator 
+    ? getNotificationLink(recipientRole, '/tasks') 
+    : getNotificationLink('system_admin', '/task-management');
 
   await createNotification({
     recipientId,
@@ -145,7 +150,7 @@ export async function sendTaskSubmittedNotification(task: Task, submitterName: s
     type: 'task_submitted',
     title: 'Task Submitted for Approval',
     message: `${submitterName} has submitted task "${task.title}" for your approval`,
-    link: '/system-admin/task-management',
+    link: getNotificationLink('system_admin', '/task-management'),
     metadata: {
       task_id: task.id,
       task_title: task.title,
@@ -162,13 +167,15 @@ export async function sendTaskApprovedNotification(
   task: Task,
   approverName: string
 ): Promise<void> {
+  const recipientRole = getRecipientRole(task.assigned_to_role);
+  
   await createNotification({
     recipientId: task.assigned_to_id,
-    recipientRole: getRecipientRole(task.assigned_to_role),
+    recipientRole,
     type: 'task_approved',
     title: 'Task Approved',
     message: `Your task "${task.title}" has been approved by ${approverName}`,
-    link: '/tasks',
+    link: getNotificationLink(recipientRole, '/tasks'),
     metadata: {
       task_id: task.id,
       task_title: task.title,
@@ -186,13 +193,15 @@ export async function sendTaskRejectedNotification(
   rejectorName: string,
   reason: string
 ): Promise<void> {
+  const recipientRole = getRecipientRole(task.assigned_to_role);
+  
   await createNotification({
     recipientId: task.assigned_to_id,
-    recipientRole: getRecipientRole(task.assigned_to_role),
+    recipientRole,
     type: 'task_rejected',
     title: 'Task Rejected',
     message: `Your task "${task.title}" was rejected by ${rejectorName}. Reason: ${reason.substring(0, 50)}${reason.length > 50 ? '...' : ''}`,
-    link: '/tasks',
+    link: getNotificationLink(recipientRole, '/tasks'),
     metadata: {
       task_id: task.id,
       task_title: task.title,
@@ -207,13 +216,15 @@ export async function sendTaskRejectedNotification(
  * Send notification when task is due soon (within 24 hours)
  */
 export async function sendTaskDueSoonNotification(task: Task): Promise<void> {
+  const recipientRole = getRecipientRole(task.assigned_to_role);
+  
   await createNotification({
     recipientId: task.assigned_to_id,
-    recipientRole: getRecipientRole(task.assigned_to_role),
+    recipientRole,
     type: 'task_due_soon',
     title: 'Task Due Soon',
     message: `Task "${task.title}" is due within 24 hours`,
-    link: '/tasks',
+    link: getNotificationLink(recipientRole, '/tasks'),
     metadata: {
       task_id: task.id,
       task_title: task.title,
@@ -226,13 +237,15 @@ export async function sendTaskDueSoonNotification(task: Task): Promise<void> {
  * Send notification when task is overdue
  */
 export async function sendTaskOverdueNotification(task: Task): Promise<void> {
+  const recipientRole = getRecipientRole(task.assigned_to_role);
+  
   await createNotification({
     recipientId: task.assigned_to_id,
-    recipientRole: getRecipientRole(task.assigned_to_role),
+    recipientRole,
     type: 'task_overdue',
     title: 'Task Overdue',
     message: `Task "${task.title}" is overdue. Please complete it as soon as possible.`,
-    link: '/tasks',
+    link: getNotificationLink(recipientRole, '/tasks'),
     metadata: {
       task_id: task.id,
       task_title: task.title,

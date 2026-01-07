@@ -16,8 +16,10 @@ export type NotificationType =
   | 'leave_final_approved'
   | 'officer_on_leave'
   | 'substitute_assigned'
+  | 'substitute_info'
   | 'assignment_graded'
   | 'assessment_graded'
+  | 'assessment_scheduled'
   | 'new_assignment_published'
   | 'new_assessment_published'
   // Task-related notifications
@@ -28,7 +30,10 @@ export type NotificationType =
   | 'task_approved'
   | 'task_rejected'
   | 'task_due_soon'
-  | 'task_overdue';
+  | 'task_overdue'
+  // Inventory-related notifications
+  | 'purchase_request'
+  | 'inventory_issue';
 
 export interface Notification {
   id: string;
