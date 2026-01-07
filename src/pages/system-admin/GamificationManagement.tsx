@@ -25,6 +25,7 @@ import { StudentPerformanceTable } from "@/components/gamification/StudentPerfor
 import { StudentPerformanceModal } from "@/components/gamification/StudentPerformanceModal";
 import { LeaderboardConfigCard } from "@/components/gamification/LeaderboardConfigCard";
 import { CertificateTemplateManager } from "@/components/gamification/CertificateTemplateManager";
+import { StreakLeaderboard } from "@/components/gamification/StreakLeaderboard";
 import { gamificationDbService, DBBadge, DBXPRule } from "@/services/gamification-db.service";
 import { BadgeConfig, XPRule, StudentPerformance, LeaderboardConfig, GamificationStats, ActivityLog } from "@/types/gamification";
 import { toast } from "sonner";
@@ -405,6 +406,39 @@ export default function GamificationManagement() {
 
           {/* Tab 6: Leaderboards */}
           <TabsContent value="leaderboards" className="space-y-6">
+            {/* Streak Leaderboard */}
+            <div className="grid md:grid-cols-2 gap-6">
+              <StreakLeaderboard limit={10} />
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-primary" />
+                    XP Leaderboard
+                  </CardTitle>
+                  <CardDescription>Top students by total points</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {students.slice(0, 5).map((student, idx) => (
+                      <div key={student.student_id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-sm">#{idx + 1}</span>
+                          <div>
+                            <p className="font-medium text-sm">{student.student_name}</p>
+                            <p className="text-xs text-muted-foreground">{student.institution_name}</p>
+                          </div>
+                        </div>
+                        <Badge variant="secondary">{student.total_points} XP</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Institution Leaderboard Configs */}
+            <h3 className="text-lg font-semibold mt-6">Institution Leaderboard Configurations</h3>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {leaderboards.length === 0 && (
                 <Card className="col-span-full">
