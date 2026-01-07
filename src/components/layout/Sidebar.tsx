@@ -120,6 +120,7 @@ const menuItems: MenuItem[] = [
   // Officer menu items
   { label: 'Task', icon: <CheckSquare className="h-5 w-5" />, path: '/tasks', roles: ['officer'] },
   { label: 'My Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['officer'] },
+  { label: 'Institution Calendar', icon: <CalendarDays className="h-5 w-5" />, path: '/institution-calendar', roles: ['officer'] },
   { label: 'Assessments', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['officer'] },
   { label: 'Assignments', icon: <FileText className="h-5 w-5" />, path: '/assignments', roles: ['officer'] },
   { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['officer'] },
@@ -166,6 +167,7 @@ const menuItems: MenuItem[] = [
   { label: 'Webinar Management', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['management'] },
   { label: 'Newsletters', icon: <FileText className="h-5 w-5" />, path: '/newsletters', roles: ['management'] },
   { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['management'] },
+  { label: 'Institution Calendar', icon: <CalendarDays className="h-5 w-5" />, path: '/institution-calendar', roles: ['management'] },
   { label: 'Attendance', icon: <Clock className="h-5 w-5" />, path: '/attendance', roles: ['management'] },
   { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['management'] },
   // Student menu items (additional)
