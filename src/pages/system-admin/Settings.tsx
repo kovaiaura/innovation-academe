@@ -10,6 +10,7 @@ import { AccountSettingsSection } from '@/components/settings/AccountSettingsSec
 import { InvoiceSettingsTab } from '@/components/settings/InvoiceSettingsTab';
 import { ReportSettingsTab } from '@/components/settings/ReportSettingsTab';
 import { AISettingsTab } from '@/components/settings/AISettingsTab';
+import { SystemPreferencesTab } from '@/components/settings/SystemPreferencesTab';
 
 const EmailConfigurationTab = () => {
   return (
@@ -81,88 +82,7 @@ const EmailConfigurationTab = () => {
   );
 };
 
-const SystemPreferencesTab = () => {
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Platform Settings</CardTitle>
-          <CardDescription>General platform configuration options</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Maintenance Mode</Label>
-              <p className="text-sm text-muted-foreground">Temporarily disable access for non-admins</p>
-            </div>
-            <Switch />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Allow Self-Registration</Label>
-              <p className="text-sm text-muted-foreground">Allow users to create accounts</p>
-            </div>
-            <Switch />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Two-Factor Authentication</Label>
-              <p className="text-sm text-muted-foreground">Require 2FA for all admin users</p>
-            </div>
-            <Switch />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Session Timeout</Label>
-              <p className="text-sm text-muted-foreground">Auto logout after inactivity</p>
-            </div>
-            <Switch defaultChecked />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Notification Preferences</CardTitle>
-          <CardDescription>Configure system-wide notification settings</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Email Notifications</Label>
-              <p className="text-sm text-muted-foreground">Send email for important events</p>
-            </div>
-            <Switch defaultChecked />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>SMS Notifications</Label>
-              <p className="text-sm text-muted-foreground">Send SMS for critical alerts</p>
-            </div>
-            <Switch />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Browser Notifications</Label>
-              <p className="text-sm text-muted-foreground">Show desktop notifications</p>
-            </div>
-            <Switch defaultChecked />
-          </div>
-
-          <Button>
-            <Save className="mr-2 h-4 w-4" />
-            Save Preferences
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
+// SystemPreferencesTab is now imported from components
 
 export default function SystemAdminSettings() {
   return (
