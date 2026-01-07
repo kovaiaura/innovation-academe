@@ -1301,7 +1301,12 @@ serve(async (req) => {
     if (action === 'check_usage') {
       const aiSettings = await getAISettings();
       if (!userId) {
-        return new Response(JSON.stringify({ used: 0, limit: aiSettings.monthly_prompt_limit, limit_enabled: aiSettings.prompt_limit_enabled }), {
+        return new Response(JSON.stringify({ 
+          used: 0, 
+          limit: aiSettings.monthly_prompt_limit, 
+          limit_enabled: aiSettings.prompt_limit_enabled,
+          disabled: !aiSettings.enabled
+        }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -1310,6 +1315,7 @@ serve(async (req) => {
         used: usage.used, 
         limit: aiSettings.monthly_prompt_limit, 
         limit_enabled: aiSettings.prompt_limit_enabled,
+        disabled: !aiSettings.enabled,
         month: usage.month,
         year: usage.year
       }), {

@@ -79,6 +79,11 @@ export function useAskMetova(role: Role) {
       });
 
       if (!error && data) {
+        // Set AI disabled status from edge function response
+        if (data.disabled !== undefined) {
+          setIsAIDisabled(data.disabled);
+        }
+        
         setPromptUsage({
           used: data.used || 0,
           limit: data.limit || 10,
