@@ -87,6 +87,8 @@ import OfficerProfile from "./pages/officer/Profile";
 import OfficerLeave from "./pages/officer/OfficerLeave";
 import OfficerAssessmentManagement from "./pages/officer/AssessmentManagement";
 import OfficerAskMetova from "./pages/officer/AskMetova";
+import OfficerInstitutionCalendar from "./pages/officer/InstitutionCalendar";
+import ManagementInstitutionCalendar from "./pages/management/InstitutionCalendar";
 import StudentCourseDetail from "./pages/student/CourseDetail";
 import StudentAssessments from "./pages/student/Assessments";
 import StudentAssignments from "./pages/student/Assignments";
@@ -850,6 +852,15 @@ const App = () => (
               }
             />
 
+            <Route
+              path="/tenant/:tenantId/officer/institution-calendar"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <OfficerInstitutionCalendar />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Management Routes (path-based multi-tenancy) - Merged with institution admin */}
             <Route
               path="/tenant/:tenantId/management/dashboard"
@@ -1022,6 +1033,15 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['management']}>
                   <Newsletters />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/tenant/:tenantId/management/institution-calendar"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <ManagementInstitutionCalendar />
                 </ProtectedRoute>
               }
             />
