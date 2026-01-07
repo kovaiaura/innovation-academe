@@ -94,10 +94,8 @@ export function HolidayCalendar({
     description: ''
   });
 
-  // Fetch day types when month or institution changes
+  // Fetch day types when month or institution changes - always fetch for display
   useEffect(() => {
-    if (!enableDayTypeMarking) return;
-    
     const fetchDayTypes = async () => {
       setIsLoadingDayTypes(true);
       try {
@@ -111,7 +109,6 @@ export function HolidayCalendar({
         setDayTypes(types);
         
         // Also fetch descriptions for holidays
-        const month = currentDate.getMonth() + 1;
         const { data } = await import('@/integrations/supabase/client').then(m => 
           m.supabase
             .from('calendar_day_types')
@@ -137,7 +134,7 @@ export function HolidayCalendar({
     };
     
     fetchDayTypes();
-  }, [currentDate, calendarType, institutionId, enableDayTypeMarking]);
+  }, [currentDate, calendarType, institutionId]);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -413,10 +410,10 @@ export function HolidayCalendar({
                     const dayType = getDayTypeForDate(day);
                     const holidayDesc = getHolidayDescription(day);
                     
-                    // Get background color based on day type
+                    // Get background color based on day type - show in both edit and read-only mode
                     let dayTypeBg = '';
                     let dayTypeBorder = '';
-                    if (enableDayTypeMarking && isCurrentMonth && dayType) {
+                    if (isCurrentMonth && dayType) {
                       const colors = DAY_TYPE_COLORS[dayType];
                       dayTypeBg = colors.bg;
                       dayTypeBorder = `border-l-4 ${colors.border}`;
@@ -444,7 +441,7 @@ export function HolidayCalendar({
                           )}>
                             {format(day, 'd')}
                           </div>
-                          {enableDayTypeMarking && isCurrentMonth && dayType && (
+                          {isCurrentMonth && dayType && (
                             <Badge 
                               variant="outline" 
                               className={cn(
