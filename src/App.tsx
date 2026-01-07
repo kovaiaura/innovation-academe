@@ -135,8 +135,8 @@ import ManagementWebinars from "./pages/management/Webinars";
 import OfficerAssignments from "./pages/officer/Assignments";
 import ManagementAssignments from "./pages/management/Assignments";
 import ReportsManagement from "./pages/system-admin/ReportsManagement";
-import NewsFeedsManagement from "./pages/system-admin/NewsFeedsManagement";
-import NewsFeedsPage from "./pages/shared/NewsFeedsPage";
+import NewsletterManagement from "./pages/system-admin/NewsletterManagement";
+import Newsletters from "./pages/shared/Newsletters";
 
 // HR Management imports
 import HRDashboard from "./pages/system-admin/hr/HRDashboard";
@@ -554,10 +554,10 @@ const App = () => (
               }
             />
             <Route
-              path="/system-admin/news-feeds"
+              path="/system-admin/newsletters"
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
-                  <NewsFeedsManagement />
+                  <NewsletterManagement />
                 </ProtectedRoute>
               }
             />
@@ -844,10 +844,10 @@ const App = () => (
             />
 
             <Route
-              path="/tenant/:tenantId/officer/news-feeds"
+              path="/tenant/:tenantId/officer/newsletters"
               element={
                 <ProtectedRoute allowedRoles={['officer']}>
-                  <NewsFeedsPage />
+                  <Newsletters />
                 </ProtectedRoute>
               }
             />
@@ -1020,10 +1020,10 @@ const App = () => (
             />
 
             <Route
-              path="/tenant/:tenantId/management/news-feeds"
+              path="/tenant/:tenantId/management/newsletters"
               element={
                 <ProtectedRoute allowedRoles={['management']}>
-                  <NewsFeedsPage />
+                  <Newsletters />
                 </ProtectedRoute>
               }
             />
@@ -1184,10 +1184,10 @@ const App = () => (
               }
             />
             <Route
-              path="/tenant/:tenantId/student/news-feeds"
+              path="/tenant/:tenantId/student/newsletters"
               element={
                 <ProtectedRoute allowedRoles={['student']}>
-                  <NewsFeedsPage />
+                  <Newsletters />
                 </ProtectedRoute>
               }
             />
