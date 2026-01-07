@@ -78,7 +78,10 @@ export default function LeaveApprovals() {
 
   // Filter applications based on user's position in approval chain
   const filterByApprovalHierarchy = (apps: LeaveApplication[]) => {
-    if (!userPositionId && !user?.is_ceo) return apps;
+    // If user has no position and is not CEO, only show history (non-pending) applications
+    if (!userPositionId && !user?.is_ceo) {
+      return apps.filter(app => app.status !== 'pending');
+    }
     
     return apps.filter(app => {
       // For pending applications, check if user is the current approver

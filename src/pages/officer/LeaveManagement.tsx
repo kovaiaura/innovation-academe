@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
-import { format, differenceInCalendarDays, isWeekend, addDays } from 'date-fns';
+import { useState, useEffect, useMemo } from 'react';
+import { format, differenceInCalendarDays, addDays, getDay } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import { calendarDayTypeService } from '@/services/calendarDayType.service';
 import { CalendarCheck, Clock, TrendingUp, FileText, AlertCircle, Eye, X, ArrowRight, ArrowLeft, Users, CheckCircle, Calendar as CalendarIcon, Wallet } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -66,6 +68,22 @@ export default function LeaveManagement() {
   const { data: institutionId } = useOfficerInstitution(user?.id);
   const { data: availableSubstitutes = [] } = useAvailableSubstitutes(institutionId || undefined, user?.id);
 
+  // Fetch institution's weekend configuration from calendar
+  const { data: institutionWeekends = [] } = useQuery({
+    queryKey: ['institution-weekends', institutionId, dateRange?.from?.toISOString(), dateRange?.to?.toISOString()],
+    queryFn: async () => {
+      if (!institutionId || !dateRange?.from || !dateRange?.to) return [];
+      const { weekends } = await calendarDayTypeService.getNonWorkingDaysInRange(
+        'institution',
+        format(dateRange.from, 'yyyy-MM-dd'),
+        format(dateRange.to, 'yyyy-MM-dd'),
+        institutionId
+      );
+      return weekends;
+    },
+    enabled: !!institutionId && !!dateRange?.from && !!dateRange?.to
+  });
+
   const refreshData = () => {
     if (user?.id) {
       const currentYear = new Date().getFullYear().toString();
@@ -98,11 +116,12 @@ export default function LeaveManagement() {
     const endDate = new Date(to);
 
     while (currentDate <= endDate) {
-      if (!isWeekend(currentDate)) {
-        const dateStr = format(currentDate, 'yyyy-MM-dd');
-        if (!approvedLeaveDates.includes(dateStr)) {
-          workingDays++;
-        }
+      const dateStr = format(currentDate, 'yyyy-MM-dd');
+      // Check if date is in institution's weekend list from calendar
+      const isWeekendDay = institutionWeekends.includes(dateStr);
+      
+      if (!isWeekendDay && !approvedLeaveDates.includes(dateStr)) {
+        workingDays++;
       }
       currentDate = addDays(currentDate, 1);
     }
@@ -149,8 +168,10 @@ export default function LeaveManagement() {
     const endDate = new Date(dateRange.to);
 
     while (currentDate <= endDate) {
-      if (!isWeekend(currentDate)) {
-        const dateStr = format(currentDate, 'yyyy-MM-dd');
+      const dateStr = format(currentDate, 'yyyy-MM-dd');
+      const isWeekendDay = institutionWeekends.includes(dateStr);
+      
+      if (!isWeekendDay) {
         if (approvedLeaveDates.includes(dateStr)) {
           toast.error('Selected dates overlap with approved leave');
           return;
