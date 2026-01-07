@@ -66,11 +66,33 @@ export default function Leave() {
       const year = parseInt(selectedYear);
       const results = await Promise.all(
         Array.from({ length: 12 }, (_, i) => i + 1).map(async (month) => {
-          const balance = await leaveBalanceService.getBalance(user!.id, year, month);
-          return balance ? { month, ...balance } : null;
+          try {
+            const balance = await leaveBalanceService.getBalance(user!.id, year, month);
+            if (balance) {
+              return { 
+                month, 
+                ...balance,
+                total_available: balance.monthly_credit + balance.carried_forward
+              };
+            }
+          } catch (error) {
+            console.warn(`Error fetching balance for month ${month}:`, error);
+          }
+          // Return default values if RPC fails or returns null
+          return { 
+            month, 
+            monthly_credit: 1, 
+            carried_forward: 0, 
+            total_available: 1,
+            sick_leave_used: 0, 
+            casual_leave_used: 0,
+            total_used: 0,
+            lop_days: 0,
+            balance_remaining: 1
+          };
         })
       );
-      return results.filter((b): b is NonNullable<typeof b> => b !== null);
+      return results;
     },
     enabled: !!user?.id
   });
