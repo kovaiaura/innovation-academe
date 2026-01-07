@@ -31,10 +31,10 @@ import {
 import type { LeaveApplication, LeaveBalance, LeaveType, AffectedSlot, SubstituteAssignment } from '@/types/attendance';
 import type { DateRange } from 'react-day-picker';
 import { useNotifications } from '@/hooks/useNotifications';
-import { getAffectedSlots, getAvailableSubstitutes, calculateSlotHours } from '@/utils/substituteHelpers';
-import { mockOfficerProfiles } from '@/data/mockOfficerData';
+import { getAffectedSlots, calculateSlotHours } from '@/utils/substituteHelpers';
 import { ApplicantLeaveBalanceCard } from '@/components/leave/ApplicantLeaveBalanceCard';
 import { useApplicantLeaveBalance, usePendingLeavesCount } from '@/hooks/useApplicantLeaveBalance';
+import { useAvailableSubstitutes, useOfficerInstitution } from '@/hooks/useAvailableSubstitutes';
 
 export default function LeaveManagement() {
   const { user } = useAuth();
@@ -61,6 +61,10 @@ export default function LeaveManagement() {
   // Details dialog state
   const [selectedApplication, setSelectedApplication] = useState<LeaveApplication | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+
+  // Fetch officer's institution and available substitutes
+  const { data: institutionId } = useOfficerInstitution(user?.id);
+  const { data: availableSubstitutes = [] } = useAvailableSubstitutes(institutionId || undefined, user?.id);
 
   const refreshData = () => {
     if (user?.id) {
@@ -173,12 +177,12 @@ export default function LeaveManagement() {
     setCurrentStep(2);
   };
 
-  const handleSubstituteSelect = (index: number, officerId: string) => {
-    const officer = mockOfficerProfiles.find(o => o.id === officerId);
-    if (officer) {
+  const handleSubstituteSelect = (index: number, substituteId: string) => {
+    const substitute = availableSubstitutes.find(s => s.id === substituteId);
+    if (substitute) {
       const updatedAssignments = [...substituteAssignments];
-      updatedAssignments[index].substitute_officer_id = officerId;
-      updatedAssignments[index].substitute_officer_name = officer.name;
+      updatedAssignments[index].substitute_officer_id = substituteId;
+      updatedAssignments[index].substitute_officer_name = substitute.name;
       setSubstituteAssignments(updatedAssignments);
     }
   };
@@ -477,14 +481,6 @@ export default function LeaveManagement() {
                         <div className="space-y-4">
                           {affectedSlots.map((slot, index) => {
                             const assignment = substituteAssignments[index];
-                            const availableSubstitutes = getAvailableSubstitutes(
-                              slot.day,
-                              slot.start_time,
-                              slot.end_time,
-                              slot.subject,
-                              user?.id || ''
-                            );
-
                             return (
                               <Card key={index}>
                                 <CardContent className="pt-6">
@@ -523,12 +519,17 @@ export default function LeaveManagement() {
                                             </div>
                                           ) : (
                                             availableSubstitutes.map((sub) => (
-                                              <SelectItem key={sub.officer_id} value={sub.officer_id}>
+                                              <SelectItem key={sub.id} value={sub.id}>
                                                 <div className="flex items-center justify-between gap-4">
-                                                  <span>{sub.officer_name}</span>
-                                                  {sub.is_fully_qualified && (
+                                                  <span>{sub.name}</span>
+                                                  {sub.type === 'officer' && (
                                                     <Badge variant="secondary" className="text-xs">
-                                                      Qualified
+                                                      Officer
+                                                    </Badge>
+                                                  )}
+                                                  {sub.type === 'staff' && (
+                                                    <Badge variant="outline" className="text-xs">
+                                                      Staff
                                                     </Badge>
                                                   )}
                                                 </div>
@@ -642,9 +643,6 @@ export default function LeaveManagement() {
                               </TableHeader>
                               <TableBody>
                                 {substituteAssignments.map((assignment, index) => {
-                                  const substitute = mockOfficerProfiles.find(
-                                    o => o.id === assignment.substitute_officer_id
-                                  );
                                   const slot = affectedSlots[index];
                                   return (
                                     <TableRow key={index}>
@@ -652,7 +650,7 @@ export default function LeaveManagement() {
                                       <TableCell>{slot?.start_time} - {slot?.end_time}</TableCell>
                                       <TableCell>{slot?.class}</TableCell>
                                       <TableCell>{slot?.subject}</TableCell>
-                                      <TableCell>{substitute?.name || 'Unknown'}</TableCell>
+                                      <TableCell>{assignment.substitute_officer_name || 'Unknown'}</TableCell>
                                     </TableRow>
                                   );
                                 })}
