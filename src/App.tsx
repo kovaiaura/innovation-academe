@@ -7,11 +7,14 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { InstitutionDataProvider } from "@/contexts/InstitutionDataContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
+import { PlatformSettingsProvider } from "@/contexts/PlatformSettingsContext";
+import { SessionTimeoutProvider } from "@/components/layout/SessionTimeoutProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
+import Maintenance from "./pages/Maintenance";
 // SuperAdminDashboard removed - using CEOAnalyticsDashboard as dashboard
 import SuperAdminSystemConfig from "./pages/super-admin/SystemConfig";
 import SuperAdminAuditLogs from "./pages/super-admin/AuditLogs";
@@ -164,16 +167,19 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <BrandingProvider>
-        <InstitutionDataProvider>
-          <TooltipProvider>
-          <Toaster />
-          <Sonner position="top-right" />
-          <BrowserRouter>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/unauthorized" element={<Unauthorized />} />
+        <PlatformSettingsProvider>
+          <InstitutionDataProvider>
+            <SessionTimeoutProvider>
+              <TooltipProvider>
+              <Toaster />
+              <Sonner position="top-right" />
+              <BrowserRouter>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/unauthorized" element={<Unauthorized />} />
+                <Route path="/maintenance" element={<Maintenance />} />
             
             {/* Public Careers Routes */}
             <Route path="/careers" element={<CareersPage />} />
@@ -1189,10 +1195,12 @@ const App = () => (
             
             {/* Catch all */}
             <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-        </TooltipProvider>
-      </InstitutionDataProvider>
+              </Routes>
+            </BrowserRouter>
+            </TooltipProvider>
+          </SessionTimeoutProvider>
+        </InstitutionDataProvider>
+      </PlatformSettingsProvider>
       </BrandingProvider>
     </AuthProvider>
   </QueryClientProvider>
