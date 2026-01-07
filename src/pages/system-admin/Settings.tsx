@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Shield, Mail, Settings as SettingsIcon, Save, FileText, ClipboardList } from 'lucide-react';
+import { Shield, Mail, Settings as SettingsIcon, Save, FileText, ClipboardList, Bot } from 'lucide-react';
 import { AccountSettingsSection } from '@/components/settings/AccountSettingsSection';
 import { InvoiceSettingsTab } from '@/components/settings/InvoiceSettingsTab';
 import { ReportSettingsTab } from '@/components/settings/ReportSettingsTab';
+import { AISettingsTab } from '@/components/settings/AISettingsTab';
 
 const EmailConfigurationTab = () => {
   return (
@@ -173,7 +174,7 @@ export default function SystemAdminSettings() {
         </div>
 
         <Tabs defaultValue="security" className="w-full">
-          <TabsList className="grid w-full max-w-2xl grid-cols-5">
+          <TabsList className="grid w-full max-w-3xl grid-cols-6">
             <TabsTrigger value="security" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               <span className="hidden sm:inline">Security</span>
@@ -193,6 +194,10 @@ export default function SystemAdminSettings() {
             <TabsTrigger value="reports" className="flex items-center gap-2">
               <ClipboardList className="h-4 w-4" />
               <span className="hidden sm:inline">Reports</span>
+            </TabsTrigger>
+            <TabsTrigger value="ai" className="flex items-center gap-2">
+              <Bot className="h-4 w-4" />
+              <span className="hidden sm:inline">AI</span>
             </TabsTrigger>
           </TabsList>
 
@@ -214,6 +219,10 @@ export default function SystemAdminSettings() {
 
           <TabsContent value="reports" className="mt-6">
             <ReportSettingsTab />
+          </TabsContent>
+
+          <TabsContent value="ai" className="mt-6">
+            <AISettingsTab />
           </TabsContent>
         </Tabs>
       </div>

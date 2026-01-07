@@ -2,7 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const defaultOpenAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -14,6 +14,36 @@ const corsHeaders = {
 // Helper to create supabase client
 function getSupabaseClient() {
   return createClient(supabaseUrl, supabaseServiceKey);
+}
+
+// Fetch AI settings from system_configurations
+interface AISettings {
+  enabled: boolean;
+  custom_api_key: string;
+  model: string;
+}
+
+async function getAISettings(): Promise<AISettings> {
+  const supabase = getSupabaseClient();
+  try {
+    const { data } = await supabase
+      .from('system_configurations')
+      .select('value')
+      .eq('key', 'ask_metova_settings')
+      .single();
+    
+    if (data?.value) {
+      const settings = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+      return {
+        enabled: settings.enabled ?? true,
+        custom_api_key: settings.custom_api_key || '',
+        model: settings.model || 'gpt-4o-mini'
+      };
+    }
+  } catch (e) {
+    console.error('Error fetching AI settings:', e);
+  }
+  return { enabled: true, custom_api_key: '', model: 'gpt-4o-mini' };
 }
 
 // ==================== CONTEXT FETCHERS ====================
@@ -958,32 +988,162 @@ async function fetchSystemAdminContext(): Promise<{ context: string; sources: st
   }
 }
 
-// Officer and Student context (simpler)
-async function fetchOfficerContextSimple(): Promise<string> {
+// Officer comprehensive context
+async function fetchOfficerContext(): Promise<{ context: string; sources: string[] }> {
   const supabase = getSupabaseClient();
   const parts: string[] = [];
+  const sources: string[] = [];
   
   try {
-    const { count: classesCount } = await supabase.from('classes').select('*', { count: 'exact', head: true });
-    const { count: assessmentsCount } = await supabase.from('assessments').select('*', { count: 'exact', head: true });
-    const { count: assignmentsCount } = await supabase.from('assignments').select('*', { count: 'exact', head: true });
-    
-    parts.push(`## Overview`);
-    parts.push(`- Total Classes: ${classesCount || 0}`);
-    parts.push(`- Total Assessments: ${assessmentsCount || 0}`);
-    parts.push(`- Total Assignments: ${assignmentsCount || 0}`);
+    // Classes
+    const { data: classes } = await supabase.from('classes').select('id, class_name, status, capacity, academic_year');
+    parts.push('## 📚 CLASSES');
+    parts.push(`Total Classes: ${classes?.length || 0}`);
+    if (classes?.length) {
+      for (const c of classes.slice(0, 10)) {
+        parts.push(`- ${c.class_name} (${c.status || 'active'}) - Capacity: ${c.capacity || 'N/A'}`);
+      }
+    }
+    sources.push('classes');
+
+    // Assessments
+    const { data: assessments } = await supabase.from('assessments').select('id, title, status, start_time, end_time');
+    parts.push('\n## 📝 ASSESSMENTS');
+    parts.push(`Total Assessments: ${assessments?.length || 0}`);
+    if (assessments?.length) {
+      const byStatus: Record<string, number> = {};
+      for (const a of assessments) byStatus[a.status || 'unknown'] = (byStatus[a.status || 'unknown'] || 0) + 1;
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+    }
+    sources.push('assessments');
+
+    // Assignments
+    const { data: assignments } = await supabase.from('assignments').select('id, title, status, submission_end_date');
+    parts.push('\n## 📋 ASSIGNMENTS');
+    parts.push(`Total Assignments: ${assignments?.length || 0}`);
+    if (assignments?.length) {
+      const pending = assignments.filter(a => a.status === 'active' || a.status === 'published');
+      parts.push(`Active/Published: ${pending.length}`);
+    }
+    sources.push('assignments');
+
+    // Attendance overview
+    const { data: attendance } = await supabase.from('class_session_attendance').select('students_present, students_absent, date').limit(100);
+    parts.push('\n## 📅 ATTENDANCE');
+    if (attendance?.length) {
+      const totalPresent = attendance.reduce((sum, a) => sum + (a.students_present || 0), 0);
+      const totalAbsent = attendance.reduce((sum, a) => sum + (a.students_absent || 0), 0);
+      const rate = totalPresent + totalAbsent > 0 ? ((totalPresent / (totalPresent + totalAbsent)) * 100).toFixed(1) : 'N/A';
+      parts.push(`Records: ${attendance.length}, Attendance Rate: ${rate}%`);
+    } else {
+      parts.push('No attendance records yet.');
+    }
+    sources.push('attendance');
+
+    // Projects
+    const { data: projects } = await supabase.from('projects').select('id, title, status');
+    parts.push('\n## 🚀 PROJECTS');
+    parts.push(`Total Projects: ${projects?.length || 0}`);
+    if (projects?.length) {
+      const byStatus: Record<string, number> = {};
+      for (const p of projects) byStatus[p.status || 'unknown'] = (byStatus[p.status || 'unknown'] || 0) + 1;
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+    }
+    sources.push('projects');
+
+    // Leave status
+    const { data: leaves } = await supabase.from('leave_applications').select('status, leave_type').limit(50);
+    parts.push('\n## 🏖️ LEAVE APPLICATIONS');
+    if (leaves?.length) {
+      const byStatus: Record<string, number> = {};
+      for (const l of leaves) byStatus[l.status || 'unknown'] = (byStatus[l.status || 'unknown'] || 0) + 1;
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+    } else {
+      parts.push('No leave applications found.');
+    }
+    sources.push('leave');
+
   } catch (e) {
     console.error('Officer context error:', e);
   }
   
-  return parts.join('\n');
+  return { context: parts.join('\n'), sources };
 }
 
-async function fetchStudentContextSimple(): Promise<string> {
-  return `## Your Learning Dashboard
-- Access your courses, assignments, and assessments from your dashboard.
-- Check your progress and upcoming deadlines regularly.
-- Earn XP and badges by completing activities!`;
+// Student comprehensive context
+async function fetchStudentContext(): Promise<{ context: string; sources: string[] }> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = [];
+  const sources: string[] = [];
+  
+  try {
+    // Courses available
+    const { data: courses } = await supabase.from('courses').select('id, title, status, category, difficulty').eq('status', 'published');
+    parts.push('## 📚 AVAILABLE COURSES');
+    parts.push(`Published Courses: ${courses?.length || 0}`);
+    if (courses?.length) {
+      for (const c of courses.slice(0, 8)) {
+        parts.push(`- ${c.title} (${c.difficulty || 'Beginner'}) - ${c.category || 'General'}`);
+      }
+    }
+    sources.push('courses');
+
+    // Active Assessments
+    const now = new Date().toISOString();
+    const { data: assessments } = await supabase.from('assessments').select('id, title, start_time, end_time, duration_minutes').gte('end_time', now);
+    parts.push('\n## 📝 UPCOMING ASSESSMENTS');
+    if (assessments?.length) {
+      parts.push(`Upcoming: ${assessments.length}`);
+      for (const a of assessments.slice(0, 5)) {
+        parts.push(`- ${a.title} (${a.duration_minutes || 60} mins) - Due: ${new Date(a.end_time).toLocaleDateString()}`);
+      }
+    } else {
+      parts.push('No upcoming assessments.');
+    }
+    sources.push('assessments');
+
+    // Active Assignments
+    const { data: assignments } = await supabase.from('assignments').select('id, title, submission_end_date, total_marks').gte('submission_end_date', now);
+    parts.push('\n## 📋 ACTIVE ASSIGNMENTS');
+    if (assignments?.length) {
+      parts.push(`Active: ${assignments.length}`);
+      for (const a of assignments.slice(0, 5)) {
+        parts.push(`- ${a.title} (${a.total_marks || 100} marks) - Due: ${new Date(a.submission_end_date).toLocaleDateString()}`);
+      }
+    } else {
+      parts.push('No active assignments.');
+    }
+    sources.push('assignments');
+
+    // Events
+    const { data: events } = await supabase.from('events').select('id, title, event_type, event_start').gte('event_start', now).order('event_start').limit(5);
+    parts.push('\n## 🎉 UPCOMING EVENTS');
+    if (events?.length) {
+      for (const e of events) {
+        parts.push(`- ${e.title} (${e.event_type}) - ${new Date(e.event_start).toLocaleDateString()}`);
+      }
+    } else {
+      parts.push('No upcoming events.');
+    }
+    sources.push('events');
+
+    // Gamification overview
+    const { data: badges } = await supabase.from('gamification_badges').select('id, name, xp_reward').eq('is_active', true).limit(10);
+    parts.push('\n## 🏆 GAMIFICATION');
+    parts.push(`Available Badges: ${badges?.length || 0}`);
+    if (badges?.length) {
+      parts.push('**Top Badges:**');
+      for (const b of badges.slice(0, 5)) {
+        parts.push(`- ${b.name} (${b.xp_reward} XP)`);
+      }
+    }
+    sources.push('gamification');
+
+  } catch (e) {
+    console.error('Student context error:', e);
+  }
+  
+  return { context: parts.join('\n'), sources };
 }
 
 // ==================== SYSTEM PROMPTS ====================
@@ -1063,6 +1223,22 @@ serve(async (req) => {
       throw new Error('Message is required');
     }
 
+    // Fetch AI settings to check if enabled and get API key
+    const aiSettings = await getAISettings();
+    
+    if (!aiSettings.enabled) {
+      return new Response(JSON.stringify({ 
+        error: 'AI assistant is currently disabled by the administrator. Please try again later.',
+        disabled: true
+      }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Use custom API key if provided, otherwise use default
+    const openAIApiKey = aiSettings.custom_api_key || defaultOpenAIApiKey;
+    
     if (!openAIApiKey) {
       throw new Error('OpenAI API key is not configured');
     }
@@ -1080,12 +1256,14 @@ serve(async (req) => {
       dataSources = result.sources;
       basePrompt = systemAdminPrompt;
     } else if (userRole === 'officer') {
-      dataContext = await fetchOfficerContextSimple();
-      dataSources = ['classes', 'assessments', 'assignments'];
+      const result = await fetchOfficerContext();
+      dataContext = result.context;
+      dataSources = result.sources;
       basePrompt = officerPrompt;
     } else {
-      dataContext = await fetchStudentContextSimple();
-      dataSources = ['learning_dashboard'];
+      const result = await fetchStudentContext();
+      dataContext = result.context;
+      dataSources = result.sources;
       basePrompt = studentPrompt;
     }
 
@@ -1110,7 +1288,7 @@ ${dataContext}
 
     messages.push({ role: 'user', content: message });
 
-    console.log(`Processing ask-metova for role: ${userRole}, context length: ${dataContext.length} chars`);
+    console.log(`Processing ask-metova for role: ${userRole}, model: ${aiSettings.model}, context length: ${dataContext.length} chars`);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -1119,7 +1297,7 @@ ${dataContext}
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: aiSettings.model,
         messages,
         temperature: 0.7,
         max_tokens: 2048
