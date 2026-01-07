@@ -10,6 +10,7 @@ import { Link, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { gamificationDbService } from '@/services/gamification-db.service';
 import { useStudentStreak } from '@/hooks/useStudentStreak';
+import { StreakLeaderboard } from '@/components/gamification/StreakLeaderboard';
 import { format } from 'date-fns';
 
 interface StudentGamification {
@@ -644,66 +645,64 @@ export default function StudentDashboard() {
           </CardContent>
         </Card>
 
-        {/* Leaderboard and Points Breakdown */}
-        <div className="grid gap-6 lg:grid-cols-2">
+        {/* Leaderboards and Points Breakdown */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Class XP Leaderboard */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
               <div>
-                <CardTitle>Class Leaderboard</CardTitle>
-                <CardDescription>Top performers this month</CardDescription>
+                <CardTitle className="text-base">Class Leaderboard</CardTitle>
+                <CardDescription className="text-xs">Top performers by XP</CardDescription>
               </div>
               <Button variant="ghost" size="sm" asChild>
                 <Link to={gamificationPath}>
-                  View All <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
             </CardHeader>
             <CardContent>
               {leaderboard.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Trophy className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>No leaderboard data yet</p>
+                <div className="text-center py-6 text-muted-foreground">
+                  <Trophy className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No data yet</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {leaderboard.map((entry) => (
                     <div
                       key={entry.rank}
-                      className={`flex items-center justify-between rounded-lg p-3 transition-colors ${
+                      className={`flex items-center justify-between rounded-lg p-2 transition-colors ${
                         entry.isCurrentUser 
-                          ? 'bg-primary/10 border-2 border-primary/30' 
-                          : 'bg-muted hover:bg-muted/80'
+                          ? 'bg-primary/10 border border-primary/30' 
+                          : 'bg-muted/50 hover:bg-muted'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${
+                      <div className="flex items-center gap-2">
+                        <div className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
                           entry.rank === 1 ? 'bg-yellow-500 text-white' :
                           entry.rank === 2 ? 'bg-gray-400 text-white' :
                           entry.rank === 3 ? 'bg-orange-600 text-white' :
-                          'bg-gray-200 text-gray-700'
+                          'bg-muted-foreground/20 text-muted-foreground'
                         }`}>
                           {entry.rank}
                         </div>
                         <div>
-                          <div className="font-semibold flex items-center gap-2 text-sm">
+                          <div className="font-medium text-sm flex items-center gap-1">
                             {entry.name}
-                            {entry.isCurrentUser && <Badge variant="secondary" className="text-xs">You</Badge>}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {entry.badges} badges
+                            {entry.isCurrentUser && <Badge variant="secondary" className="text-[10px] px-1 py-0">You</Badge>}
                           </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-bold text-primary">{entry.points}</div>
-                        <div className="text-xs text-muted-foreground">points</div>
-                      </div>
+                      <span className="font-bold text-primary text-sm">{entry.points}</span>
                     </div>
                   ))}
                 </div>
               )}
             </CardContent>
           </Card>
+
+          {/* Streak Leaderboard */}
+          <StreakLeaderboard institutionId={user?.institution_id} limit={5} compact />
 
           <Card>
             <CardHeader>

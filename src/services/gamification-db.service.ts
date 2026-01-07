@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { BadgeConfig, XPRule, GamificationStats, ActivityLog, StudentPerformance, LeaderboardConfig } from '@/types/gamification';
+import { format, subDays } from 'date-fns';
 
 export interface DBBadge {
   id: string;
@@ -318,7 +319,8 @@ export const gamificationDbService = {
   },
 
   async updateStreak(studentId: string, institutionId?: string): Promise<void> {
-    const today = new Date().toISOString().split('T')[0];
+    // Use date-fns format for timezone-safe date calculation
+    const today = format(new Date(), 'yyyy-MM-dd');
     
     // Get or create streak record
     const { data: existing } = await supabase
@@ -357,9 +359,9 @@ export const gamificationDbService = {
     const lastDate = existing.last_activity_date;
     if (lastDate === today) return; // Already logged in today
     
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    // Use date-fns for timezone-safe yesterday calculation
+    const yesterday = subDays(new Date(), 1);
+    const yesterdayStr = format(yesterday, 'yyyy-MM-dd');
     
     let newStreak = existing.current_streak;
     if (lastDate === yesterdayStr) {
@@ -388,6 +390,32 @@ export const gamificationDbService = {
           points: 2,
           description: `Daily streak bonus (Day ${newStreak})`
         });
+        
+        // Award milestone bonuses
+        await this.awardStreakMilestoneBonus(studentId, institutionId, newStreak);
+      }
+    }
+  },
+
+  // Award bonus XP for streak milestones (7, 30, 100 days)
+  async awardStreakMilestoneBonus(studentId: string, institutionId: string, currentStreak: number): Promise<void> {
+    const STREAK_MILESTONES = [
+      { days: 7, bonus: 25, label: 'Week Warrior bonus!' },
+      { days: 30, bonus: 75, label: 'Monthly Champion bonus!' },
+      { days: 100, bonus: 250, label: 'Century Legend bonus!' }
+    ];
+
+    for (const milestone of STREAK_MILESTONES) {
+      if (currentStreak === milestone.days) {
+        await this.awardXP({
+          studentId,
+          institutionId,
+          activityType: 'streak_milestone',
+          activityId: `streak_${milestone.days}_${studentId}`,
+          points: milestone.bonus,
+          description: milestone.label
+        });
+        break;
       }
     }
   },
@@ -956,5 +984,63 @@ export const gamificationDbService = {
       console.error('Failed to issue course certificate:', error);
       return { issued: false, message: 'Failed to issue certificate' };
     }
+  },
+
+  // ============ STREAK LEADERBOARD ============
+  async getStreakLeaderboard(institutionId?: string, limit: number = 10): Promise<{
+    student_id: string;
+    student_name: string;
+    institution_id: string;
+    institution_name: string;
+    current_streak: number;
+    longest_streak: number;
+  }[]> {
+    let query = supabase
+      .from('student_streaks')
+      .select(`
+        student_id,
+        current_streak,
+        longest_streak,
+        profiles!student_id (id, name, institution_id)
+      `)
+      .gt('current_streak', 0)
+      .order('current_streak', { ascending: false })
+      .limit(limit);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    // Get institution names for students
+    const studentInstitutionIds = [...new Set(
+      data?.map(d => (d.profiles as any)?.institution_id).filter(Boolean)
+    )];
+    
+    let institutionMap: Record<string, string> = {};
+    if (studentInstitutionIds.length > 0) {
+      const { data: institutions } = await supabase
+        .from('institutions')
+        .select('id, name')
+        .in('id', studentInstitutionIds);
+      
+      institutions?.forEach(i => {
+        institutionMap[i.id] = i.name;
+      });
+    }
+
+    let results = data?.map(d => ({
+      student_id: d.student_id,
+      student_name: (d.profiles as any)?.name || 'Unknown',
+      institution_id: (d.profiles as any)?.institution_id || '',
+      institution_name: institutionMap[(d.profiles as any)?.institution_id] || 'Unknown',
+      current_streak: d.current_streak,
+      longest_streak: d.longest_streak
+    })) || [];
+
+    // Filter by institution if specified
+    if (institutionId) {
+      results = results.filter(r => r.institution_id === institutionId);
+    }
+
+    return results.slice(0, limit);
   }
 };
