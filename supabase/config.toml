@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.issue-completion-certificates]
 verify_jwt = false
+
+[functions.ask-metova]
+verify_jwt = false
