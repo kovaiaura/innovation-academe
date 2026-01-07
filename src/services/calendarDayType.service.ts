@@ -100,13 +100,20 @@ export const setDayType = async (
   institutionId?: string,
   description?: string
 ): Promise<void> => {
-  const { data: existing } = await supabase
+  // Build query with proper null handling for institution_id
+  let existingQuery = supabase
     .from('calendar_day_types')
     .select('id')
     .eq('calendar_type', calendarType)
-    .eq('date', date)
-    .eq('institution_id', institutionId || null)
-    .maybeSingle();
+    .eq('date', date);
+  
+  if (calendarType === 'institution' && institutionId) {
+    existingQuery = existingQuery.eq('institution_id', institutionId);
+  } else {
+    existingQuery = existingQuery.is('institution_id', null);
+  }
+  
+  const { data: existing } = await existingQuery.maybeSingle();
   
   if (existing) {
     const { error } = await supabase
@@ -237,6 +244,46 @@ export const getWorkingDaysFromCalendar = async (
   return workingDays.sort();
 };
 
+// Get holidays for a year from calendar_day_types
+export const getHolidaysForYear = async (
+  calendarType: CalendarType,
+  year: number,
+  institutionId?: string
+): Promise<{ id: string; date: string; name: string; end_date?: string; holiday_type: string }[]> => {
+  const startDate = `${year}-01-01`;
+  const endDate = `${year}-12-31`;
+  
+  let query = supabase
+    .from('calendar_day_types')
+    .select('*')
+    .eq('calendar_type', calendarType)
+    .eq('day_type', 'holiday')
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .order('date', { ascending: true });
+  
+  if (calendarType === 'institution' && institutionId) {
+    query = query.eq('institution_id', institutionId);
+  } else if (calendarType === 'company') {
+    query = query.is('institution_id', null);
+  }
+  
+  const { data, error } = await query;
+  
+  if (error) {
+    console.error('Error fetching holidays:', error);
+    return [];
+  }
+  
+  return (data || []).map((entry) => ({
+    id: entry.id,
+    date: entry.date,
+    name: entry.description || 'Holiday',
+    end_date: entry.date, // Single day for now
+    holiday_type: 'general'
+  }));
+};
+
 export const calendarDayTypeService = {
   getDayTypesForMonth,
   getDayTypesForRange,
@@ -244,5 +291,6 @@ export const calendarDayTypeService = {
   bulkSetDayTypes,
   quickSetupMonth,
   deleteDayType,
-  getWorkingDaysFromCalendar
+  getWorkingDaysFromCalendar,
+  getHolidaysForYear
 };
