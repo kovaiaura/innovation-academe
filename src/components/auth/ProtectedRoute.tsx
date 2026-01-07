@@ -1,4 +1,5 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole, hasAnyRole } from '@/types';
 import { SystemAdminFeature } from '@/types/permissions';
@@ -23,6 +24,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { isAuthenticated, isLoading, user } = useAuth();
   const { settings, isLoading: settingsLoading } = usePlatformSettings();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // Check if user is admin
+  const userRoles = user?.roles || [user?.role];
+  const isAdmin = userRoles.some(role => role && ADMIN_ROLES.includes(role as UserRole));
+
+  // Active navigation when maintenance mode changes - redirect non-admins immediately
+  useEffect(() => {
+    if (!isLoading && !settingsLoading && isAuthenticated && settings.maintenanceMode && !isAdmin) {
+      console.log('Maintenance mode activated - actively redirecting user to maintenance page');
+      navigate('/maintenance', { replace: true });
+    }
+  }, [settings.maintenanceMode, isAdmin, isAuthenticated, isLoading, settingsLoading, navigate]);
 
   if (isLoading || settingsLoading) {
     return (
@@ -38,9 +52,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Check maintenance mode - redirect non-admins to maintenance page
-  const userRoles = user?.roles || [user?.role];
-  const isAdmin = userRoles.some(role => role && ADMIN_ROLES.includes(role as UserRole));
-  
   if (settings.maintenanceMode && !isAdmin) {
     console.log('ProtectedRoute: Maintenance mode active, redirecting non-admin user');
     return <Navigate to="/maintenance" replace />;
