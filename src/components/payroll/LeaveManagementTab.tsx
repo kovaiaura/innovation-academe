@@ -5,9 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Pencil, Calendar } from 'lucide-react';
+import { Pencil, Calendar, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { LeaveBalanceEditDialog } from './LeaveBalanceEditDialog';
+import { leaveSettingsService, type LeaveSettings } from '@/services/leaveSettings.service';
 
 interface LeaveManagementTabProps {
   year: number;
@@ -47,16 +48,33 @@ export function LeaveManagementTab({ year }: LeaveManagementTabProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingBalances, setIsLoadingBalances] = useState(false);
   const [editingMonth, setEditingMonth] = useState<MonthlyLeaveBalance | null>(null);
+  const [leaveSettings, setLeaveSettings] = useState<LeaveSettings>({
+    leaves_per_year: 12,
+    leaves_per_month: 1,
+    max_carry_forward: 1,
+    max_leaves_per_month: 2,
+    gps_checkin_enabled: true
+  });
 
   useEffect(() => {
     fetchEmployees();
+    loadLeaveSettings();
   }, []);
 
   useEffect(() => {
     if (selectedEmployeeId) {
       fetchLeaveBalances();
     }
-  }, [selectedEmployeeId, year]);
+  }, [selectedEmployeeId, year, leaveSettings]);
+
+  const loadLeaveSettings = async () => {
+    try {
+      const settings = await leaveSettingsService.getSettings();
+      setLeaveSettings(settings);
+    } catch (error) {
+      console.error('Error loading leave settings:', error);
+    }
+  };
 
   const fetchEmployees = async () => {
     try {
@@ -173,16 +191,23 @@ export function LeaveManagementTab({ year }: LeaveManagementTabProps) {
         const manualCarried = existing?.carried_forward || 0;
         const additionalCredit = existing?.additional_credit || 0;
         
+        // Use config values from leave settings
+        const monthlyCredit = leaveSettings.leaves_per_month;
+        const maxCarryForward = leaveSettings.max_carry_forward;
+        const maxLeavesPerMonth = leaveSettings.max_leaves_per_month;
+        
         // For January, no automatic carry-forward
-        // For other months, carry forward previous month's balance
-        const autoCarried = monthNum === 1 ? 0 : previousBalance;
+        // For other months, carry forward previous month's balance (capped at max_carry_forward)
+        const autoCarried = monthNum === 1 ? 0 : Math.min(previousBalance, maxCarryForward);
         
         // Use manual override if record exists, otherwise use automatic
         const hasManualOverride = existing?.id && (existing?.carried_forward > 0 || existing?.adjustment_reason);
         const carriedForward = hasManualOverride ? manualCarried : autoCarried;
         
-        const monthlyCredit = 1;
-        const available = monthlyCredit + carriedForward + additionalCredit;
+        // Calculate available (cap at max leaves per month unless manual override)
+        const rawAvailable = monthlyCredit + carriedForward + additionalCredit;
+        const available = hasManualOverride ? rawAvailable : Math.min(rawAvailable, maxLeavesPerMonth);
+        
         const totalUsed = usage.sick + usage.casual;
         const balance = Math.max(0, available - totalUsed);
         
@@ -295,10 +320,20 @@ export function LeaveManagementTab({ year }: LeaveManagementTabProps) {
       {/* Leave Balance Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Leave Balance - {year}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Leave Balance - {year}
+            </CardTitle>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-md">
+              <Info className="h-3.5 w-3.5" />
+              <span>Credit: {leaveSettings.leaves_per_month}/mo</span>
+              <span className="text-muted-foreground/50">|</span>
+              <span>Max Carry: {leaveSettings.max_carry_forward}</span>
+              <span className="text-muted-foreground/50">|</span>
+              <span>Max/Month: {leaveSettings.max_leaves_per_month}</span>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoadingBalances ? (
