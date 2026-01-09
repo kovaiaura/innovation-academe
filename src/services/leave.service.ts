@@ -426,6 +426,36 @@ export const leaveApplicationService = {
     }));
   },
 
+  // Get pending applications for a specific approval level
+  getPendingByApprovalLevel: async (level: number): Promise<LeaveApplication[]> => {
+    const { data, error } = await supabase
+      .from('leave_applications')
+      .select('*')
+      .eq('status', 'pending')
+      .eq('current_approval_level', level)
+      .order('applied_at', { ascending: true });
+
+    if (error) throw error;
+    return (data || []).map(app => ({
+      ...app,
+      leave_type: app.leave_type as LeaveType,
+      status: app.status as LeaveStatus,
+      applicant_type: app.applicant_type as UserType,
+      approval_chain: parseApprovalChain(app.approval_chain),
+      substitute_assignments: parseSubstituteAssignments(app.substitute_assignments)
+    }));
+  },
+
+  // Get pending applications for Project Manager (level 1)
+  getManagerPendingApplications: async (): Promise<LeaveApplication[]> => {
+    return leaveApplicationService.getPendingByApprovalLevel(1);
+  },
+
+  // Get pending applications for CEO (level 2)
+  getCEOPendingApplications: async (): Promise<LeaveApplication[]> => {
+    return leaveApplicationService.getPendingByApprovalLevel(2);
+  },
+
   getAllApplications: async (filters?: { status?: LeaveStatus; year?: number; applicantType?: UserType }): Promise<LeaveApplication[]> => {
     let query = supabase.from('leave_applications').select('*').order('applied_at', { ascending: false });
 
