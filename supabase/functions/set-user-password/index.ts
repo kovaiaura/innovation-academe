@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
     } else if (user_type === 'student') {
       const { data: student, error: studentError } = await supabaseAdmin
         .from('students')
-        .select('user_id, email, student_name')
+        .select('user_id, email, student_name, institution_id, class_id')
         .eq('id', user_id)
         .single();
       
@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
           console.error('Error linking student to auth user:', updateStudentError);
         }
 
-        // Create profile for the new user
+        // Create profile for the new user with institution and class data
         const { error: profileCreateError } = await supabaseAdmin
           .from('profiles')
           .insert({
@@ -155,6 +155,8 @@ Deno.serve(async (req) => {
             full_name: student.student_name,
             email: student.email,
             role: 'student',
+            institution_id: student.institution_id,
+            class_id: student.class_id,
             password_changed: true,
             must_change_password: false,
             password_changed_at: new Date().toISOString(),
@@ -162,6 +164,18 @@ Deno.serve(async (req) => {
 
         if (profileCreateError) {
           console.error('Error creating profile:', profileCreateError);
+        }
+
+        // Add student role to user_roles table
+        const { error: roleInsertError } = await supabaseAdmin
+          .from('user_roles')
+          .insert({
+            user_id: newUser.user.id,
+            role: 'student',
+          });
+
+        if (roleInsertError) {
+          console.error('Error inserting user role:', roleInsertError);
         }
 
         console.log(`Auth account created and linked for student ${user_id}, auth user: ${newUser.user.id}`);
