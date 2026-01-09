@@ -16,6 +16,7 @@ interface LeaveManagementTabProps {
 
 interface Employee {
   id: string;
+  userId: string; // Profile/auth user ID for leave queries
   name: string;
   employee_id: string | null;
   type: 'officer' | 'staff';
@@ -80,10 +81,10 @@ export function LeaveManagementTab({ year }: LeaveManagementTabProps) {
     try {
       setIsLoading(true);
       
-      // Fetch officers
+      // Fetch officers - include user_id for leave queries
       const { data: officers } = await supabase
         .from('officers')
-        .select('id, full_name, employee_id')
+        .select('id, full_name, employee_id, user_id')
         .eq('status', 'active');
 
       // Fetch meta staff
@@ -95,12 +96,14 @@ export function LeaveManagementTab({ year }: LeaveManagementTabProps) {
       const allEmployees: Employee[] = [
         ...(officers || []).map((o: any) => ({
           id: o.id,
+          userId: o.user_id || o.id, // Use user_id for officers (links to profile)
           name: o.full_name,
           employee_id: o.employee_id,
           type: 'officer' as const
         })),
         ...(profiles || []).map((p: any) => ({
           id: p.id,
+          userId: p.id, // For staff, profile ID is the user ID
           name: p.name,
           employee_id: p.employee_id,
           type: 'staff' as const
@@ -121,6 +124,10 @@ export function LeaveManagementTab({ year }: LeaveManagementTabProps) {
   const fetchLeaveBalances = async () => {
     if (!selectedEmployeeId) return;
     
+    // Get the correct userId for leave queries (officers have different id vs user_id)
+    const selectedEmp = employees.find(e => e.id === selectedEmployeeId);
+    const leaveQueryId = selectedEmp?.userId || selectedEmployeeId;
+    
     try {
       setIsLoadingBalances(true);
       
@@ -132,11 +139,11 @@ export function LeaveManagementTab({ year }: LeaveManagementTabProps) {
         .eq('year', year)
         .order('month', { ascending: true });
 
-      // Fetch approved leave applications for the selected employee
+      // Fetch approved leave applications using the correct user ID
       const { data: approvedLeaves } = await supabase
         .from('leave_applications')
         .select('start_date, end_date, leave_type, total_days, is_lop, lop_days, paid_days')
-        .eq('applicant_id', selectedEmployeeId)
+        .eq('applicant_id', leaveQueryId)
         .eq('status', 'approved')
         .gte('start_date', `${year}-01-01`)
         .lte('end_date', `${year}-12-31`);
