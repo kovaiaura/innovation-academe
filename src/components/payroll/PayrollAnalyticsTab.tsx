@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
 import { TrendingUp, TrendingDown, Users, Wallet, Calendar, AlertTriangle } from 'lucide-react';
-import { format, subMonths } from 'date-fns';
+import { format, subMonths, getDaysInMonth } from 'date-fns';
 import { formatCurrency } from '@/utils/attendanceHelpers';
 import { fetchAllEmployees, EmployeePayrollSummary, STANDARD_DAYS_PER_MONTH } from '@/services/payroll.service';
 
@@ -62,9 +62,14 @@ export function PayrollAnalyticsTab({ month, year }: PayrollAnalyticsTabProps) {
           return sum + (e.per_day_salary * totalLopDays);
         }, 0);
         
+        // NEW FORMULA: Attendance % = ((Total Days - Leave Days) × 100) / Total Days
+        const totalDaysInMonth = getDaysInMonth(date);
         const avgAttendance = employees.length > 0
-          ? employees.reduce((sum, e) => sum + e.days_present, 0) / employees.length
-          : 0;
+          ? employees.reduce((sum, e) => {
+              const leaveDays = e.days_leave || 0;
+              return sum + (((totalDaysInMonth - leaveDays) * 100) / totalDaysInMonth);
+            }, 0) / employees.length
+          : 100;
         
         data.push({
           month: format(date, 'yyyy-MM'),

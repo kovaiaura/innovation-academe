@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Download, User, Building2, Calendar, Eye, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Search, Download, User, Building2, Calendar, Eye, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
 import { formatCurrency } from '@/utils/attendanceHelpers';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, getDaysInMonth } from 'date-fns';
 import { 
   fetchAllEmployees, 
   EmployeePayrollSummary,
@@ -15,6 +15,7 @@ import {
 } from '@/services/payroll.service';
 import { EmployeePayrollDialog } from './EmployeePayrollDialog';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface EmployeesOverviewTabProps {
   month: number;
@@ -29,6 +30,7 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
   const [userTypeFilter, setUserTypeFilter] = useState<string>('all');
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeePayrollSummary | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [overtimePayMap, setOvertimePayMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
     loadEmployees();
@@ -43,6 +45,23 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
     try {
       const data = await fetchAllEmployees(month, year);
       setEmployees(data);
+      
+      // Fetch approved overtime pay for all employees
+      const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
+      const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+      
+      const { data: overtimeData } = await supabase
+        .from('overtime_requests')
+        .select('user_id, calculated_pay')
+        .eq('status', 'approved')
+        .gte('date', startDate)
+        .lte('date', endDate);
+      
+      const otMap: Record<string, number> = {};
+      (overtimeData || []).forEach(ot => {
+        otMap[ot.user_id] = (otMap[ot.user_id] || 0) + (ot.calculated_pay || 0);
+      });
+      setOvertimePayMap(otMap);
     } catch (error) {
       console.error('Error loading employees:', error);
     } finally {
@@ -102,19 +121,25 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
     return employee.total_deductions;
   };
   
+  // NEW FORMULA: Attendance % = ((Total Days in Month - Leave Days) × 100) / Total Days in Month
   const getAttendancePercentage = (employee: EmployeePayrollSummary): number => {
-    const totalDays = employee.days_present + employee.days_not_marked + employee.days_lop;
-    if (totalDays === 0) return 0;
-    return Math.round((employee.days_present / totalDays) * 100);
+    const totalDaysInMonth = getDaysInMonth(new Date(year, month - 1));
+    const leaveDays = employee.days_leave || 0;
+    return parseFloat((((totalDaysInMonth - leaveDays) * 100) / totalDaysInMonth).toFixed(2));
+  };
+  
+  const getOvertimePay = (employee: EmployeePayrollSummary): number => {
+    return overtimePayMap[employee.user_id] || 0;
   };
 
   const exportToCSV = () => {
-    const headers = ['Name', 'Email', 'Type', 'Calendar Type', 'Position', 'Join Date', 'Monthly Salary', 'Per Day Salary', 'Days Present', 'Days Leave', 'Days LOP', 'Not Marked', 'Attendance %', 'Total Hours', 'LOP Deduction', 'Net Pay', 'Status'];
+    const headers = ['Name', 'Email', 'Type', 'Calendar Type', 'Position', 'Join Date', 'Monthly Salary', 'Per Day Salary', 'Days Present', 'Days Leave', 'Days LOP', 'Not Marked', 'Attendance %', 'Total Hours', 'LOP Deduction', 'OT Pay', 'Net Pay', 'Status'];
     const rows = filteredEmployees.map(e => {
       const proratedSalary = calculateProratedSalary(e);
       const daysNotMarked = e.days_not_marked ?? 0;
       const lopDeduction = calculateTotalLopDeduction(e);
-      const netPay = proratedSalary - lopDeduction;
+      const overtimePay = getOvertimePay(e);
+      const netPay = proratedSalary - lopDeduction + overtimePay;
       const attendancePct = getAttendancePercentage(e);
       
       return [
@@ -133,6 +158,7 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
         `${attendancePct}%`,
         e.total_hours_worked.toFixed(1),
         lopDeduction.toFixed(2),
+        overtimePay.toFixed(2),
         netPay.toFixed(2),
         e.payroll_status
       ];
@@ -160,7 +186,11 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
     avgAttendance: filteredEmployees.length > 0 
       ? Math.round(filteredEmployees.reduce((sum, e) => sum + getAttendancePercentage(e), 0) / filteredEmployees.length)
       : 0,
-    totalNetPayroll: filteredEmployees.reduce((sum, e) => sum + (calculateProratedSalary(e) - calculateTotalLopDeduction(e)), 0)
+    totalOvertimePay: filteredEmployees.reduce((sum, e) => sum + getOvertimePay(e), 0),
+    totalNetPayroll: filteredEmployees.reduce((sum, e) => {
+      const overtimePay = getOvertimePay(e);
+      return sum + (calculateProratedSalary(e) - calculateTotalLopDeduction(e) + overtimePay);
+    }, 0)
   };
 
   return (
@@ -262,6 +292,7 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
                     <TableHead className="text-center text-amber-600">Not Marked</TableHead>
                     <TableHead className="text-center text-red-600">LOP</TableHead>
                     <TableHead className="text-right">Deduction</TableHead>
+                    <TableHead className="text-right text-green-600">OT Pay</TableHead>
                     <TableHead className="text-right">Net Pay</TableHead>
                     <TableHead className="text-center">Actions</TableHead>
                   </TableRow>
@@ -269,7 +300,7 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
                 <TableBody>
                   {filteredEmployees.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                         No employees found
                       </TableCell>
                     </TableRow>
@@ -278,7 +309,8 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
                       const proratedSalary = calculateProratedSalary(employee);
                       const daysNotMarked = employee.days_not_marked ?? 0;
                       const lopDeduction = calculateTotalLopDeduction(employee);
-                      const netPay = proratedSalary - lopDeduction;
+                      const overtimePay = getOvertimePay(employee);
+                      const netPay = proratedSalary - lopDeduction + overtimePay;
                       const attendancePct = getAttendancePercentage(employee);
                       
                       return (
@@ -350,6 +382,13 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
                           <TableCell className="text-right">
                             {lopDeduction > 0 ? (
                               <span className="text-red-600">-{formatCurrency(lopDeduction)}</span>
+                            ) : (
+                              <span className="text-muted-foreground">₹0</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {overtimePay > 0 ? (
+                              <span className="text-green-600 font-medium">+{formatCurrency(overtimePay)}</span>
                             ) : (
                               <span className="text-muted-foreground">₹0</span>
                             )}
