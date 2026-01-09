@@ -65,7 +65,11 @@ export default function ResetPassword() {
         throw new Error('No token provided');
       }
       
-      await passwordService.resetPasswordWithToken(token, password);
+      const result = await passwordService.resetPasswordWithToken(token, password);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to reset password');
+      }
       
       setIsSuccess(true);
       toast.success('Password reset successfully');
@@ -74,8 +78,8 @@ export default function ResetPassword() {
       setTimeout(() => {
         navigate('/login');
       }, 3000);
-    } catch (error) {
-      toast.error('Failed to reset password. The link may have expired.');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to reset password. The link may have expired.');
       setIsTokenValid(false);
     } finally {
       setIsLoading(false);
