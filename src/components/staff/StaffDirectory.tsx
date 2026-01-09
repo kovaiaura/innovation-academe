@@ -42,29 +42,25 @@ export default function StaffDirectory() {
       setIsLoading(true);
       
       // Fetch all profiles with position_id (meta staff)
-      const { data, error } = await supabase
+      const { data: profilesData, error } = await supabase
         .from('profiles')
-        .select(`
-          id,
-          name,
-          email,
-          phone,
-          employee_id,
-          designation,
-          department,
-          status,
-          profile_photo_url,
-          position_id,
-          hourly_rate,
-          join_date,
-          custom_positions!profiles_position_id_fkey(display_name)
-        `)
+        .select('id, name, email, phone, employee_id, designation, department, status, profile_photo_url, position_id, hourly_rate, join_date')
         .not('position_id', 'is', null)
         .order('name');
 
       if (error) throw error;
 
-      const mappedStaff: MetaStaffMember[] = (data || []).map((profile: any) => ({
+      // Fetch all positions to map names
+      const { data: positionsData } = await supabase
+        .from('custom_positions' as any)
+        .select('id, display_name');
+
+      const positionMap = new Map<string, string>();
+      (positionsData || []).forEach((pos: any) => {
+        positionMap.set(pos.id, pos.display_name);
+      });
+
+      const mappedStaff: MetaStaffMember[] = (profilesData || []).map((profile: any) => ({
         id: profile.id,
         name: profile.name,
         email: profile.email,
@@ -75,7 +71,7 @@ export default function StaffDirectory() {
         status: profile.status || 'active',
         profile_photo_url: profile.profile_photo_url,
         position_id: profile.position_id,
-        position_name: profile.custom_positions?.display_name || 'Unknown Position',
+        position_name: positionMap.get(profile.position_id) || 'Unknown Position',
         hourly_rate: profile.hourly_rate,
         join_date: profile.join_date,
       }));
