@@ -1,6 +1,6 @@
 /**
  * Individual Attendance Management Tab
- * View and correct attendance records for individual officers/staff
+ * Comprehensive view with holidays, weekends, leaves, overtime approvals
  */
 
 import { useState, useEffect } from 'react';
@@ -10,13 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -43,34 +36,56 @@ import {
   XCircle,
   AlertTriangle,
   Timer,
-  MapPin,
+  Percent,
+  TreePalm,
+  CalendarOff,
+  CalendarCheck,
 } from 'lucide-react';
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend, isSameDay, isAfter } from 'date-fns';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface AttendanceRecord {
-  id: string;
+interface DayRecord {
   date: string;
+  dayOfWeek: string;
+  dayType: 'working' | 'weekend' | 'holiday' | 'leave';
+  
+  // Attendance data
+  attendance_id: string | null;
   check_in_time: string | null;
   check_out_time: string | null;
   total_hours_worked: number | null;
+  status: 'present' | 'late' | 'unmarked' | 'holiday' | 'weekend' | 'leave' | 'future';
+  
+  // Late info
+  is_late: boolean;
+  late_minutes: number;
+  
+  // Leave info
+  leave_type?: string;
+  leave_id?: string;
+  
+  // Overtime info
   overtime_hours: number | null;
-  status: string;
-  is_late_login: boolean | null;
-  late_minutes: number | null;
-  check_in_validated: boolean | null;
-  is_manual_correction: boolean | null;
-  correction_reason: string | null;
+  overtime_status?: 'pending' | 'approved' | 'rejected' | null;
+  overtime_id?: string;
+  
+  // Holiday info
+  holiday_name?: string;
+  is_paid_holiday?: boolean;
+  
+  // Correction
+  is_manual_correction: boolean;
 }
 
 interface Employee {
   id: string;
+  user_id: string;
   name: string;
   employee_id: string;
   position_name: string | null;
-  type: 'officer' | 'staff';
+  institution_id: string | null;
 }
 
 interface IndividualAttendanceTabProps {
@@ -83,45 +98,49 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [dayRecords, setDayRecords] = useState<DayRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [correctionDialogOpen, setCorrectionDialogOpen] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<DayRecord | null>(null);
   const [correctionData, setCorrectionData] = useState({
     check_in_time: '',
     check_out_time: '',
     reason: '',
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectOvertimeId, setRejectOvertimeId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   // Load employees
   useEffect(() => {
     loadEmployees();
   }, []);
 
-  // Load attendance when employee selected
+  // Load data when employee selected
   useEffect(() => {
     if (selectedEmployee) {
-      loadAttendance();
+      loadAllData();
     }
   }, [selectedEmployee, month, year]);
 
   const loadEmployees = async () => {
     try {
-      // Fetch officers
       const { data: officers, error } = await supabase
         .from('officers')
-        .select('id, full_name, employee_id, department')
+        .select('id, user_id, full_name, employee_id, department, assigned_institutions')
+        .eq('status', 'active')
         .order('full_name');
 
       if (error) throw error;
 
       const employeeList: Employee[] = (officers || []).map((o) => ({
         id: o.id,
+        user_id: o.user_id || o.id,
         name: o.full_name || '',
         employee_id: o.employee_id || '',
         position_name: o.department || null,
-        type: 'officer' as const,
+        institution_id: o.assigned_institutions?.[0] || null,
       }));
 
       setEmployees(employeeList);
@@ -130,42 +149,184 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     }
   };
 
-  const loadAttendance = async () => {
+  const loadAllData = async () => {
     if (!selectedEmployee) return;
 
     setIsLoading(true);
     try {
-      const startDate = format(startOfMonth(new Date(year, month - 1)), 'yyyy-MM-dd');
-      const endDate = format(endOfMonth(new Date(year, month - 1)), 'yyyy-MM-dd');
+      const monthStart = startOfMonth(new Date(year, month - 1));
+      const monthEnd = endOfMonth(new Date(year, month - 1));
+      const today = new Date();
+      const endDate = isAfter(monthEnd, today) ? today : monthEnd;
 
-      // Currently only officers are supported
-      const { data, error } = await supabase
-        .from('officer_attendance')
-        .select('*')
-        .eq('officer_id', selectedEmployee.id)
-        .gte('date', startDate)
-        .lte('date', endDate)
-        .order('date', { ascending: true });
+      const startDateStr = format(monthStart, 'yyyy-MM-dd');
+      const endDateStr = format(endDate, 'yyyy-MM-dd');
 
-      if (error) throw error;
-      setAttendanceRecords((data || []) as AttendanceRecord[]);
+      // Fetch all data in parallel
+      const [attendanceResult, holidaysResult, leavesResult, overtimeResult] = await Promise.all([
+        supabase
+          .from('officer_attendance')
+          .select('*')
+          .eq('officer_id', selectedEmployee.id)
+          .gte('date', startDateStr)
+          .lte('date', endDateStr),
+        supabase
+          .from('company_holidays')
+          .select('*')
+          .eq('year', year),
+        supabase
+          .from('leave_applications')
+          .select('*')
+          .eq('applicant_id', selectedEmployee.user_id)
+          .eq('status', 'approved')
+          .or(`start_date.lte.${endDateStr},end_date.gte.${startDateStr}`),
+        supabase
+          .from('overtime_requests')
+          .select('*')
+          .eq('user_id', selectedEmployee.user_id)
+          .gte('date', startDateStr)
+          .lte('date', endDateStr),
+      ]);
+
+      // Create maps for quick lookup
+      const attendanceMap = new Map(
+        (attendanceResult.data || []).map((a) => [a.date, a])
+      );
+
+      const holidayMap = new Map<string, { name: string; is_paid: boolean }>();
+      (holidaysResult.data || []).forEach((h) => {
+        const hDate = format(new Date(h.date), 'yyyy-MM-dd');
+        holidayMap.set(hDate, { name: h.name, is_paid: h.is_paid !== false });
+      });
+
+      const leaveMap = new Map<string, { type: string; id: string }>();
+      (leavesResult.data || []).forEach((l) => {
+        const start = new Date(l.start_date);
+        const end = new Date(l.end_date);
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const dateStr = format(d, 'yyyy-MM-dd');
+          leaveMap.set(dateStr, { type: l.leave_type, id: l.id });
+        }
+      });
+
+      const overtimeMap = new Map(
+        (overtimeResult.data || []).map((o) => [o.date, o])
+      );
+
+      // Generate all days from month start to today/month end
+      const allDays = eachDayOfInterval({ start: monthStart, end: endDate });
+
+      const records: DayRecord[] = allDays.map((day) => {
+        const dateStr = format(day, 'yyyy-MM-dd');
+        const isWeekendDay = isWeekend(day);
+        const holiday = holidayMap.get(dateStr);
+        const leave = leaveMap.get(dateStr);
+        const attendance = attendanceMap.get(dateStr);
+        const overtime = overtimeMap.get(dateStr);
+        const isFutureDay = isAfter(day, today);
+
+        // Determine day type and status
+        let dayType: DayRecord['dayType'] = 'working';
+        let status: DayRecord['status'] = 'unmarked';
+
+        if (isFutureDay) {
+          status = 'future';
+        } else if (isWeekendDay) {
+          dayType = 'weekend';
+          status = 'weekend';
+        } else if (holiday) {
+          dayType = 'holiday';
+          status = 'holiday';
+        } else if (leave) {
+          dayType = 'leave';
+          status = 'leave';
+        } else if (attendance) {
+          if (attendance.is_late_login) {
+            status = 'late';
+          } else if (attendance.status === 'checked_in' || attendance.status === 'checked_out') {
+            status = 'present';
+          }
+        }
+
+        return {
+          date: dateStr,
+          dayOfWeek: format(day, 'EEE'),
+          dayType,
+          attendance_id: attendance?.id || null,
+          check_in_time: attendance?.check_in_time || null,
+          check_out_time: attendance?.check_out_time || null,
+          total_hours_worked: attendance?.total_hours_worked || null,
+          status,
+          is_late: attendance?.is_late_login || false,
+          late_minutes: attendance?.late_minutes || 0,
+          leave_type: leave?.type,
+          leave_id: leave?.id,
+          overtime_hours: overtime?.requested_hours || attendance?.overtime_hours || null,
+          overtime_status: overtime?.status as DayRecord['overtime_status'] || null,
+          overtime_id: overtime?.id,
+          holiday_name: holiday?.name,
+          is_paid_holiday: holiday?.is_paid,
+          is_manual_correction: attendance?.is_manual_correction || false,
+        };
+      });
+
+      setDayRecords(records);
     } catch (error) {
-      console.error('Error loading attendance:', error);
-      toast.error('Failed to load attendance records');
+      console.error('Error loading data:', error);
+      toast.error('Failed to load attendance data');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const openCorrectionDialog = (record: AttendanceRecord) => {
+  // Calculate stats
+  const calculateStats = () => {
+    const workingDays = dayRecords.filter((r) => r.dayType === 'working' && r.status !== 'future').length;
+    const weekendDays = dayRecords.filter((r) => r.dayType === 'weekend').length;
+    const holidays = dayRecords.filter((r) => r.dayType === 'holiday').length;
+    const leaveDays = dayRecords.filter((r) => r.dayType === 'leave').length;
+    const presentDays = dayRecords.filter((r) => r.status === 'present' || r.status === 'late').length;
+    const lateDays = dayRecords.filter((r) => r.status === 'late').length;
+    const unmarkedDays = dayRecords.filter((r) => r.status === 'unmarked').length;
+    const totalHours = dayRecords.reduce((sum, r) => sum + (r.total_hours_worked || 0), 0);
+    const totalOvertime = dayRecords.reduce((sum, r) => sum + (r.overtime_hours || 0), 0);
+    const pendingOvertimeCount = dayRecords.filter((r) => r.overtime_status === 'pending').length;
+
+    // Present percentage = present / (working days - holidays - leaves)
+    const effectiveWorkingDays = workingDays - leaveDays;
+    const presentPercentage = effectiveWorkingDays > 0 
+      ? Math.round((presentDays / effectiveWorkingDays) * 100) 
+      : 0;
+
+    return {
+      workingDays,
+      weekendDays,
+      holidays,
+      leaveDays,
+      presentDays,
+      lateDays,
+      unmarkedDays,
+      totalHours,
+      totalOvertime,
+      pendingOvertimeCount,
+      presentPercentage,
+    };
+  };
+
+  const stats = selectedEmployee ? calculateStats() : null;
+
+  // Correction handlers
+  const openCorrectionDialog = (record: DayRecord) => {
+    if (!record.attendance_id && record.status !== 'unmarked') return;
+    
     setSelectedRecord(record);
     setCorrectionData({
       check_in_time: record.check_in_time
         ? format(parseISO(record.check_in_time), "yyyy-MM-dd'T'HH:mm")
-        : '',
+        : `${record.date}T09:00`,
       check_out_time: record.check_out_time
         ? format(parseISO(record.check_out_time), "yyyy-MM-dd'T'HH:mm")
-        : '',
+        : `${record.date}T18:00`,
       reason: '',
     });
     setCorrectionDialogOpen(true);
@@ -181,7 +342,6 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
 
     setIsSaving(true);
     try {
-      // Calculate new hours worked
       let totalHoursWorked = null;
       let overtimeHours = null;
 
@@ -192,45 +352,56 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
         overtimeHours = Math.max(0, totalHoursWorked - 8);
       }
 
-      // Update the attendance record (officers only for now)
-      const { error: updateError } = await supabase
-        .from('officer_attendance')
-        .update({
-          check_in_time: correctionData.check_in_time
-            ? new Date(correctionData.check_in_time).toISOString()
-            : selectedRecord.check_in_time,
-          check_out_time: correctionData.check_out_time
-            ? new Date(correctionData.check_out_time).toISOString()
-            : selectedRecord.check_out_time,
-          original_check_in_time: selectedRecord.check_in_time,
-          original_check_out_time: selectedRecord.check_out_time,
-          total_hours_worked: totalHoursWorked
-            ? Math.round(totalHoursWorked * 100) / 100
-            : selectedRecord.total_hours_worked,
-          overtime_hours: overtimeHours
-            ? Math.round(overtimeHours * 100) / 100
-            : selectedRecord.overtime_hours,
+      if (selectedRecord.attendance_id) {
+        // Update existing record
+        const { error: updateError } = await supabase
+          .from('officer_attendance')
+          .update({
+            check_in_time: new Date(correctionData.check_in_time).toISOString(),
+            check_out_time: new Date(correctionData.check_out_time).toISOString(),
+            total_hours_worked: Math.round(totalHoursWorked! * 100) / 100,
+            overtime_hours: Math.round(overtimeHours! * 100) / 100,
+            is_manual_correction: true,
+            corrected_by: user.id,
+            correction_reason: correctionData.reason,
+            status: 'checked_out',
+          })
+          .eq('id', selectedRecord.attendance_id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Create new attendance record for unmarked day
+        const insertData: Record<string, unknown> = {
+          officer_id: selectedEmployee.id,
+          date: selectedRecord.date,
+          check_in_time: new Date(correctionData.check_in_time).toISOString(),
+          check_out_time: new Date(correctionData.check_out_time).toISOString(),
+          total_hours_worked: Math.round(totalHoursWorked! * 100) / 100,
+          overtime_hours: Math.round(overtimeHours! * 100) / 100,
           is_manual_correction: true,
           corrected_by: user.id,
           correction_reason: correctionData.reason,
-          status:
-            correctionData.check_in_time && correctionData.check_out_time
-              ? 'checked_out'
-              : correctionData.check_in_time
-                ? 'checked_in'
-                : selectedRecord.status,
-        })
-        .eq('id', selectedRecord.id);
+          status: 'checked_out',
+        };
+        
+        if (selectedEmployee.institution_id) {
+          insertData.institution_id = selectedEmployee.institution_id;
+        }
 
-      if (updateError) throw updateError;
+        const { error: insertError } = await supabase
+          .from('officer_attendance')
+          .insert(insertData as never);
 
-      // Log the correction
+        if (insertError) throw insertError;
+      }
+
+      // Log correction
       await supabase.from('attendance_corrections').insert({
-        attendance_id: selectedRecord.id,
-        attendance_type: selectedEmployee.type,
+        attendance_id: selectedRecord.attendance_id || 'new',
+        attendance_type: 'officer',
         field_corrected: 'check_in_time, check_out_time',
         original_value: `${selectedRecord.check_in_time || 'null'}, ${selectedRecord.check_out_time || 'null'}`,
-        new_value: `${correctionData.check_in_time || 'null'}, ${correctionData.check_out_time || 'null'}`,
+        new_value: `${correctionData.check_in_time}, ${correctionData.check_out_time}`,
         reason: correctionData.reason,
         corrected_by: user.id,
         corrected_by_name: user.name,
@@ -238,7 +409,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
 
       toast.success('Attendance corrected successfully');
       setCorrectionDialogOpen(false);
-      loadAttendance();
+      loadAllData();
     } catch (error) {
       console.error('Error saving correction:', error);
       toast.error('Failed to save correction');
@@ -247,30 +418,117 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     }
   };
 
+  // Overtime approval handlers
+  const handleApproveOvertime = async (overtimeId: string) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('overtime_requests')
+        .update({
+          status: 'approved',
+          approved_by: user.id,
+          approved_by_name: user.name,
+          approved_at: new Date().toISOString(),
+        })
+        .eq('id', overtimeId);
+
+      if (error) throw error;
+      toast.success('Overtime approved');
+      loadAllData();
+    } catch (error) {
+      console.error('Error approving overtime:', error);
+      toast.error('Failed to approve overtime');
+    }
+  };
+
+  const openRejectDialog = (overtimeId: string) => {
+    setRejectOvertimeId(overtimeId);
+    setRejectReason('');
+    setRejectDialogOpen(true);
+  };
+
+  const handleRejectOvertime = async () => {
+    if (!rejectOvertimeId || !user || !rejectReason.trim()) {
+      toast.error('Please provide a rejection reason');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('overtime_requests')
+        .update({
+          status: 'rejected',
+          approved_by: user.id,
+          approved_by_name: user.name,
+          approved_at: new Date().toISOString(),
+          rejection_reason: rejectReason,
+        })
+        .eq('id', rejectOvertimeId);
+
+      if (error) throw error;
+      toast.success('Overtime rejected');
+      setRejectDialogOpen(false);
+      loadAllData();
+    } catch (error) {
+      console.error('Error rejecting overtime:', error);
+      toast.error('Failed to reject overtime');
+    }
+  };
+
   const filteredEmployees = employees.filter((emp) =>
     emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     emp.employee_id?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Calculate summary stats
-  const calculateStats = () => {
-    const daysInMonth = eachDayOfInterval({
-      start: startOfMonth(new Date(year, month - 1)),
-      end: endOfMonth(new Date(year, month - 1)),
-    });
-
-    const workingDays = daysInMonth.filter((d) => !isWeekend(d)).length;
-    const presentDays = attendanceRecords.filter(
-      (r) => r.status === 'checked_in' || r.status === 'checked_out'
-    ).length;
-    const lateDays = attendanceRecords.filter((r) => r.is_late_login).length;
-    const totalHours = attendanceRecords.reduce((sum, r) => sum + (r.total_hours_worked || 0), 0);
-    const totalOvertime = attendanceRecords.reduce((sum, r) => sum + (r.overtime_hours || 0), 0);
-
-    return { workingDays, presentDays, lateDays, totalHours, totalOvertime };
+  // Get row background color based on status
+  const getRowClassName = (record: DayRecord) => {
+    switch (record.status) {
+      case 'weekend':
+        return 'bg-muted/50';
+      case 'holiday':
+        return 'bg-purple-50 dark:bg-purple-950/20';
+      case 'leave':
+        return 'bg-blue-50 dark:bg-blue-950/20';
+      case 'unmarked':
+        return 'bg-red-50 dark:bg-red-950/20';
+      case 'late':
+        return 'bg-orange-50 dark:bg-orange-950/20';
+      case 'future':
+        return 'opacity-50';
+      default:
+        return '';
+    }
   };
 
-  const stats = selectedEmployee ? calculateStats() : null;
+  // Status badge component
+  const StatusBadge = ({ record }: { record: DayRecord }) => {
+    switch (record.status) {
+      case 'present':
+        return <Badge className="bg-green-500/10 text-green-700 border-green-500/20">Present</Badge>;
+      case 'late':
+        return (
+          <Badge className="bg-orange-500/10 text-orange-700 border-orange-500/20">
+            Late +{record.late_minutes}m
+          </Badge>
+        );
+      case 'unmarked':
+        return <Badge variant="destructive">Unmarked</Badge>;
+      case 'holiday':
+        return <Badge className="bg-purple-500/10 text-purple-700 border-purple-500/20">Holiday</Badge>;
+      case 'weekend':
+        return <Badge variant="secondary">Weekend</Badge>;
+      case 'leave':
+        return (
+          <Badge className="bg-blue-500/10 text-blue-700 border-blue-500/20">
+            {record.leave_type || 'Leave'}
+          </Badge>
+        );
+      case 'future':
+        return <Badge variant="outline">-</Badge>;
+      default:
+        return null;
+    }
+  };
 
   return (
     <>
@@ -295,7 +553,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
               {filteredEmployees.map((emp) => (
                 <div
-                  key={`${emp.type}-${emp.id}`}
+                  key={emp.id}
                   className={`p-3 rounded-lg cursor-pointer transition-colors ${
                     selectedEmployee?.id === emp.id
                       ? 'bg-primary text-primary-foreground'
@@ -317,12 +575,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{emp.name}</p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs opacity-70">{emp.employee_id}</span>
-                        <Badge variant="outline" className="text-xs py-0">
-                          {emp.type}
-                        </Badge>
-                      </div>
+                      <span className="text-xs opacity-70">{emp.employee_id}</span>
                     </div>
                   </div>
                 </div>
@@ -335,8 +588,8 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
         <div className="lg:col-span-3 space-y-6">
           {selectedEmployee ? (
             <>
-              {/* Summary Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {/* Summary Stats - 2 rows of 4 */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <Card>
                   <CardContent className="pt-4 text-center">
                     <Calendar className="h-5 w-5 mx-auto text-blue-500 mb-1" />
@@ -353,6 +606,13 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                 </Card>
                 <Card>
                   <CardContent className="pt-4 text-center">
+                    <Percent className="h-5 w-5 mx-auto text-emerald-500 mb-1" />
+                    <p className="text-2xl font-bold text-emerald-600">{stats?.presentPercentage}%</p>
+                    <p className="text-xs text-muted-foreground">Present %</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4 text-center">
                     <AlertTriangle className="h-5 w-5 mx-auto text-orange-500 mb-1" />
                     <p className="text-2xl font-bold text-orange-600">{stats?.lateDays}</p>
                     <p className="text-xs text-muted-foreground">Late Days</p>
@@ -360,15 +620,34 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                 </Card>
                 <Card>
                   <CardContent className="pt-4 text-center">
-                    <Clock className="h-5 w-5 mx-auto text-primary mb-1" />
-                    <p className="text-2xl font-bold">{stats?.totalHours.toFixed(1)}</p>
-                    <p className="text-xs text-muted-foreground">Total Hours</p>
+                    <TreePalm className="h-5 w-5 mx-auto text-purple-500 mb-1" />
+                    <p className="text-2xl font-bold text-purple-600">{stats?.holidays}</p>
+                    <p className="text-xs text-muted-foreground">Holidays</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-4 text-center">
-                    <Timer className="h-5 w-5 mx-auto text-purple-500 mb-1" />
-                    <p className="text-2xl font-bold text-purple-600">{stats?.totalOvertime.toFixed(1)}</p>
+                    <CalendarCheck className="h-5 w-5 mx-auto text-blue-500 mb-1" />
+                    <p className="text-2xl font-bold text-blue-600">{stats?.leaveDays}</p>
+                    <p className="text-xs text-muted-foreground">On Leave</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4 text-center">
+                    <CalendarOff className="h-5 w-5 mx-auto text-red-500 mb-1" />
+                    <p className="text-2xl font-bold text-red-600">{stats?.unmarkedDays}</p>
+                    <p className="text-xs text-muted-foreground">Unmarked</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4 text-center">
+                    <Timer className="h-5 w-5 mx-auto text-indigo-500 mb-1" />
+                    <p className="text-2xl font-bold text-indigo-600">
+                      {stats?.totalOvertime.toFixed(1)}h
+                      {(stats?.pendingOvertimeCount || 0) > 0 && (
+                        <span className="text-xs text-orange-500 ml-1">({stats?.pendingOvertimeCount})</span>
+                      )}
+                    </p>
                     <p className="text-xs text-muted-foreground">Overtime</p>
                   </CardContent>
                 </Card>
@@ -390,114 +669,128 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                     <div className="flex items-center justify-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                     </div>
-                  ) : attendanceRecords.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No attendance records found for this month
-                    </div>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Check-in</TableHead>
-                          <TableHead>Check-out</TableHead>
-                          <TableHead className="text-center">Hours</TableHead>
-                          <TableHead className="text-center">Overtime</TableHead>
-                          <TableHead className="text-center">Status</TableHead>
-                          <TableHead className="text-center">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {attendanceRecords.map((record) => (
-                          <TableRow key={record.id}>
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">{format(parseISO(record.date), 'dd MMM')}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {format(parseISO(record.date), 'EEEE')}
-                                </p>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Day</TableHead>
+                            <TableHead>Check-in</TableHead>
+                            <TableHead>Check-out</TableHead>
+                            <TableHead className="text-center">Hours</TableHead>
+                            <TableHead className="text-center">Status</TableHead>
+                            <TableHead>Leave/Holiday</TableHead>
+                            <TableHead>Overtime</TableHead>
+                            <TableHead className="text-center">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {dayRecords.map((record) => (
+                            <TableRow key={record.date} className={getRowClassName(record)}>
+                              <TableCell className="font-medium">
+                                {format(parseISO(record.date), 'dd MMM')}
+                              </TableCell>
+                              <TableCell>{record.dayOfWeek}</TableCell>
+                              <TableCell>
                                 {record.check_in_time ? (
-                                  <>
+                                  <div className="flex items-center gap-1">
                                     <span>{format(parseISO(record.check_in_time), 'HH:mm')}</span>
-                                    {record.is_late_login && (
+                                    {record.is_late && (
                                       <Badge variant="destructive" className="text-xs py-0 px-1">
                                         +{record.late_minutes}m
                                       </Badge>
                                     )}
-                                  </>
+                                  </div>
                                 ) : (
                                   <span className="text-muted-foreground">--:--</span>
                                 )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {record.check_out_time ? (
-                                format(parseISO(record.check_out_time), 'HH:mm')
-                              ) : (
-                                <span className="text-muted-foreground">--:--</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {record.total_hours_worked?.toFixed(1) || '-'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {(record.overtime_hours || 0) > 0 ? (
-                                <Badge className="bg-purple-500/10 text-purple-700 border-purple-500/20">
-                                  {record.overtime_hours?.toFixed(1)}h
-                                </Badge>
-                              ) : (
-                                '-'
-                              )}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <div className="flex flex-col items-center gap-1">
-                                {record.status === 'checked_out' ? (
-                                  <Badge className="bg-green-500/10 text-green-700 border-green-500/20">
-                                    Complete
-                                  </Badge>
-                                ) : record.status === 'checked_in' ? (
-                                  <Badge className="bg-blue-500/10 text-blue-700 border-blue-500/20">
-                                    Working
-                                  </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {record.check_out_time ? (
+                                  format(parseISO(record.check_out_time), 'HH:mm')
                                 ) : (
-                                  <Badge variant="outline">Absent</Badge>
+                                  <span className="text-muted-foreground">--:--</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {record.total_hours_worked?.toFixed(1) || '-'}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <StatusBadge record={record} />
+                              </TableCell>
+                              <TableCell>
+                                {record.holiday_name && (
+                                  <span className="text-purple-600 text-sm">{record.holiday_name}</span>
+                                )}
+                                {record.leave_type && (
+                                  <span className="text-blue-600 text-sm capitalize">{record.leave_type}</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {(record.overtime_hours || 0) > 0 && (
+                                  <div className="flex items-center gap-2">
+                                    <Badge className="bg-indigo-500/10 text-indigo-700 border-indigo-500/20">
+                                      {record.overtime_hours?.toFixed(1)}h
+                                    </Badge>
+                                    {record.overtime_status === 'pending' && record.overtime_id && (
+                                      <div className="flex gap-1">
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-6 w-6"
+                                          onClick={() => handleApproveOvertime(record.overtime_id!)}
+                                        >
+                                          <CheckCircle className="h-4 w-4 text-green-600" />
+                                        </Button>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-6 w-6"
+                                          onClick={() => openRejectDialog(record.overtime_id!)}
+                                        >
+                                          <XCircle className="h-4 w-4 text-red-600" />
+                                        </Button>
+                                      </div>
+                                    )}
+                                    {record.overtime_status === 'approved' && (
+                                      <CheckCircle className="h-4 w-4 text-green-600" />
+                                    )}
+                                    {record.overtime_status === 'rejected' && (
+                                      <XCircle className="h-4 w-4 text-red-600" />
+                                    )}
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {(record.status === 'present' || record.status === 'late' || record.status === 'unmarked') && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7"
+                                    onClick={() => openCorrectionDialog(record)}
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </Button>
                                 )}
                                 {record.is_manual_correction && (
-                                  <Badge variant="secondary" className="text-xs py-0">
-                                    Corrected
-                                  </Badge>
+                                  <Badge variant="outline" className="text-xs ml-1">Edited</Badge>
                                 )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => openCorrectionDialog(record)}
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   )}
                 </CardContent>
               </Card>
             </>
           ) : (
             <Card>
-              <CardContent className="py-16 text-center">
-                <User className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium">Select an Employee</h3>
-                <p className="text-muted-foreground mt-1">
-                  Choose an employee from the list to view their attendance records
-                </p>
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <User className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">Select an employee to view attendance</p>
               </CardContent>
             </Card>
           )}
@@ -506,82 +799,70 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
 
       {/* Correction Dialog */}
       <Dialog open={correctionDialogOpen} onOpenChange={setCorrectionDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Correct Attendance</DialogTitle>
             <DialogDescription>
-              Make corrections to the attendance record for{' '}
-              {selectedRecord && format(parseISO(selectedRecord.date), 'dd MMMM yyyy')}
+              {selectedRecord && format(parseISO(selectedRecord.date), 'EEEE, dd MMMM yyyy')}
             </DialogDescription>
           </DialogHeader>
-
-          <div className="space-y-4">
-            {/* Original Values */}
-            <div className="bg-muted/50 p-3 rounded-lg text-sm">
-              <p className="font-medium mb-2">Original Values:</p>
-              <div className="grid grid-cols-2 gap-2 text-muted-foreground">
-                <span>Check-in:</span>
-                <span>
-                  {selectedRecord?.check_in_time
-                    ? format(parseISO(selectedRecord.check_in_time), 'HH:mm')
-                    : '--:--'}
-                </span>
-                <span>Check-out:</span>
-                <span>
-                  {selectedRecord?.check_out_time
-                    ? format(parseISO(selectedRecord.check_out_time), 'HH:mm')
-                    : '--:--'}
-                </span>
-              </div>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Check-in Time</Label>
+              <Input
+                type="datetime-local"
+                value={correctionData.check_in_time}
+                onChange={(e) => setCorrectionData((prev) => ({ ...prev, check_in_time: e.target.value }))}
+              />
             </div>
-
-            {/* New Values */}
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="check_in">New Check-in Time</Label>
-                <Input
-                  id="check_in"
-                  type="datetime-local"
-                  value={correctionData.check_in_time}
-                  onChange={(e) =>
-                    setCorrectionData({ ...correctionData, check_in_time: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="check_out">New Check-out Time</Label>
-                <Input
-                  id="check_out"
-                  type="datetime-local"
-                  value={correctionData.check_out_time}
-                  onChange={(e) =>
-                    setCorrectionData({ ...correctionData, check_out_time: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="reason">Reason for Correction *</Label>
-                <Textarea
-                  id="reason"
-                  placeholder="Enter the reason for this correction..."
-                  value={correctionData.reason}
-                  onChange={(e) =>
-                    setCorrectionData({ ...correctionData, reason: e.target.value })
-                  }
-                  rows={3}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label>Check-out Time</Label>
+              <Input
+                type="datetime-local"
+                value={correctionData.check_out_time}
+                onChange={(e) => setCorrectionData((prev) => ({ ...prev, check_out_time: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Reason for Correction *</Label>
+              <Textarea
+                placeholder="Enter reason for this correction..."
+                value={correctionData.reason}
+                onChange={(e) => setCorrectionData((prev) => ({ ...prev, reason: e.target.value }))}
+              />
             </div>
           </div>
-
           <DialogFooter>
             <Button variant="outline" onClick={() => setCorrectionDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveCorrection} disabled={isSaving || !correctionData.reason.trim()}>
+            <Button onClick={handleSaveCorrection} disabled={isSaving}>
               {isSaving ? 'Saving...' : 'Save Correction'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Overtime Dialog */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Overtime</DialogTitle>
+            <DialogDescription>Please provide a reason for rejection</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              placeholder="Rejection reason..."
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleRejectOvertime}>
+              Reject
             </Button>
           </DialogFooter>
         </DialogContent>
