@@ -4,18 +4,15 @@ import { format, parseISO, eachDayOfInterval } from 'date-fns';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
 import { 
-  CalendarCheck, Calendar as CalendarIcon, AlertCircle, Info, Clock, CheckCircle, 
-  XCircle, FileText, TrendingUp, Users, ArrowRight, ArrowLeft, Loader2
+  CalendarCheck, Calendar as CalendarIcon, AlertCircle, Clock, CheckCircle, 
+  XCircle, FileText, Users, ArrowRight, ArrowLeft, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { leaveApplicationService, leaveBalanceService } from '@/services/leave.service';
@@ -32,6 +29,9 @@ import {
   LEAVE_STATUS_LABELS,
 } from '@/types/leave';
 import type { DateRange } from 'react-day-picker';
+import { LeaveOverviewTab } from '@/components/leave/LeaveOverviewTab';
+import { LeaveCalendarWithLegend } from '@/components/leave/LeaveCalendarWithLegend';
+import { LeaveCalculationSummary } from '@/components/leave/LeaveCalculationSummary';
 
 const currentYear = new Date().getFullYear();
 const years = [currentYear, currentYear - 1, currentYear - 2];
@@ -43,7 +43,7 @@ export default function OfficerLeave() {
   const currentMonth = currentDate.getMonth() + 1;
   
   const [selectedYear, setSelectedYear] = useState(currentYear.toString());
-  const [activeTab, setActiveTab] = useState('records');
+  const [activeTab, setActiveTab] = useState('overview');
   
   // Form state
   const [currentStep, setCurrentStep] = useState(1);
@@ -363,7 +363,9 @@ export default function OfficerLeave() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-primary">{stats.used}</div>
-              <Progress value={usagePercentage} className="mt-2 h-2" />
+              <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-primary transition-all" style={{ width: `${Math.min(usagePercentage, 100)}%` }} />
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -388,9 +390,21 @@ export default function OfficerLeave() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
+            <TabsTrigger value="overview">Leave Overview</TabsTrigger>
+            <TabsTrigger value="apply">Apply Leave</TabsTrigger>
             <TabsTrigger value="records">Leave Records</TabsTrigger>
-            <TabsTrigger value="apply">Apply for Leave</TabsTrigger>
           </TabsList>
+
+          {/* Leave Overview Tab */}
+          <TabsContent value="overview" className="space-y-4">
+            {user?.id && (
+              <LeaveOverviewTab 
+                userId={user.id} 
+                userType="officer" 
+                year={parseInt(selectedYear)} 
+              />
+            )}
+          </TabsContent>
 
           {/* Leave Records Tab */}
           <TabsContent value="records" className="space-y-4">
@@ -486,15 +500,13 @@ export default function OfficerLeave() {
                       <div className="space-y-4">
                         <div>
                           <Label>Select Date Range</Label>
-                          <div className="border rounded-lg p-4 mt-2">
-                            <Calendar
-                              mode="range"
-                              selected={dateRange}
-                              onSelect={setDateRange}
-                              disabled={(date) => date < new Date()}
-                              numberOfMonths={1}
-                            />
-                          </div>
+                          <LeaveCalendarWithLegend
+                            dateRange={dateRange}
+                            onDateRangeChange={setDateRange}
+                            nonWorkingDays={institutionNonWorkingDays}
+                            holidayDetails={institutionHolidays.map(h => ({ date: h.date, name: h.name }))}
+                            numberOfMonths={1}
+                          />
                         </div>
                       </div>
                       <div className="space-y-4">
@@ -521,23 +533,14 @@ export default function OfficerLeave() {
                           />
                         </div>
                         {dateRange?.from && dateRange?.to && (
-                          <div className="p-4 bg-muted rounded-lg">
-                            <p className="font-medium">Leave Summary</p>
-                            <div className="text-sm text-muted-foreground mt-2 space-y-1">
-                              <p>From: {format(dateRange.from, 'PPP')}</p>
-                              <p>To: {format(dateRange.to, 'PPP')}</p>
-                              <div className="pt-2 border-t mt-2 space-y-1">
-                                <p>Calendar days: {leaveCalculation.totalCalendarDays}</p>
-                                {leaveCalculation.weekendsInRange > 0 && (
-                                  <p className="text-blue-600">🗓️ Weekends excluded: -{leaveCalculation.weekendsInRange}</p>
-                                )}
-                                {leaveCalculation.holidaysInRange > 0 && (
-                                  <p className="text-green-600">🎁 Holidays excluded: -{leaveCalculation.holidaysInRange}</p>
-                                )}
-                                <p className="font-semibold text-foreground">Actual Leave Days: {leaveCalculation.actualLeaveDays}</p>
-                              </div>
-                            </div>
-                          </div>
+                          <LeaveCalculationSummary
+                            totalCalendarDays={leaveCalculation.totalCalendarDays}
+                            weekendsExcluded={leaveCalculation.weekendsInRange}
+                            holidaysExcluded={leaveCalculation.holidaysInRange}
+                            actualLeaveDays={leaveCalculation.actualLeaveDays}
+                            availableBalance={balance?.balance_remaining || 0}
+                            showPayCalculation={true}
+                          />
                         )}
                         <Button 
                           onClick={handleProceedToSubstitutes} 

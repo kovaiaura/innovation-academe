@@ -1,39 +1,40 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { format, parseISO, eachDayOfInterval } from 'date-fns';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { CalendarCheck, Clock, CheckCircle, XCircle, Calendar as CalendarIcon } from 'lucide-react';
+import { CalendarCheck, Clock, CheckCircle, XCircle, Calendar as CalendarIcon, FileText } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
-import { format, differenceInBusinessDays } from 'date-fns';
 import { DateRange } from 'react-day-picker';
-import { LeaveApplication, LeaveType } from '@/types/attendance';
-import {
-  getLeaveApplicationsByOfficer,
-  getLeaveBalance,
-  addLeaveApplication,
-  getApprovedLeaveDates,
-  cancelLeaveApplication
-} from '@/data/mockLeaveData';
+import { LeaveType, LEAVE_TYPE_LABELS, LEAVE_STATUS_LABELS, LeaveStatus } from '@/types/leave';
+import { leaveApplicationService, leaveBalanceService } from '@/services/leave.service';
+import { calendarDayTypeService } from '@/services/calendarDayType.service';
+import { LeaveOverviewTab } from '@/components/leave/LeaveOverviewTab';
+import { LeaveCalendarWithLegend } from '@/components/leave/LeaveCalendarWithLegend';
+import { LeaveCalculationSummary } from '@/components/leave/LeaveCalculationSummary';
 import { LeaveApprovalTimeline } from '@/components/officer/LeaveApprovalTimeline';
+import { LeaveApplication } from '@/types/attendance';
+
+const currentYear = new Date().getFullYear();
+const years = [currentYear, currentYear - 1, currentYear - 2];
 
 export default function MetaStaffLeaveManagement() {
   const { user } = useAuth();
-  const isMobile = useIsMobile();
-  const [leaveBalance, setLeaveBalance] = useState({ sick_leave: 0, casual_leave: 0, earned_leave: 0 });
-  const [applications, setApplications] = useState<LeaveApplication[]>([]);
-  const [approvedDates, setApprovedDates] = useState<string[]>([]);
+  const queryClient = useQueryClient();
+  
+  const [selectedYear, setSelectedYear] = useState(currentYear.toString());
+  const [activeTab, setActiveTab] = useState('overview');
   
   // Apply Leave Form State
-  const [isApplyDialogOpen, setIsApplyDialogOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>();
   const [leaveType, setLeaveType] = useState<LeaveType>('casual');
   const [reason, setReason] = useState('');
@@ -43,182 +44,188 @@ export default function MetaStaffLeaveManagement() {
   const [selectedApplication, setSelectedApplication] = useState<LeaveApplication | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
-  // Filtering
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  // Fetch leave balance
+  const { data: balance } = useQuery({
+    queryKey: ['leave-balance', user?.id, currentYear, new Date().getMonth() + 1],
+    queryFn: () => leaveBalanceService.getBalance(user!.id, currentYear, new Date().getMonth() + 1),
+    enabled: !!user?.id
+  });
 
-  const refreshData = () => {
-    if (user) {
-      const balance = getLeaveBalance(user.id, '2025');
-      setLeaveBalance(balance);
-      
-      const apps = getLeaveApplicationsByOfficer(user.id);
-      setApplications(apps);
-      
-      const approved = getApprovedLeaveDates(user.id);
-      setApprovedDates(approved);
+  // Fetch all leave applications
+  const { data: applications = [] } = useQuery({
+    queryKey: ['my-leave-applications', user?.id],
+    queryFn: () => leaveApplicationService.getMyApplications(),
+    enabled: !!user?.id
+  });
+
+  // Fetch company holidays from calendar_day_types
+  const { data: companyHolidays = [] } = useQuery({
+    queryKey: ['company-calendar-holidays', currentYear],
+    queryFn: () => calendarDayTypeService.getHolidaysForYear('company', currentYear),
+    enabled: true
+  });
+
+  // Fetch company calendar non-working days (weekends + holidays) for leave calculation
+  const { data: companyNonWorkingDays = { weekends: [], holidays: [] } } = useQuery({
+    queryKey: ['company-non-working-days', dateRange?.from, dateRange?.to],
+    queryFn: () => {
+      if (!dateRange?.from || !dateRange?.to) return { weekends: [], holidays: [] };
+      return calendarDayTypeService.getNonWorkingDaysInRange(
+        'company',
+        format(dateRange.from, 'yyyy-MM-dd'),
+        format(dateRange.to, 'yyyy-MM-dd')
+      );
+    },
+    enabled: !!dateRange?.from && !!dateRange?.to
+  });
+
+  // Calculate leave days excluding weekends AND holidays
+  const leaveCalculation = useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) {
+      return { totalCalendarDays: 0, weekendsInRange: 0, holidaysInRange: 0, actualLeaveDays: 0 };
     }
-  };
-
-  useEffect(() => {
-    refreshData();
-  }, [user]);
-
-  const calculateWorkingDays = (from: Date, to: Date): number => {
-    const daysDiff = differenceInBusinessDays(to, from) + 1;
     
-    // Filter out already approved dates
-    let workingDays = 0;
-    for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
-      const dateStr = format(d, 'yyyy-MM-dd');
-      if (!approvedDates.includes(dateStr)) {
-        workingDays++;
-      }
+    const start = parseISO(format(dateRange.from, 'yyyy-MM-dd'));
+    const end = parseISO(format(dateRange.to, 'yyyy-MM-dd'));
+    const days = eachDayOfInterval({ start, end });
+    const totalCalendarDays = days.length;
+    
+    // Count weekends from calendar data
+    const weekendsInRange = days.filter((day) =>
+      companyNonWorkingDays.weekends.some((wd) => format(parseISO(wd), 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd'))
+    ).length;
+    
+    // Count holidays (excluding days already counted as weekends)
+    const holidaysInRange = days.filter((day) => {
+      const dayStr = format(day, 'yyyy-MM-dd');
+      const isWeekend = companyNonWorkingDays.weekends.some((wd) => format(parseISO(wd), 'yyyy-MM-dd') === dayStr);
+      if (isWeekend) return false;
+      return companyNonWorkingDays.holidays.some((hd) => format(parseISO(hd), 'yyyy-MM-dd') === dayStr);
+    }).length;
+    
+    return {
+      totalCalendarDays,
+      weekendsInRange,
+      holidaysInRange,
+      actualLeaveDays: Math.max(0, totalCalendarDays - weekendsInRange - holidaysInRange)
+    };
+  }, [dateRange, companyNonWorkingDays]);
+
+  const yearApplications = applications.filter(app => {
+    const appYear = new Date(app.start_date).getFullYear();
+    return appYear === parseInt(selectedYear);
+  });
+
+  const applyMutation = useMutation({
+    mutationFn: leaveApplicationService.applyLeave,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leave-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['my-leave-applications'] });
+      toast.success('Leave application submitted successfully');
+      resetForm();
+      setActiveTab('records');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
     }
-    
-    return workingDays;
-  };
+  });
 
-  const getRemainingBalance = (): number => {
-    if (leaveType === 'casual') return leaveBalance.casual_leave;
-    if (leaveType === 'sick') return leaveBalance.sick_leave;
-    if (leaveType === 'earned') return leaveBalance.earned_leave;
-    return 0;
+  const resetForm = () => {
+    setDateRange(undefined);
+    setLeaveType('casual');
+    setReason('');
   };
 
   const handleSubmit = () => {
-    if (!dateRange?.from || !dateRange?.to || !user) {
+    if (!dateRange?.from || !dateRange?.to) {
       toast.error('Please select valid dates');
       return;
     }
 
-    if (!reason.trim()) {
-      toast.error('Please provide a reason for leave');
+    if (!reason.trim() || reason.length < 10) {
+      toast.error('Please provide a detailed reason (minimum 10 characters)');
       return;
     }
 
-    const workingDays = calculateWorkingDays(dateRange.from, dateRange.to);
-    const remainingBalance = getRemainingBalance();
-
-    if (workingDays > remainingBalance) {
-      toast.error(`Insufficient leave balance. You only have ${remainingBalance} ${leaveType} days available`);
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    const newApplication: LeaveApplication = {
-      id: `leave-meta-${Date.now()}`,
-      officer_id: user.id,
-      officer_name: user.name,
-      applicant_type: 'meta_staff',
-      position: user.position_name,
-      approval_stage: 'ceo_pending',
+    applyMutation.mutate({
       start_date: format(dateRange.from, 'yyyy-MM-dd'),
       end_date: format(dateRange.to, 'yyyy-MM-dd'),
       leave_type: leaveType,
       reason: reason.trim(),
-      total_days: workingDays,
-      status: 'pending',
-      applied_at: new Date().toISOString(),
-    };
-
-    try {
-      addLeaveApplication(newApplication);
-      toast.success('Leave application submitted successfully');
-      
-      // Refresh data from localStorage
-      refreshData();
-      
-      // Reset form
-      setDateRange(undefined);
-      setReason('');
-      setLeaveType('casual');
-      setIsApplyDialogOpen(false);
-    } catch (error) {
-      toast.error('Failed to submit leave application');
-    } finally {
-      setIsSubmitting(false);
-    }
+      substitute_assignments: []
+    });
   };
 
-  const handleViewDetails = (application: LeaveApplication) => {
+  const handleViewDetails = (application: any) => {
     setSelectedApplication(application);
     setIsDetailDialogOpen(true);
   };
 
-  const handleCancelApplication = (application: LeaveApplication) => {
-    if (application.status !== 'pending') {
-      toast.error('Only pending applications can be cancelled');
-      return;
-    }
-
-    cancelLeaveApplication(application.id, user?.id || '');
-    refreshData();
-    toast.success('Leave application cancelled');
-  };
-
-  const filteredApplications = applications.filter(app => {
-    if (statusFilter === 'all') return true;
-    return app.status === statusFilter;
-  });
-
-  const disabledDates = (date: Date) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (date < today) return true;
+  const getStatusBadge = (status: LeaveStatus) => {
+    const variants: Record<LeaveStatus, "default" | "secondary" | "destructive" | "outline"> = {
+      pending: "secondary",
+      approved: "default",
+      rejected: "destructive",
+      cancelled: "outline",
+    };
     
-    const dateStr = format(date, 'yyyy-MM-dd');
-    return approvedDates.includes(dateStr);
+    const icons = {
+      pending: <Clock className="h-3 w-3 mr-1" />,
+      approved: <CheckCircle className="h-3 w-3 mr-1" />,
+      rejected: <XCircle className="h-3 w-3 mr-1" />,
+      cancelled: <XCircle className="h-3 w-3 mr-1" />,
+    };
+    
+    return (
+      <Badge variant={variants[status]} className="flex items-center w-fit">
+        {icons[status]}
+        {LEAVE_STATUS_LABELS[status]}
+      </Badge>
+    );
   };
 
   return (
     <Layout>
       <div className="p-6 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Leave Management</h1>
-          <p className="text-muted-foreground mt-2">
-            Apply for leave and track your applications
-          </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <CalendarCheck className="h-8 w-8 text-primary" />
+            <div>
+              <h1 className="text-2xl font-bold">Leave Management</h1>
+              <p className="text-muted-foreground">Apply for leave and track your applications</p>
+            </div>
+          </div>
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {years.map(year => (
+                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        {/* Leave Balance Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Casual Leave</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-blue-600">{leaveBalance.casual_leave}</div>
-              <p className="text-xs text-muted-foreground">Days Available</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Sick Leave</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-orange-600">{leaveBalance.sick_leave}</div>
-              <p className="text-xs text-muted-foreground">Days Available</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Earned Leave</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600">{leaveBalance.earned_leave}</div>
-              <p className="text-xs text-muted-foreground">Days Available</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Tabs */}
-        <Tabs defaultValue="history" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="history">Leave History</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList>
+            <TabsTrigger value="overview">Leave Overview</TabsTrigger>
             <TabsTrigger value="apply">Apply Leave</TabsTrigger>
+            <TabsTrigger value="records">Leave Records</TabsTrigger>
           </TabsList>
 
+          {/* Leave Overview Tab */}
+          <TabsContent value="overview" className="space-y-4">
+            {user?.id && (
+              <LeaveOverviewTab 
+                userId={user.id} 
+                userType="staff" 
+                year={parseInt(selectedYear)} 
+              />
+            )}
+          </TabsContent>
+
+          {/* Apply Leave Tab */}
           <TabsContent value="apply" className="space-y-4">
             <Card>
               <CardHeader>
@@ -227,123 +234,116 @@ export default function MetaStaffLeaveManagement() {
                   Submit a new leave application. Your leave will require CEO approval.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label>Leave Type *</Label>
-                  <Select value={leaveType} onValueChange={(value) => setLeaveType(value as LeaveType)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="casual">Casual Leave</SelectItem>
-                      <SelectItem value="sick">Sick Leave</SelectItem>
-                      <SelectItem value="earned">Earned Leave</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Available: {getRemainingBalance()} days
-                  </p>
-                </div>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Select Date Range</Label>
+                      <LeaveCalendarWithLegend
+                        dateRange={dateRange}
+                        onDateRangeChange={setDateRange}
+                        nonWorkingDays={companyNonWorkingDays}
+                        holidayDetails={companyHolidays.map(h => ({ date: h.date, name: h.name }))}
+                        numberOfMonths={1}
+                      />
+                    </div>
+                  </div>
 
-                <div>
-                  <Label>Select Dates *</Label>
-                  <Calendar
-                    mode="range"
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    disabled={disabledDates}
-                    numberOfMonths={isMobile ? 1 : 2}
-                    className="rounded-md border"
-                  />
-                  {dateRange?.from && dateRange?.to && (
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Working Days: {calculateWorkingDays(dateRange.from, dateRange.to)}
-                    </p>
-                  )}
-                </div>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Leave Type</Label>
+                      <Select value={leaveType} onValueChange={(value) => setLeaveType(value as LeaveType)}>
+                        <SelectTrigger className="mt-2">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="casual">Casual Leave</SelectItem>
+                          <SelectItem value="sick">Sick Leave</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <div>
-                  <Label>Reason for Leave *</Label>
-                  <Textarea
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    placeholder="Please provide a detailed reason for your leave application"
-                    rows={4}
-                  />
-                </div>
+                    <div>
+                      <Label>Reason for Leave</Label>
+                      <Textarea
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        placeholder="Please provide a detailed reason for your leave application (min 10 characters)"
+                        rows={4}
+                        className="mt-2"
+                      />
+                    </div>
 
-                <Button
-                  onClick={handleSubmit}
-                  disabled={!dateRange?.from || !dateRange?.to || !reason.trim() || isSubmitting}
-                  className="w-full"
-                >
-                  Submit Leave Application
-                </Button>
+                    {dateRange?.from && dateRange?.to && (
+                      <LeaveCalculationSummary
+                        totalCalendarDays={leaveCalculation.totalCalendarDays}
+                        weekendsExcluded={leaveCalculation.weekendsInRange}
+                        holidaysExcluded={leaveCalculation.holidaysInRange}
+                        actualLeaveDays={leaveCalculation.actualLeaveDays}
+                        availableBalance={balance?.balance_remaining || 0}
+                        showPayCalculation={true}
+                      />
+                    )}
+
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={!dateRange?.from || !dateRange?.to || reason.length < 10 || applyMutation.isPending}
+                      className="w-full"
+                    >
+                      {applyMutation.isPending ? 'Submitting...' : 'Submit Leave Application'}
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="history" className="space-y-4">
+          {/* Leave Records Tab */}
+          <TabsContent value="records" className="space-y-4">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>My Leave Applications</CardTitle>
-                  <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Applications</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Leave Applications - {selectedYear}
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {filteredApplications.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No leave applications found
-                    </div>
-                  ) : (
-                    filteredApplications.map((app) => (
-                      <div
-                        key={app.id}
-                        className="p-4 border rounded-lg hover:bg-accent/50 transition-colors"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-2 flex-1">
-                            <div className="flex items-center gap-2">
-                              <Badge variant={
-                                app.status === 'approved' ? 'default' :
-                                app.status === 'rejected' ? 'destructive' : 'secondary'
-                              }>
-                                {app.status.toUpperCase()}
-                              </Badge>
-                              <Badge variant="outline" className="capitalize">
-                                {app.leave_type}
-                              </Badge>
-                              <span className="text-sm text-muted-foreground">
-                                {app.total_days} {app.total_days === 1 ? 'day' : 'days'}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm">
-                              <CalendarIcon className="h-4 w-4" />
-                              <span>{format(new Date(app.start_date), 'dd MMM yyyy')} - {format(new Date(app.end_date), 'dd MMM yyyy')}</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{app.reason}</p>
-                            <p className="text-xs text-muted-foreground">
-                              Applied: {format(new Date(app.applied_at), 'dd MMM yyyy, hh:mm a')}
-                            </p>
-                            {app.approval_stage === 'ceo_pending' && (
-                              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                                Awaiting CEO Approval
-                              </Badge>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Applied On</TableHead>
+                      <TableHead>Date Range</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Days</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {yearApplications.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          No leave applications for {selectedYear}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      yearApplications.map(app => (
+                        <TableRow key={app.id}>
+                          <TableCell>{format(parseISO(app.applied_at!), 'PP')}</TableCell>
+                          <TableCell>
+                            {format(parseISO(app.start_date), 'PP')} - {format(parseISO(app.end_date), 'PP')}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{LEAVE_TYPE_LABELS[app.leave_type]}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {app.total_days}
+                            {app.lop_days > 0 && (
+                              <span className="text-red-600 text-xs ml-1">({app.lop_days} LOP)</span>
                             )}
-                          </div>
-                          <div className="flex gap-2">
+                          </TableCell>
+                          <TableCell>{getStatusBadge(app.status)}</TableCell>
+                          <TableCell>
                             <Button
                               variant="outline"
                               size="sm"
@@ -351,21 +351,12 @@ export default function MetaStaffLeaveManagement() {
                             >
                               View Details
                             </Button>
-                            {app.status === 'pending' && (
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleCancelApplication(app)}
-                              >
-                                Cancel
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>
