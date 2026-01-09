@@ -31,7 +31,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Copy, AlertTriangle } from 'lucide-react';
+import StaffDirectory from '@/components/staff/StaffDirectory';
 
 export default function PositionManagement() {
   const { user, refreshUser } = useAuth();
@@ -341,27 +343,35 @@ export default function PositionManagement() {
           </div>
         </div>
 
-        <Alert className="bg-primary/5 border-primary/20">
-          <Info className="h-4 w-4 text-primary" />
-          <AlertDescription className="text-primary">
-            Create unlimited custom positions (e.g., Project Coordinator, HR Manager, Sales Executive) and configure
-            which sidebar menus each position can access. Users assigned to these positions will only see their configured menus.
-          </AlertDescription>
-        </Alert>
+        {/* Tabs for Positions and Staff Directory */}
+        <Tabs defaultValue="positions" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="positions">Positions</TabsTrigger>
+            <TabsTrigger value="staff">Staff Directory</TabsTrigger>
+          </TabsList>
 
-        {/* Search */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search positions..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Badge variant="secondary">{positions.length} positions</Badge>
-        </div>
+          <TabsContent value="positions" className="space-y-4">
+            <Alert className="bg-primary/5 border-primary/20">
+              <Info className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-primary">
+                Create unlimited custom positions (e.g., Project Coordinator, HR Manager, Sales Executive) and configure
+                which sidebar menus each position can access. Users assigned to these positions will only see their configured menus.
+              </AlertDescription>
+            </Alert>
+
+            {/* Search */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search positions..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Badge variant="secondary">{positions.length} positions</Badge>
+            </div>
 
         {/* Position Cards Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -479,6 +489,12 @@ export default function PositionManagement() {
             </Card>
           </>
         )}
+          </TabsContent>
+
+          <TabsContent value="staff">
+            <StaffDirectory />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Create Position Dialog */}
