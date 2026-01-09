@@ -614,6 +614,45 @@ export type Database = {
           },
         ]
       }
+      attendance_corrections: {
+        Row: {
+          attendance_id: string
+          attendance_type: string
+          corrected_by: string | null
+          corrected_by_name: string | null
+          created_at: string | null
+          field_corrected: string
+          id: string
+          new_value: string | null
+          original_value: string | null
+          reason: string
+        }
+        Insert: {
+          attendance_id: string
+          attendance_type: string
+          corrected_by?: string | null
+          corrected_by_name?: string | null
+          created_at?: string | null
+          field_corrected: string
+          id?: string
+          new_value?: string | null
+          original_value?: string | null
+          reason: string
+        }
+        Update: {
+          attendance_id?: string
+          attendance_type?: string
+          corrected_by?: string | null
+          corrected_by_name?: string | null
+          created_at?: string | null
+          field_corrected?: string
+          id?: string
+          new_value?: string | null
+          original_value?: string | null
+          reason?: string
+        }
+        Relationships: []
+      }
       calendar_day_types: {
         Row: {
           calendar_type: string
@@ -3501,6 +3540,59 @@ export type Database = {
           },
         ]
       }
+      leave_balance_adjustments: {
+        Row: {
+          adjusted_by: string | null
+          adjusted_by_name: string | null
+          adjustment_amount: number
+          adjustment_type: string
+          created_at: string | null
+          id: string
+          leave_balance_id: string | null
+          new_value: number
+          previous_value: number
+          reason: string
+          user_id: string
+          user_type: string
+        }
+        Insert: {
+          adjusted_by?: string | null
+          adjusted_by_name?: string | null
+          adjustment_amount: number
+          adjustment_type: string
+          created_at?: string | null
+          id?: string
+          leave_balance_id?: string | null
+          new_value: number
+          previous_value: number
+          reason: string
+          user_id: string
+          user_type: string
+        }
+        Update: {
+          adjusted_by?: string | null
+          adjusted_by_name?: string | null
+          adjustment_amount?: number
+          adjustment_type?: string
+          created_at?: string | null
+          id?: string
+          leave_balance_id?: string | null
+          new_value?: number
+          previous_value?: number
+          reason?: string
+          user_id?: string
+          user_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_balance_adjustments_leave_balance_id_fkey"
+            columns: ["leave_balance_id"]
+            isOneToOne: false
+            referencedRelation: "leave_balances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leave_balances: {
         Row: {
           balance_remaining: number
@@ -3714,12 +3806,23 @@ export type Database = {
           check_out_longitude: number | null
           check_out_time: string | null
           check_out_validated: boolean | null
+          corrected_by: string | null
+          correction_reason: string | null
           created_at: string | null
           date: string
+          expected_check_in_time: string | null
+          expected_check_out_time: string | null
           id: string
           institution_id: string
+          is_early_checkout: boolean | null
+          is_late_login: boolean | null
+          is_manual_correction: boolean | null
+          late_minutes: number | null
           notes: string | null
           officer_id: string
+          original_check_in_time: string | null
+          original_check_out_time: string | null
+          overtime_auto_generated: boolean | null
           overtime_hours: number | null
           status: string | null
           total_hours_worked: number | null
@@ -3738,12 +3841,23 @@ export type Database = {
           check_out_longitude?: number | null
           check_out_time?: string | null
           check_out_validated?: boolean | null
+          corrected_by?: string | null
+          correction_reason?: string | null
           created_at?: string | null
           date?: string
+          expected_check_in_time?: string | null
+          expected_check_out_time?: string | null
           id?: string
           institution_id: string
+          is_early_checkout?: boolean | null
+          is_late_login?: boolean | null
+          is_manual_correction?: boolean | null
+          late_minutes?: number | null
           notes?: string | null
           officer_id: string
+          original_check_in_time?: string | null
+          original_check_out_time?: string | null
+          overtime_auto_generated?: boolean | null
           overtime_hours?: number | null
           status?: string | null
           total_hours_worked?: number | null
@@ -3762,12 +3876,23 @@ export type Database = {
           check_out_longitude?: number | null
           check_out_time?: string | null
           check_out_validated?: boolean | null
+          corrected_by?: string | null
+          correction_reason?: string | null
           created_at?: string | null
           date?: string
+          expected_check_in_time?: string | null
+          expected_check_out_time?: string | null
           id?: string
           institution_id?: string
+          is_early_checkout?: boolean | null
+          is_late_login?: boolean | null
+          is_manual_correction?: boolean | null
+          late_minutes?: number | null
           notes?: string | null
           officer_id?: string
+          original_check_in_time?: string | null
+          original_check_out_time?: string | null
+          overtime_auto_generated?: boolean | null
           overtime_hours?: number | null
           status?: string | null
           total_hours_worked?: number | null
@@ -4095,6 +4220,7 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           approved_by_name: string | null
+          attendance_id: string | null
           calculated_pay: number | null
           created_at: string | null
           date: string
@@ -4105,6 +4231,7 @@ export type Database = {
           reason: string
           rejection_reason: string | null
           requested_hours: number
+          source: string | null
           status: string | null
           updated_at: string | null
           user_id: string
@@ -4114,6 +4241,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           approved_by_name?: string | null
+          attendance_id?: string | null
           calculated_pay?: number | null
           created_at?: string | null
           date: string
@@ -4124,6 +4252,7 @@ export type Database = {
           reason: string
           rejection_reason?: string | null
           requested_hours: number
+          source?: string | null
           status?: string | null
           updated_at?: string | null
           user_id: string
@@ -4133,6 +4262,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           approved_by_name?: string | null
+          attendance_id?: string | null
           calculated_pay?: number | null
           created_at?: string | null
           date?: string
@@ -4143,6 +4273,7 @@ export type Database = {
           reason?: string
           rejection_reason?: string | null
           requested_hours?: number
+          source?: string | null
           status?: string | null
           updated_at?: string | null
           user_id?: string
@@ -5087,11 +5218,21 @@ export type Database = {
           check_out_longitude: number | null
           check_out_time: string | null
           check_out_validated: boolean | null
+          corrected_by: string | null
+          correction_reason: string | null
           created_at: string | null
           date: string
+          expected_check_in_time: string | null
+          expected_check_out_time: string | null
           id: string
           institution_id: string | null
+          is_early_checkout: boolean | null
+          is_late_login: boolean | null
+          is_manual_correction: boolean | null
+          late_minutes: number | null
           notes: string | null
+          original_check_in_time: string | null
+          original_check_out_time: string | null
           overtime_hours: number | null
           position_id: string | null
           status: string | null
@@ -5112,11 +5253,21 @@ export type Database = {
           check_out_longitude?: number | null
           check_out_time?: string | null
           check_out_validated?: boolean | null
+          corrected_by?: string | null
+          correction_reason?: string | null
           created_at?: string | null
           date?: string
+          expected_check_in_time?: string | null
+          expected_check_out_time?: string | null
           id?: string
           institution_id?: string | null
+          is_early_checkout?: boolean | null
+          is_late_login?: boolean | null
+          is_manual_correction?: boolean | null
+          late_minutes?: number | null
           notes?: string | null
+          original_check_in_time?: string | null
+          original_check_out_time?: string | null
           overtime_hours?: number | null
           position_id?: string | null
           status?: string | null
@@ -5137,11 +5288,21 @@ export type Database = {
           check_out_longitude?: number | null
           check_out_time?: string | null
           check_out_validated?: boolean | null
+          corrected_by?: string | null
+          correction_reason?: string | null
           created_at?: string | null
           date?: string
+          expected_check_in_time?: string | null
+          expected_check_out_time?: string | null
           id?: string
           institution_id?: string | null
+          is_early_checkout?: boolean | null
+          is_late_login?: boolean | null
+          is_manual_correction?: boolean | null
+          late_minutes?: number | null
           notes?: string | null
+          original_check_in_time?: string | null
+          original_check_out_time?: string | null
           overtime_hours?: number | null
           position_id?: string | null
           status?: string | null
