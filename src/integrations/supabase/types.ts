@@ -3595,6 +3595,10 @@ export type Database = {
       }
       leave_balances: {
         Row: {
+          additional_credit: number | null
+          adjusted_at: string | null
+          adjusted_by: string | null
+          adjustment_reason: string | null
           balance_remaining: number
           carried_forward: number
           casual_leave_used: number
@@ -3611,6 +3615,10 @@ export type Database = {
           year: number
         }
         Insert: {
+          additional_credit?: number | null
+          adjusted_at?: string | null
+          adjusted_by?: string | null
+          adjustment_reason?: string | null
           balance_remaining?: number
           carried_forward?: number
           casual_leave_used?: number
@@ -3627,6 +3635,10 @@ export type Database = {
           year: number
         }
         Update: {
+          additional_credit?: number | null
+          adjusted_at?: string | null
+          adjusted_by?: string | null
+          adjustment_reason?: string | null
           balance_remaining?: number
           carried_forward?: number
           casual_leave_used?: number

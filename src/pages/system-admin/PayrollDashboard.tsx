@@ -16,6 +16,7 @@ import { formatCurrency } from '@/utils/attendanceHelpers';
 import { MonthlyBreakdownTab } from '@/components/payroll/MonthlyBreakdownTab';
 import { PayrollAnalyticsTab } from '@/components/payroll/PayrollAnalyticsTab';
 import { IndividualAttendanceTab } from '@/components/payroll/IndividualAttendanceTab';
+import { LeaveManagementTab } from '@/components/payroll/LeaveManagementTab';
 import { 
   fetchPayrollDashboardStats, 
   PayrollDashboardStats,
@@ -157,7 +158,7 @@ export default function PayrollDashboard() {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-3 w-full max-w-2xl">
+          <TabsList className="grid grid-cols-4 w-full max-w-3xl">
             <TabsTrigger value="breakdown" className="gap-2">
               <FileText className="h-4 w-4" />
               <span className="hidden sm:inline">Monthly Breakdown</span>
@@ -165,6 +166,10 @@ export default function PayrollDashboard() {
             <TabsTrigger value="attendance" className="gap-2">
               <UserCheck className="h-4 w-4" />
               <span className="hidden sm:inline">Attendance</span>
+            </TabsTrigger>
+            <TabsTrigger value="leave" className="gap-2">
+              <ClipboardList className="h-4 w-4" />
+              <span className="hidden sm:inline">Leave Management</span>
             </TabsTrigger>
             <TabsTrigger value="analytics" className="gap-2">
               <TrendingUp className="h-4 w-4" />
@@ -178,6 +183,10 @@ export default function PayrollDashboard() {
 
           <TabsContent value="attendance">
             <IndividualAttendanceTab month={month} year={year} />
+          </TabsContent>
+
+          <TabsContent value="leave">
+            <LeaveManagementTab year={year} />
           </TabsContent>
 
           <TabsContent value="analytics">
