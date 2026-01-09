@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      // If student has no auth account, create one
+      // If student has no auth account, check if one exists with this email or create one
       if (!student.user_id) {
         if (!student.email) {
           return new Response(
@@ -117,24 +117,52 @@ Deno.serve(async (req) => {
           );
         }
 
-        console.log(`Creating auth account for student ${user_id} with email ${student.email}`);
-        
-        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-          email: student.email,
-          password: password,
-          email_confirm: true,
-          user_metadata: {
-            full_name: student.student_name,
-            user_type: 'student',
-          },
-        });
+        // First check if an auth user already exists with this email
+        const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+        const existingUser = listError ? null : existingUsers?.users?.find(u => u.email === student.email);
 
-        if (createError) {
-          console.error('Error creating auth user:', createError);
-          return new Response(
-            JSON.stringify({ error: `Failed to create auth account: ${createError.message}` }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        let newUser;
+
+        if (existingUser) {
+          console.log(`Found existing auth user for email ${student.email}: ${existingUser.id}`);
+          
+          // Update the existing user's password
+          const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+            existingUser.id,
+            { password }
           );
+
+          if (updateError) {
+            console.error('Error updating existing auth user password:', updateError);
+            return new Response(
+              JSON.stringify({ error: `Failed to update password: ${updateError.message}` }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          newUser = { user: existingUser };
+        } else {
+          console.log(`Creating auth account for student ${user_id} with email ${student.email}`);
+          
+          const { data: createdUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+            email: student.email,
+            password: password,
+            email_confirm: true,
+            user_metadata: {
+              full_name: student.student_name,
+              user_type: 'student',
+            },
+          });
+
+          if (createError) {
+            console.error('Error creating auth user:', createError);
+            return new Response(
+              JSON.stringify({ error: `Failed to create auth account: ${createError.message}` }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          newUser = createdUser;
         }
 
         // Update student with new user_id
