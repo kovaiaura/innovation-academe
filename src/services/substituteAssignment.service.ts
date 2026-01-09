@@ -234,7 +234,23 @@ export const substituteAssignmentService = {
       }
     }
 
-    // 5. Get ALL profiles from this institution (not just those with positions)
+    // 5. Get institution name for display
+    const { data: institution } = await supabase
+      .from('institutions')
+      .select('name')
+      .eq('id', institutionId)
+      .single();
+
+    const institutionName = institution?.name || '';
+
+    // Add institution name to officer display
+    for (const sub of allSubstitutes) {
+      if (institutionName && !sub.officer_name.includes('(')) {
+        sub.officer_name = `${sub.officer_name} (${institutionName})`;
+      }
+    }
+
+    // 6. Get staff profiles (excluding students) - only those with positions
     const { data: staffProfiles, error: profileError } = await supabase
       .from('profiles')
       .select(`
@@ -248,16 +264,8 @@ export const substituteAssignmentService = {
           position_name
         )
       `)
-      .eq('institution_id', institutionId);
-
-    // 6. Get user roles for these profiles to show in dropdown
-    const profileIds = staffProfiles?.map(p => p.id) || [];
-    const { data: userRoles } = await supabase
-      .from('user_roles')
-      .select('user_id, role')
-      .in('user_id', profileIds);
-
-    const roleMap = new Map(userRoles?.map(r => [r.user_id, r.role]) || []);
+      .eq('institution_id', institutionId)
+      .not('position_id', 'is', null);
 
     if (!profileError && staffProfiles) {
       for (const profile of staffProfiles) {
@@ -271,21 +279,21 @@ export const substituteAssignmentService = {
         if (studentUserIds.has(profile.id)) continue;
 
         const position = profile.positions as unknown as { id: string; display_name: string; position_name: string } | null;
-        const role = roleMap.get(profile.id);
         
-        // Build display name: prefer position > role > just name
+        // Build display name with position and institution
         let displayName = profile.name;
-        if (position?.display_name) {
-          displayName = `${profile.name} (${position.display_name})`;
-        } else if (position?.position_name) {
-          displayName = `${profile.name} (${position.position_name})`;
-        } else if (role) {
-          displayName = `${profile.name} (${role})`;
+        const positionName = position?.display_name || position?.position_name;
+        if (positionName && institutionName) {
+          displayName = `${profile.name} - ${positionName} (${institutionName})`;
+        } else if (positionName) {
+          displayName = `${profile.name} (${positionName})`;
+        } else if (institutionName) {
+          displayName = `${profile.name} (${institutionName})`;
         }
 
         seenUserIds.add(profile.id);
         allSubstitutes.push({
-          officer_id: profile.id, // Using profile id for staff without officer record
+          officer_id: profile.id,
           officer_name: displayName,
           user_id: profile.id,
           skills: [],
