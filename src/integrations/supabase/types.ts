@@ -4119,6 +4119,7 @@ export type Database = {
           created_at: string | null
           date_of_birth: string | null
           department: string | null
+          designation: string | null
           email: string
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
@@ -4155,6 +4156,7 @@ export type Database = {
           created_at?: string | null
           date_of_birth?: string | null
           department?: string | null
+          designation?: string | null
           email: string
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
@@ -4191,6 +4193,7 @@ export type Database = {
           created_at?: string | null
           date_of_birth?: string | null
           department?: string | null
+          designation?: string | null
           email?: string
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
@@ -4660,10 +4663,14 @@ export type Database = {
       }
       profiles: {
         Row: {
+          annual_salary: number | null
           avatar: string | null
           class_id: string | null
           created_at: string | null
+          department: string | null
+          designation: string | null
           email: string
+          employee_id: string | null
           hourly_rate: number | null
           id: string
           institution_id: string | null
@@ -4677,13 +4684,19 @@ export type Database = {
           password_changed_at: string | null
           position_id: string | null
           position_name: string | null
+          salary_structure: Json | null
+          statutory_info: Json | null
           updated_at: string | null
         }
         Insert: {
+          annual_salary?: number | null
           avatar?: string | null
           class_id?: string | null
           created_at?: string | null
+          department?: string | null
+          designation?: string | null
           email: string
+          employee_id?: string | null
           hourly_rate?: number | null
           id: string
           institution_id?: string | null
@@ -4697,13 +4710,19 @@ export type Database = {
           password_changed_at?: string | null
           position_id?: string | null
           position_name?: string | null
+          salary_structure?: Json | null
+          statutory_info?: Json | null
           updated_at?: string | null
         }
         Update: {
+          annual_salary?: number | null
           avatar?: string | null
           class_id?: string | null
           created_at?: string | null
+          department?: string | null
+          designation?: string | null
           email?: string
+          employee_id?: string | null
           hourly_rate?: number | null
           id?: string
           institution_id?: string | null
@@ -4717,6 +4736,8 @@ export type Database = {
           password_changed_at?: string | null
           position_id?: string | null
           position_name?: string | null
+          salary_structure?: Json | null
+          statutory_info?: Json | null
           updated_at?: string | null
         }
         Relationships: [
