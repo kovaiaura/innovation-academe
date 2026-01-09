@@ -97,16 +97,86 @@ Deno.serve(async (req) => {
     } else if (user_type === 'student') {
       const { data: student, error: studentError } = await supabaseAdmin
         .from('students')
-        .select('user_id')
+        .select('user_id, email, student_name')
         .eq('id', user_id)
         .single();
       
-      if (studentError || !student?.user_id) {
+      if (studentError || !student) {
         return new Response(
-          JSON.stringify({ error: 'Student not found or has no auth account' }),
+          JSON.stringify({ error: 'Student not found' }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      // If student has no auth account, create one
+      if (!student.user_id) {
+        if (!student.email) {
+          return new Response(
+            JSON.stringify({ error: 'Student has no email address to create account' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log(`Creating auth account for student ${user_id} with email ${student.email}`);
+        
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+          email: student.email,
+          password: password,
+          email_confirm: true,
+          user_metadata: {
+            full_name: student.student_name,
+            user_type: 'student',
+          },
+        });
+
+        if (createError) {
+          console.error('Error creating auth user:', createError);
+          return new Response(
+            JSON.stringify({ error: `Failed to create auth account: ${createError.message}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Update student with new user_id
+        const { error: updateStudentError } = await supabaseAdmin
+          .from('students')
+          .update({ user_id: newUser.user.id })
+          .eq('id', user_id);
+
+        if (updateStudentError) {
+          console.error('Error linking student to auth user:', updateStudentError);
+        }
+
+        // Create profile for the new user
+        const { error: profileCreateError } = await supabaseAdmin
+          .from('profiles')
+          .insert({
+            id: newUser.user.id,
+            full_name: student.student_name,
+            email: student.email,
+            role: 'student',
+            password_changed: true,
+            must_change_password: false,
+            password_changed_at: new Date().toISOString(),
+          });
+
+        if (profileCreateError) {
+          console.error('Error creating profile:', profileCreateError);
+        }
+
+        console.log(`Auth account created and linked for student ${user_id}, auth user: ${newUser.user.id}`);
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: 'Auth account created and password set successfully',
+            user_id: newUser.user.id,
+            created: true,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       authUserId = student.user_id;
     }
 
