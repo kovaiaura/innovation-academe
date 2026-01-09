@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { formatCurrency } from '@/utils/attendanceHelpers';
-import { MonthlyBreakdownTab } from '@/components/payroll/MonthlyBreakdownTab';
 import { PayrollAnalyticsTab } from '@/components/payroll/PayrollAnalyticsTab';
 import { IndividualAttendanceTab } from '@/components/payroll/IndividualAttendanceTab';
 import { LeaveManagementTab } from '@/components/payroll/LeaveManagementTab';
@@ -24,7 +23,7 @@ import {
 } from '@/services/payroll.service';
 
 export default function PayrollDashboard() {
-  const [activeTab, setActiveTab] = useState('breakdown');
+  const [activeTab, setActiveTab] = useState('attendance');
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'));
   const [stats, setStats] = useState<PayrollDashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -158,11 +157,7 @@ export default function PayrollDashboard() {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-4 w-full max-w-3xl">
-            <TabsTrigger value="breakdown" className="gap-2">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Monthly Breakdown</span>
-            </TabsTrigger>
+          <TabsList className="grid grid-cols-3 w-full max-w-2xl">
             <TabsTrigger value="attendance" className="gap-2">
               <UserCheck className="h-4 w-4" />
               <span className="hidden sm:inline">Attendance</span>
@@ -176,10 +171,6 @@ export default function PayrollDashboard() {
               <span className="hidden sm:inline">Analytics</span>
             </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="breakdown">
-            <MonthlyBreakdownTab month={month} year={year} />
-          </TabsContent>
 
           <TabsContent value="attendance">
             <IndividualAttendanceTab month={month} year={year} />
