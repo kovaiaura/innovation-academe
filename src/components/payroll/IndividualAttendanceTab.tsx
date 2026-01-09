@@ -86,6 +86,7 @@ interface Employee {
   employee_id: string;
   position_name: string | null;
   institution_id: string | null;
+  type: 'officer' | 'staff';  // Officer uses officer_attendance + institution_holidays, Staff uses staff_attendance + company_holidays
 }
 
 interface IndividualAttendanceTabProps {
@@ -126,22 +127,46 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
 
   const loadEmployees = async () => {
     try {
-      const { data: officers, error } = await supabase
+      // Fetch officers
+      const { data: officers, error: officersError } = await supabase
         .from('officers')
         .select('id, user_id, full_name, employee_id, department, assigned_institutions')
         .eq('status', 'active')
         .order('full_name');
 
-      if (error) throw error;
+      if (officersError) throw officersError;
 
-      const employeeList: Employee[] = (officers || []).map((o) => ({
-        id: o.id,
-        user_id: o.user_id || o.id,
-        name: o.full_name || '',
-        employee_id: o.employee_id || '',
-        position_name: o.department || null,
-        institution_id: o.assigned_institutions?.[0] || null,
-      }));
+      // Fetch staff from profiles (CEO, AGM, MD, etc.)
+      const { data: staffProfiles, error: staffError } = await supabase
+        .from('profiles')
+        .select('id, name, email, position_name, institution_id')
+        .not('position_name', 'is', null)
+        .neq('position_name', '')
+        .order('name');
+
+      if (staffError) throw staffError;
+
+      // Combine with type indicator
+      const employeeList: Employee[] = [
+        ...(officers || []).map((o) => ({
+          id: o.id,
+          user_id: o.user_id || o.id,
+          name: o.full_name || '',
+          employee_id: o.employee_id || '',
+          position_name: o.department || null,
+          institution_id: o.assigned_institutions?.[0] || null,
+          type: 'officer' as const,
+        })),
+        ...(staffProfiles || []).map((s) => ({
+          id: s.id,
+          user_id: s.id,
+          name: s.name || '',
+          employee_id: s.position_name || '',
+          position_name: s.position_name || null,
+          institution_id: s.institution_id || null,
+          type: 'staff' as const,
+        })),
+      ];
 
       setEmployees(employeeList);
     } catch (error) {
@@ -162,18 +187,40 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       const startDateStr = format(monthStart, 'yyyy-MM-dd');
       const endDateStr = format(endDate, 'yyyy-MM-dd');
 
+      // Determine attendance table and holiday table based on employee type
+      const isOfficer = selectedEmployee.type === 'officer';
+
+      // Fetch attendance based on type
+      const attendancePromise = isOfficer
+        ? supabase
+            .from('officer_attendance')
+            .select('*')
+            .eq('officer_id', selectedEmployee.id)
+            .gte('date', startDateStr)
+            .lte('date', endDateStr)
+        : supabase
+            .from('staff_attendance')
+            .select('*')
+            .eq('user_id', selectedEmployee.user_id)
+            .gte('date', startDateStr)
+            .lte('date', endDateStr);
+
+      // Fetch holidays based on type: Officers get institution_holidays, Staff get company_holidays
+      const holidaysPromise = isOfficer && selectedEmployee.institution_id
+        ? supabase
+            .from('institution_holidays')
+            .select('*')
+            .eq('institution_id', selectedEmployee.institution_id)
+            .eq('year', year)
+        : supabase
+            .from('company_holidays')
+            .select('*')
+            .eq('year', year);
+
       // Fetch all data in parallel
       const [attendanceResult, holidaysResult, leavesResult, overtimeResult] = await Promise.all([
-        supabase
-          .from('officer_attendance')
-          .select('*')
-          .eq('officer_id', selectedEmployee.id)
-          .gte('date', startDateStr)
-          .lte('date', endDateStr),
-        supabase
-          .from('company_holidays')
-          .select('*')
-          .eq('year', year),
+        attendancePromise,
+        holidaysPromise,
         supabase
           .from('leave_applications')
           .select('*')
@@ -188,10 +235,25 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
           .lte('date', endDateStr),
       ]);
 
+      // Define attendance record type
+      interface AttendanceRecord {
+        id: string;
+        date: string;
+        check_in_time: string | null;
+        check_out_time: string | null;
+        total_hours_worked: number | null;
+        overtime_hours: number | null;
+        is_late_login: boolean;
+        late_minutes: number;
+        is_manual_correction: boolean;
+        status: string;
+      }
+
       // Create maps for quick lookup
-      const attendanceMap = new Map(
-        (attendanceResult.data || []).map((a) => [a.date, a])
-      );
+      const attendanceMap = new Map<string, AttendanceRecord>();
+      (attendanceResult.data || []).forEach((a) => {
+        attendanceMap.set(a.date, a as AttendanceRecord);
+      });
 
       const holidayMap = new Map<string, { name: string; is_paid: boolean }>();
       (holidaysResult.data || []).forEach((h) => {
@@ -209,9 +271,60 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
         }
       });
 
-      const overtimeMap = new Map(
-        (overtimeResult.data || []).map((o) => [o.date, o])
-      );
+      interface OvertimeRecord {
+        id: string;
+        date: string;
+        requested_hours: number;
+        status: string;
+      }
+
+      const overtimeMap = new Map<string, OvertimeRecord>();
+      (overtimeResult.data || []).forEach((o) => {
+        overtimeMap.set(o.date, o as OvertimeRecord);
+      });
+
+      // Auto-create overtime requests for attendance records with overtime but no request
+      const overtimeToCreate: Array<{
+        user_id: string;
+        user_type: string;
+        officer_id: string | null;
+        institution_id: string | null;
+        date: string;
+        requested_hours: number;
+        reason: string;
+        status: string;
+      }> = [];
+      
+      for (const att of attendanceResult.data || []) {
+        if (att.overtime_hours && att.overtime_hours > 0) {
+          const hasRequest = overtimeMap.has(att.date);
+          if (!hasRequest) {
+            overtimeToCreate.push({
+              user_id: selectedEmployee.user_id,
+              user_type: selectedEmployee.type,
+              officer_id: isOfficer ? selectedEmployee.id : null,
+              institution_id: selectedEmployee.institution_id,
+              date: att.date,
+              requested_hours: att.overtime_hours,
+              reason: 'Auto-generated from attendance record',
+              status: 'pending',
+            });
+          }
+        }
+      }
+
+      // Insert missing overtime requests
+      if (overtimeToCreate.length > 0) {
+        const { data: insertedOvertime } = await supabase
+          .from('overtime_requests')
+          .insert(overtimeToCreate)
+          .select();
+        
+        // Add to overtime map
+        (insertedOvertime || []).forEach((o) => {
+          overtimeMap.set(o.date, o);
+        });
+      }
 
       // Generate all days from month start to today/month end
       const allDays = eachDayOfInterval({ start: monthStart, end: endDate });
@@ -281,6 +394,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
 
   // Calculate stats
   const calculateStats = () => {
+    // Working days are days where employee was expected to work (not weekend, not holiday, not leave, not future)
     const workingDays = dayRecords.filter((r) => r.dayType === 'working' && r.status !== 'future').length;
     const weekendDays = dayRecords.filter((r) => r.dayType === 'weekend').length;
     const holidays = dayRecords.filter((r) => r.dayType === 'holiday').length;
@@ -292,11 +406,13 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     const totalOvertime = dayRecords.reduce((sum, r) => sum + (r.overtime_hours || 0), 0);
     const pendingOvertimeCount = dayRecords.filter((r) => r.overtime_status === 'pending').length;
 
-    // Present percentage = present / (working days - holidays - leaves)
-    const effectiveWorkingDays = workingDays - leaveDays;
-    const presentPercentage = effectiveWorkingDays > 0 
-      ? Math.round((presentDays / effectiveWorkingDays) * 100) 
-      : 0;
+    // Present percentage = present days / working days (excluding leave days)
+    // Working days already excludes weekends, holidays, and future days
+    // We calculate: out of days employee was expected to be present (not on leave), how many were they present
+    const expectedPresenceDays = workingDays; // Days that are neither weekend, holiday, leave, nor future
+    const presentPercentage = expectedPresenceDays > 0 
+      ? Math.round((presentDays / expectedPresenceDays) * 100) 
+      : 100;
 
     return {
       workingDays,
@@ -352,10 +468,13 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
         overtimeHours = Math.max(0, totalHoursWorked - 8);
       }
 
+      const isOfficer = selectedEmployee.type === 'officer';
+      const tableName = isOfficer ? 'officer_attendance' : 'staff_attendance';
+
       if (selectedRecord.attendance_id) {
         // Update existing record
         const { error: updateError } = await supabase
-          .from('officer_attendance')
+          .from(tableName)
           .update({
             check_in_time: new Date(correctionData.check_in_time).toISOString(),
             check_out_time: new Date(correctionData.check_out_time).toISOString(),
@@ -372,7 +491,6 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       } else {
         // Create new attendance record for unmarked day
         const insertData: Record<string, unknown> = {
-          officer_id: selectedEmployee.id,
           date: selectedRecord.date,
           check_in_time: new Date(correctionData.check_in_time).toISOString(),
           check_out_time: new Date(correctionData.check_out_time).toISOString(),
@@ -383,13 +501,19 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
           correction_reason: correctionData.reason,
           status: 'checked_out',
         };
+
+        if (isOfficer) {
+          insertData.officer_id = selectedEmployee.id;
+        } else {
+          insertData.user_id = selectedEmployee.user_id;
+        }
         
         if (selectedEmployee.institution_id) {
           insertData.institution_id = selectedEmployee.institution_id;
         }
 
         const { error: insertError } = await supabase
-          .from('officer_attendance')
+          .from(tableName)
           .insert(insertData as never);
 
         if (insertError) throw insertError;
@@ -398,7 +522,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       // Log correction
       await supabase.from('attendance_corrections').insert({
         attendance_id: selectedRecord.attendance_id || 'new',
-        attendance_type: 'officer',
+        attendance_type: selectedEmployee.type,
         field_corrected: 'check_in_time, check_out_time',
         original_value: `${selectedRecord.check_in_time || 'null'}, ${selectedRecord.check_out_time || 'null'}`,
         new_value: `${correctionData.check_in_time}, ${correctionData.check_out_time}`,
@@ -575,7 +699,12 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{emp.name}</p>
-                      <span className="text-xs opacity-70">{emp.employee_id}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs opacity-70">{emp.employee_id}</span>
+                        <Badge variant="outline" className="text-[10px] py-0 px-1">
+                          {emp.type === 'officer' ? 'Officer' : 'Staff'}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                 </div>
