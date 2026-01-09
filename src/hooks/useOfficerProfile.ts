@@ -9,8 +9,10 @@ export interface OfficerProfile {
   employee_id: string | null;
   assigned_institutions: string[];
   department: string | null;
+  designation: string | null;
   status: string;
   profile_photo_url: string | null;
+  annual_salary: number | null;
 }
 
 /**

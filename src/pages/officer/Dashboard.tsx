@@ -48,6 +48,10 @@ import { DelegatedClassesCard } from '@/components/officer/DelegatedClassesCard'
 import { UpcomingClassesCard } from '@/components/officer/UpcomingClassesCard';
 import { useOfficerByUserId } from '@/hooks/useOfficerProfile';
 import { useOfficerTodayAttendance } from '@/hooks/useOfficerAttendance';
+import { useOfficerSalaryCalculation, useOfficerDashboardStats, useOfficerTasks } from '@/hooks/useOfficerDashboardData';
+import { SalaryProgressCard } from '@/components/dashboard/SalaryProgressCard';
+import { TasksSummaryCard } from '@/components/dashboard/TasksSummaryCard';
+import { supabase } from '@/integrations/supabase/client';
 
 // Helper functions
 const getDayName = (date: Date) => {
@@ -124,6 +128,18 @@ export default function OfficerDashboard() {
     officerProfile?.id || '',
     primaryInstitutionId
   );
+  
+  // Get real dashboard stats
+  const { data: dashboardStats } = useOfficerDashboardStats(officerProfile?.id, primaryInstitutionId);
+  
+  // Get real salary calculation
+  const { data: salaryData, isLoading: isLoadingSalary } = useOfficerSalaryCalculation(
+    officerProfile?.id,
+    officerProfile?.annual_salary || undefined
+  );
+  
+  // Get tasks assigned to officer
+  const { data: tasks = [], isLoading: isLoadingTasks } = useOfficerTasks(user?.id);
 
   // Leave state
   const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>([]);
@@ -222,7 +238,7 @@ export default function OfficerDashboard() {
   const stats = [
     {
       title: 'Upcoming Sessions',
-      value: officerTimetable ? officerTimetable.total_hours.toString() : '0',
+      value: dashboardStats?.upcomingSessions?.toString() || '0',
       icon: Calendar,
       description: `${upcomingSlots.length} upcoming this week`,
       color: 'text-blue-500',
@@ -230,25 +246,25 @@ export default function OfficerDashboard() {
     },
     {
       title: 'Active Projects',
-      value: '28',
+      value: dashboardStats?.activeProjects?.toString() || '0',
       icon: TrendingUp,
-      description: '8 pending review',
+      description: 'In progress',
       color: 'text-green-500',
       bgColor: 'bg-green-500/10',
     },
     {
       title: 'Lab Equipment',
-      value: '156',
+      value: dashboardStats?.labEquipment?.toString() || '0',
       icon: Package,
-      description: '12 in maintenance',
+      description: 'Total items',
       color: 'text-purple-500',
       bgColor: 'bg-purple-500/10',
     },
     {
       title: 'Students Enrolled',
-      value: '342',
+      value: dashboardStats?.studentsEnrolled?.toString() || '0',
       icon: Users,
-      description: '89% attendance rate',
+      description: 'Active students',
       color: 'text-orange-500',
       bgColor: 'bg-orange-500/10',
     },
@@ -558,18 +574,25 @@ export default function OfficerDashboard() {
           </Card>
         )}
 
-        {/* My Salary Tracker - Full Width */}
-        <SalaryTrackerCard
-          currentMonthSalary={75000}
-          normalHoursWorked={120}
-          overtimeHours={8}
-          overtimePay={5625}
-          expectedHours={160}
-          netPay={80625}
-          isCheckedIn={isCheckedIn}
-          checkInTime={checkInTime}
-          checkInLocation={checkInLocation}
-          locationValidated={locationValidated}
+        {/* My Salary Tracker - Real Data */}
+        <SalaryProgressCard
+          monthlyBase={salaryData?.monthlyBase || 0}
+          daysPresent={salaryData?.daysPresent || 0}
+          workingDays={salaryData?.workingDays || 26}
+          earnedSalary={salaryData?.earnedSalary || 0}
+          overtimeHours={salaryData?.overtimeHours || 0}
+          overtimePay={salaryData?.overtimePay || 0}
+          totalEarnings={salaryData?.totalEarnings || 0}
+          progressPercentage={salaryData?.progressPercentage || 0}
+          isLoading={isLoadingSalary}
+        />
+        
+        {/* Tasks Summary - Real Data */}
+        <TasksSummaryCard 
+          tasks={tasks}
+          isLoading={isLoadingTasks}
+          tasksPath={`/tenant/${tenantId}/officer/tasks`}
+          title="My Tasks"
         />
 
         {/* Quick Actions */}
