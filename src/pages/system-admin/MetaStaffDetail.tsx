@@ -134,15 +134,15 @@ export default function MetaStaffDetail() {
 
       if (error) throw error;
 
-      // Fetch position name separately
+      // Fetch position name separately using raw query to avoid type issues
       let positionName = 'Unknown Position';
       if (data.position_id) {
         const { data: posData } = await supabase
-          .from('custom_positions')
+          .from('custom_positions' as any)
           .select('display_name')
           .eq('id', data.position_id)
-          .single();
-        if (posData) positionName = posData.display_name;
+          .maybeSingle();
+        if (posData) positionName = (posData as any).display_name || 'Unknown Position';
       }
 
       const profileData: StaffProfile = {
