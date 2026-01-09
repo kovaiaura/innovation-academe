@@ -79,6 +79,37 @@ export default function OfficerLeave() {
     enabled: !!user?.id
   });
 
+  // Fetch approved leaves for current month to calculate actual available balance
+  const { data: approvedLeavesThisMonth = [] } = useQuery({
+    queryKey: ['approved-leaves-month', user?.id, currentYear, currentMonth],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const startOfMonth = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+      const endOfMonth = `${currentYear}-${String(currentMonth).padStart(2, '0')}-31`;
+      const { data } = await supabase
+        .from('leave_applications')
+        .select('total_days, paid_days, lop_days, leave_type')
+        .eq('applicant_id', user.id)
+        .eq('status', 'approved')
+        .gte('start_date', startOfMonth)
+        .lte('end_date', endOfMonth);
+      return data || [];
+    },
+    enabled: !!user?.id
+  });
+
+  // Calculate actual available balance dynamically
+  const calculatedAvailableBalance = useMemo(() => {
+    // Get total paid days used this month from approved leaves
+    const usedPaidDays = approvedLeavesThisMonth.reduce((sum, l) => sum + (l.paid_days || 0), 0);
+    
+    // Use balance from DB if available, otherwise default to 1 (monthly credit)
+    const totalAvailable = balance?.balance_remaining ?? 1;
+    
+    // Subtract already used paid days
+    return Math.max(0, totalAvailable - usedPaidDays);
+  }, [approvedLeavesThisMonth, balance]);
+
   // Fetch yearly summary
   const { data: yearlySummary } = useQuery({
     queryKey: ['leave-yearly-summary', user?.id, selectedYear],
@@ -346,48 +377,6 @@ export default function OfficerLeave() {
           </Select>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Entitlement</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stats.totalEntitlement}</div>
-              <p className="text-xs text-muted-foreground">days for {selectedYear}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Used</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-primary">{stats.used}</div>
-              <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-primary transition-all" style={{ width: `${Math.min(usagePercentage, 100)}%` }} />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Remaining</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600">{stats.totalEntitlement - stats.used}</div>
-              <p className="text-xs text-muted-foreground">{stats.pending > 0 && `${stats.pending} pending`}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">LOP Days</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-red-600">{stats.lop}</div>
-              <p className="text-xs text-muted-foreground">loss of pay</p>
-            </CardContent>
-          </Card>
-        </div>
-
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="overview">Leave Overview</TabsTrigger>
@@ -538,7 +527,7 @@ export default function OfficerLeave() {
                             weekendsExcluded={leaveCalculation.weekendsInRange}
                             holidaysExcluded={leaveCalculation.holidaysInRange}
                             actualLeaveDays={leaveCalculation.actualLeaveDays}
-                            availableBalance={balance?.balance_remaining || 0}
+                            availableBalance={calculatedAvailableBalance}
                             showPayCalculation={true}
                           />
                         )}

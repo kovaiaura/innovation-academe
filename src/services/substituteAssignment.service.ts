@@ -177,38 +177,18 @@ export const substituteAssignmentService = {
     excludeOfficerId: string
   ): Promise<AvailableSubstitute[]> => {
     const allSubstitutes: AvailableSubstitute[] = [];
-    const seenUserIds = new Set<string>();
+    const seenOfficerIds = new Set<string>();
 
-    // 1. Get the user_id of the applying officer to exclude from profiles
-    const { data: applyingOfficer } = await supabase
-      .from('officers')
-      .select('user_id')
-      .eq('id', excludeOfficerId)
+    // 1. Get institution name for display
+    const { data: institution } = await supabase
+      .from('institutions')
+      .select('name')
+      .eq('id', institutionId)
       .single();
 
-    const excludeUserId = applyingOfficer?.user_id;
+    const institutionName = institution?.name || '';
 
-    // 2. Get management users to exclude (via user_roles)
-    const { data: managementRoles } = await supabase
-      .from('user_roles')
-      .select('user_id')
-      .eq('role', 'management');
-
-    const managementUserIds = new Set(
-      managementRoles?.map(r => r.user_id) || []
-    );
-
-    // 3. Get students from students table directly (more reliable than user_roles)
-    const { data: studentUsers } = await supabase
-      .from('students')
-      .select('user_id')
-      .not('user_id', 'is', null);
-
-    const studentUserIds = new Set(
-      studentUsers?.map(s => s.user_id).filter(Boolean) || []
-    );
-
-    // 4. Get officers assigned to this institution (excluding the applying officer)
+    // 2. Get ALL officers assigned to this institution (excluding the applying officer)
     const { data: officers, error: officerError } = await supabase
       .from('officers')
       .select('id, full_name, user_id, skills')
@@ -218,14 +198,13 @@ export const substituteAssignmentService = {
 
     if (!officerError && officers) {
       for (const officer of officers) {
-        // Skip management users
-        if (officer.user_id && managementUserIds.has(officer.user_id)) continue;
-        
-        if (officer.user_id && !seenUserIds.has(officer.user_id)) {
-          seenUserIds.add(officer.user_id);
+        if (!seenOfficerIds.has(officer.id)) {
+          seenOfficerIds.add(officer.id);
           allSubstitutes.push({
             officer_id: officer.id,
-            officer_name: officer.full_name,
+            officer_name: institutionName 
+              ? `${officer.full_name} (${institutionName})`
+              : officer.full_name,
             user_id: officer.user_id,
             skills: (officer.skills as string[]) || [],
             is_available: true
@@ -234,75 +213,7 @@ export const substituteAssignmentService = {
       }
     }
 
-    // 5. Get institution name for display
-    const { data: institution } = await supabase
-      .from('institutions')
-      .select('name')
-      .eq('id', institutionId)
-      .single();
-
-    const institutionName = institution?.name || '';
-
-    // Add institution name to officer display
-    for (const sub of allSubstitutes) {
-      if (institutionName && !sub.officer_name.includes('(')) {
-        sub.officer_name = `${sub.officer_name} (${institutionName})`;
-      }
-    }
-
-    // 6. Get staff profiles (excluding students) - only those with positions
-    const { data: staffProfiles, error: profileError } = await supabase
-      .from('profiles')
-      .select(`
-        id,
-        name,
-        position_id,
-        institution_id,
-        positions:position_id (
-          id,
-          display_name,
-          position_name
-        )
-      `)
-      .eq('institution_id', institutionId)
-      .not('position_id', 'is', null);
-
-    if (!profileError && staffProfiles) {
-      for (const profile of staffProfiles) {
-        // Skip the applying officer by user_id
-        if (excludeUserId && profile.id === excludeUserId) continue;
-        // Skip if already added via officers table
-        if (seenUserIds.has(profile.id)) continue;
-        // Skip management users
-        if (managementUserIds.has(profile.id)) continue;
-        // Skip students
-        if (studentUserIds.has(profile.id)) continue;
-
-        const position = profile.positions as unknown as { id: string; display_name: string; position_name: string } | null;
-        
-        // Build display name with position and institution
-        let displayName = profile.name;
-        const positionName = position?.display_name || position?.position_name;
-        if (positionName && institutionName) {
-          displayName = `${profile.name} - ${positionName} (${institutionName})`;
-        } else if (positionName) {
-          displayName = `${profile.name} (${positionName})`;
-        } else if (institutionName) {
-          displayName = `${profile.name} (${institutionName})`;
-        }
-
-        seenUserIds.add(profile.id);
-        allSubstitutes.push({
-          officer_id: profile.id,
-          officer_name: displayName,
-          user_id: profile.id,
-          skills: [],
-          is_available: true
-        });
-      }
-    }
-
-    // 7. Check availability based on timetable conflicts
+    // 3. Check availability based on timetable conflicts (mark busy but still show)
     const normalizedDay = normalizeDay(day);
 
     const { data: conflictingAssignments } = await supabase
@@ -322,10 +233,13 @@ export const substituteAssignmentService = {
       }
     }
 
-    // Update availability based on conflicts
+    // Update availability and mark busy officers with indicator
     return allSubstitutes.map(sub => ({
       ...sub,
-      is_available: !busyOfficerIds.has(sub.officer_id)
+      is_available: !busyOfficerIds.has(sub.officer_id),
+      officer_name: busyOfficerIds.has(sub.officer_id) 
+        ? `${sub.officer_name} (Has class)`
+        : sub.officer_name
     }));
   },
 

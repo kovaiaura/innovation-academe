@@ -18,6 +18,7 @@ import { DateRange } from 'react-day-picker';
 import { LeaveType, LEAVE_TYPE_LABELS, LEAVE_STATUS_LABELS, LeaveStatus } from '@/types/leave';
 import { leaveApplicationService, leaveBalanceService } from '@/services/leave.service';
 import { calendarDayTypeService } from '@/services/calendarDayType.service';
+import { supabase } from '@/integrations/supabase/client';
 import { LeaveOverviewTab } from '@/components/leave/LeaveOverviewTab';
 import { LeaveCalendarWithLegend } from '@/components/leave/LeaveCalendarWithLegend';
 import { LeaveCalculationSummary } from '@/components/leave/LeaveCalculationSummary';
@@ -50,6 +51,33 @@ export default function MetaStaffLeaveManagement() {
     queryFn: () => leaveBalanceService.getBalance(user!.id, currentYear, new Date().getMonth() + 1),
     enabled: !!user?.id
   });
+
+  // Fetch approved leaves for current month to calculate actual available balance
+  const currentMonth = new Date().getMonth() + 1;
+  const { data: approvedLeavesThisMonth = [] } = useQuery({
+    queryKey: ['approved-leaves-month', user?.id, currentYear, currentMonth],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const startOfMonth = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+      const endOfMonth = `${currentYear}-${String(currentMonth).padStart(2, '0')}-31`;
+      const { data } = await supabase
+        .from('leave_applications')
+        .select('total_days, paid_days, lop_days, leave_type')
+        .eq('applicant_id', user.id)
+        .eq('status', 'approved')
+        .gte('start_date', startOfMonth)
+        .lte('end_date', endOfMonth);
+      return data || [];
+    },
+    enabled: !!user?.id
+  });
+
+  // Calculate actual available balance dynamically
+  const calculatedAvailableBalance = useMemo(() => {
+    const usedPaidDays = approvedLeavesThisMonth.reduce((sum, l) => sum + (l.paid_days || 0), 0);
+    const totalAvailable = balance?.balance_remaining ?? 1;
+    return Math.max(0, totalAvailable - usedPaidDays);
+  }, [approvedLeavesThisMonth, balance]);
 
   // Fetch all leave applications
   const { data: applications = [] } = useQuery({
@@ -280,7 +308,7 @@ export default function MetaStaffLeaveManagement() {
                         weekendsExcluded={leaveCalculation.weekendsInRange}
                         holidaysExcluded={leaveCalculation.holidaysInRange}
                         actualLeaveDays={leaveCalculation.actualLeaveDays}
-                        availableBalance={balance?.balance_remaining || 0}
+                        availableBalance={calculatedAvailableBalance}
                         showPayCalculation={true}
                       />
                     )}
