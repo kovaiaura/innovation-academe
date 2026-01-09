@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { 
   Users, Clock, DollarSign, AlertTriangle, Calendar, 
   Download, FileText, CheckCircle, XCircle, Search,
-  TrendingUp, Wallet, Timer, UserX
+  TrendingUp, Wallet, Timer, UserX, UserCheck, ClipboardList
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { formatCurrency } from '@/utils/attendanceHelpers';
@@ -17,6 +17,7 @@ import { EmployeesOverviewTab } from '@/components/payroll/EmployeesOverviewTab'
 import { LeaveAbsenceTab } from '@/components/payroll/LeaveAbsenceTab';
 import { OvertimeManagementTab } from '@/components/payroll/OvertimeManagementTab';
 import { PayrollAnalyticsTab } from '@/components/payroll/PayrollAnalyticsTab';
+import { IndividualAttendanceTab } from '@/components/payroll/IndividualAttendanceTab';
 import { 
   fetchPayrollDashboardStats, 
   PayrollDashboardStats,
@@ -158,14 +159,18 @@ export default function PayrollDashboard() {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-4 w-full max-w-3xl">
+          <TabsList className="grid grid-cols-5 w-full max-w-4xl">
             <TabsTrigger value="employees" className="gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Employees</span>
             </TabsTrigger>
+            <TabsTrigger value="attendance" className="gap-2">
+              <UserCheck className="h-4 w-4" />
+              <span className="hidden sm:inline">Attendance</span>
+            </TabsTrigger>
             <TabsTrigger value="leave" className="gap-2">
               <AlertTriangle className="h-4 w-4" />
-              <span className="hidden sm:inline">Leave & Absence</span>
+              <span className="hidden sm:inline">Leave</span>
             </TabsTrigger>
             <TabsTrigger value="overtime" className="gap-2">
               <Clock className="h-4 w-4" />
@@ -179,6 +184,10 @@ export default function PayrollDashboard() {
 
           <TabsContent value="employees">
             <EmployeesOverviewTab month={month} year={year} />
+          </TabsContent>
+
+          <TabsContent value="attendance">
+            <IndividualAttendanceTab month={month} year={year} />
           </TabsContent>
 
           <TabsContent value="leave">
