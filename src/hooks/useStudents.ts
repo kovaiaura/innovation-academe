@@ -134,10 +134,13 @@ export function useStudents(institutionId?: string, classId?: string) {
           throw new Error(response.error.message || 'Failed to create student user account');
         }
 
-        if (response.data?.error) {
-          console.error('[Students] Create user error:', response.data.error);
-          throw new Error(response.data.error);
-        }
+      if (response.data?.error) {
+        console.error('[Students] Create user error:', response.data.error);
+        const errorMsg = response.data?.code === 'USER_EXISTS' 
+          ? 'This email is already registered. Please use a different email address.'
+          : response.data.error;
+        throw new Error(errorMsg);
+      }
 
         userId = response.data?.user_id || null;
         console.log('[Students] Created auth user:', userId);

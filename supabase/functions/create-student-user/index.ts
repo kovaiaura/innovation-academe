@@ -97,7 +97,10 @@ Deno.serve(async (req) => {
     if (existingUser) {
       console.log('[CreateStudentUser] User already exists:', existingUser.id);
       return new Response(
-        JSON.stringify({ error: 'A user with this email already exists' }),
+        JSON.stringify({ 
+          error: 'This email is already registered in the system. Please use a different email address.',
+          code: 'USER_EXISTS'
+        }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
