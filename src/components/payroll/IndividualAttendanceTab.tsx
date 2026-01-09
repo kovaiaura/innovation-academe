@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -40,11 +41,15 @@ import {
   TreePalm,
   CalendarOff,
   CalendarCheck,
+  Wallet,
+  FileText,
 } from 'lucide-react';
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend, isSameDay, isAfter } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend, isSameDay, isAfter, subMonths, getDaysInMonth } from 'date-fns';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency } from '@/utils/attendanceHelpers';
+import { PayslipDialog } from './PayslipDialog';
 
 interface DayRecord {
   date: string;
@@ -112,18 +117,47 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectOvertimeId, setRejectOvertimeId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  
+  // Local month filter
+  const [localMonth, setLocalMonth] = useState(month);
+  const [localYear, setLocalYear] = useState(year);
+  
+  // Salary and payout data
+  const [salaryData, setSalaryData] = useState<{
+    monthlySalary: number;
+    hourlyRate: number;
+    overtimeMultiplier: number;
+  } | null>(null);
+  const [editingOvertimePay, setEditingOvertimePay] = useState(false);
+  const [customOvertimePay, setCustomOvertimePay] = useState<number | null>(null);
+  
+  // Payslip dialog
+  const [payslipDialogOpen, setPayslipDialogOpen] = useState(false);
+  const [payslipData, setPayslipData] = useState<any>(null);
+
+  // Generate month options (last 12 months)
+  const monthOptions = Array.from({ length: 12 }, (_, i) => {
+    const date = subMonths(new Date(year, month - 1), i);
+    return {
+      month: date.getMonth() + 1,
+      year: date.getFullYear(),
+      value: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+      label: format(date, 'MMMM yyyy')
+    };
+  });
 
   // Load employees
   useEffect(() => {
     loadEmployees();
   }, []);
 
-  // Load data when employee selected
+  // Load data when employee selected or month changes
   useEffect(() => {
     if (selectedEmployee) {
       loadAllData();
+      loadSalaryData();
     }
-  }, [selectedEmployee, month, year]);
+  }, [selectedEmployee, localMonth, localYear]);
 
   const loadEmployees = async () => {
     try {
@@ -174,13 +208,47 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     }
   };
 
+  const loadSalaryData = async () => {
+    if (!selectedEmployee) return;
+    
+    try {
+      if (selectedEmployee.type === 'officer') {
+        const { data } = await supabase
+          .from('officers')
+          .select('annual_salary, hourly_rate, overtime_rate_multiplier')
+          .eq('id', selectedEmployee.id)
+          .single();
+        
+        const monthlySalary = (data?.annual_salary || 0) / 12;
+        const hourlyRate = data?.hourly_rate || (monthlySalary / 22 / 8);
+        const overtimeMultiplier = data?.overtime_rate_multiplier || 1.5;
+        
+        setSalaryData({ monthlySalary, hourlyRate, overtimeMultiplier });
+      } else {
+        const { data } = await supabase
+          .from('profiles')
+          .select('hourly_rate, overtime_rate_multiplier')
+          .eq('id', selectedEmployee.id)
+          .single();
+        
+        const hourlyRate = data?.hourly_rate || 500;
+        const monthlySalary = hourlyRate * 8 * 22;
+        const overtimeMultiplier = data?.overtime_rate_multiplier || 1.5;
+        
+        setSalaryData({ monthlySalary, hourlyRate, overtimeMultiplier });
+      }
+    } catch (error) {
+      console.error('Error loading salary data:', error);
+    }
+  };
+
   const loadAllData = async () => {
     if (!selectedEmployee) return;
 
     setIsLoading(true);
     try {
-      const monthStart = startOfMonth(new Date(year, month - 1));
-      const monthEnd = endOfMonth(new Date(year, month - 1));
+      const monthStart = startOfMonth(new Date(localYear, localMonth - 1));
+      const monthEnd = endOfMonth(new Date(localYear, localMonth - 1));
       const today = new Date();
       const endDate = isAfter(monthEnd, today) ? today : monthEnd;
 
@@ -392,8 +460,11 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     }
   };
 
-  // Calculate stats
+  // Calculate stats with new attendance percentage formula
   const calculateStats = () => {
+    // Total calendar days in the month
+    const totalDaysInMonth = getDaysInMonth(new Date(localYear, localMonth - 1));
+    
     // Working days are days where employee was expected to work (not weekend, not holiday, not leave, not future)
     const workingDays = dayRecords.filter((r) => r.dayType === 'working' && r.status !== 'future').length;
     const weekendDays = dayRecords.filter((r) => r.dayType === 'weekend').length;
@@ -404,17 +475,18 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     const unmarkedDays = dayRecords.filter((r) => r.status === 'unmarked').length;
     const totalHours = dayRecords.reduce((sum, r) => sum + (r.total_hours_worked || 0), 0);
     const totalOvertime = dayRecords.reduce((sum, r) => sum + (r.overtime_hours || 0), 0);
+    const approvedOvertime = dayRecords.filter((r) => r.overtime_status === 'approved')
+      .reduce((sum, r) => sum + (r.overtime_hours || 0), 0);
     const pendingOvertimeCount = dayRecords.filter((r) => r.overtime_status === 'pending').length;
 
-    // Present percentage = present days / working days (excluding leave days)
-    // Working days already excludes weekends, holidays, and future days
-    // We calculate: out of days employee was expected to be present (not on leave), how many were they present
-    const expectedPresenceDays = workingDays; // Days that are neither weekend, holiday, leave, nor future
-    const presentPercentage = expectedPresenceDays > 0 
-      ? Math.round((presentDays / expectedPresenceDays) * 100) 
+    // NEW FORMULA: Attendance % = ((Total Days in Month - Leave Days) × 100) / Total Days in Month
+    // Holidays and weekends don't affect attendance percentage - only actual leave days taken reduce it
+    const attendancePercentage = totalDaysInMonth > 0 
+      ? parseFloat((((totalDaysInMonth - leaveDays) * 100) / totalDaysInMonth).toFixed(2))
       : 100;
 
     return {
+      totalDaysInMonth,
       workingDays,
       weekendDays,
       holidays,
@@ -424,8 +496,9 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       unmarkedDays,
       totalHours,
       totalOvertime,
+      approvedOvertime,
       pendingOvertimeCount,
-      presentPercentage,
+      attendancePercentage,
     };
   };
 
@@ -717,6 +790,32 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
         <div className="lg:col-span-3 space-y-6">
           {selectedEmployee ? (
             <>
+              {/* Month Filter */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">
+                  {selectedEmployee.name}'s Attendance
+                </h3>
+                <Select 
+                  value={`${localYear}-${String(localMonth).padStart(2, '0')}`}
+                  onValueChange={(value) => {
+                    const [y, m] = value.split('-');
+                    setLocalYear(parseInt(y));
+                    setLocalMonth(parseInt(m));
+                  }}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Select month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {monthOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Summary Stats - 2 rows of 4 */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <Card>
@@ -736,8 +835,8 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                 <Card>
                   <CardContent className="pt-4 text-center">
                     <Percent className="h-5 w-5 mx-auto text-emerald-500 mb-1" />
-                    <p className="text-2xl font-bold text-emerald-600">{stats?.presentPercentage}%</p>
-                    <p className="text-xs text-muted-foreground">Present %</p>
+                    <p className="text-2xl font-bold text-emerald-600">{stats?.attendancePercentage}%</p>
+                    <p className="text-xs text-muted-foreground">Attendance %</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -765,7 +864,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                   <CardContent className="pt-4 text-center">
                     <CalendarOff className="h-5 w-5 mx-auto text-red-500 mb-1" />
                     <p className="text-2xl font-bold text-red-600">{stats?.unmarkedDays}</p>
-                    <p className="text-xs text-muted-foreground">Unmarked</p>
+                    <p className="text-xs text-muted-foreground">Unmarked (LOP)</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -782,15 +881,118 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                 </Card>
               </div>
 
+              {/* Monthly Payout Summary Card */}
+              {salaryData && (
+                <Card className="border-primary/20 bg-primary/5">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Wallet className="h-5 w-5" />
+                      Monthly Payout Summary - {format(new Date(localYear, localMonth - 1), 'MMMM yyyy')}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      const perDaySalary = salaryData.monthlySalary / 30;
+                      const lopDeduction = perDaySalary * (stats?.unmarkedDays || 0);
+                      const calculatedOvertimePay = (stats?.approvedOvertime || 0) * salaryData.hourlyRate * salaryData.overtimeMultiplier;
+                      const overtimePay = customOvertimePay ?? calculatedOvertimePay;
+                      const netPayout = salaryData.monthlySalary - lopDeduction + overtimePay;
+                      
+                      return (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground uppercase">Monthly Salary</p>
+                            <p className="text-xl font-bold">{formatCurrency(salaryData.monthlySalary)}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground uppercase">LOP Deduction ({stats?.unmarkedDays} days)</p>
+                            <p className="text-xl font-bold text-red-600">-{formatCurrency(lopDeduction)}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground uppercase flex items-center gap-1">
+                              Overtime Pay ({stats?.approvedOvertime?.toFixed(1)}h)
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-4 w-4"
+                                onClick={() => setEditingOvertimePay(!editingOvertimePay)}
+                              >
+                                <Edit2 className="h-3 w-3" />
+                              </Button>
+                            </p>
+                            {editingOvertimePay ? (
+                              <Input
+                                type="number"
+                                value={customOvertimePay ?? calculatedOvertimePay}
+                                onChange={(e) => setCustomOvertimePay(parseFloat(e.target.value) || 0)}
+                                onBlur={() => setEditingOvertimePay(false)}
+                                className="w-28 h-8"
+                                autoFocus
+                              />
+                            ) : (
+                              <p className="text-xl font-bold text-green-600">+{formatCurrency(overtimePay)}</p>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground uppercase">Net Payout</p>
+                            <p className="text-2xl font-bold text-primary">{formatCurrency(netPayout)}</p>
+                          </div>
+                          <div className="col-span-2 md:col-span-4 pt-2 border-t mt-2">
+                            <Button 
+                              onClick={() => {
+                                const payslip = {
+                                  employee_name: selectedEmployee.name,
+                                  employee_id: selectedEmployee.employee_id,
+                                  designation: selectedEmployee.position_name || 'Officer',
+                                  institution_name: '',
+                                  month: localMonth,
+                                  year: localYear,
+                                  basic_salary: salaryData.monthlySalary * 0.5,
+                                  hra: salaryData.monthlySalary * 0.2,
+                                  conveyance_allowance: salaryData.monthlySalary * 0.1,
+                                  medical_allowance: salaryData.monthlySalary * 0.05,
+                                  special_allowance: salaryData.monthlySalary * 0.15,
+                                  overtime_pay: overtimePay,
+                                  pf_deduction: salaryData.monthlySalary * 0.12,
+                                  professional_tax: 200,
+                                  tds: 0,
+                                  lop_deduction: lopDeduction,
+                                  working_days: stats?.workingDays || 0,
+                                  days_present: stats?.presentDays || 0,
+                                  days_leave: stats?.leaveDays || 0,
+                                  days_lop: stats?.unmarkedDays || 0,
+                                  late_days: stats?.lateDays || 0,
+                                  overtime_hours: stats?.approvedOvertime || 0,
+                                  total_hours_worked: stats?.totalHours || 0,
+                                  gross_earnings: salaryData.monthlySalary + overtimePay,
+                                  total_deductions: lopDeduction + (salaryData.monthlySalary * 0.12) + 200,
+                                  net_pay: netPayout - (salaryData.monthlySalary * 0.12) - 200,
+                                };
+                                setPayslipData(payslip);
+                                setPayslipDialogOpen(true);
+                              }}
+                              className="w-full"
+                            >
+                              <FileText className="h-4 w-4 mr-2" />
+                              Generate Payslip
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Attendance Table */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" />
-                    {selectedEmployee.name}'s Attendance
+                    <Calendar className="h-5 w-5" />
+                    Daily Attendance Records
                   </CardTitle>
                   <CardDescription>
-                    {format(new Date(year, month - 1), 'MMMM yyyy')} - {selectedEmployee.employee_id}
+                    {format(new Date(localYear, localMonth - 1), 'MMMM yyyy')} - {selectedEmployee.employee_id}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -996,6 +1198,13 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Payslip Dialog */}
+      <PayslipDialog
+        open={payslipDialogOpen}
+        onOpenChange={setPayslipDialogOpen}
+        payslipData={payslipData}
+      />
     </>
   );
 }
