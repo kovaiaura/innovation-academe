@@ -4663,6 +4663,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address: string | null
           annual_leave_allowance: number | null
           annual_salary: number | null
           avatar: string | null
@@ -4673,9 +4674,12 @@ export type Database = {
           casual_leave_allowance: number | null
           class_id: string | null
           created_at: string | null
+          date_of_birth: string | null
           department: string | null
           designation: string | null
           email: string
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
           employee_id: string | null
           hourly_rate: number | null
           id: string
@@ -4688,14 +4692,18 @@ export type Database = {
           overtime_rate_multiplier: number | null
           password_changed: boolean | null
           password_changed_at: string | null
+          phone: string | null
           position_id: string | null
           position_name: string | null
+          profile_photo_url: string | null
           salary_structure: Json | null
           sick_leave_allowance: number | null
+          status: string | null
           statutory_info: Json | null
           updated_at: string | null
         }
         Insert: {
+          address?: string | null
           annual_leave_allowance?: number | null
           annual_salary?: number | null
           avatar?: string | null
@@ -4706,9 +4714,12 @@ export type Database = {
           casual_leave_allowance?: number | null
           class_id?: string | null
           created_at?: string | null
+          date_of_birth?: string | null
           department?: string | null
           designation?: string | null
           email: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           employee_id?: string | null
           hourly_rate?: number | null
           id: string
@@ -4721,14 +4732,18 @@ export type Database = {
           overtime_rate_multiplier?: number | null
           password_changed?: boolean | null
           password_changed_at?: string | null
+          phone?: string | null
           position_id?: string | null
           position_name?: string | null
+          profile_photo_url?: string | null
           salary_structure?: Json | null
           sick_leave_allowance?: number | null
+          status?: string | null
           statutory_info?: Json | null
           updated_at?: string | null
         }
         Update: {
+          address?: string | null
           annual_leave_allowance?: number | null
           annual_salary?: number | null
           avatar?: string | null
@@ -4739,9 +4754,12 @@ export type Database = {
           casual_leave_allowance?: number | null
           class_id?: string | null
           created_at?: string | null
+          date_of_birth?: string | null
           department?: string | null
           designation?: string | null
           email?: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           employee_id?: string | null
           hourly_rate?: number | null
           id?: string
@@ -4754,10 +4772,13 @@ export type Database = {
           overtime_rate_multiplier?: number | null
           password_changed?: boolean | null
           password_changed_at?: string | null
+          phone?: string | null
           position_id?: string | null
           position_name?: string | null
+          profile_photo_url?: string | null
           salary_structure?: Json | null
           sick_leave_allowance?: number | null
+          status?: string | null
           statutory_info?: Json | null
           updated_at?: string | null
         }
@@ -5365,6 +5386,56 @@ export type Database = {
             columns: ["position_id"]
             isOneToOne: false
             referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_documents: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          document_name: string
+          document_type: string
+          file_size_mb: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          staff_id: string
+          updated_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          document_name: string
+          document_type: string
+          file_size_mb?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          staff_id: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          document_name?: string
+          document_type?: string
+          file_size_mb?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          staff_id?: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_documents_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

@@ -117,6 +117,7 @@ import Leave from "./pages/system-admin/Leave";
 import GlobalApprovalConfig from "./pages/system-admin/GlobalApprovalConfig";
 import Performance from "./pages/management/Performance";
 import SystemAdminPositionManagement from "./pages/system-admin/PositionManagement";
+import MetaStaffDetail from "./pages/system-admin/MetaStaffDetail";
 import SystemAdminTaskManagement from "./pages/system-admin/TaskManagement";
 import SystemAdminTasks from "./pages/system-admin/Tasks";
 import SystemAdminGamification from "./pages/system-admin/GamificationManagement";
@@ -271,6 +272,14 @@ const App = () => (
             element={
               <ProtectedRoute allowedRoles={['system_admin', 'super_admin']} requiredFeature="officer_management">
                 <StaffDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/system-admin/meta-staff/:staffId"
+            element={
+              <ProtectedRoute allowedRoles={['system_admin', 'super_admin']}>
+                <MetaStaffDetail />
               </ProtectedRoute>
             }
           />
