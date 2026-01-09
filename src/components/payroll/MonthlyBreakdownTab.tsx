@@ -54,7 +54,7 @@ export function MonthlyBreakdownTab({ month, year }: MonthlyBreakdownTabProps) {
       // Fetch all officers and staff with salary info
       const { data: officers, error: officerError } = await supabase
         .from('officers')
-        .select('id, name, employee_id, designation, monthly_salary, hourly_rate')
+        .select('id, full_name, employee_id, designation, monthly_salary, hourly_rate')
         .eq('status', 'active');
 
       if (officerError) throw officerError;
@@ -116,7 +116,7 @@ export function MonthlyBreakdownTab({ month, year }: MonthlyBreakdownTabProps) {
         
         breakdownData.push({
           id: officer.id,
-          name: officer.name,
+          name: officer.full_name,
           employee_id: officer.employee_id,
           designation: officer.designation,
           working_days: STANDARD_DAYS_PER_MONTH,
