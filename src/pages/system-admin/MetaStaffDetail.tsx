@@ -58,6 +58,8 @@ interface StaffProfile {
   hourly_rate: number | null;
   overtime_rate_multiplier: number | null;
   join_date: string | null;
+  check_in_time: string | null;
+  check_out_time: string | null;
   bank_name: string | null;
   bank_account_number: string | null;
   bank_ifsc: string | null;
@@ -138,7 +140,7 @@ export default function MetaStaffDetail() {
       let positionName = 'Unknown Position';
       if (data.position_id) {
         const { data: posData } = await supabase
-          .from('custom_positions' as any)
+          .from('positions')
           .select('display_name')
           .eq('id', data.position_id)
           .maybeSingle();
@@ -193,6 +195,9 @@ export default function MetaStaffDetail() {
         designation: formData.designation,
         department: formData.department,
         status: formData.status,
+        join_date: formData.join_date,
+        check_in_time: formData.check_in_time,
+        check_out_time: formData.check_out_time,
         bank_name: formData.bank_name,
         bank_account_number: formData.bank_account_number,
         bank_ifsc: formData.bank_ifsc,
@@ -587,6 +592,46 @@ export default function MetaStaffDetail() {
                       </Select>
                     ) : (
                       <div className="mt-1">{getStatusBadge(profile.status)}</div>
+                    )}
+                  </div>
+                  <div>
+                    <Label>Join Date</Label>
+                    {isEditing ? (
+                      <Input
+                        type="date"
+                        value={formData.join_date || ''}
+                        onChange={(e) => setFormData({ ...formData, join_date: e.target.value })}
+                      />
+                    ) : (
+                      <p className="text-sm mt-1">
+                        {profile.join_date
+                          ? new Date(profile.join_date).toLocaleDateString()
+                          : '-'}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <Label>Check-in Time</Label>
+                    {isEditing ? (
+                      <Input
+                        type="time"
+                        value={formData.check_in_time || '09:00'}
+                        onChange={(e) => setFormData({ ...formData, check_in_time: e.target.value })}
+                      />
+                    ) : (
+                      <p className="text-sm mt-1">{profile.check_in_time || '09:00'}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label>Check-out Time</Label>
+                    {isEditing ? (
+                      <Input
+                        type="time"
+                        value={formData.check_out_time || '17:00'}
+                        onChange={(e) => setFormData({ ...formData, check_out_time: e.target.value })}
+                      />
+                    ) : (
+                      <p className="text-sm mt-1">{profile.check_out_time || '17:00'}</p>
                     )}
                   </div>
                 </div>

@@ -52,7 +52,7 @@ export default function StaffDirectory() {
 
       // Fetch all positions to map names
       const { data: positionsData } = await supabase
-        .from('custom_positions' as any)
+        .from('positions')
         .select('id, display_name');
 
       const positionMap = new Map<string, string>();
