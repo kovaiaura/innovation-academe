@@ -188,50 +188,6 @@ export function LeaveOverviewTab({ userId, userType, year }: LeaveOverviewTabPro
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Entitlement</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{leaveSettings.leaves_per_year}</div>
-            <p className="text-xs text-muted-foreground">days for {year}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Used</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-primary">{totalUsed}</div>
-            <p className="text-xs text-muted-foreground">
-              {totals.sickUsed > 0 && `${totals.sickUsed} sick`}
-              {totals.sickUsed > 0 && totals.casualUsed > 0 && ', '}
-              {totals.casualUsed > 0 && `${totals.casualUsed} casual`}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Remaining</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-600">{remaining}</div>
-            <p className="text-xs text-muted-foreground">days available</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">LOP Days</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-red-600">{totals.lopDays}</div>
-            <p className="text-xs text-muted-foreground">loss of pay</p>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Leave Balance Table */}
       <Card>
         <CardHeader>
