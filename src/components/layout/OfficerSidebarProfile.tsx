@@ -59,7 +59,7 @@ export function OfficerSidebarProfile({ officer, collapsed, photoUrl }: OfficerS
                 <p className="text-sm font-semibold text-white truncate">
                   {officer.name}
                 </p>
-                <p className="text-xs text-gray-400">{officer.employee_id}</p>
+                <p className="text-xs text-gray-400">{officer.designation || officer.department || 'Innovation Officer'}</p>
               </div>
             </div>
           </CardContent>

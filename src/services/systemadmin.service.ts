@@ -110,6 +110,7 @@ export interface OfficerDetails extends Officer {
   emergency_contact_phone?: string;
   employee_id?: string;
   department?: string;
+  designation?: string;
   
   // Salary Configuration
   hourly_rate?: number;

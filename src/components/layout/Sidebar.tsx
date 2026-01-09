@@ -19,7 +19,6 @@ import { UserRole } from '@/types';
 import { SystemAdminFeature } from '@/types/permissions';
 import { canAccessFeature, isCEO } from '@/utils/permissionHelpers';
 import { OfficerSidebarProfile } from './OfficerSidebarProfile';
-import { getOfficerByEmail } from '@/data/mockOfficerData';
 import { OfficerDetails } from '@/services/systemadmin.service';
 import { TeacherSidebarProfile } from '@/components/teacher/TeacherSidebarProfile';
 import { getTeacherByEmail } from '@/data/mockTeacherData';
@@ -186,6 +185,7 @@ export function Sidebar() {
   const location = useLocation();
   const [officerProfile, setOfficerProfile] = useState<OfficerDetails | null>(null);
   const [teacherProfile, setTeacherProfile] = useState<SchoolTeacher | null>(null);
+  const [staffDesignation, setStaffDesignation] = useState<string | null>(null);
   const [pendingLeaveCount, setPendingLeaveCount] = useState(0);
   const [managerLeaveCount, setManagerLeaveCount] = useState(0);
   const [agmLeaveCount, setAgmLeaveCount] = useState(0);
@@ -228,11 +228,41 @@ export function Sidebar() {
   }, [user?.position_id]);
 
   useEffect(() => {
-    // Fetch officer profile if user is an officer
-    if (user?.role === 'officer' && user?.email) {
-      const profile = getOfficerByEmail(user.email);
-      setOfficerProfile(profile || null);
-    }
+    // Fetch officer profile from Supabase if user is an officer
+    const fetchOfficerProfile = async () => {
+      if (user?.role === 'officer' && user?.id) {
+        try {
+          const { data, error } = await supabase
+            .from('officers')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+          
+          if (!error && data) {
+            // Map database fields to OfficerDetails interface
+            setOfficerProfile({
+              id: data.id,
+              name: data.full_name,
+              email: data.email,
+              phone: data.phone || '',
+              assigned_institutions: data.assigned_institutions || [],
+              employment_type: data.employment_type as 'full_time' | 'part_time' | 'contract',
+              salary: data.annual_salary || 0,
+              join_date: data.join_date || '',
+              status: data.status as 'active' | 'on_leave' | 'terminated',
+              employee_id: data.employee_id || undefined,
+              department: data.department || undefined,
+              designation: data.designation || undefined,
+              profile_photo_url: data.profile_photo_url || undefined,
+            });
+          }
+        } catch (err) {
+          console.error('Error fetching officer profile:', err);
+        }
+      }
+    };
+    
+    fetchOfficerProfile();
     
     // Fetch teacher profile if user is a teacher
     if (user?.role === 'teacher' && user?.email) {
@@ -240,8 +270,26 @@ export function Sidebar() {
       setTeacherProfile(profile || null);
     }
     
-    // Load pending leave counts for system admin by position
+    // Load pending leave counts and designation for system admin by position
     if (user?.role === 'system_admin') {
+      // Fetch designation from profiles table
+      const fetchDesignation = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('designation, position_name')
+            .eq('id', user.id)
+            .single();
+          
+          if (!error && data) {
+            setStaffDesignation(data.designation || data.position_name || null);
+          }
+        } catch (err) {
+          console.error('Error fetching staff designation:', err);
+        }
+      };
+      fetchDesignation();
+      
       // Manager sees manager_pending count
       if (user.position_name === 'manager') {
         setManagerLeaveCount(getPendingLeaveCountByStage('manager_pending'));
@@ -483,9 +531,9 @@ export function Sidebar() {
             <SidebarProfileCard
               userName={user.name || 'User'}
               photoUrl={photoUrl}
-              subtitle={user.roles && user.roles.length > 1 
+              subtitle={staffDesignation || user.position_name || (user.roles && user.roles.length > 1 
                 ? user.roles.map(r => r.replace('_', ' ')).join(', ')
-                : user.role?.replace('_', ' ')}
+                : user.role?.replace('_', ' '))}
               profilePath={user.is_ceo ? getFullPath('/settings', 'system_admin' as UserRole) : getFullPath('/profile', user.role as UserRole)}
               collapsed={collapsed}
             />
