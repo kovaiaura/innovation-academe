@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Download, Printer, Building2, User, Calendar, Wallet } from 'lucide-react';
+import { Download, Building2, User, Calendar, Wallet } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/utils/attendanceHelpers';
 
@@ -53,6 +53,9 @@ interface PayslipData {
   working_days: number;
   days_present: number;
   days_leave: number;
+  paid_leave_days: number;
+  lop_leave_days: number;
+  unmarked_days: number;
   days_lop: number;
   late_days: number;
   overtime_hours: number;
@@ -64,32 +67,42 @@ interface PayslipData {
   net_pay: number;
 }
 
+interface CompanyProfile {
+  company_name: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  logo_url?: string;
+}
+
 interface PayslipDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   payslipData: PayslipData | null;
-  companyName?: string;
-  companyAddress?: string;
+  companyProfile?: CompanyProfile | null;
 }
 
 export function PayslipDialog({
   open,
   onOpenChange,
   payslipData,
-  companyName = 'STEM Labs Private Limited',
-  companyAddress = 'Mumbai, Maharashtra, India',
+  companyProfile,
 }: PayslipDialogProps) {
   if (!payslipData) return null;
 
+  const companyName = companyProfile?.company_name || 'Company Name';
+  const companyAddress = [
+    companyProfile?.address,
+    companyProfile?.city,
+    companyProfile?.state,
+    companyProfile?.pincode,
+  ].filter(Boolean).join(', ') || 'Address';
+
   const monthName = format(new Date(payslipData.year, payslipData.month - 1), 'MMMM yyyy');
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const handleDownload = () => {
-    // For now, trigger print (which can save as PDF)
-    // In a real implementation, use react-pdf/renderer to generate actual PDF
+    // Trigger print which can save as PDF
     window.print();
   };
 
@@ -251,7 +264,7 @@ export function PayslipDialog({
               <Calendar className="h-4 w-4" />
               ATTENDANCE SUMMARY
             </h3>
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-4 text-center text-sm">
+            <div className="grid grid-cols-3 md:grid-cols-7 gap-3 text-center text-sm">
               <div className="p-3 bg-muted/50 rounded-lg">
                 <p className="text-lg font-bold">{payslipData.working_days}</p>
                 <p className="text-xs text-muted-foreground">Working Days</p>
@@ -261,12 +274,16 @@ export function PayslipDialog({
                 <p className="text-xs text-muted-foreground">Present</p>
               </div>
               <div className="p-3 bg-blue-500/10 rounded-lg">
-                <p className="text-lg font-bold text-blue-600">{payslipData.days_leave}</p>
-                <p className="text-xs text-muted-foreground">Leave</p>
+                <p className="text-lg font-bold text-blue-600">{payslipData.paid_leave_days || 0}</p>
+                <p className="text-xs text-muted-foreground">Paid Leave</p>
               </div>
               <div className="p-3 bg-red-500/10 rounded-lg">
-                <p className="text-lg font-bold text-red-600">{payslipData.days_lop}</p>
-                <p className="text-xs text-muted-foreground">LOP Days</p>
+                <p className="text-lg font-bold text-red-600">{payslipData.lop_leave_days || 0}</p>
+                <p className="text-xs text-muted-foreground">LOP Leave</p>
+              </div>
+              <div className="p-3 bg-yellow-500/10 rounded-lg">
+                <p className="text-lg font-bold text-yellow-600">{payslipData.unmarked_days || 0}</p>
+                <p className="text-xs text-muted-foreground">Unmarked</p>
               </div>
               <div className="p-3 bg-orange-500/10 rounded-lg">
                 <p className="text-lg font-bold text-orange-600">{payslipData.late_days}</p>
@@ -286,12 +303,8 @@ export function PayslipDialog({
           </div>
         </div>
 
-        {/* Actions */}
+        {/* Actions - Download Only */}
         <div className="flex justify-end gap-2 print:hidden">
-          <Button variant="outline" onClick={handlePrint}>
-            <Printer className="h-4 w-4 mr-2" />
-            Print
-          </Button>
           <Button onClick={handleDownload}>
             <Download className="h-4 w-4 mr-2" />
             Download PDF

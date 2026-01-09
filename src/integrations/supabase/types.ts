@@ -4663,8 +4663,14 @@ export type Database = {
       }
       profiles: {
         Row: {
+          annual_leave_allowance: number | null
           annual_salary: number | null
           avatar: string | null
+          bank_account_number: string | null
+          bank_branch: string | null
+          bank_ifsc: string | null
+          bank_name: string | null
+          casual_leave_allowance: number | null
           class_id: string | null
           created_at: string | null
           department: string | null
@@ -4685,12 +4691,19 @@ export type Database = {
           position_id: string | null
           position_name: string | null
           salary_structure: Json | null
+          sick_leave_allowance: number | null
           statutory_info: Json | null
           updated_at: string | null
         }
         Insert: {
+          annual_leave_allowance?: number | null
           annual_salary?: number | null
           avatar?: string | null
+          bank_account_number?: string | null
+          bank_branch?: string | null
+          bank_ifsc?: string | null
+          bank_name?: string | null
+          casual_leave_allowance?: number | null
           class_id?: string | null
           created_at?: string | null
           department?: string | null
@@ -4711,12 +4724,19 @@ export type Database = {
           position_id?: string | null
           position_name?: string | null
           salary_structure?: Json | null
+          sick_leave_allowance?: number | null
           statutory_info?: Json | null
           updated_at?: string | null
         }
         Update: {
+          annual_leave_allowance?: number | null
           annual_salary?: number | null
           avatar?: string | null
+          bank_account_number?: string | null
+          bank_branch?: string | null
+          bank_ifsc?: string | null
+          bank_name?: string | null
+          casual_leave_allowance?: number | null
           class_id?: string | null
           created_at?: string | null
           department?: string | null
@@ -4737,6 +4757,7 @@ export type Database = {
           position_id?: string | null
           position_name?: string | null
           salary_structure?: Json | null
+          sick_leave_allowance?: number | null
           statutory_info?: Json | null
           updated_at?: string | null
         }
