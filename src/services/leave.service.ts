@@ -308,14 +308,31 @@ export const leaveApplicationService = {
     const startYear = parseInt(format(parseISO(input.start_date), 'yyyy'));
     const balance = await leaveBalanceService.getBalance(user.id, startYear, startMonth);
     
+    // Fetch already approved leaves for this month to calculate actual available balance
+    const monthStart = `${startYear}-${String(startMonth).padStart(2, '0')}-01`;
+    const monthEnd = `${startYear}-${String(startMonth).padStart(2, '0')}-31`;
+    const { data: approvedLeaves } = await supabase
+      .from('leave_applications')
+      .select('paid_days')
+      .eq('applicant_id', user.id)
+      .eq('status', 'approved')
+      .gte('start_date', monthStart)
+      .lte('start_date', monthEnd);
+
+    // Calculate used paid days from approved leaves
+    const usedPaidDays = (approvedLeaves || []).reduce((sum, l) => sum + (l.paid_days || 0), 0);
+    
     let paidDays = totalDays;
     let lopDays = 0;
     let isLop = false;
 
     if (balance) {
-      const available = Math.min(balance.balance_remaining, MAX_LEAVES_PER_MONTH - balance.total_used);
-      if (totalDays > available) {
-        paidDays = Math.max(available, 0);
+      // Subtract already used paid days from balance to get actual available
+      const baseAvailable = Math.min(balance.balance_remaining, MAX_LEAVES_PER_MONTH - balance.total_used);
+      const actualAvailable = Math.max(0, baseAvailable - usedPaidDays);
+      
+      if (totalDays > actualAvailable) {
+        paidDays = Math.max(actualAvailable, 0);
         lopDays = totalDays - paidDays;
         isLop = lopDays > 0;
       }
