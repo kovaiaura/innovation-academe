@@ -32,6 +32,7 @@ interface MonthlyLeaveBalance {
   balance: number;
   id?: string;
   adjustment_reason?: string;
+  isAutoCarried?: boolean;
 }
 
 const MONTHS = [
@@ -105,8 +106,7 @@ export function LeaveManagementTab({ year }: LeaveManagementTabProps) {
     try {
       setIsLoadingBalances(true);
       
-      const selectedEmp = employees.find(e => e.id === selectedEmployeeId);
-      
+      // Fetch leave balances (manual overrides)
       const { data: balances } = await supabase
         .from('leave_balances')
         .select('*')
@@ -114,43 +114,94 @@ export function LeaveManagementTab({ year }: LeaveManagementTabProps) {
         .eq('year', year)
         .order('month', { ascending: true });
 
-      // Create a complete 12-month view
+      // Fetch approved leave applications for the selected employee
+      const { data: approvedLeaves } = await supabase
+        .from('leave_applications')
+        .select('start_date, end_date, leave_type, total_days, is_lop, lop_days, paid_days')
+        .eq('applicant_id', selectedEmployeeId)
+        .eq('status', 'approved')
+        .gte('start_date', `${year}-01-01`)
+        .lte('end_date', `${year}-12-31`);
+
+      // Calculate per-month leave usage from approved applications
+      const monthlyUsage = new Map<number, { sick: number; casual: number; lop: number }>();
+      
+      (approvedLeaves || []).forEach(leave => {
+        // Split leave across months if it spans multiple months
+        const startDate = new Date(leave.start_date);
+        const endDate = new Date(leave.end_date);
+        
+        let current = new Date(startDate);
+        while (current <= endDate) {
+          if (current.getFullYear() === year) {
+            const monthNum = current.getMonth() + 1;
+            const existing = monthlyUsage.get(monthNum) || { sick: 0, casual: 0, lop: 0 };
+            
+            // Count working days only (skip weekends)
+            const dayOfWeek = current.getDay();
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+              if (leave.leave_type === 'sick') {
+                existing.sick += 1;
+              } else if (leave.leave_type === 'casual') {
+                existing.casual += 1;
+              }
+            }
+            
+            monthlyUsage.set(monthNum, existing);
+          }
+          current.setDate(current.getDate() + 1);
+        }
+        
+        // Add LOP days if applicable
+        if (leave.is_lop && leave.lop_days && leave.lop_days > 0) {
+          const leaveMonth = new Date(leave.start_date).getMonth() + 1;
+          const existing = monthlyUsage.get(leaveMonth) || { sick: 0, casual: 0, lop: 0 };
+          existing.lop += leave.lop_days;
+          monthlyUsage.set(leaveMonth, existing);
+        }
+      });
+
+      // Build monthly data with automatic carry-forward
+      let previousBalance = 0;
+      
       const monthlyData: MonthlyLeaveBalance[] = MONTHS.map((_, index) => {
         const monthNum = index + 1;
         const existing = balances?.find((b: any) => b.month === monthNum);
+        const usage = monthlyUsage.get(monthNum) || { sick: 0, casual: 0, lop: 0 };
         
-        if (existing) {
-          const available = (existing.monthly_credit || 1) + 
-                           (existing.carried_forward || 0) +
-                           (existing.additional_credit || 0);
-          const used = (existing.sick_leave_used || 0) + (existing.casual_leave_used || 0);
-          
-          return {
-            month: monthNum,
-            monthly_credit: existing.monthly_credit || 1,
-            carried_forward: existing.carried_forward || 0,
-            additional_credit: existing.additional_credit || 0,
-            available,
-            sick_leave_used: existing.sick_leave_used || 0,
-            casual_leave_used: existing.casual_leave_used || 0,
-            lop_days: existing.lop_days || 0,
-            balance: available - used,
-            id: existing.id,
-            adjustment_reason: existing.adjustment_reason
-          };
-        }
+        // Get manual overrides from database
+        const manualCarried = existing?.carried_forward || 0;
+        const additionalCredit = existing?.additional_credit || 0;
         
-        // Default values for months without data
+        // For January, no automatic carry-forward
+        // For other months, carry forward previous month's balance
+        const autoCarried = monthNum === 1 ? 0 : previousBalance;
+        
+        // Use manual override if record exists, otherwise use automatic
+        const hasManualOverride = existing?.id && (existing?.carried_forward > 0 || existing?.adjustment_reason);
+        const carriedForward = hasManualOverride ? manualCarried : autoCarried;
+        
+        const monthlyCredit = 1;
+        const available = monthlyCredit + carriedForward + additionalCredit;
+        const totalUsed = usage.sick + usage.casual;
+        const balance = Math.max(0, available - totalUsed);
+        
+        // Store for next month's carry-forward
+        previousBalance = balance;
+        
         return {
           month: monthNum,
-          monthly_credit: 1,
-          carried_forward: 0,
-          additional_credit: 0,
-          available: 1,
-          sick_leave_used: 0,
-          casual_leave_used: 0,
-          lop_days: 0,
-          balance: 1
+          monthly_credit: monthlyCredit,
+          carried_forward: carriedForward,
+          additional_credit: additionalCredit,
+          available,
+          sick_leave_used: usage.sick,
+          casual_leave_used: usage.casual,
+          lop_days: usage.lop,
+          balance,
+          id: existing?.id,
+          adjustment_reason: existing?.adjustment_reason,
+          isAutoCarried: !hasManualOverride && carriedForward > 0
         };
       });
 
@@ -287,6 +338,7 @@ export function LeaveManagementTab({ year }: LeaveManagementTabProps) {
                           {balance.carried_forward > 0 ? (
                             <Badge variant="outline" className="bg-blue-50 text-blue-700">
                               {balance.carried_forward}
+                              {balance.isAutoCarried && <span className="ml-1 text-xs opacity-70">(auto)</span>}
                             </Badge>
                           ) : (
                             '0'
