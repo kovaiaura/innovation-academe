@@ -27,7 +27,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "Meta Skills Academy <onboarding@resend.dev>",
+      from: "Meta Skills Academy <noreply@edu.metasageacademy.com>",
       to: [to],
       subject: subject,
       html: html,
