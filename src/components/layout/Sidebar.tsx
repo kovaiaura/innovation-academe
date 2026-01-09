@@ -80,7 +80,7 @@ const menuItems: MenuItem[] = [
   { label: 'Project Management', icon: <Target className="h-5 w-5" />, path: '/project-management', roles: ['system_admin'], feature: 'project_management' },
   // Inventory & Purchase
   { label: 'Inventory Management', icon: <Package className="h-5 w-5" />, path: '/inventory-management', roles: ['system_admin'], feature: 'inventory_management' },
-  { label: 'Payroll Management', icon: <PieChart className="h-5 w-5" />, path: '/payroll-management', roles: ['system_admin'], feature: 'payroll_management', ceoOnly: true },
+  { label: 'Attendance & Payroll Management', icon: <PieChart className="h-5 w-5" />, path: '/payroll-management', roles: ['system_admin'], feature: 'payroll_management', ceoOnly: true },
   // Leave Approval (separate menu for approvers based on approval chain)
   { label: 'Leave Approval', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-approvals', roles: ['system_admin'], feature: 'leave_approvals' },
   { label: 'Global Approval Config', icon: <Shield className="h-5 w-5" />, path: '/global-approval-config', roles: ['system_admin'], feature: 'global_approval_config', ceoOnly: true },
@@ -88,7 +88,7 @@ const menuItems: MenuItem[] = [
   { label: 'Leave', icon: <CalendarDays className="h-5 w-5" />, path: '/leave', roles: ['system_admin'], feature: 'leave_management' },
   { label: 'Company Holidays', icon: <Calendar className="h-5 w-5" />, path: '/company-holidays', roles: ['system_admin'], feature: 'company_holidays' },
   // Position Management (CEO only)
-  { label: 'Position Management', icon: <Shield className="h-5 w-5" />, path: '/position-management', roles: ['system_admin'], feature: 'position_management', ceoOnly: true },
+  { label: 'RBAC Management', icon: <Shield className="h-5 w-5" />, path: '/position-management', roles: ['system_admin'], feature: 'position_management', ceoOnly: true },
   // Credential Management (Feature-based permissions)
   { label: 'Credential Management', icon: <Key className="h-5 w-5" />, path: '/credential-management', roles: ['system_admin'], feature: 'credential_management' },
   // Task Management & Task Allotment (Feature-based permissions)
