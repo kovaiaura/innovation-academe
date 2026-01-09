@@ -3,24 +3,20 @@ import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Calendar, CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Loader2, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { LeaveApplication } from '@/types/leave';
 import { leaveApplicationService } from '@/services/leave.service';
+import { EnhancedLeaveApprovalDialog } from '@/components/leave/EnhancedLeaveApprovalDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function ManagerLeaveApprovals() {
   const { user } = useAuth();
   const [applications, setApplications] = useState<LeaveApplication[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<LeaveApplication | null>(null);
-  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
-  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
-  const [comments, setComments] = useState('');
-  const [rejectionReason, setRejectionReason] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -41,28 +37,83 @@ export default function ManagerLeaveApprovals() {
     }
   };
 
-  const handleApproveClick = (application: LeaveApplication) => {
+  const handleViewDetails = (application: LeaveApplication) => {
     setSelectedApplication(application);
-    setComments('');
-    setIsApproveDialogOpen(true);
+    setDialogOpen(true);
   };
 
-  const handleRejectClick = (application: LeaveApplication) => {
-    setSelectedApplication(application);
-    setRejectionReason('');
-    setIsRejectDialogOpen(true);
+  const handleCloseDialog = () => {
+    setSelectedApplication(null);
+    setDialogOpen(false);
   };
 
-  const handleApprove = async () => {
+  const handleApprove = async (comments: string, adjustedPaidDays?: number, adjustedLopDays?: number) => {
     if (!selectedApplication || !user) return;
 
     setIsProcessing(true);
     try {
-      await leaveApplicationService.approveApplication(selectedApplication.id, comments || undefined);
-      toast.success('Leave application approved and forwarded to next approver');
+      if (adjustedPaidDays !== undefined && adjustedLopDays !== undefined) {
+        // Approve with adjusted LOP
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) throw new Error('Not authenticated');
+        
+        const { data: profile } = await supabase.from('profiles').select('name').eq('id', authUser.id).single();
+        const { data: app } = await supabase.from('leave_applications').select('*').eq('id', selectedApplication.id).single();
+        
+        if (!app) throw new Error('Application not found');
+        
+        const approvalChain = Array.isArray(app.approval_chain) ? app.approval_chain : [];
+        const currentLevel = app.current_approval_level || 1;
+        
+        const updatedChain = approvalChain.map((a: any) => {
+          if (a.order === currentLevel) {
+            return { 
+              ...a, 
+              status: 'approved', 
+              approved_by: authUser.id, 
+              approved_by_name: profile?.name || 'Unknown', 
+              approved_at: new Date().toISOString(), 
+              comments: adjustedLopDays > 0 ? `Approved with LOP: ${adjustedLopDays} day(s). ${comments}` : comments
+            };
+          }
+          return a;
+        });
+        
+        const nextLevel = approvalChain.find((a: any) => a.order === currentLevel + 1);
+        const isFinalApproval = !nextLevel;
+        
+        const updateData: Record<string, unknown> = {
+          approval_chain: JSON.parse(JSON.stringify(updatedChain)),
+          current_approval_level: isFinalApproval ? currentLevel : currentLevel + 1,
+          is_lop: adjustedLopDays > 0,
+          lop_days: adjustedLopDays,
+          paid_days: adjustedPaidDays
+        };
+        
+        if (isFinalApproval) {
+          updateData.status = 'approved';
+          updateData.final_approved_by = authUser.id;
+          updateData.final_approved_by_name = profile?.name;
+          updateData.final_approved_at = new Date().toISOString();
+        }
+        
+        const { error } = await supabase.from('leave_applications').update(updateData).eq('id', selectedApplication.id);
+        if (error) throw error;
+        
+        if (isFinalApproval) {
+          await supabase.rpc('apply_leave_application_to_balance', {
+            p_application_id: selectedApplication.id
+          });
+        }
+        
+        toast.success('Leave application approved with adjusted LOP');
+      } else {
+        await leaveApplicationService.approveApplication(selectedApplication.id, comments || undefined);
+        toast.success('Leave application approved and forwarded to next approver');
+      }
+      
       loadApplications();
-      setIsApproveDialogOpen(false);
-      setSelectedApplication(null);
+      handleCloseDialog();
     } catch (error) {
       console.error('Approval error:', error);
       toast.error('Failed to approve leave application');
@@ -71,19 +122,15 @@ export default function ManagerLeaveApprovals() {
     }
   };
 
-  const handleReject = async () => {
-    if (!selectedApplication || !user || !rejectionReason.trim()) {
-      toast.error('Please provide a rejection reason');
-      return;
-    }
+  const handleReject = async (reason: string) => {
+    if (!selectedApplication || !user) return;
 
     setIsProcessing(true);
     try {
-      await leaveApplicationService.rejectApplication(selectedApplication.id, rejectionReason.trim());
+      await leaveApplicationService.rejectApplication(selectedApplication.id, reason);
       toast.success('Leave application rejected');
       loadApplications();
-      setIsRejectDialogOpen(false);
-      setSelectedApplication(null);
+      handleCloseDialog();
     } catch (error) {
       console.error('Rejection error:', error);
       toast.error('Failed to reject leave application');
@@ -145,9 +192,11 @@ export default function ManagerLeaveApprovals() {
                             </span>
                             <span>({app.total_days} {app.total_days === 1 ? 'day' : 'days'})</span>
                           </div>
-                          <div>
-                            <Label className="text-xs text-muted-foreground">Reason:</Label>
-                            <p className="text-sm mt-1">{app.reason}</p>
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-green-600 font-medium">{app.paid_days || 0} Paid</span>
+                            {(app.lop_days || 0) > 0 && (
+                              <span className="text-orange-600 font-medium">/ {app.lop_days} LOP</span>
+                            )}
                           </div>
                           {app.applied_at && (
                             <p className="text-xs text-muted-foreground">
@@ -155,25 +204,13 @@ export default function ManagerLeaveApprovals() {
                             </p>
                           )}
                         </div>
-                        <div className="flex gap-2 ml-4">
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() => handleApproveClick(app)}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleRejectClick(app)}
-                          >
-                            <XCircle className="h-4 w-4 mr-1" />
-                            Reject
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => handleViewDetails(app)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Review
+                        </Button>
                       </div>
                     </div>
                   ))
@@ -183,100 +220,15 @@ export default function ManagerLeaveApprovals() {
           </CardContent>
         </Card>
 
-        {/* Approve Dialog */}
-        <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Approve Leave Application</DialogTitle>
-              <DialogDescription>
-                This will forward the application to the next approver.
-              </DialogDescription>
-            </DialogHeader>
-            {selectedApplication && (
-              <div className="space-y-4">
-                <div>
-                  <Label>Applicant Name</Label>
-                  <p className="font-medium">{selectedApplication.applicant_name}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Leave Type</Label>
-                    <p className="capitalize">{selectedApplication.leave_type}</p>
-                  </div>
-                  <div>
-                    <Label>Duration</Label>
-                    <p>{selectedApplication.total_days} days</p>
-                  </div>
-                </div>
-                <div>
-                  <Label>Comments (Optional)</Label>
-                  <Textarea
-                    value={comments}
-                    onChange={(e) => setComments(e.target.value)}
-                    placeholder="Add any comments for the next approver..."
-                    rows={3}
-                  />
-                </div>
-              </div>
-            )}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsApproveDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleApprove}
-                disabled={isProcessing}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {isProcessing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-                Approve & Forward
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Reject Dialog */}
-        <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Reject Leave Application</DialogTitle>
-              <DialogDescription>
-                Please provide a reason for rejecting this leave application.
-              </DialogDescription>
-            </DialogHeader>
-            {selectedApplication && (
-              <div className="space-y-4">
-                <div>
-                  <Label>Applicant Name</Label>
-                  <p className="font-medium">{selectedApplication.applicant_name}</p>
-                </div>
-                <div>
-                  <Label>Rejection Reason *</Label>
-                  <Textarea
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    placeholder="Explain why this leave application is being rejected..."
-                    rows={4}
-                    required
-                  />
-                </div>
-              </div>
-            )}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsRejectDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleReject}
-                disabled={isProcessing || !rejectionReason.trim()}
-              >
-                {isProcessing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-                Reject Application
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <EnhancedLeaveApprovalDialog
+          open={dialogOpen}
+          onOpenChange={(open) => !open && handleCloseDialog()}
+          application={selectedApplication}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          isApproving={isProcessing}
+          isRejecting={isProcessing}
+        />
       </div>
     </Layout>
   );
