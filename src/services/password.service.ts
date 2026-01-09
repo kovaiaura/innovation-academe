@@ -1,6 +1,15 @@
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
+// Helper to call edge functions
+const callEdgeFunction = async (functionName: string, body: Record<string, unknown>) => {
+  const response = await supabase.functions.invoke(functionName, { body });
+  if (response.error) {
+    throw new Error(response.error.message || 'Edge function call failed');
+  }
+  return response.data;
+};
+
 // Types for password management
 export interface PasswordResetToken {
   token: string;
@@ -140,15 +149,17 @@ export const passwordService = {
     toast.info('Admin password reset requires server-side implementation');
   },
 
-  // Send password reset email via Supabase
+  // Send password reset email via Resend (edge function)
   sendResetLink: async (email: string, userName: string, userType: string, userId?: string): Promise<void> => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const result = await callEdgeFunction('send-password-reset', {
+        email,
+        userName,
+        appUrl: window.location.origin,
       });
 
-      if (error) {
-        throw error;
+      if (result.error) {
+        throw new Error(result.error);
       }
 
       // Log the reset request
@@ -167,14 +178,12 @@ export const passwordService = {
   // User requests reset link (from login page)
   requestPasswordReset: async (email: string): Promise<void> => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      await callEdgeFunction('send-password-reset', {
+        email,
+        appUrl: window.location.origin,
       });
 
-      if (error) {
-        throw error;
-      }
-
+      // Don't reveal if email exists or not for security
       toast.success('If an account exists with this email, you will receive a reset link');
     } catch (error: any) {
       console.error('Request password reset error:', error);
@@ -183,33 +192,16 @@ export const passwordService = {
     }
   },
 
-  // User resets password using token from email
+  // User resets password using token from email (via edge function)
   resetPasswordWithToken: async (token: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      // When user clicks reset link, Supabase handles the token
-      // We just need to update the password
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
+      const result = await callEdgeFunction('verify-reset-token', {
+        token,
+        newPassword,
       });
 
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      // Get current user for logging
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        passwordService.logPasswordChange(user.id, user.email || '', 'reset_completed');
-
-        // Update profiles table
-        await supabase
-          .from('profiles')
-          .update({
-            password_changed: true,
-            password_changed_at: new Date().toISOString(),
-            must_change_password: false,
-          })
-          .eq('id', user.id);
+      if (!result.success) {
+        return { success: false, error: result.error || 'Failed to reset password' };
       }
 
       return { success: true };
@@ -301,7 +293,7 @@ export const passwordService = {
     return { valid: errors.length === 0, errors };
   },
 
-  // Send bulk reset links to multiple users
+  // Send bulk reset links to multiple users via Resend
   sendBulkResetLinks: async (
     users: Array<{ email: string; name: string; userId?: string; userType: string }>,
     onProgress?: (current: number, total: number) => void
@@ -310,12 +302,14 @@ export const passwordService = {
     
     for (let i = 0; i < users.length; i++) {
       try {
-        const { error } = await supabase.auth.resetPasswordForEmail(users[i].email, {
-          redirectTo: `${window.location.origin}/reset-password`,
+        const result = await callEdgeFunction('send-password-reset', {
+          email: users[i].email,
+          userName: users[i].name,
+          appUrl: window.location.origin,
         });
 
-        if (error) {
-          results.failed.push({ email: users[i].email, error: error.message });
+        if (result.error) {
+          results.failed.push({ email: users[i].email, error: result.error });
         } else {
           results.success++;
           
