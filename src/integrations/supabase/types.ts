@@ -4672,6 +4672,8 @@ export type Database = {
           bank_ifsc: string | null
           bank_name: string | null
           casual_leave_allowance: number | null
+          check_in_time: string | null
+          check_out_time: string | null
           class_id: string | null
           created_at: string | null
           date_of_birth: string | null
@@ -4712,6 +4714,8 @@ export type Database = {
           bank_ifsc?: string | null
           bank_name?: string | null
           casual_leave_allowance?: number | null
+          check_in_time?: string | null
+          check_out_time?: string | null
           class_id?: string | null
           created_at?: string | null
           date_of_birth?: string | null
@@ -4752,6 +4756,8 @@ export type Database = {
           bank_ifsc?: string | null
           bank_name?: string | null
           casual_leave_allowance?: number | null
+          check_in_time?: string | null
+          check_out_time?: string | null
           class_id?: string | null
           created_at?: string | null
           date_of_birth?: string | null

@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { formatCurrency } from '@/utils/attendanceHelpers';
-import { EmployeesOverviewTab } from '@/components/payroll/EmployeesOverviewTab';
+import { MonthlyBreakdownTab } from '@/components/payroll/MonthlyBreakdownTab';
 import { PayrollAnalyticsTab } from '@/components/payroll/PayrollAnalyticsTab';
 import { IndividualAttendanceTab } from '@/components/payroll/IndividualAttendanceTab';
 import { 
@@ -23,7 +23,7 @@ import {
 } from '@/services/payroll.service';
 
 export default function PayrollDashboard() {
-  const [activeTab, setActiveTab] = useState('employees');
+  const [activeTab, setActiveTab] = useState('breakdown');
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'));
   const [stats, setStats] = useState<PayrollDashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -158,9 +158,9 @@ export default function PayrollDashboard() {
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="grid grid-cols-3 w-full max-w-2xl">
-            <TabsTrigger value="employees" className="gap-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Employees</span>
+            <TabsTrigger value="breakdown" className="gap-2">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Monthly Breakdown</span>
             </TabsTrigger>
             <TabsTrigger value="attendance" className="gap-2">
               <UserCheck className="h-4 w-4" />
@@ -172,8 +172,8 @@ export default function PayrollDashboard() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="employees">
-            <EmployeesOverviewTab month={month} year={year} />
+          <TabsContent value="breakdown">
+            <MonthlyBreakdownTab month={month} year={year} />
           </TabsContent>
 
           <TabsContent value="attendance">
