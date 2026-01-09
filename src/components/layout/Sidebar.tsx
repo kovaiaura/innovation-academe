@@ -80,7 +80,7 @@ const menuItems: MenuItem[] = [
   { label: 'Project Management', icon: <Target className="h-5 w-5" />, path: '/project-management', roles: ['system_admin'], feature: 'project_management' },
   // Inventory & Purchase
   { label: 'Inventory Management', icon: <Package className="h-5 w-5" />, path: '/inventory-management', roles: ['system_admin'], feature: 'inventory_management' },
-  { label: 'Attendance & Payroll Management', icon: <PieChart className="h-5 w-5" />, path: '/payroll-management', roles: ['system_admin'], feature: 'payroll_management', ceoOnly: true },
+  { label: 'Attendance & Payroll', icon: <PieChart className="h-5 w-5" />, path: '/payroll-management', roles: ['system_admin'], feature: 'payroll_management', ceoOnly: true },
   // Leave Approval (separate menu for approvers based on approval chain)
   { label: 'Leave Approval', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-approvals', roles: ['system_admin'], feature: 'leave_approvals' },
   { label: 'Global Approval Config', icon: <Shield className="h-5 w-5" />, path: '/global-approval-config', roles: ['system_admin'], feature: 'global_approval_config', ceoOnly: true },
