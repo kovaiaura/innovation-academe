@@ -40,7 +40,7 @@ const allFeatures: { value: SystemAdminFeature; label: string }[] = [
   { value: 'leave_approvals', label: 'Leave Approvals' },
   { value: 'leave_management', label: 'Leave Management' },
   { value: 'company_holidays', label: 'Company Holidays' },
-  { value: 'payroll_management', label: 'Payroll Management' },
+  { value: 'payroll_management', label: 'Attendance & Payroll Management' },
   { value: 'global_approval_config', label: 'Global Approval Config' },
   { value: 'ats_management', label: 'ATS Management' },
   { value: 'institutional_calendar', label: 'Institutional Calendar' },
@@ -58,7 +58,7 @@ const allFeatures: { value: SystemAdminFeature; label: string }[] = [
   { value: 'news_feeds', label: 'News & Feeds' },
   { value: 'ask_metova', label: 'Ask Metova' },
   { value: 'settings', label: 'Settings' },
-  { value: 'position_management', label: 'Position Management' },
+  { value: 'position_management', label: 'RBAC Management' },
 ];
 
 export function CreatePositionDialog({

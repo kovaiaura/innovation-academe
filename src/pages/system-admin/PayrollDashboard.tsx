@@ -63,7 +63,7 @@ export default function PayrollDashboard() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Payroll Management</h1>
+            <h1 className="text-3xl font-bold">Attendance & Payroll Management</h1>
             <p className="text-muted-foreground mt-1">
               Comprehensive attendance and payroll management for all officers and staff
             </p>

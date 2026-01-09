@@ -38,7 +38,7 @@ export function OnboardDialog({ open, onOpenChange, offer }: OnboardDialogProps)
   const handleOnboardAsMetaStaff = () => {
     updateApplication.mutate({ id: offer.application_id, status: 'hired' });
     onOpenChange(false);
-    // Navigate to position management with pre-filled data
+    // Navigate to RBAC management with pre-filled data
     navigate('/system-admin/position-management', { 
       state: { 
         prefill: {
