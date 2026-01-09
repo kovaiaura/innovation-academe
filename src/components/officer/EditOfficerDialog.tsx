@@ -54,6 +54,24 @@ export default function EditOfficerDialog({
         normal_working_hours: officer.normal_working_hours,
         casual_leave: leaveBalance?.casual_leave,
         sick_leave: leaveBalance?.sick_leave,
+        // Include salary structure and statutory info from officer
+        salary_structure: officer.salary_structure ?? {
+          basic_pay: 0,
+          hra: 0,
+          da: 0,
+          transport_allowance: 0,
+          special_allowance: 0,
+          medical_allowance: 0,
+        },
+        statutory_info: officer.statutory_info ?? {
+          pf_applicable: true,
+          esi_applicable: false,
+          pt_applicable: true,
+        },
+        bank_name: officer.bank_name,
+        bank_account_number: officer.bank_account_number,
+        bank_ifsc: officer.bank_ifsc,
+        bank_branch: officer.bank_branch,
       });
     }
   }, [officer, leaveBalance]);

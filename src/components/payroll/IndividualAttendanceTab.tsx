@@ -72,6 +72,7 @@ interface DayRecord {
   // Leave info
   leave_type?: string;
   leave_id?: string;
+  is_paid_leave?: boolean;
   
   // Overtime info
   overtime_hours: number | null;
@@ -134,6 +135,14 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     designation: string | null;
   } | null>(null);
   const [payrollConfig, setPayrollConfig] = useState<PayrollConfig | null>(null);
+  const [companyProfile, setCompanyProfile] = useState<{
+    company_name: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    logo_url?: string;
+  } | null>(null);
   const [editingOvertimePay, setEditingOvertimePay] = useState(false);
   const [customOvertimePay, setCustomOvertimePay] = useState<number | null>(null);
   
@@ -156,6 +165,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
   useEffect(() => {
     loadEmployees();
     loadPayrollConfig();
+    loadCompanyProfile();
   }, []);
 
   // Load data when employee selected or month changes
@@ -169,6 +179,22 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
   const loadPayrollConfig = async () => {
     const config = await getPayrollConfig();
     setPayrollConfig(config);
+  };
+
+  const loadCompanyProfile = async () => {
+    try {
+      const { data } = await supabase
+        .from('company_profiles')
+        .select('company_name, address, city, state, pincode, logo_url')
+        .eq('is_default', true)
+        .single();
+      
+      if (data) {
+        setCompanyProfile(data);
+      }
+    } catch (error) {
+      console.error('Error loading company profile:', error);
+    }
   };
 
   const loadEmployees = async () => {
@@ -337,13 +363,33 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
         holidayMap.set(hDate, { name: h.name, is_paid: h.is_paid !== false });
       });
 
-      const leaveMap = new Map<string, { type: string; id: string }>();
+      // Store leave data with paid/lop info
+      interface LeaveInfo {
+        type: string;
+        id: string;
+        isPaid: boolean;
+      }
+      const leaveMap = new Map<string, LeaveInfo>();
+      let totalPaidLeaveDays = 0;
+      let totalLopLeaveDays = 0;
+      
       (leavesResult.data || []).forEach((l) => {
         const start = new Date(l.start_date);
         const end = new Date(l.end_date);
+        const paidDays = l.paid_days || 0;
+        const lopDays = l.lop_days || 0;
+        
+        // Track totals
+        totalPaidLeaveDays += paidDays;
+        totalLopLeaveDays += lopDays;
+        
+        let dayCount = 0;
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
           const dateStr = format(d, 'yyyy-MM-dd');
-          leaveMap.set(dateStr, { type: l.leave_type, id: l.id });
+          dayCount++;
+          // Mark as paid if within paid_days count, otherwise LOP
+          const isPaid = dayCount <= paidDays;
+          leaveMap.set(dateStr, { type: l.leave_type, id: l.id, isPaid });
         }
       });
 
@@ -450,6 +496,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
           late_minutes: attendance?.late_minutes || 0,
           leave_type: leave?.type,
           leave_id: leave?.id,
+          is_paid_leave: leave?.isPaid,
           overtime_hours: overtime?.requested_hours || attendance?.overtime_hours || null,
           overtime_status: overtime?.status as DayRecord['overtime_status'] || null,
           overtime_id: overtime?.id,
@@ -478,6 +525,11 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     const weekendDays = dayRecords.filter((r) => r.dayType === 'weekend').length;
     const holidays = dayRecords.filter((r) => r.dayType === 'holiday').length;
     const leaveDays = dayRecords.filter((r) => r.dayType === 'leave').length;
+    
+    // Separate paid leave vs LOP leave
+    const paidLeaveDays = dayRecords.filter((r) => r.dayType === 'leave' && r.is_paid_leave === true).length;
+    const lopLeaveDays = dayRecords.filter((r) => r.dayType === 'leave' && r.is_paid_leave === false).length;
+    
     const presentDays = dayRecords.filter((r) => r.status === 'present' || r.status === 'late').length;
     const lateDays = dayRecords.filter((r) => r.status === 'late').length;
     const unmarkedDays = dayRecords.filter((r) => r.status === 'unmarked').length;
@@ -487,9 +539,12 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       .reduce((sum, r) => sum + (r.overtime_hours || 0), 0);
     const pendingOvertimeCount = dayRecords.filter((r) => r.overtime_status === 'pending').length;
 
-    // NEW FORMULA: Attendance % = ((Total Days in Month - (Leave Days + Unmarked Days)) × 100) / Total Days in Month
-    // Unmarked days are treated as absent days along with leave days
-    const absentDays = leaveDays + unmarkedDays;
+    // Total LOP days = approved LOP leaves + unmarked days (unapproved absences)
+    const totalLopDays = lopLeaveDays + unmarkedDays;
+
+    // NEW FORMULA: Attendance % = ((Total Days in Month - (LOP Leave Days + Unmarked Days)) × 100) / Total Days in Month
+    // Only LOP and unmarked days count against attendance, paid leave doesn't
+    const absentDays = totalLopDays;
     const attendancePercentage = totalDaysInMonth > 0 
       ? parseFloat((((totalDaysInMonth - absentDays) * 100) / totalDaysInMonth).toFixed(2))
       : 100;
@@ -500,9 +555,12 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       weekendDays,
       holidays,
       leaveDays,
+      paidLeaveDays,
+      lopLeaveDays,
       presentDays,
       lateDays,
       unmarkedDays,
+      totalLopDays,
       totalHours,
       totalOvertime,
       approvedOvertime,
@@ -864,16 +922,16 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                 </Card>
                 <Card>
                   <CardContent className="pt-4 text-center">
-                    <CalendarCheck className="h-5 w-5 mx-auto text-blue-500 mb-1" />
-                    <p className="text-2xl font-bold text-blue-600">{stats?.leaveDays}</p>
-                    <p className="text-xs text-muted-foreground">On Leave</p>
+                    <CalendarCheck className="h-5 w-5 mx-auto text-green-500 mb-1" />
+                    <p className="text-2xl font-bold text-green-600">{stats?.paidLeaveDays || 0}</p>
+                    <p className="text-xs text-muted-foreground">Paid Leave</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-4 text-center">
                     <CalendarOff className="h-5 w-5 mx-auto text-red-500 mb-1" />
-                    <p className="text-2xl font-bold text-red-600">{stats?.unmarkedDays}</p>
-                    <p className="text-xs text-muted-foreground">Unmarked (LOP)</p>
+                    <p className="text-2xl font-bold text-red-600">{stats?.totalLopDays || 0}</p>
+                    <p className="text-xs text-muted-foreground">LOP Days</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -902,7 +960,8 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                   <CardContent>
                     {(() => {
                       const perDaySalary = salaryData.monthlySalary / 30;
-                      const lopDeduction = perDaySalary * (stats?.unmarkedDays || 0);
+                      // Only deduct for LOP days (approved LOP + unmarked), not paid leave
+                      const lopDeduction = perDaySalary * (stats?.totalLopDays || 0);
                       const calculatedOvertimePay = (stats?.approvedOvertime || 0) * salaryData.hourlyRate * salaryData.overtimeMultiplier;
                       const overtimePay = customOvertimePay ?? calculatedOvertimePay;
                       const netPayout = salaryData.monthlySalary - lopDeduction + overtimePay;
@@ -914,7 +973,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                             <p className="text-xl font-bold">{formatCurrency(salaryData.monthlySalary)}</p>
                           </div>
                           <div className="space-y-1">
-                            <p className="text-xs text-muted-foreground uppercase">LOP Deduction ({stats?.unmarkedDays} days)</p>
+                            <p className="text-xs text-muted-foreground uppercase">LOP Deduction ({stats?.totalLopDays} days)</p>
                             <p className="text-xl font-bold text-red-600">-{formatCurrency(lopDeduction)}</p>
                           </div>
                           <div className="space-y-1">
@@ -983,7 +1042,10 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                                   working_days: stats?.workingDays || 0,
                                   days_present: stats?.presentDays || 0,
                                   days_leave: stats?.leaveDays || 0,
-                                  days_lop: stats?.unmarkedDays || 0,
+                                  paid_leave_days: stats?.paidLeaveDays || 0,
+                                  lop_leave_days: stats?.lopLeaveDays || 0,
+                                  unmarked_days: stats?.unmarkedDays || 0,
+                                  days_lop: stats?.totalLopDays || 0,
                                   late_days: stats?.lateDays || 0,
                                   overtime_hours: stats?.approvedOvertime || 0,
                                   total_hours_worked: stats?.totalHours || 0,
@@ -1227,8 +1289,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
         open={payslipDialogOpen}
         onOpenChange={setPayslipDialogOpen}
         payslipData={payslipData}
-        companyName={payrollConfig?.company_name}
-        companyAddress={payrollConfig?.company_address}
+        companyProfile={companyProfile}
       />
     </>
   );

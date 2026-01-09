@@ -1,6 +1,6 @@
 /**
  * Staff Detail Page
- * View and edit staff profile, salary structure, and statutory information
+ * View and edit staff profile, salary structure, statutory information, banking, and leave allowances
  */
 
 import { useState, useEffect } from 'react';
@@ -23,6 +23,8 @@ import {
   Calculator,
   Save,
   Briefcase,
+  Building2,
+  TreePalm,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
@@ -62,6 +64,13 @@ interface StaffProfile {
   overtime_rate_multiplier?: number;
   salary_structure?: StaffSalaryStructure;
   statutory_info?: StaffStatutoryInfo;
+  bank_name?: string;
+  bank_account_number?: string;
+  bank_ifsc?: string;
+  bank_branch?: string;
+  casual_leave_allowance?: number;
+  sick_leave_allowance?: number;
+  annual_leave_allowance?: number;
 }
 
 export default function StaffDetail() {
@@ -112,6 +121,13 @@ export default function StaffDetail() {
           esi_applicable: false,
           pt_applicable: true,
         },
+        bank_name: data.bank_name || '',
+        bank_account_number: data.bank_account_number || '',
+        bank_ifsc: data.bank_ifsc || '',
+        bank_branch: data.bank_branch || '',
+        casual_leave_allowance: data.casual_leave_allowance || 12,
+        sick_leave_allowance: data.sick_leave_allowance || 10,
+        annual_leave_allowance: data.annual_leave_allowance || 22,
       };
       
       setStaff(profile);
@@ -186,6 +202,10 @@ export default function StaffDetail() {
     
     setIsSaving(true);
     try {
+      // Auto-calculate annual leave
+      const casualLeave = formData.casual_leave_allowance || 12;
+      const sickLeave = formData.sick_leave_allowance || 10;
+      
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -197,6 +217,13 @@ export default function StaffDetail() {
           overtime_rate_multiplier: formData.overtime_rate_multiplier,
           salary_structure: formData.salary_structure as unknown as Json,
           statutory_info: formData.statutory_info as unknown as Json,
+          bank_name: formData.bank_name,
+          bank_account_number: formData.bank_account_number,
+          bank_ifsc: formData.bank_ifsc,
+          bank_branch: formData.bank_branch,
+          casual_leave_allowance: casualLeave,
+          sick_leave_allowance: sickLeave,
+          annual_leave_allowance: casualLeave + sickLeave,
         })
         .eq('id', staffId);
       
@@ -281,7 +308,7 @@ export default function StaffDetail() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Basic Information */}
+          {/* Basic Information & Bank Details */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -324,14 +351,113 @@ export default function StaffDetail() {
 
               <Separator />
 
+              {/* Banking Information */}
+              <h4 className="font-medium flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Banking Information
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="bank_name">Bank Name</Label>
+                  <Input
+                    id="bank_name"
+                    value={formData.bank_name || ''}
+                    onChange={(e) => handleChange('bank_name', e.target.value)}
+                    placeholder="e.g., HDFC Bank"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="bank_account_number">Account Number</Label>
+                  <Input
+                    id="bank_account_number"
+                    value={formData.bank_account_number || ''}
+                    onChange={(e) => handleChange('bank_account_number', e.target.value)}
+                    placeholder="Enter account number"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="bank_ifsc">IFSC Code</Label>
+                  <Input
+                    id="bank_ifsc"
+                    value={formData.bank_ifsc || ''}
+                    onChange={(e) => handleChange('bank_ifsc', e.target.value)}
+                    placeholder="e.g., HDFC0001234"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="bank_branch">Branch</Label>
+                  <Input
+                    id="bank_branch"
+                    value={formData.bank_branch || ''}
+                    onChange={(e) => handleChange('bank_branch', e.target.value)}
+                    placeholder="e.g., Mumbai Main"
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Leave Allowances */}
+              <h4 className="font-medium flex items-center gap-2">
+                <TreePalm className="h-4 w-4" />
+                Leave Allowances
+              </h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="casual_leave">Casual Leave</Label>
+                  <Input
+                    id="casual_leave"
+                    type="number"
+                    value={formData.casual_leave_allowance || 12}
+                    onChange={(e) => handleChange('casual_leave_allowance', Number(e.target.value))}
+                    placeholder="12"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="sick_leave">Sick Leave</Label>
+                  <Input
+                    id="sick_leave"
+                    type="number"
+                    value={formData.sick_leave_allowance || 10}
+                    onChange={(e) => handleChange('sick_leave_allowance', Number(e.target.value))}
+                    placeholder="10"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="annual_leave">Annual Leave</Label>
+                  <Input
+                    id="annual_leave"
+                    type="number"
+                    value={(formData.casual_leave_allowance || 12) + (formData.sick_leave_allowance || 10)}
+                    disabled
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Auto: Sick + Casual</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Salary Configuration */}
+          <Card>
+            <CardHeader>
               <div className="flex items-center justify-between">
-                <h4 className="font-medium">Salary Configuration</h4>
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <IndianRupee className="h-5 w-5" />
+                    Salary Configuration
+                  </CardTitle>
+                  <CardDescription>CTC and salary breakdown</CardDescription>
+                </div>
                 <Button variant="outline" size="sm" onClick={autoCalculateSalary}>
                   <Calculator className="h-4 w-4 mr-1" />
                   Auto Calculate
                 </Button>
               </div>
-
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="annual_salary">Annual CTC (₹)</Label>
@@ -357,7 +483,7 @@ export default function StaffDetail() {
               </div>
 
               <div>
-                <Label htmlFor="overtime_multiplier">Overtime Rate Multiplier</Label>
+                <Label htmlFor="overtime_multiplier">Overtime Multiplier</Label>
                 <Input
                   id="overtime_multiplier"
                   type="number"
@@ -367,97 +493,66 @@ export default function StaffDetail() {
                   placeholder="1.5"
                 />
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Salary Structure */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <IndianRupee className="h-5 w-5" />
-                Salary Structure (Monthly)
-              </CardTitle>
-              <CardDescription>Breakdown of monthly salary components</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <Separator />
+
+              <h4 className="font-medium">Monthly Salary Breakdown</h4>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="basic_pay">Basic Pay (50%)</Label>
+                  <Label className="text-xs">Basic Pay (50%)</Label>
                   <Input
-                    id="basic_pay"
                     type="number"
                     step="0.01"
                     value={formData.salary_structure?.basic_pay || ''}
                     onChange={(e) => handleSalaryStructureChange('basic_pay', Number(e.target.value))}
-                    placeholder="0.00"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="hra">HRA (20%)</Label>
+                  <Label className="text-xs">HRA (20%)</Label>
                   <Input
-                    id="hra"
                     type="number"
                     step="0.01"
                     value={formData.salary_structure?.hra || ''}
                     onChange={(e) => handleSalaryStructureChange('hra', Number(e.target.value))}
-                    placeholder="0.00"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="conveyance">Conveyance Allowance</Label>
+                  <Label className="text-xs">Conveyance</Label>
                   <Input
-                    id="conveyance"
                     type="number"
-                    step="0.01"
                     value={formData.salary_structure?.conveyance_allowance || ''}
                     onChange={(e) => handleSalaryStructureChange('conveyance_allowance', Number(e.target.value))}
-                    placeholder="1600"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="medical">Medical Allowance</Label>
+                  <Label className="text-xs">Medical</Label>
                   <Input
-                    id="medical"
                     type="number"
-                    step="0.01"
                     value={formData.salary_structure?.medical_allowance || ''}
                     onChange={(e) => handleSalaryStructureChange('medical_allowance', Number(e.target.value))}
-                    placeholder="1250"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="special">Special Allowance</Label>
+                  <Label className="text-xs">Special Allowance</Label>
                   <Input
-                    id="special"
                     type="number"
-                    step="0.01"
                     value={formData.salary_structure?.special_allowance || ''}
                     onChange={(e) => handleSalaryStructureChange('special_allowance', Number(e.target.value))}
-                    placeholder="0.00"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="da">DA (Optional)</Label>
+                  <Label className="text-xs">DA (Optional)</Label>
                   <Input
-                    id="da"
                     type="number"
-                    step="0.01"
                     value={formData.salary_structure?.da || ''}
                     onChange={(e) => handleSalaryStructureChange('da', Number(e.target.value))}
-                    placeholder="0.00"
                   />
                 </div>
               </div>
 
               <div className="bg-muted/50 p-4 rounded-lg">
                 <div className="flex justify-between items-center">
-                  <span className="font-medium">Total Monthly Salary</span>
+                  <span className="font-medium">Total Monthly</span>
                   <span className="text-xl font-bold text-primary">
                     ₹{getTotalMonthlySalary().toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                   </span>
@@ -477,8 +572,8 @@ export default function StaffDetail() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* PF Section */}
-                <div className="space-y-4">
+                {/* PF */}
+                <div className="space-y-3">
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="pf_applicable"
@@ -490,18 +585,16 @@ export default function StaffDetail() {
                   {formData.statutory_info?.pf_applicable && (
                     <>
                       <div>
-                        <Label htmlFor="pf_account">PF Account Number</Label>
+                        <Label className="text-xs">PF Account Number</Label>
                         <Input
-                          id="pf_account"
                           value={formData.statutory_info?.pf_account_number || ''}
                           onChange={(e) => handleStatutoryChange('pf_account_number', e.target.value)}
-                          placeholder="Enter PF A/C No."
+                          placeholder="Enter PF A/C"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="uan">UAN Number</Label>
+                        <Label className="text-xs">UAN Number</Label>
                         <Input
-                          id="uan"
                           value={formData.statutory_info?.uan_number || ''}
                           onChange={(e) => handleStatutoryChange('uan_number', e.target.value)}
                           placeholder="Enter UAN"
@@ -511,8 +604,8 @@ export default function StaffDetail() {
                   )}
                 </div>
 
-                {/* ESI Section */}
-                <div className="space-y-4">
+                {/* ESI */}
+                <div className="space-y-3">
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="esi_applicable"
@@ -523,9 +616,8 @@ export default function StaffDetail() {
                   </div>
                   {formData.statutory_info?.esi_applicable && (
                     <div>
-                      <Label htmlFor="esi_number">ESI Number</Label>
+                      <Label className="text-xs">ESI Number</Label>
                       <Input
-                        id="esi_number"
                         value={formData.statutory_info?.esi_number || ''}
                         onChange={(e) => handleStatutoryChange('esi_number', e.target.value)}
                         placeholder="Enter ESI No."
@@ -534,8 +626,8 @@ export default function StaffDetail() {
                   )}
                 </div>
 
-                {/* PT Section */}
-                <div className="space-y-4">
+                {/* PT */}
+                <div className="space-y-3">
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="pt_applicable"
@@ -546,9 +638,8 @@ export default function StaffDetail() {
                   </div>
                   {formData.statutory_info?.pt_applicable && (
                     <div>
-                      <Label htmlFor="pt_state">PT State</Label>
+                      <Label className="text-xs">PT State</Label>
                       <Input
-                        id="pt_state"
                         value={formData.statutory_info?.pt_state || 'maharashtra'}
                         onChange={(e) => handleStatutoryChange('pt_state', e.target.value)}
                         placeholder="e.g., maharashtra"
@@ -557,11 +648,10 @@ export default function StaffDetail() {
                   )}
                 </div>
 
-                {/* PAN Section */}
-                <div className="space-y-4">
-                  <Label htmlFor="pan_number" className="font-medium">PAN Number</Label>
+                {/* PAN */}
+                <div className="space-y-3">
+                  <Label className="font-medium">PAN Number</Label>
                   <Input
-                    id="pan_number"
                     value={formData.statutory_info?.pan_number || ''}
                     onChange={(e) => handleStatutoryChange('pan_number', e.target.value)}
                     placeholder="Enter PAN"
