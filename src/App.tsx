@@ -99,6 +99,7 @@ import InstitutionalCalendar from "./pages/system-admin/InstitutionalCalendar";
 import InstitutionDetail from "./pages/system-admin/InstitutionDetail";
 import ClassDetail from "./pages/system-admin/ClassDetail";
 import OfficerDetail from "./pages/system-admin/OfficerDetail";
+import StaffDetail from "./pages/system-admin/StaffDetail";
 import ProjectManagement from "./pages/system-admin/ProjectManagement";
 import SystemAdminLeaveApprovals from "./pages/system-admin/LeaveApprovals";
 import MetaStaffLeaveManagement from "./pages/system-admin/MetaStaffLeaveManagement";
@@ -262,6 +263,14 @@ const App = () => (
             element={
               <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="officer_management">
                 <OfficerDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/system-admin/staff/:staffId"
+            element={
+              <ProtectedRoute allowedRoles={['system_admin', 'super_admin']} requiredFeature="officer_management">
+                <StaffDetail />
               </ProtectedRoute>
             }
           />

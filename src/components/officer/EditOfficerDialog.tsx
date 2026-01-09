@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { OfficerDetails } from '@/services/systemadmin.service';
+import { Calculator } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Leave balance type matching OfficerDetail component
 interface OfficerLeaveBalance {
@@ -219,7 +221,43 @@ export default function EditOfficerDialog({
           {/* Salary Configuration Section */}
           <Separator />
           <div className="space-y-4">
-            <h3 className="font-semibold text-sm text-muted-foreground">Salary Configuration</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm text-muted-foreground">Salary Configuration</h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const annualSalary = formData.salary || 0;
+                  if (annualSalary <= 0) {
+                    toast.error('Please enter annual salary first');
+                    return;
+                  }
+                  const monthly = annualSalary / 12;
+                  const basic = monthly * 0.5;
+                  const hra = monthly * 0.2;
+                  const conveyance = 1600;
+                  const medical = 1250;
+                  const special = Math.max(0, monthly - basic - hra - conveyance - medical);
+                  const hourlyRate = monthly / 22 / 8;
+                  
+                  handleChange('salary_structure', {
+                    ...formData.salary_structure,
+                    basic_pay: Math.round(basic * 100) / 100,
+                    hra: Math.round(hra * 100) / 100,
+                    transport_allowance: conveyance,
+                    medical_allowance: medical,
+                    special_allowance: Math.round(special * 100) / 100,
+                    da: 0,
+                  });
+                  handleChange('hourly_rate', Math.round(hourlyRate * 100) / 100);
+                  toast.success('Salary breakdown calculated from CTC');
+                }}
+              >
+                <Calculator className="h-4 w-4 mr-1" />
+                Auto Calculate
+              </Button>
+            </div>
             
             <div className="grid grid-cols-3 gap-4">
               <div>
@@ -255,6 +293,107 @@ export default function EditOfficerDialog({
                   onChange={(e) => handleChange('normal_working_hours', Number(e.target.value))}
                   placeholder="8"
                 />
+              </div>
+            </div>
+            
+            {/* Salary Structure Breakdown */}
+            <div className="bg-muted/50 p-4 rounded-lg space-y-3">
+              <h4 className="text-sm font-medium">Salary Structure Breakdown (Monthly)</h4>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label htmlFor="basic_pay" className="text-xs">Basic Pay (50%)</Label>
+                  <Input
+                    id="basic_pay"
+                    type="number"
+                    step="0.01"
+                    value={formData.salary_structure?.basic_pay || ''}
+                    onChange={(e) => handleChange('salary_structure', {
+                      ...formData.salary_structure,
+                      basic_pay: Number(e.target.value)
+                    })}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="hra" className="text-xs">HRA (20%)</Label>
+                  <Input
+                    id="hra"
+                    type="number"
+                    step="0.01"
+                    value={formData.salary_structure?.hra || ''}
+                    onChange={(e) => handleChange('salary_structure', {
+                      ...formData.salary_structure,
+                      hra: Number(e.target.value)
+                    })}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="transport" className="text-xs">Transport/Conveyance</Label>
+                  <Input
+                    id="transport"
+                    type="number"
+                    step="0.01"
+                    value={formData.salary_structure?.transport_allowance || ''}
+                    onChange={(e) => handleChange('salary_structure', {
+                      ...formData.salary_structure,
+                      transport_allowance: Number(e.target.value)
+                    })}
+                    placeholder="1600"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="medical" className="text-xs">Medical</Label>
+                  <Input
+                    id="medical"
+                    type="number"
+                    step="0.01"
+                    value={formData.salary_structure?.medical_allowance || ''}
+                    onChange={(e) => handleChange('salary_structure', {
+                      ...formData.salary_structure,
+                      medical_allowance: Number(e.target.value)
+                    })}
+                    placeholder="1250"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="special" className="text-xs">Special Allowance</Label>
+                  <Input
+                    id="special"
+                    type="number"
+                    step="0.01"
+                    value={formData.salary_structure?.special_allowance || ''}
+                    onChange={(e) => handleChange('salary_structure', {
+                      ...formData.salary_structure,
+                      special_allowance: Number(e.target.value)
+                    })}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="da" className="text-xs">DA (Optional)</Label>
+                  <Input
+                    id="da"
+                    type="number"
+                    step="0.01"
+                    value={formData.salary_structure?.da || ''}
+                    onChange={(e) => handleChange('salary_structure', {
+                      ...formData.salary_structure,
+                      da: Number(e.target.value)
+                    })}
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground mt-2">
+                Total Monthly: ₹{(
+                  (formData.salary_structure?.basic_pay || 0) +
+                  (formData.salary_structure?.hra || 0) +
+                  (formData.salary_structure?.transport_allowance || 0) +
+                  (formData.salary_structure?.medical_allowance || 0) +
+                  (formData.salary_structure?.special_allowance || 0) +
+                  (formData.salary_structure?.da || 0)
+                ).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
               </div>
             </div>
           </div>

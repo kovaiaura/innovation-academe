@@ -62,12 +62,15 @@ export function PayrollAnalyticsTab({ month, year }: PayrollAnalyticsTabProps) {
           return sum + (e.per_day_salary * totalLopDays);
         }, 0);
         
-        // NEW FORMULA: Attendance % = ((Total Days - Leave Days) × 100) / Total Days
+        // NEW FORMULA: Attendance % = ((Total Days - (Leave Days + Unmarked Days)) × 100) / Total Days
+        // Unmarked days are treated as absent days along with leave days
         const totalDaysInMonth = getDaysInMonth(date);
         const avgAttendance = employees.length > 0
           ? employees.reduce((sum, e) => {
               const leaveDays = e.days_leave || 0;
-              return sum + (((totalDaysInMonth - leaveDays) * 100) / totalDaysInMonth);
+              const unmarkedDays = e.days_not_marked || 0;
+              const absentDays = leaveDays + unmarkedDays;
+              return sum + (((totalDaysInMonth - absentDays) * 100) / totalDaysInMonth);
             }, 0) / employees.length
           : 100;
         

@@ -121,11 +121,14 @@ export function EmployeesOverviewTab({ month, year }: EmployeesOverviewTabProps)
     return employee.total_deductions;
   };
   
-  // NEW FORMULA: Attendance % = ((Total Days in Month - Leave Days) × 100) / Total Days in Month
+  // NEW FORMULA: Attendance % = ((Total Days in Month - (Leave Days + Unmarked Days)) × 100) / Total Days in Month
+  // Unmarked days are treated as absent days along with leave days
   const getAttendancePercentage = (employee: EmployeePayrollSummary): number => {
     const totalDaysInMonth = getDaysInMonth(new Date(year, month - 1));
     const leaveDays = employee.days_leave || 0;
-    return parseFloat((((totalDaysInMonth - leaveDays) * 100) / totalDaysInMonth).toFixed(2));
+    const unmarkedDays = employee.days_not_marked || 0;
+    const absentDays = leaveDays + unmarkedDays;
+    return parseFloat((((totalDaysInMonth - absentDays) * 100) / totalDaysInMonth).toFixed(2));
   };
   
   const getOvertimePay = (employee: EmployeePayrollSummary): number => {
