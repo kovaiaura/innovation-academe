@@ -21,23 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { leaveApplicationService } from "@/services/leave.service";
 import { LeaveApplication, LEAVE_TYPE_LABELS, LEAVE_STATUS_LABELS, LeaveStatus, LeaveType } from "@/types/leave";
 import { format, parseISO } from "date-fns";
-import { Check, X, Eye, Search, Filter, RefreshCw, Clock, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Eye, Search, Filter, RefreshCw, Clock, CheckCircle, XCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { LOPApprovalDialog } from "@/components/leave/LOPApprovalDialog";
-import { ApplicantLeaveBalanceCard } from "@/components/leave/ApplicantLeaveBalanceCard";
+import { EnhancedLeaveApprovalDialog } from "@/components/leave/EnhancedLeaveApprovalDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function LeaveApprovals() {
@@ -47,11 +37,8 @@ export default function LeaveApprovals() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [leaveTypeFilter, setLeaveTypeFilter] = useState<string>("all");
   const [selectedApplication, setSelectedApplication] = useState<LeaveApplication | null>(null);
-  const [actionMode, setActionMode] = useState<"approve" | "reject" | "view" | "lop" | null>(null);
-  const [comments, setComments] = useState("");
-  const [rejectionReason, setRejectionReason] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [userPositionId, setUserPositionId] = useState<string | null>(null);
-
   // Fetch user's position ID for filtering
   useEffect(() => {
     const fetchUserPosition = async () => {
@@ -225,52 +212,36 @@ export default function LeaveApprovals() {
   const pendingApplications = filteredApplications.filter(app => app.status === "pending");
   const historyApplications = filteredApplications.filter(app => app.status !== "pending");
 
-  const handleApprove = (app: LeaveApplication) => {
-    setSelectedApplication(app);
-    setActionMode("approve");
-    setComments("");
-  };
-
-  const handleReject = (app: LeaveApplication) => {
-    setSelectedApplication(app);
-    setActionMode("reject");
-    setRejectionReason("");
-  };
-
-  const handleMarkLOP = (app: LeaveApplication) => {
-    setSelectedApplication(app);
-    setActionMode("lop");
-  };
-
   const handleViewDetails = (app: LeaveApplication) => {
     setSelectedApplication(app);
-    setActionMode("view");
+    setDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setSelectedApplication(null);
-    setActionMode(null);
-    setComments("");
-    setRejectionReason("");
+    setDialogOpen(false);
   };
 
-  const handleConfirmAction = () => {
+  const handleApproveFromDialog = (comments: string, adjustedPaidDays?: number, adjustedLopDays?: number) => {
     if (!selectedApplication) return;
-
-    if (actionMode === "approve") {
+    
+    if (adjustedPaidDays !== undefined && adjustedLopDays !== undefined) {
+      // Approve with adjusted LOP
+      lopMutation.mutate({ 
+        id: selectedApplication.id, 
+        lopDays: adjustedLopDays, 
+        paidDays: adjustedPaidDays, 
+        comments 
+      });
+    } else {
+      // Normal approve
       approveMutation.mutate({ id: selectedApplication.id, comments });
-    } else if (actionMode === "reject") {
-      if (!rejectionReason.trim()) {
-        toast.error('Please provide a rejection reason');
-        return;
-      }
-      rejectMutation.mutate({ id: selectedApplication.id, reason: rejectionReason });
     }
   };
 
-  const handleLOPConfirm = (lopDays: number, paidDays: number, comments: string) => {
+  const handleRejectFromDialog = (reason: string) => {
     if (!selectedApplication) return;
-    lopMutation.mutate({ id: selectedApplication.id, lopDays, paidDays, comments });
+    rejectMutation.mutate({ id: selectedApplication.id, reason });
   };
 
   const getStatusBadge = (status: LeaveStatus) => {
@@ -441,23 +412,10 @@ export default function LeaveApprovals() {
                           <TableCell>{format(parseISO(app.applied_at), "PP")}</TableCell>
                           <TableCell>{getStatusBadge(app.status)}</TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button size="sm" variant="ghost" onClick={() => handleViewDetails(app)}>
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button size="sm" variant="default" onClick={() => handleApprove(app)}>
-                                <Check className="h-4 w-4 mr-1" />
-                                Approve
-                              </Button>
-                              <Button size="sm" variant="outline" className="text-amber-600 border-amber-600 hover:bg-amber-50" onClick={() => handleMarkLOP(app)}>
-                                <AlertTriangle className="h-4 w-4 mr-1" />
-                                LOP
-                              </Button>
-                              <Button size="sm" variant="destructive" onClick={() => handleReject(app)}>
-                                <X className="h-4 w-4 mr-1" />
-                                Reject
-                              </Button>
-                            </div>
+                            <Button size="sm" onClick={() => handleViewDetails(app)}>
+                              <Eye className="h-4 w-4 mr-1" />
+                              Review
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))
@@ -526,152 +484,15 @@ export default function LeaveApprovals() {
         </Tabs>
       </div>
 
-      {/* Approve/Reject/View Dialog */}
-      <Dialog open={actionMode !== null && actionMode !== "lop"} onOpenChange={() => handleCloseDialog()}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              {actionMode === "approve" && "Approve Leave Application"}
-              {actionMode === "reject" && "Reject Leave Application"}
-              {actionMode === "view" && "Leave Application Details"}
-            </DialogTitle>
-          </DialogHeader>
-          
-          {selectedApplication && (
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground text-sm">Applicant</Label>
-                  <p className="font-medium">{selectedApplication.applicant_name}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-sm">Position</Label>
-                  <p className="font-medium">{selectedApplication.position_name || "-"}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-sm">Leave Type</Label>
-                  <p className="font-medium">{LEAVE_TYPE_LABELS[selectedApplication.leave_type]}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-sm">Total Days</Label>
-                  <p className="font-medium">{selectedApplication.total_days}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-sm">From</Label>
-                  <p className="font-medium">{format(parseISO(selectedApplication.start_date), "PPP")}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-sm">To</Label>
-                  <p className="font-medium">{format(parseISO(selectedApplication.end_date), "PPP")}</p>
-                </div>
-              </div>
-              
-              <div>
-                <Label className="text-muted-foreground text-sm">Reason</Label>
-                <p className="font-medium">{selectedApplication.reason}</p>
-              </div>
-
-              {/* Applicant Leave Balance Card */}
-              <ApplicantLeaveBalanceCard
-                applicantId={selectedApplication.applicant_id}
-                leaveMonth={parseISO(selectedApplication.start_date).getMonth() + 1}
-                leaveYear={parseISO(selectedApplication.start_date).getFullYear()}
-                requestedDays={selectedApplication.total_days}
-                compact
-              />
-
-              {selectedApplication.is_lop && (
-                <div className="p-3 bg-yellow-500/10 rounded-lg">
-                  <p className="text-sm text-yellow-700 dark:text-yellow-400">
-                    ⚠️ This leave includes {selectedApplication.lop_days} LOP (Loss of Pay) days
-                  </p>
-                </div>
-              )}
-
-              {/* Approval Chain */}
-              {selectedApplication.approval_chain.length > 0 && (
-                <div>
-                  <Label className="text-muted-foreground text-sm">Approval Chain</Label>
-                  <div className="mt-2 space-y-2">
-                    {selectedApplication.approval_chain.map((step, index) => (
-                      <div key={index} className="flex items-center gap-2 text-sm">
-                        <Badge variant={
-                          step.status === 'approved' ? 'default' :
-                          step.status === 'rejected' ? 'destructive' :
-                          'secondary'
-                        }>
-                          {step.order}
-                        </Badge>
-                        <span>{step.position_name || `Level ${step.order}`}</span>
-                        {step.approved_by_name && (
-                          <span className="text-muted-foreground">({step.approved_by_name})</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {actionMode === "approve" && (
-                <div className="space-y-2">
-                  <Label>Comments (Optional)</Label>
-                  <Textarea
-                    value={comments}
-                    onChange={(e) => setComments(e.target.value)}
-                    placeholder="Add any comments..."
-                    rows={3}
-                  />
-                </div>
-              )}
-
-              {actionMode === "reject" && (
-                <div className="space-y-2">
-                  <Label>Rejection Reason *</Label>
-                  <Textarea
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    placeholder="Please provide a reason for rejection..."
-                    rows={3}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={handleCloseDialog}>
-              {actionMode === "view" ? "Close" : "Cancel"}
-            </Button>
-            {actionMode === "approve" && (
-              <Button 
-                onClick={handleConfirmAction}
-                disabled={approveMutation.isPending}
-              >
-                <Check className="h-4 w-4 mr-1" />
-                Approve
-              </Button>
-            )}
-            {actionMode === "reject" && (
-              <Button 
-                variant="destructive"
-                onClick={handleConfirmAction}
-                disabled={rejectMutation.isPending}
-              >
-                <X className="h-4 w-4 mr-1" />
-                Reject
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* LOP Dialog */}
-      <LOPApprovalDialog
-        open={actionMode === "lop"}
+      {/* Enhanced Approval Dialog */}
+      <EnhancedLeaveApprovalDialog
+        open={dialogOpen}
         onOpenChange={(open) => !open && handleCloseDialog()}
         application={selectedApplication}
-        onConfirm={handleLOPConfirm}
-        isPending={lopMutation.isPending}
+        onApprove={handleApproveFromDialog}
+        onReject={handleRejectFromDialog}
+        isApproving={approveMutation.isPending || lopMutation.isPending}
+        isRejecting={rejectMutation.isPending}
       />
     </Layout>
   );
