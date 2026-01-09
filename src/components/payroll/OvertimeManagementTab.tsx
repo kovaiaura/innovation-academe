@@ -224,7 +224,7 @@ export function OvertimeManagementTab({ month, year }: OvertimeManagementTabProp
               <TableHeader>
                 <TableRow>
                   <TableHead>Employee</TableHead>
-                  <TableHead>Position</TableHead>
+                  <TableHead>Source</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-center">Hours</TableHead>
                   <TableHead>Reason</TableHead>
@@ -247,11 +247,22 @@ export function OvertimeManagementTab({ month, year }: OvertimeManagementTabProp
                           <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
                             <User className="h-4 w-4 text-primary" />
                           </div>
-                          <span className="font-medium">{request.user_name}</span>
+                          <div>
+                            <span className="font-medium">{request.user_name}</span>
+                            <p className="text-xs text-muted-foreground">{request.position_name || '-'}</p>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-muted-foreground">{request.position_name || '-'}</span>
+                        {(request as { source?: string }).source === 'auto_generated' ? (
+                          <Badge className="bg-orange-500/10 text-orange-700 border-orange-500/20 text-xs">
+                            Auto
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs">
+                            Manual
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         {format(parseISO(request.date), 'dd MMM yyyy')}
@@ -263,7 +274,7 @@ export function OvertimeManagementTab({ month, year }: OvertimeManagementTabProp
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-muted-foreground max-w-[200px] truncate block">
+                        <span className="text-sm text-muted-foreground max-w-[150px] truncate block">
                           {request.reason}
                         </span>
                       </TableCell>

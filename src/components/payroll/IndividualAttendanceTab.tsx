@@ -109,34 +109,22 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
   const loadEmployees = async () => {
     try {
       // Fetch officers
-      const { data: officers } = await supabase
+      const { data: officers, error } = await supabase
         .from('officers')
-        .select('id, name, employee_id, position_name')
-        .order('name');
+        .select('id, full_name, employee_id, department')
+        .order('full_name');
 
-      // Fetch staff
-      const { data: staff } = await supabase
-        .from('staff')
-        .select('id, name, employee_id, position_name')
-        .order('name');
+      if (error) throw error;
 
-      const officerList: Employee[] = (officers || []).map((o) => ({
+      const employeeList: Employee[] = (officers || []).map((o) => ({
         id: o.id,
-        name: o.name,
+        name: o.full_name || '',
         employee_id: o.employee_id || '',
-        position_name: o.position_name,
+        position_name: o.department || null,
         type: 'officer' as const,
       }));
 
-      const staffList: Employee[] = (staff || []).map((s) => ({
-        id: s.id,
-        name: s.name,
-        employee_id: s.employee_id || '',
-        position_name: s.position_name,
-        type: 'staff' as const,
-      }));
-
-      setEmployees([...officerList, ...staffList]);
+      setEmployees(employeeList);
     } catch (error) {
       console.error('Error loading employees:', error);
     }
@@ -150,23 +138,14 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       const startDate = format(startOfMonth(new Date(year, month - 1)), 'yyyy-MM-dd');
       const endDate = format(endOfMonth(new Date(year, month - 1)), 'yyyy-MM-dd');
 
-      const table = selectedEmployee.type === 'officer' ? 'officer_attendance' : 'staff_attendance';
-
-      const { data, error } = selectedEmployee.type === 'officer'
-        ? await supabase
-            .from('officer_attendance')
-            .select('*')
-            .eq('officer_id', selectedEmployee.id)
-            .gte('date', startDate)
-            .lte('date', endDate)
-            .order('date', { ascending: true })
-        : await supabase
-            .from('staff_attendance')
-            .select('*')
-            .eq('staff_id', selectedEmployee.id)
-            .gte('date', startDate)
-            .lte('date', endDate)
-            .order('date', { ascending: true });
+      // Currently only officers are supported
+      const { data, error } = await supabase
+        .from('officer_attendance')
+        .select('*')
+        .eq('officer_id', selectedEmployee.id)
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .order('date', { ascending: true });
 
       if (error) throw error;
       setAttendanceRecords((data || []) as AttendanceRecord[]);
@@ -202,9 +181,6 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
 
     setIsSaving(true);
     try {
-      const table =
-        selectedEmployee.type === 'officer' ? 'officer_attendance' : 'staff_attendance';
-
       // Calculate new hours worked
       let totalHoursWorked = null;
       let overtimeHours = null;
@@ -216,94 +192,9 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
         overtimeHours = Math.max(0, totalHoursWorked - 8);
       }
 
-      // Update the attendance record
-      const updateData = {
-        check_in_time: correctionData.check_in_time
-          ? new Date(correctionData.check_in_time).toISOString()
-          : selectedRecord.check_in_time,
-        check_out_time: correctionData.check_out_time
-          ? new Date(correctionData.check_out_time).toISOString()
-          : selectedRecord.check_out_time,
-        original_check_in_time: selectedRecord.check_in_time,
-        original_check_out_time: selectedRecord.check_out_time,
-        total_hours_worked: totalHoursWorked
-          ? Math.round(totalHoursWorked * 100) / 100
-          : selectedRecord.total_hours_worked,
-        overtime_hours: overtimeHours
-          ? Math.round(overtimeHours * 100) / 100
-          : selectedRecord.overtime_hours,
-        is_manual_correction: true,
-        corrected_by: user.id,
-        correction_reason: correctionData.reason,
-        status:
-          correctionData.check_in_time && correctionData.check_out_time
-            ? 'checked_out'
-            : correctionData.check_in_time
-              ? 'checked_in'
-              : selectedRecord.status,
-      };
-
-      const { error: updateError } = selectedEmployee.type === 'officer'
-        ? await supabase.from('officer_attendance').update(updateData).eq('id', selectedRecord.id)
-        : await supabase.from('staff_attendance').update(updateData).eq('id', selectedRecord.id);
-        .from(table)
-        .select('*')
-        .eq(idColumn, selectedEmployee.id)
-        .gte('date', startDate)
-        .lte('date', endDate)
-        .order('date', { ascending: true });
-
-      if (error) throw error;
-      setAttendanceRecords(data || []);
-    } catch (error) {
-      console.error('Error loading attendance:', error);
-      toast.error('Failed to load attendance records');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const openCorrectionDialog = (record: AttendanceRecord) => {
-    setSelectedRecord(record);
-    setCorrectionData({
-      check_in_time: record.check_in_time
-        ? format(parseISO(record.check_in_time), "yyyy-MM-dd'T'HH:mm")
-        : '',
-      check_out_time: record.check_out_time
-        ? format(parseISO(record.check_out_time), "yyyy-MM-dd'T'HH:mm")
-        : '',
-      reason: '',
-    });
-    setCorrectionDialogOpen(true);
-  };
-
-  const handleSaveCorrection = async () => {
-    if (!selectedRecord || !selectedEmployee || !user) return;
-
-    if (!correctionData.reason.trim()) {
-      toast.error('Please provide a reason for the correction');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const table =
-        selectedEmployee.type === 'officer' ? 'officer_attendance' : 'staff_attendance';
-
-      // Calculate new hours worked
-      let totalHoursWorked = null;
-      let overtimeHours = null;
-
-      if (correctionData.check_in_time && correctionData.check_out_time) {
-        const checkIn = new Date(correctionData.check_in_time);
-        const checkOut = new Date(correctionData.check_out_time);
-        totalHoursWorked = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
-        overtimeHours = Math.max(0, totalHoursWorked - 8);
-      }
-
-      // Update the attendance record
+      // Update the attendance record (officers only for now)
       const { error: updateError } = await supabase
-        .from(table)
+        .from('officer_attendance')
         .update({
           check_in_time: correctionData.check_in_time
             ? new Date(correctionData.check_in_time).toISOString()

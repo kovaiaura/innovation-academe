@@ -108,6 +108,49 @@ export const getInstitutionGPSSettings = async (institutionId: string): Promise<
 };
 
 /**
+ * Create auto-generated overtime request
+ */
+const createAutoOvertimeRequest = async (
+  officerId: string,
+  institutionId: string,
+  date: string,
+  overtimeHours: number,
+  attendanceId: string
+): Promise<void> => {
+  try {
+    // Get officer details for the request
+    const { data: officer } = await supabase
+      .from('officers')
+      .select('user_id, full_name, hourly_rate, overtime_rate_multiplier')
+      .eq('id', officerId)
+      .single();
+
+    if (!officer) return;
+
+    const overtimeRate = officer.overtime_rate_multiplier || 1.5;
+    const hourlyRate = officer.hourly_rate || 0;
+    const calculatedPay = overtimeHours * hourlyRate * overtimeRate;
+
+    await supabase.from('overtime_requests').insert({
+      user_id: officer.user_id,
+      user_type: 'officer',
+      officer_id: officerId,
+      institution_id: institutionId,
+      date: date,
+      requested_hours: Math.round(overtimeHours * 100) / 100,
+      reason: 'Auto-generated: Extended work hours beyond tolerance',
+      status: 'pending',
+      overtime_rate: overtimeRate,
+      calculated_pay: Math.round(calculatedPay * 100) / 100,
+      source: 'auto_generated',
+      attendance_id: attendanceId,
+    });
+  } catch (error) {
+    console.error('Error creating auto overtime request:', error);
+  }
+};
+
+/**
  * Get officer's today attendance record
  */
 export const getOfficerTodayAttendance = async (
@@ -263,7 +306,12 @@ export const recordCheckOut = async (params: CheckOutParams): Promise<{
   const checkInDate = new Date(existingRecord.check_in_time!);
   const checkOutDate = new Date(checkOutTime);
   const hoursWorked = (checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60);
-  const overtimeHours = Math.max(0, hoursWorked - params.normal_working_hours);
+  
+  // Tolerance: 15 minutes after expected checkout time before counting as overtime
+  const TOLERANCE_MINUTES = 15;
+  const toleranceHours = TOLERANCE_MINUTES / 60;
+  const overtimeHours = Math.max(0, hoursWorked - params.normal_working_hours - toleranceHours);
+  const hasOvertime = overtimeHours > 0;
 
   // If GPS is skipped, record without location validation
   if (params.skip_gps) {
@@ -278,6 +326,7 @@ export const recordCheckOut = async (params: CheckOutParams): Promise<{
         check_out_validated: null,
         total_hours_worked: Math.round(hoursWorked * 100) / 100,
         overtime_hours: Math.round(overtimeHours * 100) / 100,
+        overtime_auto_generated: hasOvertime,
         status: 'checked_out',
       })
       .eq('id', existingRecord.id)
@@ -294,6 +343,17 @@ export const recordCheckOut = async (params: CheckOutParams): Promise<{
         overtimeHours: 0,
         error: error.message,
       };
+    }
+
+    // Auto-create overtime request if overtime detected
+    if (hasOvertime && data) {
+      await createAutoOvertimeRequest(
+        existingRecord.officer_id,
+        params.institution_id,
+        today,
+        overtimeHours,
+        existingRecord.id
+      );
     }
 
     return {
@@ -336,6 +396,7 @@ export const recordCheckOut = async (params: CheckOutParams): Promise<{
       check_out_validated: isValidated,
       total_hours_worked: Math.round(hoursWorked * 100) / 100,
       overtime_hours: Math.round(overtimeHours * 100) / 100,
+      overtime_auto_generated: hasOvertime,
       status: 'checked_out',
     })
     .eq('id', existingRecord.id)
@@ -352,6 +413,17 @@ export const recordCheckOut = async (params: CheckOutParams): Promise<{
       overtimeHours: 0,
       error: error.message,
     };
+  }
+
+  // Auto-create overtime request if overtime detected
+  if (hasOvertime && data) {
+    await createAutoOvertimeRequest(
+      existingRecord.officer_id,
+      params.institution_id,
+      today,
+      overtimeHours,
+      existingRecord.id
+    );
   }
 
   return {
