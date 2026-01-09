@@ -487,10 +487,11 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       .reduce((sum, r) => sum + (r.overtime_hours || 0), 0);
     const pendingOvertimeCount = dayRecords.filter((r) => r.overtime_status === 'pending').length;
 
-    // NEW FORMULA: Attendance % = ((Total Days in Month - Leave Days) × 100) / Total Days in Month
-    // Holidays and weekends don't affect attendance percentage - only actual leave days taken reduce it
+    // NEW FORMULA: Attendance % = ((Total Days in Month - (Leave Days + Unmarked Days)) × 100) / Total Days in Month
+    // Unmarked days are treated as absent days along with leave days
+    const absentDays = leaveDays + unmarkedDays;
     const attendancePercentage = totalDaysInMonth > 0 
-      ? parseFloat((((totalDaysInMonth - leaveDays) * 100) / totalDaysInMonth).toFixed(2))
+      ? parseFloat((((totalDaysInMonth - absentDays) * 100) / totalDaysInMonth).toFixed(2))
       : 100;
 
     return {
