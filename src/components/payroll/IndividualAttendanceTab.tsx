@@ -50,6 +50,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency } from '@/utils/attendanceHelpers';
 import { PayslipDialog } from './PayslipDialog';
+import { getPayrollConfig, getOfficerSalaryDetails, getStaffSalaryDetails } from '@/services/payrollConfig.service';
+import { SalaryStructure, StatutoryInfo, PayrollConfig, calculatePFDeduction, calculateESIDeduction, calculateProfessionalTax } from '@/types/payroll';
 
 interface DayRecord {
   date: string;
@@ -127,7 +129,11 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     monthlySalary: number;
     hourlyRate: number;
     overtimeMultiplier: number;
+    salaryStructure: SalaryStructure;
+    statutoryInfo: StatutoryInfo;
+    designation: string | null;
   } | null>(null);
+  const [payrollConfig, setPayrollConfig] = useState<PayrollConfig | null>(null);
   const [editingOvertimePay, setEditingOvertimePay] = useState(false);
   const [customOvertimePay, setCustomOvertimePay] = useState<number | null>(null);
   
@@ -149,6 +155,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
   // Load employees
   useEffect(() => {
     loadEmployees();
+    loadPayrollConfig();
   }, []);
 
   // Load data when employee selected or month changes
@@ -158,6 +165,11 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       loadSalaryData();
     }
   }, [selectedEmployee, localMonth, localYear]);
+
+  const loadPayrollConfig = async () => {
+    const config = await getPayrollConfig();
+    setPayrollConfig(config);
+  };
 
   const loadEmployees = async () => {
     try {
@@ -213,29 +225,25 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     
     try {
       if (selectedEmployee.type === 'officer') {
-        const { data } = await supabase
-          .from('officers')
-          .select('annual_salary, hourly_rate, overtime_rate_multiplier')
-          .eq('id', selectedEmployee.id)
-          .single();
-        
-        const monthlySalary = (data?.annual_salary || 0) / 12;
-        const hourlyRate = data?.hourly_rate || (monthlySalary / 22 / 8);
-        const overtimeMultiplier = data?.overtime_rate_multiplier || 1.5;
-        
-        setSalaryData({ monthlySalary, hourlyRate, overtimeMultiplier });
+        const details = await getOfficerSalaryDetails(selectedEmployee.id);
+        setSalaryData({
+          monthlySalary: details.monthlySalary,
+          hourlyRate: details.hourlyRate,
+          overtimeMultiplier: details.overtimeMultiplier,
+          salaryStructure: details.salaryStructure,
+          statutoryInfo: details.statutoryInfo,
+          designation: details.designation,
+        });
       } else {
-        const { data } = await supabase
-          .from('profiles')
-          .select('hourly_rate, overtime_rate_multiplier')
-          .eq('id', selectedEmployee.id)
-          .single();
-        
-        const hourlyRate = data?.hourly_rate || 500;
-        const monthlySalary = hourlyRate * 8 * 22;
-        const overtimeMultiplier = data?.overtime_rate_multiplier || 1.5;
-        
-        setSalaryData({ monthlySalary, hourlyRate, overtimeMultiplier });
+        const details = await getStaffSalaryDetails(selectedEmployee.id);
+        setSalaryData({
+          monthlySalary: details.monthlySalary,
+          hourlyRate: details.hourlyRate,
+          overtimeMultiplier: details.overtimeMultiplier,
+          salaryStructure: details.salaryStructure,
+          statutoryInfo: details.statutoryInfo,
+          designation: details.designation,
+        });
       }
     } catch (error) {
       console.error('Error loading salary data:', error);
@@ -940,21 +948,35 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                           <div className="col-span-2 md:col-span-4 pt-2 border-t mt-2">
                             <Button 
                               onClick={() => {
+                                const ss = salaryData.salaryStructure;
+                                const si = salaryData.statutoryInfo;
+                                
+                                // Calculate statutory deductions using real info
+                                const pfDeduction = si.pf_applicable ? calculatePFDeduction(ss.basic_pay) : 0;
+                                const esiDeduction = si.esi_applicable ? calculateESIDeduction(salaryData.monthlySalary) : 0;
+                                const ptDeduction = si.pt_applicable ? calculateProfessionalTax(salaryData.monthlySalary, si.pt_state) : 0;
+                                
+                                const grossEarnings = ss.basic_pay + ss.hra + ss.conveyance_allowance + ss.medical_allowance + ss.special_allowance + overtimePay;
+                                const totalDeductions = lopDeduction + pfDeduction + esiDeduction + ptDeduction;
+                                
                                 const payslip = {
                                   employee_name: selectedEmployee.name,
                                   employee_id: selectedEmployee.employee_id,
-                                  designation: selectedEmployee.position_name || 'Officer',
+                                  designation: salaryData.designation || selectedEmployee.position_name || 'Officer',
                                   institution_name: '',
                                   month: localMonth,
                                   year: localYear,
-                                  basic_salary: salaryData.monthlySalary * 0.5,
-                                  hra: salaryData.monthlySalary * 0.2,
-                                  conveyance_allowance: salaryData.monthlySalary * 0.1,
-                                  medical_allowance: salaryData.monthlySalary * 0.05,
-                                  special_allowance: salaryData.monthlySalary * 0.15,
+                                  // Use real salary structure
+                                  basic_salary: ss.basic_pay,
+                                  hra: ss.hra,
+                                  conveyance_allowance: ss.conveyance_allowance,
+                                  medical_allowance: ss.medical_allowance,
+                                  special_allowance: ss.special_allowance,
                                   overtime_pay: overtimePay,
-                                  pf_deduction: salaryData.monthlySalary * 0.12,
-                                  professional_tax: 200,
+                                  // Use real statutory deductions
+                                  pf_deduction: pfDeduction,
+                                  esi: esiDeduction,
+                                  professional_tax: ptDeduction,
                                   tds: 0,
                                   lop_deduction: lopDeduction,
                                   working_days: stats?.workingDays || 0,
@@ -964,9 +986,9 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                                   late_days: stats?.lateDays || 0,
                                   overtime_hours: stats?.approvedOvertime || 0,
                                   total_hours_worked: stats?.totalHours || 0,
-                                  gross_earnings: salaryData.monthlySalary + overtimePay,
-                                  total_deductions: lopDeduction + (salaryData.monthlySalary * 0.12) + 200,
-                                  net_pay: netPayout - (salaryData.monthlySalary * 0.12) - 200,
+                                  gross_earnings: grossEarnings,
+                                  total_deductions: totalDeductions,
+                                  net_pay: grossEarnings - totalDeductions,
                                 };
                                 setPayslipData(payslip);
                                 setPayslipDialogOpen(true);
@@ -1204,6 +1226,8 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
         open={payslipDialogOpen}
         onOpenChange={setPayslipDialogOpen}
         payslipData={payslipData}
+        companyName={payrollConfig?.company_name}
+        companyAddress={payrollConfig?.company_address}
       />
     </>
   );
