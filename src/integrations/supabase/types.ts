@@ -5285,6 +5285,36 @@ export type Database = {
           },
         ]
       }
+      reserved_invoice_numbers: {
+        Row: {
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          invoice_number: string
+          invoice_type: string
+          original_invoice_id: string | null
+          reason: string | null
+        }
+        Insert: {
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          invoice_number: string
+          invoice_type: string
+          original_invoice_id?: string | null
+          reason?: string | null
+        }
+        Update: {
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          invoice_number?: string
+          invoice_type?: string
+          original_invoice_id?: string | null
+          reason?: string | null
+        }
+        Relationships: []
+      }
       staff_attendance: {
         Row: {
           check_in_address: string | null
@@ -6559,6 +6589,13 @@ export type Database = {
       can_view_event_updates: {
         Args: { _event_id: string; _user_id: string }
         Returns: boolean
+      }
+      check_invoice_number_available: {
+        Args: { p_invoice_number: string }
+        Returns: {
+          available: boolean
+          reason: string
+        }[]
       }
       generate_invoice_number: {
         Args: { p_invoice_type: string }

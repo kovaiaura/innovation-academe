@@ -153,6 +153,7 @@ export interface Invoice {
 }
 
 export interface CreateInvoiceInput {
+  invoice_number: string; // Required - manually entered by user
   invoice_type: InvoiceType;
   from_company_name: string;
   from_company_address?: string;

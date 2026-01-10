@@ -19,9 +19,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { InvoiceLineItemsEditor } from './InvoiceLineItemsEditor';
-import { createInvoice, fetchDefaultCompanyProfile, calculateInvoiceTotals, calculateLineItemTaxes } from '@/services/invoice.service';
+import { createInvoice, fetchDefaultCompanyProfile, calculateInvoiceTotals, calculateLineItemTaxes, checkInvoiceNumberExists } from '@/services/invoice.service';
 import type { InvoiceType, InvoiceLineItem, CompanyProfile, CreateInvoiceInput } from '@/types/invoice';
 import { toast } from 'sonner';
+import { Check, AlertCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface CreateInvoiceDialogProps {
@@ -54,6 +55,12 @@ export function CreateInvoiceDialog({
 }: CreateInvoiceDialogProps) {
   const [loading, setLoading] = useState(false);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
+  
+  // Invoice number state
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [invoiceNumberError, setInvoiceNumberError] = useState('');
+  const [isCheckingNumber, setIsCheckingNumber] = useState(false);
+  const [invoiceNumberValid, setInvoiceNumberValid] = useState(false);
   
   // Form state
   const [toCompanyName, setToCompanyName] = useState('');
@@ -108,7 +115,41 @@ export function CreateInvoiceDialog({
   const calculatedItems = lineItems.map((item) => calculateLineItemTaxes(item, isInterState));
   const totals = calculateInvoiceTotals(calculatedItems, isInterState);
 
+  const handleValidateInvoiceNumber = async () => {
+    if (!invoiceNumber.trim()) {
+      setInvoiceNumberError('Invoice number is required');
+      setInvoiceNumberValid(false);
+      return;
+    }
+    
+    try {
+      setIsCheckingNumber(true);
+      setInvoiceNumberError('');
+      const exists = await checkInvoiceNumberExists(invoiceNumber.trim());
+      if (exists) {
+        setInvoiceNumberError('This invoice number is already in use');
+        setInvoiceNumberValid(false);
+      } else {
+        setInvoiceNumberValid(true);
+      }
+    } catch (error) {
+      console.error('Error checking invoice number:', error);
+      setInvoiceNumberError('Error validating invoice number');
+      setInvoiceNumberValid(false);
+    } finally {
+      setIsCheckingNumber(false);
+    }
+  };
+
   const handleSubmit = async () => {
+    if (!invoiceNumber.trim()) {
+      toast.error('Please enter invoice number');
+      return;
+    }
+    if (invoiceNumberError) {
+      toast.error('Please fix the invoice number error');
+      return;
+    }
     if (!toCompanyName) {
       toast.error('Please enter customer name');
       return;
@@ -118,10 +159,19 @@ export function CreateInvoiceDialog({
       return;
     }
 
+    // Final check for duplicate before creating
+    const exists = await checkInvoiceNumberExists(invoiceNumber.trim());
+    if (exists) {
+      setInvoiceNumberError('This invoice number is already in use');
+      toast.error('Invoice number is already in use');
+      return;
+    }
+
     try {
       setLoading(true);
       
       const input: CreateInvoiceInput = {
+        invoice_number: invoiceNumber.trim(),
         invoice_type: invoiceType,
         from_company_name: companyProfile?.company_name || 'Metasage Alliance Consulting Expert LLP',
         from_company_address: companyProfile?.address,
@@ -167,6 +217,9 @@ export function CreateInvoiceDialog({
   };
 
   const resetForm = () => {
+    setInvoiceNumber('');
+    setInvoiceNumberError('');
+    setInvoiceNumberValid(false);
     setToCompanyName('');
     setToCompanyAddress('');
     setToCompanyCity('');
@@ -318,6 +371,31 @@ export function CreateInvoiceDialog({
             <div className="space-y-4">
               <h3 className="font-semibold">Invoice Details</h3>
               <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-3 space-y-2">
+                  <Label htmlFor="invoiceNumber">Invoice Number *</Label>
+                  <div className="relative">
+                    <Input
+                      id="invoiceNumber"
+                      value={invoiceNumber}
+                      onChange={(e) => {
+                        setInvoiceNumber(e.target.value);
+                        setInvoiceNumberError('');
+                        setInvoiceNumberValid(false);
+                      }}
+                      onBlur={handleValidateInvoiceNumber}
+                      placeholder="e.g., MSA/MSD/004"
+                      className={invoiceNumberError ? 'border-destructive pr-10' : invoiceNumberValid ? 'border-green-500 pr-10' : 'pr-10'}
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {isCheckingNumber && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                      {!isCheckingNumber && invoiceNumberValid && <Check className="h-4 w-4 text-green-500" />}
+                      {!isCheckingNumber && invoiceNumberError && <AlertCircle className="h-4 w-4 text-destructive" />}
+                    </div>
+                  </div>
+                  {invoiceNumberError && (
+                    <p className="text-sm text-destructive">{invoiceNumberError}</p>
+                  )}
+                </div>
                 <div className="space-y-2">
                   <Label>Invoice Date *</Label>
                   <Input
