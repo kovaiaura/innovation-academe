@@ -126,37 +126,75 @@ Deno.serve(async (req) => {
     studentUserId = newUser.user.id;
     console.log('[CreateStudentUser] Created new user:', studentUserId);
 
-    // Wait for trigger to create profile
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Use upsert with retry to ensure profile is created with correct data
+    // This handles timing issues where the trigger may or may not have created the profile yet
+    const profileData = {
+      id: studentUserId,
+      email: email,
+      name: student_name,
+      institution_id: institution_id,
+      class_id: class_id || null,
+      must_change_password: true,
+    };
 
-    // Update profile with institution_id and class_id
-    const { error: profileUpdateError } = await supabaseAdmin
-      .from('profiles')
-      .update({ 
-        institution_id,
-        class_id: class_id || null,
-        name: student_name,
-        must_change_password: true,
-      })
-      .eq('id', studentUserId);
+    let profileSuccess = false;
+    let retryCount = 0;
+    const maxRetries = 3;
 
-    if (profileUpdateError) {
-      console.error('[CreateStudentUser] Profile update error:', profileUpdateError);
-      // Try to insert if update failed (profile might not exist yet)
-      const { error: insertError } = await supabaseAdmin
-        .from('profiles')
-        .insert({
-          id: studentUserId,
-          email: email,
-          name: student_name,
-          institution_id,
-          class_id: class_id || null,
-          must_change_password: true,
-        });
+    while (!profileSuccess && retryCount < maxRetries) {
+      // Wait before each attempt to allow trigger to potentially create profile
+      await new Promise(resolve => setTimeout(resolve, 300 * (retryCount + 1)));
       
-      if (insertError) {
-        console.error('[CreateStudentUser] Profile insert error:', insertError);
+      // Try upsert - this will insert if not exists, or update if exists
+      const { error: upsertError } = await supabaseAdmin
+        .from('profiles')
+        .upsert(profileData, { 
+          onConflict: 'id',
+          ignoreDuplicates: false 
+        });
+
+      if (!upsertError) {
+        profileSuccess = true;
+        console.log('[CreateStudentUser] Profile upserted successfully on attempt:', retryCount + 1);
+      } else {
+        console.error('[CreateStudentUser] Profile upsert error on attempt', retryCount + 1, ':', upsertError);
+        retryCount++;
       }
+    }
+
+    // Verify profile was created correctly
+    if (profileSuccess) {
+      const { data: verifyProfile, error: verifyError } = await supabaseAdmin
+        .from('profiles')
+        .select('id, institution_id, class_id, name')
+        .eq('id', studentUserId)
+        .single();
+
+      if (verifyError || !verifyProfile) {
+        console.error('[CreateStudentUser] Profile verification failed:', verifyError);
+      } else if (!verifyProfile.institution_id) {
+        // Profile exists but institution_id is null - force update
+        console.log('[CreateStudentUser] Profile exists but institution_id is null, forcing update...');
+        const { error: forceUpdateError } = await supabaseAdmin
+          .from('profiles')
+          .update({
+            institution_id: institution_id,
+            class_id: class_id || null,
+            name: student_name,
+            must_change_password: true,
+          })
+          .eq('id', studentUserId);
+
+        if (forceUpdateError) {
+          console.error('[CreateStudentUser] Force update failed:', forceUpdateError);
+        } else {
+          console.log('[CreateStudentUser] Force update successful');
+        }
+      } else {
+        console.log('[CreateStudentUser] Profile verified with institution_id:', verifyProfile.institution_id);
+      }
+    } else {
+      console.error('[CreateStudentUser] Failed to create/update profile after', maxRetries, 'attempts');
     }
 
     // Assign student role
