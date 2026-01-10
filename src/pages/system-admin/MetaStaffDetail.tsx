@@ -26,7 +26,6 @@ import {
   FileText,
   Upload,
   Download,
-  Eye,
   Trash2,
   Plus,
   IndianRupee,
@@ -38,6 +37,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { downloadFile } from '@/utils/downloadFile';
 
 interface StaffProfile {
   id: string;
@@ -777,17 +777,13 @@ export default function MetaStaffDetail() {
                         </div>
                       </div>
                       <div className="flex gap-2 mt-3">
-                        <Button variant="outline" size="sm" asChild>
-                          <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
-                            <Eye className="h-3 w-3 mr-1" />
-                            View
-                          </a>
-                        </Button>
-                        <Button variant="outline" size="sm" asChild>
-                          <a href={doc.file_url} download>
-                            <Download className="h-3 w-3 mr-1" />
-                            Download
-                          </a>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => downloadFile(doc.file_url, doc.document_name)}
+                        >
+                          <Download className="h-3 w-3 mr-1" />
+                          Download
                         </Button>
                         <Button
                           variant="ghost"

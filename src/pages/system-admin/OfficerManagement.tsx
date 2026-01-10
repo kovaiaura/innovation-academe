@@ -7,19 +7,23 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus, Search, Mail, Phone, Building2, Loader2, IndianRupee } from 'lucide-react';
+import { UserPlus, Search, Mail, Phone, Building2, Loader2, IndianRupee, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useOfficers, useCreateOfficer, type Officer } from '@/hooks/useOfficers';
+import { useOfficers, useCreateOfficer, useDeleteOfficerCascade, type Officer } from '@/hooks/useOfficers';
 
 export default function OfficerManagement() {
   const navigate = useNavigate();
   const { data: officers = [], isLoading } = useOfficers();
   const createOfficer = useCreateOfficer();
+  const deleteOfficerCascade = useDeleteOfficerCascade();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [officerToDelete, setOfficerToDelete] = useState<Officer | null>(null);
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -300,6 +304,7 @@ export default function OfficerManagement() {
                       <TableHead>Assignments</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Join Date</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -350,6 +355,20 @@ export default function OfficerManagement() {
                             : '-'
                           }
                         </TableCell>
+                        <TableCell>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-destructive hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOfficerToDelete(officer);
+                              setDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -359,6 +378,48 @@ export default function OfficerManagement() {
           </Card>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Officer</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>Are you sure you want to delete <strong>{officerToDelete?.full_name}</strong>?</p>
+              <p className="text-sm">This will permanently remove:</p>
+              <ul className="list-disc list-inside text-sm space-y-1">
+                <li>All institution assignments</li>
+                <li>All uploaded documents</li>
+                <li>All attendance records</li>
+                <li>All class access grants</li>
+              </ul>
+              <p className="text-destructive font-medium">This action cannot be undone.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (officerToDelete) {
+                  deleteOfficerCascade.mutate(officerToDelete.id);
+                }
+                setDeleteDialogOpen(false);
+                setOfficerToDelete(null);
+              }}
+            >
+              {deleteOfficerCascade.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Officer'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }

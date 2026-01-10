@@ -1,11 +1,10 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, FileImage, File, Eye, Download, Trash2 } from 'lucide-react';
+import { FileText, FileImage, File, Download, Trash2 } from 'lucide-react';
 import { OfficerDocument } from '@/services/systemadmin.service';
 
 interface DocumentCardProps {
   document: OfficerDocument;
-  onView: () => void;
   onDownload: () => void;
   onDelete: () => void;
 }
@@ -30,7 +29,6 @@ const formatDate = (dateString: string) => {
 
 export default function DocumentCard({
   document,
-  onView,
   onDownload,
   onDelete,
 }: DocumentCardProps) {
@@ -55,9 +53,6 @@ export default function DocumentCard({
             </div>
           </div>
           <div className="flex gap-1 ml-2">
-            <Button variant="ghost" size="sm" onClick={onView} title="View">
-              <Eye className="h-4 w-4" />
-            </Button>
             <Button variant="ghost" size="sm" onClick={onDownload} title="Download">
               <Download className="h-4 w-4" />
             </Button>

@@ -20,7 +20,6 @@ import {
   FileText,
   Upload,
   Download,
-  Eye,
   Trash2,
   Plus,
   Clock,
@@ -37,6 +36,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Officer } from '@/hooks/useOfficers';
 import { useOfficer, useUpdateOfficer } from '@/hooks/useOfficers';
 import { supabase } from '@/integrations/supabase/client';
+import { downloadFile } from '@/utils/downloadFile';
 
 // Leave balance type for officer
 interface OfficerLeaveBalance {
@@ -811,8 +811,7 @@ export default function OfficerDetail() {
                         <DocumentCard 
                           key={doc.id} 
                           document={doc} 
-                          onView={() => window.open(doc.file_url, '_blank')}
-                          onDownload={() => window.open(doc.file_url, '_blank')}
+                          onDownload={() => downloadFile(doc.file_url, doc.document_name)}
                           onDelete={() => handleDeleteDocument(doc.id)}
                         />
                       ))}
@@ -838,8 +837,7 @@ export default function OfficerDetail() {
                         <DocumentCard 
                           key={doc.id} 
                           document={doc} 
-                          onView={() => window.open(doc.file_url, '_blank')}
-                          onDownload={() => window.open(doc.file_url, '_blank')}
+                          onDownload={() => downloadFile(doc.file_url, doc.document_name)}
                           onDelete={() => handleDeleteDocument(doc.id)}
                         />
                       ))}
@@ -865,8 +863,7 @@ export default function OfficerDetail() {
                         <DocumentCard 
                           key={doc.id} 
                           document={doc} 
-                          onView={() => window.open(doc.file_url, '_blank')}
-                          onDownload={() => window.open(doc.file_url, '_blank')}
+                          onDownload={() => downloadFile(doc.file_url, doc.document_name)}
                           onDelete={() => handleDeleteDocument(doc.id)}
                         />
                       ))}
@@ -892,8 +889,7 @@ export default function OfficerDetail() {
                         <DocumentCard 
                           key={doc.id} 
                           document={doc} 
-                          onView={() => window.open(doc.file_url, '_blank')}
-                          onDownload={() => window.open(doc.file_url, '_blank')}
+                          onDownload={() => downloadFile(doc.file_url, doc.document_name)}
                           onDelete={() => handleDeleteDocument(doc.id)}
                         />
                       ))}
