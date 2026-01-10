@@ -11,10 +11,14 @@ import { InvoiceSettingsTab } from '@/components/settings/InvoiceSettingsTab';
 import { ReportSettingsTab } from '@/components/settings/ReportSettingsTab';
 import { AISettingsTab } from '@/components/settings/AISettingsTab';
 import { SystemPreferencesTab } from '@/components/settings/SystemPreferencesTab';
+import { ResendSettingsCard } from '@/components/settings/ResendSettingsCard';
 
 const EmailConfigurationTab = () => {
   return (
     <div className="space-y-6">
+      {/* Resend Settings */}
+      <ResendSettingsCard />
+      
       <Card>
         <CardHeader>
           <CardTitle>SMTP Configuration</CardTitle>
@@ -81,7 +85,6 @@ const EmailConfigurationTab = () => {
     </div>
   );
 };
-
 // SystemPreferencesTab is now imported from components
 
 export default function SystemAdminSettings() {

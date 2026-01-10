@@ -37,6 +37,7 @@ import { Officer } from '@/hooks/useOfficers';
 import { useOfficer, useUpdateOfficer } from '@/hooks/useOfficers';
 import { supabase } from '@/integrations/supabase/client';
 import { downloadFile } from '@/utils/downloadFile';
+import { useInstitutions } from '@/hooks/useInstitutions';
 
 // Leave balance type for officer
 interface OfficerLeaveBalance {
@@ -44,15 +45,6 @@ interface OfficerLeaveBalance {
   casual_leave: number;
   annual_leave: number;
 }
-
-// Mock institutions for assignment
-const mockInstitutions = [
-  { id: 'inst1', name: 'Springfield University' },
-  { id: 'inst2', name: 'River College' },
-  { id: 'inst3', name: 'Oakwood Institute' },
-  { id: 'inst4', name: 'Tech Valley School' },
-  { id: 'inst5', name: 'Innovation Hub' },
-];
 
 // Mock activity log
 const mockActivityLog: OfficerActivityLog[] = [
@@ -145,6 +137,15 @@ export default function OfficerDetail() {
   // Fetch officer from database
   const { data: officerData, isLoading, error } = useOfficer(officerId || '');
   const updateOfficer = useUpdateOfficer();
+  
+  // Fetch institutions for assignments
+  const { institutions = [] } = useInstitutions();
+  
+  // Helper to get institution name from ID
+  const getInstitutionName = (institutionId: string) => {
+    const institution = institutions.find(i => i.id === institutionId);
+    return institution?.name || institutionId;
+  };
   
   const [officer, setOfficer] = useState<OfficerDetails | null>(null);
   const [documents, setDocuments] = useState<OfficerDocument[]>([]);
@@ -391,10 +392,11 @@ export default function OfficerDetail() {
     
     try {
       toast.loading('Adding assignment...', { id: 'assign' });
-      const institution = mockInstitutions.find(i => i.id === selectedInstitution);
+      const institution = institutions.find(i => i.id === selectedInstitution);
       
       if (institution && officer && officerData) {
-        const newInstitutions = [...(officerData.assigned_institutions || []), institution.name];
+        // Store institution IDs, not names
+        const newInstitutions = [...(officerData.assigned_institutions || []), institution.id];
         
         await updateOfficer.mutateAsync({
           id: officerId,
@@ -914,19 +916,19 @@ export default function OfficerDetail() {
 
             {officer.assigned_institutions.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {officer.assigned_institutions.map((inst, idx) => (
+                {officer.assigned_institutions.map((instId, idx) => (
                   <Card key={idx}>
                     <CardContent className="pt-6">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Building2 className="h-5 w-5 text-muted-foreground" />
-                          <span className="font-medium">{inst}</span>
+                          <span className="font-medium">{getInstitutionName(instId)}</span>
                         </div>
                         <Button 
                           size="sm" 
                           variant="ghost" 
                           className="text-destructive hover:text-destructive"
-                          onClick={() => handleRemoveInstitution(inst)}
+                          onClick={() => handleRemoveInstitution(instId)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -1009,8 +1011,8 @@ export default function OfficerDetail() {
                     <SelectValue placeholder="Choose an institution" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockInstitutions
-                      .filter(inst => !officer.assigned_institutions.includes(inst.name))
+                    {institutions
+                      .filter(inst => !officer.assigned_institutions.includes(inst.id))
                       .map(inst => (
                         <SelectItem key={inst.id} value={inst.id}>
                           {inst.name}
