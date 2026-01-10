@@ -176,7 +176,7 @@ export function TaskDetailDialog({
               </div>
               
               {/* Interactive slider for assignee when status is in_progress */}
-              {isAssignee && task.status === 'in_progress' ? (
+              {isAssignee && selectedStatus === 'in_progress' ? (
                 <div className="space-y-2">
                   <Slider
                     value={[progressValue]}
