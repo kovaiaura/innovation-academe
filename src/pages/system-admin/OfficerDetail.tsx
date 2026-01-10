@@ -234,6 +234,8 @@ export default function OfficerDetail() {
       if (officerDetailsData.overtime_rate_multiplier !== undefined) updatePayload.overtime_rate_multiplier = officerDetailsData.overtime_rate_multiplier;
       if (officerDetailsData.employment_type) updatePayload.employment_type = officerDetailsData.employment_type;
       if (officerDetailsData.status) updatePayload.status = officerDetailsData.status;
+      if (officerDetailsData.department !== undefined) updatePayload.department = officerDetailsData.department;
+      if (officerDetailsData.normal_working_hours !== undefined) updatePayload.normal_working_hours = officerDetailsData.normal_working_hours;
       if (officerDetailsData.qualifications) updatePayload.qualifications = officerDetailsData.qualifications;
       if (officerDetailsData.certifications) updatePayload.certifications = officerDetailsData.certifications;
       if (officerDetailsData.skills) updatePayload.skills = officerDetailsData.skills;
