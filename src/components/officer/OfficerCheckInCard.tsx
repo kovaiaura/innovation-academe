@@ -383,8 +383,9 @@ export function OfficerCheckInCard({ officerId, institutionId, onStatusChange }:
           </div>
         )}
 
-        {/* Visual Map */}
-        {institutionSettings?.gps_location && (
+        {/* Visual Map - Only show if GPS coordinates are valid (not 0,0) */}
+        {institutionSettings?.gps_location && 
+         (institutionSettings.gps_location.latitude !== 0 || institutionSettings.gps_location.longitude !== 0) && (
           <Collapsible open={showMap} onOpenChange={setShowMap}>
             <CollapsibleTrigger asChild>
               <Button variant="outline" size="sm" className="w-full">
@@ -407,12 +408,23 @@ export function OfficerCheckInCard({ officerId, institutionId, onStatusChange }:
             </CollapsibleContent>
           </Collapsible>
         )}
+        
+        {/* Show message when GPS coordinates are (0,0) */}
+        {institutionSettings?.gps_location && 
+         institutionSettings.gps_location.latitude === 0 && 
+         institutionSettings.gps_location.longitude === 0 && (
+          <div className="text-center py-3 text-muted-foreground bg-muted/50 rounded-lg">
+            <MapPinOff className="h-6 w-6 mx-auto mb-2 opacity-50" />
+            <p className="text-sm font-medium">GPS coordinates not configured</p>
+            <p className="text-xs">Contact admin to set up institution location</p>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex gap-2">
           <Button
             onClick={handleCheckIn}
-            disabled={isLoading || isCheckedIn || isCheckedOut || !institutionSettings?.gps_location}
+            disabled={isLoading || isCheckedIn || isCheckedOut || (!gpsEnabled && false) || (gpsEnabled && (!institutionSettings?.gps_location || (institutionSettings.gps_location.latitude === 0 && institutionSettings.gps_location.longitude === 0)))}
             className="flex-1"
             size="lg"
           >
@@ -431,7 +443,7 @@ export function OfficerCheckInCard({ officerId, institutionId, onStatusChange }:
 
           <Button
             onClick={handleCheckOut}
-            disabled={isLoading || !isCheckedIn || isCheckedOut || !institutionSettings?.gps_location}
+            disabled={isLoading || !isCheckedIn || isCheckedOut || (!gpsEnabled && false) || (gpsEnabled && (!institutionSettings?.gps_location || (institutionSettings.gps_location.latitude === 0 && institutionSettings.gps_location.longitude === 0)))}
             variant="outline"
             className="flex-1"
             size="lg"
