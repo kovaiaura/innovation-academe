@@ -24,6 +24,7 @@ import type { InvoiceType, InvoiceLineItem, CompanyProfile, CreateInvoiceInput }
 import { toast } from 'sonner';
 import { Check, AlertCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { format } from 'date-fns';
 
 interface CreateInvoiceDialogProps {
   open: boolean;
