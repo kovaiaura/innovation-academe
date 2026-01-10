@@ -75,6 +75,16 @@ export default function OfficerTasks() {
     }
   };
 
+  // Sync selectedTask with realtime updates
+  useEffect(() => {
+    if (selectedTask) {
+      const updatedTask = tasks.find(t => t.id === selectedTask.id);
+      if (updatedTask) {
+        setSelectedTask(updatedTask);
+      }
+    }
+  }, [tasks]);
+
   useEffect(() => {
     let filtered = tasks;
     if (statusFilter !== 'all') filtered = filtered.filter(task => task.status === statusFilter);
@@ -96,7 +106,14 @@ export default function OfficerTasks() {
         completed_at: status === 'completed' ? new Date().toISOString() : undefined,
       }, { changedByName: user?.name || '' });
       await loadStats();
-      if (selectedTask?.id === taskId) setSelectedTask(prev => prev ? { ...prev, status, progress_percentage: progress } : null);
+      // Optimistic update - only update progress if provided
+      if (selectedTask?.id === taskId) {
+        setSelectedTask(prev => prev ? { 
+          ...prev, 
+          status, 
+          progress_percentage: progress !== undefined ? progress : prev.progress_percentage 
+        } : null);
+      }
     } catch (error) {
       console.error('Error updating task:', error);
       toast.error('Failed to update task');

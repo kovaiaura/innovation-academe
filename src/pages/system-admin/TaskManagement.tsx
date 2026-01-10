@@ -80,6 +80,16 @@ export default function TaskManagement() {
     new Map(tasks.map(task => [task.assigned_to_id, { id: task.assigned_to_id, name: task.assigned_to_name }])).values()
   );
 
+  // Sync selectedTask with realtime updates
+  useEffect(() => {
+    if (selectedTask) {
+      const updatedTask = tasks.find(t => t.id === selectedTask.id);
+      if (updatedTask) {
+        setSelectedTask(updatedTask);
+      }
+    }
+  }, [tasks]);
+
   // Apply filters
   useEffect(() => {
     let filtered = tasks;
@@ -156,8 +166,13 @@ export default function TaskManagement() {
       // No need to refresh - real-time will update
       await loadStats();
       
+      // Optimistic update - only update progress if provided
       if (selectedTask?.id === taskId) {
-        setSelectedTask(prev => prev ? { ...prev, status, progress_percentage: progress } : null);
+        setSelectedTask(prev => prev ? { 
+          ...prev, 
+          status, 
+          progress_percentage: progress !== undefined ? progress : prev.progress_percentage 
+        } : null);
       }
     } catch (error) {
       console.error('Error updating task:', error);

@@ -89,7 +89,14 @@ export function TaskDetailDialog({
 
   const handleStatusChange = (newStatus: TaskStatus) => {
     setSelectedStatus(newStatus);
-    const newProgress = newStatus === 'completed' ? 100 : task.progress_percentage || 0;
+    // Define progress based on new status
+    let newProgress = progressValue;
+    if (newStatus === 'completed') {
+      newProgress = 100;
+    } else if (newStatus === 'pending') {
+      newProgress = 0;
+    }
+    // For in_progress and cancelled, keep current progress
     setProgressValue(newProgress);
     onUpdateStatus(task.id, newStatus, newProgress);
     toast.success('Task status updated');
@@ -100,7 +107,8 @@ export function TaskDetailDialog({
   };
 
   const handleProgressCommit = (value: number[]) => {
-    onUpdateStatus(task.id, task.status, value[0]);
+    // Always use selectedStatus (local state) to prevent sending stale status
+    onUpdateStatus(task.id, selectedStatus, value[0]);
     toast.success('Progress updated');
   };
 
@@ -153,7 +161,7 @@ export function TaskDetailDialog({
           <div className="space-y-6 py-4">
             {/* Status and Priority */}
             <div className="flex flex-wrap gap-3">
-              <TaskStatusBadge status={task.status} />
+              <TaskStatusBadge status={selectedStatus} />
               <TaskPriorityBadge priority={task.priority} />
               <Badge variant="outline">{categoryLabels[task.category]}</Badge>
             </div>
@@ -213,8 +221,8 @@ export function TaskDetailDialog({
               </div>
             )}
 
-            {/* Submit for Approval Button */}
-            {canSubmit && onSubmitForApproval && (
+            {/* Submit for Approval Button - use local state for immediate feedback */}
+            {isAssignee && selectedStatus === 'in_progress' && progressValue >= 100 && onSubmitForApproval && (
               <Button 
                 onClick={handleSubmitForApproval} 
                 className="w-full"
