@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, User, Building, Trash2, CheckCircle2, XCircle, Send, MessageSquare, Clock, Paperclip } from 'lucide-react';
+import { Calendar, User, Building, Trash2, CheckCircle2, XCircle, Send, MessageSquare, Clock, Paperclip, Save } from 'lucide-react';
 import { format } from 'date-fns';
 import { isTaskOverdue, canEditTask, canUpdateStatus, canSubmitForApproval, canApproveTask } from '@/utils/taskHelpers';
 import { toast } from 'sonner';
@@ -68,15 +68,17 @@ export function TaskDetailDialog({
 }: TaskDetailDialogProps) {
   const [selectedStatus, setSelectedStatus] = useState<TaskStatus>(task.status);
   const [progressValue, setProgressValue] = useState<number>(task.progress_percentage || 0);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [approvalMode, setApprovalMode] = useState<'approve' | 'reject'>('approve');
   
-  // Sync progress value when task changes
+  // Sync progress value when task changes and reset unsaved state
   useEffect(() => {
     setProgressValue(task.progress_percentage || 0);
     setSelectedStatus(task.status);
+    setHasUnsavedChanges(false);
   }, [task.progress_percentage, task.status]);
 
   const overdue = isTaskOverdue(task);
@@ -98,18 +100,18 @@ export function TaskDetailDialog({
     }
     // For in_progress and cancelled, keep current progress
     setProgressValue(newProgress);
-    onUpdateStatus(task.id, newStatus, newProgress);
-    toast.success('Task status updated');
+    setHasUnsavedChanges(true);
   };
 
   const handleProgressChange = (value: number[]) => {
     setProgressValue(value[0]);
+    setHasUnsavedChanges(true);
   };
 
-  const handleProgressCommit = (value: number[]) => {
-    // Always use selectedStatus (local state) to prevent sending stale status
-    onUpdateStatus(task.id, selectedStatus, value[0]);
-    toast.success('Progress updated');
+  const handleSaveChanges = () => {
+    onUpdateStatus(task.id, selectedStatus, progressValue);
+    setHasUnsavedChanges(false);
+    toast.success('Changes saved successfully');
   };
 
   const handleDelete = () => {
@@ -183,19 +185,18 @@ export function TaskDetailDialog({
                 <span className="text-muted-foreground">{progressValue}%</span>
               </div>
               
-              {/* Interactive slider for assignee when status is in_progress */}
+            {/* Interactive slider for assignee when status is in_progress */}
               {isAssignee && selectedStatus === 'in_progress' ? (
                 <div className="space-y-2">
                   <Slider
                     value={[progressValue]}
                     onValueChange={handleProgressChange}
-                    onValueCommit={handleProgressCommit}
                     max={100}
                     step={5}
                     className="w-full"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Drag to update progress (saves automatically)
+                    Drag to update progress
                   </p>
                 </div>
               ) : (
@@ -217,8 +218,16 @@ export function TaskDetailDialog({
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
-                </Select>
+              </Select>
               </div>
+            )}
+
+            {/* Save Changes Button */}
+            {isAssignee && hasUnsavedChanges && (
+              <Button onClick={handleSaveChanges} className="w-full">
+                <Save className="h-4 w-4 mr-2" />
+                Save Changes
+              </Button>
             )}
 
             {/* Submit for Approval Button - use local state for immediate feedback */}
