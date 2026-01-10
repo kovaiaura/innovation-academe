@@ -73,11 +73,13 @@ export function useRealtimeTasks(userId: string, mode: TaskMode = 'all'): UseRea
   useEffect(() => {
     if (!userId) return;
 
-    console.log('[useRealtimeTasks] Setting up realtime subscriptions for user:', userId, 'mode:', mode);
+    // Use unique channel names per hook instance to prevent conflicts
+    const channelId = `realtime-tasks:${mode}:${userId}:${Date.now()}`;
+    console.log('[useRealtimeTasks] Setting up realtime subscriptions:', channelId);
 
     // Subscribe to task changes
     const tasksChannel = supabase
-      .channel('realtime-tasks')
+      .channel(channelId)
       .on(
         'postgres_changes',
         {
@@ -125,9 +127,10 @@ export function useRealtimeTasks(userId: string, mode: TaskMode = 'all'): UseRea
         console.log('[useRealtimeTasks] Tasks subscription status:', status);
       });
 
-    // Subscribe to comment changes
+    // Subscribe to comment changes with unique channel name
+    const commentsChannelId = `realtime-comments:${mode}:${userId}:${Date.now()}`;
     const commentsChannel = supabase
-      .channel('realtime-task-comments')
+      .channel(commentsChannelId)
       .on(
         'postgres_changes',
         {

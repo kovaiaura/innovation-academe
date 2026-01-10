@@ -33,7 +33,7 @@ export default function OfficerTasks() {
   const [classSubTab, setClassSubTab] = useState('courses');
   
   // Task allotment state - using real-time
-  const { tasks: allTasks, loading } = useRealtimeTasks(user?.id || '', 'assigned');
+  const { tasks: allTasks, loading, refetch } = useRealtimeTasks(user?.id || '', 'assigned');
   const tasks = allTasks.filter(task => task.assigned_to_role === 'officer');
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -83,7 +83,7 @@ export default function OfficerTasks() {
         setSelectedTask(updatedTask);
       }
     }
-  }, [tasks]);
+  }, [tasks, selectedTask?.id]);
 
   useEffect(() => {
     let filtered = tasks;
@@ -105,8 +105,12 @@ export default function OfficerTasks() {
         progress_percentage: progress !== undefined ? progress : undefined,
         completed_at: status === 'completed' ? new Date().toISOString() : undefined,
       }, { changedByName: user?.name || '' });
+      
+      // Force refresh to ensure UI updates immediately
+      await refetch();
       await loadStats();
-      // Optimistic update - only update progress if provided
+      
+      // Optimistic update for dialog
       if (selectedTask?.id === taskId) {
         setSelectedTask(prev => prev ? { 
           ...prev, 
@@ -136,7 +140,11 @@ export default function OfficerTasks() {
         submitted_at: new Date().toISOString(),
         progress_percentage: 100,
       }, { submitterName: user?.name || '' });
+      
+      // Force refresh to ensure UI updates immediately
+      await refetch();
       await loadStats();
+      
       if (selectedTask?.id === taskId) setSelectedTask(prev => prev ? { ...prev, status: 'submitted_for_approval' } : null);
       toast.success('Task submitted for approval');
     } catch (error) {
