@@ -26,6 +26,7 @@ export interface User {
   class_id?: string; // Student's class ID
   created_at: string;
   // Salary configuration (for meta staff and officers)
+  annual_salary?: number;
   hourly_rate?: number;
   overtime_rate_multiplier?: number;
   normal_working_hours?: number;
