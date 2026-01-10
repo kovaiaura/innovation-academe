@@ -1148,71 +1148,207 @@ async function fetchOfficerContext(): Promise<{ context: string; sources: string
   return { context: parts.join('\n'), sources };
 }
 
-// Student comprehensive context
-async function fetchStudentContext(): Promise<{ context: string; sources: string[] }> {
+// Student comprehensive context with STEM learning support
+async function fetchStudentContext(userId?: string): Promise<{ context: string; sources: string[] }> {
   const supabase = getSupabaseClient();
   const parts: string[] = [];
   const sources: string[] = [];
   
   try {
-    // Courses available
-    const { data: courses } = await supabase.from('courses').select('id, title, status, category, difficulty').eq('status', 'published');
-    parts.push('## 📚 AVAILABLE COURSES');
-    parts.push(`Published Courses: ${courses?.length || 0}`);
+    // ==================== COURSE CONTENT FOR STEM LEARNING ====================
+    const { data: courses } = await supabase
+      .from('courses')
+      .select(`
+        id, title, description, category, difficulty, prerequisites, learning_outcomes,
+        course_modules (
+          id, title, description, display_order,
+          course_sessions (
+            id, title, description, learning_objectives, duration_minutes, display_order
+          )
+        )
+      `)
+      .in('status', ['published', 'active'])
+      .order('title')
+      .limit(15);
+    
+    parts.push('## 📚 COURSE CONTENT FOR LEARNING');
+    parts.push(`Total Courses Available: ${courses?.length || 0}\n`);
+    
     if (courses?.length) {
-      for (const c of courses.slice(0, 8)) {
-        parts.push(`- ${c.title} (${c.difficulty || 'Beginner'}) - ${c.category || 'General'}`);
+      for (const course of courses) {
+        parts.push(`### 🎓 ${course.title} (${course.difficulty || 'Beginner'})`);
+        parts.push(`Category: ${course.category || 'STEM'}`);
+        if (course.description) parts.push(`Overview: ${course.description}`);
+        if (course.prerequisites) parts.push(`Prerequisites: ${course.prerequisites}`);
+        if (course.learning_outcomes && Array.isArray(course.learning_outcomes)) {
+          parts.push(`Learning Outcomes: ${course.learning_outcomes.join(', ')}`);
+        }
+        
+        const modules = course.course_modules || [];
+        if (modules.length) {
+          parts.push('\n**Modules:**');
+          for (const module of modules.sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))) {
+            parts.push(`\n#### Module: ${module.title}`);
+            if (module.description) parts.push(`${module.description}`);
+            
+            const sessions = module.course_sessions || [];
+            if (sessions.length) {
+              parts.push('Sessions:');
+              for (const session of sessions.sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))) {
+                parts.push(`- **${session.title}** (${session.duration_minutes || 30} mins)`);
+                if (session.description) parts.push(`  Content: ${session.description}`);
+                if (session.learning_objectives) {
+                  const objectives = typeof session.learning_objectives === 'string' 
+                    ? session.learning_objectives 
+                    : JSON.stringify(session.learning_objectives);
+                  parts.push(`  Learning Objectives: ${objectives}`);
+                }
+              }
+            }
+          }
+        }
+        parts.push('');
       }
     }
-    sources.push('courses');
+    sources.push('courses', 'course_modules', 'course_sessions');
 
-    // Active Assessments
-    const now = new Date().toISOString();
-    const { data: assessments } = await supabase.from('assessments').select('id, title, start_time, end_time, duration_minutes').gte('end_time', now);
-    parts.push('\n## 📝 UPCOMING ASSESSMENTS');
+    // ==================== ASSESSMENTS WITH QUESTIONS FOR REVIEW ====================
+    parts.push('\n## 📝 ASSESSMENTS & QUESTIONS FOR REVIEW');
+    
+    const { data: assessments } = await supabase
+      .from('assessments')
+      .select(`
+        id, title, description, pass_percentage, duration_minutes, status,
+        assessment_questions (
+          id, question_text, question_type, options, correct_option_id, explanation, points, question_number
+        )
+      `)
+      .eq('status', 'published')
+      .order('created_at', { ascending: false })
+      .limit(10);
+    
     if (assessments?.length) {
-      parts.push(`Upcoming: ${assessments.length}`);
-      for (const a of assessments.slice(0, 5)) {
-        parts.push(`- ${a.title} (${a.duration_minutes || 60} mins) - Due: ${new Date(a.end_time).toLocaleDateString()}`);
+      parts.push(`Available Assessments: ${assessments.length}\n`);
+      
+      for (const assessment of assessments) {
+        parts.push(`### 📋 ${assessment.title}`);
+        if (assessment.description) parts.push(`Description: ${assessment.description}`);
+        parts.push(`Pass Percentage: ${assessment.pass_percentage || 50}% | Duration: ${assessment.duration_minutes || 60} minutes`);
+        
+        const questions = assessment.assessment_questions || [];
+        if (questions.length) {
+          parts.push(`\n**Questions (${questions.length} total):**`);
+          for (const q of questions.slice(0, 20)) { // Limit to 20 questions per assessment
+            parts.push(`\n**Q${q.question_number || ''}:** ${q.question_text}`);
+            if (q.options && Array.isArray(q.options)) {
+              parts.push('Options:');
+              for (const opt of q.options) {
+                const isCorrect = opt.id === q.correct_option_id ? ' ✓' : '';
+                parts.push(`  - ${opt.text}${isCorrect}`);
+              }
+            }
+            if (q.explanation) {
+              parts.push(`Explanation: ${q.explanation}`);
+            }
+          }
+        }
+        parts.push('');
       }
     } else {
-      parts.push('No upcoming assessments.');
+      parts.push('No assessments available for review yet.');
     }
-    sources.push('assessments');
+    sources.push('assessments', 'assessment_questions');
 
-    // Active Assignments
-    const { data: assignments } = await supabase.from('assignments').select('id, title, submission_end_date, total_marks').gte('submission_end_date', now);
+    // ==================== STUDENT'S ASSESSMENT HISTORY (if userId provided) ====================
+    if (userId) {
+      parts.push('\n## 📊 YOUR ASSESSMENT HISTORY');
+      
+      const { data: attempts } = await supabase
+        .from('assessment_attempts')
+        .select(`
+          id, score, total_points, percentage, passed, status, submitted_at,
+          assessments (title, pass_percentage)
+        `)
+        .eq('student_id', userId)
+        .order('submitted_at', { ascending: false })
+        .limit(10);
+      
+      if (attempts?.length) {
+        parts.push(`You have completed ${attempts.length} assessment(s):\n`);
+        for (const attempt of attempts) {
+          const assessment = attempt.assessments as any;
+          const title = assessment?.title || 'Unknown Assessment';
+          const passStatus = attempt.passed ? '✅ Passed' : '❌ Not Passed';
+          parts.push(`- **${title}**: ${attempt.percentage?.toFixed(1) || 0}% (${attempt.score || 0}/${attempt.total_points || 0} points) - ${passStatus}`);
+          if (attempt.submitted_at) {
+            parts.push(`  Completed: ${new Date(attempt.submitted_at).toLocaleDateString()}`);
+          }
+        }
+      } else {
+        parts.push('You haven\'t completed any assessments yet.');
+      }
+      sources.push('assessment_attempts');
+    }
+
+    // ==================== ACTIVE ASSIGNMENTS ====================
+    const now = new Date().toISOString();
     parts.push('\n## 📋 ACTIVE ASSIGNMENTS');
+    
+    const { data: assignments } = await supabase
+      .from('assignments')
+      .select('id, title, description, submission_end_date, total_marks, passing_marks')
+      .gte('submission_end_date', now)
+      .eq('status', 'active')
+      .order('submission_end_date')
+      .limit(10);
+    
     if (assignments?.length) {
-      parts.push(`Active: ${assignments.length}`);
-      for (const a of assignments.slice(0, 5)) {
-        parts.push(`- ${a.title} (${a.total_marks || 100} marks) - Due: ${new Date(a.submission_end_date).toLocaleDateString()}`);
+      parts.push(`Active Assignments: ${assignments.length}\n`);
+      for (const a of assignments) {
+        parts.push(`- **${a.title}** (${a.total_marks || 100} marks, pass: ${a.passing_marks || 50})`);
+        if (a.description) parts.push(`  ${a.description}`);
+        parts.push(`  Due: ${new Date(a.submission_end_date).toLocaleDateString()}`);
       }
     } else {
-      parts.push('No active assignments.');
+      parts.push('No active assignments at the moment.');
     }
     sources.push('assignments');
 
-    // Events
-    const { data: events } = await supabase.from('events').select('id, title, event_type, event_start').gte('event_start', now).order('event_start').limit(5);
+    // ==================== UPCOMING EVENTS ====================
     parts.push('\n## 🎉 UPCOMING EVENTS');
+    
+    const { data: events } = await supabase
+      .from('events')
+      .select('id, title, event_type, event_start, description, venue')
+      .gte('event_start', now)
+      .eq('status', 'published')
+      .order('event_start')
+      .limit(5);
+    
     if (events?.length) {
       for (const e of events) {
-        parts.push(`- ${e.title} (${e.event_type}) - ${new Date(e.event_start).toLocaleDateString()}`);
+        parts.push(`- **${e.title}** (${e.event_type}) - ${new Date(e.event_start).toLocaleDateString()}`);
+        if (e.description) parts.push(`  ${e.description}`);
+        if (e.venue) parts.push(`  Venue: ${e.venue}`);
       }
     } else {
       parts.push('No upcoming events.');
     }
     sources.push('events');
 
-    // Gamification overview
-    const { data: badges } = await supabase.from('gamification_badges').select('id, name, xp_reward').eq('is_active', true).limit(10);
-    parts.push('\n## 🏆 GAMIFICATION');
-    parts.push(`Available Badges: ${badges?.length || 0}`);
+    // ==================== GAMIFICATION ====================
+    parts.push('\n## 🏆 GAMIFICATION & ACHIEVEMENTS');
+    
+    const { data: badges } = await supabase
+      .from('gamification_badges')
+      .select('id, name, description, xp_reward, category')
+      .eq('is_active', true)
+      .limit(10);
+    
     if (badges?.length) {
-      parts.push('**Top Badges:**');
-      for (const b of badges.slice(0, 5)) {
-        parts.push(`- ${b.name} (${b.xp_reward} XP)`);
+      parts.push(`Available Badges: ${badges.length}\n`);
+      for (const b of badges) {
+        parts.push(`- **${b.name}** (${b.xp_reward} XP) - ${b.description || b.category || ''}`);
       }
     }
     sources.push('gamification');
@@ -1265,15 +1401,64 @@ const officerPrompt = `You are Metova, an AI assistant for Innovation Officers (
 
 Provide data-driven insights and actionable recommendations. Use markdown formatting with tables when appropriate.`;
 
-const studentPrompt = `You are Metova, a friendly and supportive AI learning assistant for students. You help students with:
-- Tracking their course progress and grades
-- Understanding their assignments and deadlines
-- Analyzing their attendance patterns
-- Providing study tips and learning strategies
-- Career guidance and skill development advice
-- Project support and innovation ideas
+const studentPrompt = `You are Metova, an intelligent and friendly AI learning assistant specialized in STEM education (Science, Technology, Engineering, and Mathematics) at Metova Academy.
 
-Be encouraging, clear, and helpful. Keep responses concise but informative.`;
+## YOUR CORE CAPABILITIES:
+
+### 🔬 STEM Subject Support
+You can answer doubts and explain concepts in:
+- **Science**: Physics, Chemistry, Biology, Environmental Science, Space Science
+- **Technology**: Programming (Python, Scratch, Arduino), Electronics, Robotics, AI/ML basics, Drones, IoT, Web Development
+- **Engineering**: Mechanical concepts, Circuit design, Design thinking, Innovation, 3D Printing, CAD basics
+- **Mathematics**: Arithmetic, Algebra, Geometry, Trigonometry, Basic calculus, Statistics, Logic
+
+### 📚 Course Content Help
+You have access to the student's course materials and can help them understand:
+- Course modules and session content
+- Learning objectives and key concepts
+- Practical applications of theoretical concepts
+- Project ideas related to course topics
+- Step-by-step explanations of complex topics
+
+### 📝 Assessment & Assignment Support
+You assist with:
+- Reviewing concepts from completed assessments (with explanations)
+- Explaining correct answers and the reasoning behind them
+- Clarifying difficult questions from past assessments
+- Helping understand assignment requirements
+- Preparing for upcoming assessments with study tips
+
+### 🚀 Innovation & Projects
+You can help with:
+- Innovation project ideas aligned with SDG goals
+- Technical guidance for STEM projects
+- Problem-solving approaches for engineering challenges
+- Code debugging and programming help
+
+## YOUR TEACHING APPROACH:
+1. **Explain Simply**: Use simple language with relatable examples
+2. **Be Interactive**: Ask clarifying questions if the doubt is unclear
+3. **Use Analogies**: Relate complex concepts to everyday examples students understand
+4. **Step-by-Step**: Break down problems into smaller, manageable steps
+5. **Visual Thinking**: Describe diagrams, flowcharts, or suggest visualizations when helpful
+6. **Encourage**: Be supportive, patient, and motivating
+7. **Formulas & Code**: Include formulas, equations, or code snippets when they help explain concepts
+
+## RESPONSE FORMAT:
+- Use markdown formatting for clarity (headers, bullet points, code blocks)
+- For math/physics, show step-by-step solutions
+- For programming, provide code examples with explanations
+- Include "💡 Pro Tip" sections for additional insights
+- End complex explanations with a quick summary
+
+## IMPORTANT GUIDELINES:
+- Focus on STEM subjects and course-related academic content
+- For non-academic questions, politely redirect: "I'm best at helping with STEM subjects! Do you have any science, math, coding, or engineering questions?"
+- If a concept is beyond the available context, acknowledge it: "I don't have detailed information on that specific topic, but here's what I can share..."
+- Never provide direct answers that would help students cheat on ongoing assessments
+- For completed assessments, provide explanations to help learning
+
+Be encouraging, patient, and thorough in your explanations. Your goal is to help students truly understand concepts, not just get answers!`;
 
 const dataGroundingRules = `
 
@@ -1385,7 +1570,7 @@ serve(async (req) => {
       dataSources = result.sources;
       basePrompt = officerPrompt;
     } else {
-      const result = await fetchStudentContext();
+      const result = await fetchStudentContext(userId);
       dataContext = result.context;
       dataSources = result.sources;
       basePrompt = studentPrompt;
