@@ -43,7 +43,7 @@ export default function TaskManagement() {
   }
 
   // Use real-time tasks hook
-  const { tasks, loading } = useRealtimeTasks(user?.id || '', 'all');
+  const { tasks, loading, refetch } = useRealtimeTasks(user?.id || '', 'all');
   
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -88,7 +88,7 @@ export default function TaskManagement() {
         setSelectedTask(updatedTask);
       }
     }
-  }, [tasks]);
+  }, [tasks, selectedTask?.id]);
 
   // Apply filters
   useEffect(() => {
@@ -163,10 +163,11 @@ export default function TaskManagement() {
         completed_at: status === 'completed' ? new Date().toISOString() : undefined,
       }, { changedByName: user?.name || '' });
       
-      // No need to refresh - real-time will update
+      // Force refresh to ensure UI updates immediately
+      await refetch();
       await loadStats();
       
-      // Optimistic update - only update progress if provided
+      // Optimistic update for dialog
       if (selectedTask?.id === taskId) {
         setSelectedTask(prev => prev ? { 
           ...prev, 
@@ -193,7 +194,8 @@ export default function TaskManagement() {
   const handleDeleteTask = async (taskId: string) => {
     try {
       await deleteTaskFromDb(taskId);
-      // Real-time will remove it from the list
+      // Force refresh to ensure UI updates immediately
+      await refetch();
       await loadStats();
       toast.success('Task deleted successfully');
     } catch (error) {
@@ -212,6 +214,8 @@ export default function TaskManagement() {
         approved_at: new Date().toISOString(),
       }, { approverName: user?.name || '' });
       
+      // Force refresh to ensure UI updates immediately
+      await refetch();
       await loadStats();
       
       if (selectedTask?.id === taskId) {
@@ -231,6 +235,8 @@ export default function TaskManagement() {
         rejection_reason: reason,
       }, { approverName: user?.name || '', rejectionReason: reason });
       
+      // Force refresh to ensure UI updates immediately
+      await refetch();
       await loadStats();
       
       if (selectedTask?.id === taskId) {
