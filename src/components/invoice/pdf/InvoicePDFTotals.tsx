@@ -8,8 +8,6 @@ interface InvoicePDFTotalsProps {
 }
 
 export function InvoicePDFTotals({ invoice }: InvoicePDFTotalsProps) {
-  const isInterState = invoice.from_company_state_code !== invoice.to_company_state_code;
-
   return (
     <View>
       {/* Totals */}
@@ -27,29 +25,25 @@ export function InvoicePDFTotals({ invoice }: InvoicePDFTotalsProps) {
             </View>
           )}
 
-          {!isInterState ? (
-            <>
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>CGST @{invoice.cgst_rate || 9}%:</Text>
-                <Text style={styles.totalValue}>
-                  {formatCurrency(invoice.cgst_amount || 0)}
-                </Text>
-              </View>
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>SGST @{invoice.sgst_rate || 9}%:</Text>
-                <Text style={styles.totalValue}>
-                  {formatCurrency(invoice.sgst_amount || 0)}
-                </Text>
-              </View>
-            </>
-          ) : (
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>IGST @{invoice.igst_rate || 18}%:</Text>
-              <Text style={styles.totalValue}>
-                {formatCurrency(invoice.igst_amount || 0)}
-              </Text>
-            </View>
-          )}
+          {/* Always show all three taxes */}
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>CGST @{invoice.cgst_rate ?? 0}%:</Text>
+            <Text style={styles.totalValue}>
+              {formatCurrency(invoice.cgst_amount || 0)}
+            </Text>
+          </View>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>SGST @{invoice.sgst_rate ?? 0}%:</Text>
+            <Text style={styles.totalValue}>
+              {formatCurrency(invoice.sgst_amount || 0)}
+            </Text>
+          </View>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>IGST @{invoice.igst_rate ?? 0}%:</Text>
+            <Text style={styles.totalValue}>
+              {formatCurrency(invoice.igst_amount || 0)}
+            </Text>
+          </View>
 
           {invoice.tds_amount && invoice.tds_amount > 0 && (
             <View style={styles.totalRow}>

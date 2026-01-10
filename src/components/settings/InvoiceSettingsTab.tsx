@@ -30,6 +30,10 @@ interface CompanyProfileData {
   default_notes: string;
   logo_url: string;
   signature_url: string;
+  // GST Configuration
+  default_cgst_rate: number;
+  default_sgst_rate: number;
+  default_igst_rate: number;
 }
 
 const defaultBankDetails: BankDetails = {
@@ -85,6 +89,9 @@ export function InvoiceSettingsTab() {
           default_notes: data.default_notes || '',
           logo_url: data.logo_url || '',
           signature_url: data.signature_url || '',
+          default_cgst_rate: data.default_cgst_rate ?? 9,
+          default_sgst_rate: data.default_sgst_rate ?? 9,
+          default_igst_rate: data.default_igst_rate ?? 18,
         });
       }
     } catch (error) {
@@ -121,6 +128,9 @@ export function InvoiceSettingsTab() {
           default_notes: profile.default_notes,
           logo_url: profile.logo_url,
           signature_url: profile.signature_url,
+          default_cgst_rate: profile.default_cgst_rate,
+          default_sgst_rate: profile.default_sgst_rate,
+          default_igst_rate: profile.default_igst_rate,
         })
         .eq('id', profile.id);
 
@@ -178,7 +188,13 @@ export function InvoiceSettingsTab() {
 
   const updateField = (field: keyof CompanyProfileData, value: string) => {
     if (!profile) return;
-    setProfile({ ...profile, [field]: value });
+    // Handle numeric fields for GST rates
+    if (field === 'default_cgst_rate' || field === 'default_sgst_rate' || field === 'default_igst_rate') {
+      const numValue = parseFloat(value) || 0;
+      setProfile({ ...profile, [field]: numValue });
+    } else {
+      setProfile({ ...profile, [field]: value });
+    }
   };
 
   const updateBankField = (field: keyof BankDetails, value: string) => {
@@ -209,6 +225,60 @@ export function InvoiceSettingsTab() {
 
   return (
     <div className="space-y-6">
+      {/* GST Configuration */}
+      <Card>
+        <CardHeader>
+          <CardTitle>GST Configuration</CardTitle>
+          <CardDescription>Default tax rates for invoices. Set to 0 to disable a tax type.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="default_cgst_rate">CGST Rate (%)</Label>
+              <Input
+                id="default_cgst_rate"
+                type="number"
+                min="0"
+                max="100"
+                step="0.5"
+                value={profile.default_cgst_rate}
+                onChange={(e) => updateField('default_cgst_rate', e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Central GST for intra-state</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="default_sgst_rate">SGST Rate (%)</Label>
+              <Input
+                id="default_sgst_rate"
+                type="number"
+                min="0"
+                max="100"
+                step="0.5"
+                value={profile.default_sgst_rate}
+                onChange={(e) => updateField('default_sgst_rate', e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">State GST for intra-state</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="default_igst_rate">IGST Rate (%)</Label>
+              <Input
+                id="default_igst_rate"
+                type="number"
+                min="0"
+                max="100"
+                step="0.5"
+                value={profile.default_igst_rate}
+                onChange={(e) => updateField('default_igst_rate', e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Integrated GST for inter-state</p>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            <strong>Note:</strong> CGST &amp; SGST apply for intra-state transactions (same state). IGST applies for inter-state transactions (different states).
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Company Information */}
       <Card>
         <CardHeader>

@@ -1315,7 +1315,10 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           declaration: string | null
+          default_cgst_rate: number | null
+          default_igst_rate: number | null
           default_notes: string | null
+          default_sgst_rate: number | null
           email: string | null
           gstin: string | null
           id: string
@@ -1347,7 +1350,10 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           declaration?: string | null
+          default_cgst_rate?: number | null
+          default_igst_rate?: number | null
           default_notes?: string | null
+          default_sgst_rate?: number | null
           email?: string | null
           gstin?: string | null
           id?: string
@@ -1379,7 +1385,10 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           declaration?: string | null
+          default_cgst_rate?: number | null
+          default_igst_rate?: number | null
           default_notes?: string | null
+          default_sgst_rate?: number | null
           email?: string | null
           gstin?: string | null
           id?: string

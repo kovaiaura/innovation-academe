@@ -34,6 +34,10 @@ export interface CompanyProfile {
   default_notes?: string;
   is_default?: boolean;
   created_at?: string;
+  // GST Configuration
+  default_cgst_rate?: number;
+  default_sgst_rate?: number;
+  default_igst_rate?: number;
 }
 
 export interface InvoiceLineItem {

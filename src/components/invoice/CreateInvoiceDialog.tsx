@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { InvoiceLineItemsEditor } from './InvoiceLineItemsEditor';
-import { createInvoice, fetchDefaultCompanyProfile, calculateInvoiceTotals, calculateLineItemTaxes, checkInvoiceNumberExists } from '@/services/invoice.service';
+import { createInvoice, fetchDefaultCompanyProfile, calculateInvoiceTotals, calculateLineItemTaxes, checkInvoiceNumberExists, GSTRates } from '@/services/invoice.service';
 import type { InvoiceType, InvoiceLineItem, CompanyProfile, CreateInvoiceInput } from '@/types/invoice';
 import { toast } from 'sonner';
 import { Check, AlertCircle, Loader2 } from 'lucide-react';
@@ -55,6 +55,7 @@ export function CreateInvoiceDialog({
 }: CreateInvoiceDialogProps) {
   const [loading, setLoading] = useState(false);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
+  const [gstRates, setGstRates] = useState<GSTRates>({ cgst_rate: 9, sgst_rate: 9, igst_rate: 18 });
   
   // Invoice number state
   const [invoiceNumber, setInvoiceNumber] = useState('');
@@ -95,6 +96,13 @@ export function CreateInvoiceDialog({
     try {
       const profile = await fetchDefaultCompanyProfile();
       setCompanyProfile(profile);
+      if (profile) {
+        setGstRates({
+          cgst_rate: profile.default_cgst_rate ?? 9,
+          sgst_rate: profile.default_sgst_rate ?? 9,
+          igst_rate: profile.default_igst_rate ?? 18,
+        });
+      }
     } catch (error) {
       console.error('Error loading company profile:', error);
     }
@@ -111,9 +119,9 @@ export function CreateInvoiceDialog({
 
   const isInterState = companyProfile?.state_code !== toCompanyStateCode;
 
-  // Calculate totals
-  const calculatedItems = lineItems.map((item) => calculateLineItemTaxes(item, isInterState));
-  const totals = calculateInvoiceTotals(calculatedItems, isInterState);
+  // Calculate totals with configurable GST rates
+  const calculatedItems = lineItems.map((item) => calculateLineItemTaxes(item, isInterState, gstRates));
+  const totals = calculateInvoiceTotals(calculatedItems, isInterState, 0, gstRates);
 
   const handleValidateInvoiceNumber = async () => {
     if (!invoiceNumber.trim()) {
@@ -437,30 +445,25 @@ export function CreateInvoiceDialog({
 
             <Separator />
 
-            {/* Totals */}
+            {/* Totals - Always show all three taxes */}
             <div className="flex justify-end">
-              <div className="w-72 space-y-2 text-sm">
+              <div className="w-80 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Sub Total:</span>
                   <span>₹{totals.sub_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
-                {!isInterState ? (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">CGST (9%):</span>
-                      <span>₹{totals.cgst_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">SGST (9%):</span>
-                      <span>₹{totals.sgst_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">IGST (18%):</span>
-                    <span>₹{totals.igst_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                  </div>
-                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">CGST ({gstRates.cgst_rate}%):</span>
+                  <span>₹{totals.cgst_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">SGST ({gstRates.sgst_rate}%):</span>
+                  <span>₹{totals.sgst_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">IGST ({gstRates.igst_rate}%):</span>
+                  <span>₹{totals.igst_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                </div>
                 <Separator />
                 <div className="flex justify-between font-semibold text-base">
                   <span>Total:</span>
