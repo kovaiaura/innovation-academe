@@ -76,6 +76,13 @@ export default function OfficerDashboard() {
   // Get real pending projects
   const { data: pendingProjects = [] } = useOfficerPendingProjects(primaryInstitutionId);
 
+  // Helper function to get institution names from IDs
+  const getInstitutionNames = (institutionIds: string[]) => {
+    return institutionIds
+      .map(id => institutions.find(inst => inst.id === id)?.name || 'Unknown Institution')
+      .join(', ');
+  };
+
   const stats = [
     {
       title: 'Upcoming Sessions',
@@ -174,7 +181,7 @@ export default function OfficerDashboard() {
                 <Badge variant="secondary" className="px-3 py-1.5 gap-2 bg-background/80 backdrop-blur-sm">
                   <Building2 className="h-3.5 w-3.5" />
                   <span className="font-normal">Assigned to:</span>
-                  <span className="font-medium">{officerProfile.assigned_institutions.join(', ')}</span>
+                  <span className="font-medium">{getInstitutionNames(officerProfile.assigned_institutions)}</span>
                 </Badge>
               </div>
             )}
@@ -207,11 +214,12 @@ export default function OfficerDashboard() {
           })}
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left Column - Check-in and Class Cards */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
+        {/* Main Content Grid - Uniform Layout */}
+        <div className="grid gap-6 grid-cols-1 lg:grid-cols-12">
+          {/* Left Column - Main Content */}
+          <div className="lg:col-span-8 space-y-6">
+            {/* Check-in and Delegated Classes Row */}
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2">
               {/* GPS-based Check-in Card from Supabase */}
               {officerProfile && primaryInstitutionId ? (
                 <OfficerCheckInCard 
@@ -219,7 +227,7 @@ export default function OfficerDashboard() {
                   institutionId={primaryInstitutionId}
                 />
               ) : (
-                <Card>
+                <Card className="min-h-[280px]">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Clock className="h-5 w-5" />
@@ -267,10 +275,10 @@ export default function OfficerDashboard() {
             />
           </div>
 
-          {/* Right Column - Projects and Tasks */}
-          <div className="space-y-6">
+          {/* Right Column - Sidebar */}
+          <div className="lg:col-span-4 space-y-6">
             {/* Projects Pending Review */}
-            <Card className="h-fit">
+            <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-4">
                 <div>
                   <CardTitle className="text-lg flex items-center gap-2">
