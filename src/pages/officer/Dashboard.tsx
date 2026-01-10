@@ -20,8 +20,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Layout } from '@/components/layout/Layout';
 import { useInstitutionData } from '@/contexts/InstitutionDataContext';
 import { OfficerCheckInCard } from '@/components/officer/OfficerCheckInCard';
-import { DelegatedClassesCard } from '@/components/officer/DelegatedClassesCard';
-import { UpcomingClassesCard } from '@/components/officer/UpcomingClassesCard';
 import { useOfficerByUserId } from '@/hooks/useOfficerProfile';
 import { useOfficerTodayAttendance } from '@/hooks/useOfficerAttendance';
 import { useOfficerSalaryCalculation, useOfficerDashboardStats, useOfficerTasks } from '@/hooks/useOfficerDashboardData';
@@ -214,128 +212,104 @@ export default function OfficerDashboard() {
           })}
         </div>
 
-        {/* Main Content Grid - Uniform Layout */}
-        <div className="grid gap-6 grid-cols-1 lg:grid-cols-12">
-          {/* Left Column - Main Content */}
-          <div className="lg:col-span-8 space-y-6">
-            {/* Check-in and Delegated Classes Row */}
-            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2">
-              {/* GPS-based Check-in Card from Supabase */}
-              {officerProfile && primaryInstitutionId ? (
-                <OfficerCheckInCard 
-                  officerId={officerProfile.id} 
-                  institutionId={primaryInstitutionId}
-                />
-              ) : (
-                <Card className="min-h-[280px]">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Clock className="h-5 w-5" />
-                      Daily Attendance
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8 text-muted-foreground">
-                      <AlertCircle className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                      <p className="font-medium">No institution assigned</p>
-                      <p className="text-sm mt-1">Contact management to assign you to an institution</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Delegated Classes Today */}
-              {officerProfile && primaryInstitutionId && (
-                <DelegatedClassesCard 
-                  officerId={officerProfile.id} 
-                  institutionId={primaryInstitutionId}
-                />
-              )}
-            </div>
-
-            {/* Upcoming Classes */}
-            {officerProfile && primaryInstitutionId && (
-              <UpcomingClassesCard 
-                officerId={officerProfile.id} 
-                institutionId={primaryInstitutionId}
-              />
-            )}
-
-            {/* Salary Progress Card */}
-            <SalaryProgressCard
-              monthlyBase={salaryData?.monthlyBase || 0}
-              daysPresent={salaryData?.daysPresent || 0}
-              workingDays={salaryData?.workingDays || 26}
-              earnedSalary={salaryData?.earnedSalary || 0}
-              overtimeHours={salaryData?.overtimeHours || 0}
-              overtimePay={salaryData?.overtimePay || 0}
-              totalEarnings={salaryData?.totalEarnings || 0}
-              progressPercentage={salaryData?.progressPercentage || 0}
-              isLoading={isLoadingSalary}
+        {/* Main Content Grid - 3 Column Layout */}
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          {/* Column 1: Daily Attendance */}
+          {officerProfile && primaryInstitutionId ? (
+            <OfficerCheckInCard 
+              officerId={officerProfile.id} 
+              institutionId={primaryInstitutionId}
             />
-          </div>
-
-          {/* Right Column - Sidebar */}
-          <div className="lg:col-span-4 space-y-6">
-            {/* Projects Pending Review */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-4">
-                <div>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-orange-500" />
-                    Projects Pending
-                  </CardTitle>
-                  <CardDescription>Awaiting your review</CardDescription>
-                </div>
-                <Button variant="ghost" size="sm" asChild className="gap-1 text-muted-foreground hover:text-foreground">
-                  <Link to={`/tenant/${tenantId}/officer/projects`}>
-                    View All
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                </Button>
+          ) : (
+            <Card className="min-h-[320px]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Daily Attendance
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                {pendingProjects.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <div className="bg-muted/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <TrendingUp className="h-8 w-8 opacity-30" />
-                    </div>
-                    <p className="font-medium">All caught up!</p>
-                    <p className="text-sm mt-1">No projects pending review</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {pendingProjects.slice(0, 5).map((project) => (
-                      <div 
-                        key={project.id} 
-                        className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="bg-orange-500/10 p-2 rounded-lg shrink-0">
-                          <TrendingUp className="h-4 w-4 text-orange-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{project.title}</p>
-                          <p className="text-xs text-muted-foreground truncate">{project.team}</p>
-                        </div>
-                        <Badge variant="secondary" className="shrink-0 text-xs bg-orange-500/10 text-orange-600 border-0">
-                          {getStatusLabel(project.status)}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="text-center py-8 text-muted-foreground">
+                  <AlertCircle className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">No institution assigned</p>
+                  <p className="text-sm mt-1">Contact management to assign you to an institution</p>
+                </div>
               </CardContent>
             </Card>
+          )}
 
-            {/* Tasks Summary */}
-            <TasksSummaryCard 
-              tasks={tasks}
-              isLoading={isLoadingTasks}
-              tasksPath={`/tenant/${tenantId}/officer/tasks`}
-              title="My Tasks"
-            />
-          </div>
+          {/* Column 2: Projects Pending Review */}
+          <Card className="min-h-[320px]">
+            <CardHeader className="flex flex-row items-center justify-between pb-4">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-orange-500" />
+                  Projects Pending
+                </CardTitle>
+                <CardDescription>Awaiting your review</CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" asChild className="gap-1 text-muted-foreground hover:text-foreground">
+                <Link to={`/tenant/${tenantId}/officer/projects`}>
+                  View All
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {pendingProjects.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <div className="bg-muted/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <TrendingUp className="h-8 w-8 opacity-30" />
+                  </div>
+                  <p className="font-medium">All caught up!</p>
+                  <p className="text-sm mt-1">No projects pending review</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pendingProjects.slice(0, 4).map((project) => (
+                    <div 
+                      key={project.id} 
+                      className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="bg-orange-500/10 p-2 rounded-lg shrink-0">
+                        <TrendingUp className="h-4 w-4 text-orange-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{project.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{project.team}</p>
+                      </div>
+                      <Badge variant="secondary" className="shrink-0 text-xs bg-orange-500/10 text-orange-600 border-0">
+                        {getStatusLabel(project.status)}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Column 3: My Tasks */}
+          <TasksSummaryCard 
+            tasks={tasks}
+            isLoading={isLoadingTasks}
+            tasksPath={`/tenant/${tenantId}/officer/tasks`}
+            title="My Tasks"
+            className="min-h-[320px]"
+          />
         </div>
+
+        {/* Full Width Salary Tracker */}
+        <SalaryProgressCard
+          monthlyBase={salaryData?.monthlyBase || 0}
+          daysPresent={salaryData?.daysPresent || 0}
+          workingDays={salaryData?.workingDays || 26}
+          earnedSalary={salaryData?.earnedSalary || 0}
+          overtimeHours={salaryData?.overtimeHours || 0}
+          overtimePay={salaryData?.overtimePay || 0}
+          totalEarnings={salaryData?.totalEarnings || 0}
+          progressPercentage={salaryData?.progressPercentage || 0}
+          isLoading={isLoadingSalary}
+        />
 
         {/* Quick Actions - Enhanced */}
         <Card className="border-dashed">

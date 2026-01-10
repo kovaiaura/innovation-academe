@@ -19,13 +19,17 @@ interface TasksSummaryCardProps {
   isLoading?: boolean;
   tasksPath?: string;
   title?: string;
+  className?: string;
 }
+
+import { cn } from '@/lib/utils';
 
 export function TasksSummaryCard({
   tasks,
   isLoading = false,
   tasksPath = '/tasks',
   title = 'My Tasks',
+  className,
 }: TasksSummaryCardProps) {
   const getPriorityBadge = (priority: string) => {
     switch (priority?.toLowerCase()) {
@@ -54,7 +58,7 @@ export function TasksSummaryCard({
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className={cn(className)}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CheckSquare className="h-5 w-5 text-primary" />
@@ -77,7 +81,7 @@ export function TasksSummaryCard({
   const overdueCount = tasks.filter(t => t.due_date && isPast(parseISO(t.due_date)) && !isToday(parseISO(t.due_date))).length;
 
   return (
-    <Card>
+    <Card className={cn(className)}>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle className="flex items-center gap-2">
