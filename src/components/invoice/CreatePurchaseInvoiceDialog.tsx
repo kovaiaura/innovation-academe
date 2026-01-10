@@ -11,8 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Upload, X, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { createPurchaseInvoice, fetchDefaultCompanyProfile } from '@/services/invoice.service';
+import { Upload, X, FileText, Image as ImageIcon, Loader2, Check, AlertCircle } from 'lucide-react';
+import { createPurchaseInvoice, fetchDefaultCompanyProfile, checkInvoiceNumberExists } from '@/services/invoice.service';
 import type { CompanyProfile } from '@/types/invoice';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -33,6 +33,12 @@ export function CreatePurchaseInvoiceDialog({
   const [uploading, setUploading] = useState(false);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Invoice number state
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [invoiceNumberError, setInvoiceNumberError] = useState('');
+  const [isCheckingNumber, setIsCheckingNumber] = useState(false);
+  const [invoiceNumberValid, setInvoiceNumberValid] = useState(false);
   
   // Form state - Vendor Details (Bill From)
   const [vendorName, setVendorName] = useState('');
@@ -128,7 +134,41 @@ export function CreatePurchaseInvoiceDialog({
     };
   };
 
+  const handleValidateInvoiceNumber = async () => {
+    if (!invoiceNumber.trim()) {
+      setInvoiceNumberError('Invoice number is required');
+      setInvoiceNumberValid(false);
+      return;
+    }
+    
+    try {
+      setIsCheckingNumber(true);
+      setInvoiceNumberError('');
+      const exists = await checkInvoiceNumberExists(invoiceNumber.trim());
+      if (exists) {
+        setInvoiceNumberError('This invoice number is already in use');
+        setInvoiceNumberValid(false);
+      } else {
+        setInvoiceNumberValid(true);
+      }
+    } catch (error) {
+      console.error('Error checking invoice number:', error);
+      setInvoiceNumberError('Error validating invoice number');
+      setInvoiceNumberValid(false);
+    } finally {
+      setIsCheckingNumber(false);
+    }
+  };
+
   const handleSubmit = async () => {
+    if (!invoiceNumber.trim()) {
+      toast.error('Please enter invoice number');
+      return;
+    }
+    if (invoiceNumberError) {
+      toast.error('Please fix the invoice number error');
+      return;
+    }
     if (!vendorName) {
       toast.error('Please enter vendor name');
       return;
@@ -139,6 +179,14 @@ export function CreatePurchaseInvoiceDialog({
     }
     if (!attachmentFile) {
       toast.error('Please attach the vendor bill');
+      return;
+    }
+
+    // Final check for duplicate before creating
+    const exists = await checkInvoiceNumberExists(invoiceNumber.trim());
+    if (exists) {
+      setInvoiceNumberError('This invoice number is already in use');
+      toast.error('Invoice number is already in use');
       return;
     }
 
@@ -156,6 +204,7 @@ export function CreatePurchaseInvoiceDialog({
       
       // Create invoice with attachment details included
       const invoice = await createPurchaseInvoice({
+        invoice_number: invoiceNumber.trim(),
         invoice_type: 'purchase',
         from_company_name: vendorName,
         from_company_address: vendorAddress,
@@ -198,6 +247,9 @@ export function CreatePurchaseInvoiceDialog({
   };
 
   const resetForm = () => {
+    setInvoiceNumber('');
+    setInvoiceNumberError('');
+    setInvoiceNumberValid(false);
     setVendorName('');
     setVendorAddress('');
     setVendorGstin('');
@@ -277,6 +329,31 @@ export function CreatePurchaseInvoiceDialog({
             <div className="space-y-4">
               <h3 className="font-semibold">Bill Details</h3>
               <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2 space-y-2">
+                  <Label htmlFor="invoiceNumber">Invoice Number (Our Reference) *</Label>
+                  <div className="relative">
+                    <Input
+                      id="invoiceNumber"
+                      value={invoiceNumber}
+                      onChange={(e) => {
+                        setInvoiceNumber(e.target.value);
+                        setInvoiceNumberError('');
+                        setInvoiceNumberValid(false);
+                      }}
+                      onBlur={handleValidateInvoiceNumber}
+                      placeholder="e.g., PUR/24-25/0001"
+                      className={invoiceNumberError ? 'border-destructive pr-10' : invoiceNumberValid ? 'border-green-500 pr-10' : 'pr-10'}
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {isCheckingNumber && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                      {!isCheckingNumber && invoiceNumberValid && <Check className="h-4 w-4 text-green-500" />}
+                      {!isCheckingNumber && invoiceNumberError && <AlertCircle className="h-4 w-4 text-destructive" />}
+                    </div>
+                  </div>
+                  {invoiceNumberError && (
+                    <p className="text-sm text-destructive">{invoiceNumberError}</p>
+                  )}
+                </div>
                 <div className="space-y-2">
                   <Label>Vendor Invoice Number</Label>
                   <Input

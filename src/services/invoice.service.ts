@@ -113,14 +113,16 @@ export function calculateInvoiceTotals(
   return { sub_total, cgst_amount, sgst_amount, igst_amount, tds_amount, total_amount, balance_due };
 }
 
-// Generate invoice number
-export async function generateInvoiceNumber(invoiceType: InvoiceType): Promise<string> {
-  const { data, error } = await supabase.rpc('generate_invoice_number', {
-    p_invoice_type: invoiceType,
-  });
+// Check if invoice number already exists
+export async function checkInvoiceNumberExists(invoiceNumber: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('id')
+    .eq('invoice_number', invoiceNumber)
+    .maybeSingle();
   
   if (error) throw error;
-  return data as string;
+  return !!data; // true if exists, false if available
 }
 
 // Fetch default company profile
@@ -216,8 +218,10 @@ export async function fetchInvoiceById(id: string): Promise<Invoice | null> {
 export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice> {
   const { data: userData } = await supabase.auth.getUser();
   
-  // Generate invoice number
-  const invoiceNumber = await generateInvoiceNumber(input.invoice_type);
+  // Use provided invoice number (manual entry)
+  if (!input.invoice_number) {
+    throw new Error('Invoice number is required');
+  }
   
   // Determine if inter-state
   const isInterState = input.from_company_state_code !== input.to_company_state_code;
@@ -235,7 +239,7 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice>
   const { data: invoice, error: invoiceError } = await supabase
     .from('invoices')
     .insert([{
-      invoice_number: invoiceNumber,
+      invoice_number: input.invoice_number,
       invoice_type: input.invoice_type,
       from_company_name: input.from_company_name,
       from_company_address: input.from_company_address,
@@ -354,8 +358,10 @@ export async function deleteInvoice(id: string): Promise<void> {
 export async function createPurchaseInvoice(input: CreateInvoiceInput): Promise<Invoice> {
   const { data: userData } = await supabase.auth.getUser();
   
-  // Generate invoice number
-  const invoiceNumber = await generateInvoiceNumber('purchase');
+  // Use provided invoice number (manual entry)
+  if (!input.invoice_number) {
+    throw new Error('Invoice number is required');
+  }
   
   const totalAmount = input.total_amount || input.line_items.reduce((sum, item) => sum + item.amount, 0);
   
@@ -363,7 +369,7 @@ export async function createPurchaseInvoice(input: CreateInvoiceInput): Promise<
   const { data: invoice, error: invoiceError } = await supabase
     .from('invoices')
     .insert([{
-      invoice_number: invoiceNumber,
+      invoice_number: input.invoice_number,
       invoice_type: 'purchase',
       from_company_name: input.from_company_name,
       from_company_address: input.from_company_address,
