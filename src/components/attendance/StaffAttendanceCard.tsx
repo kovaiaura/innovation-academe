@@ -9,8 +9,13 @@ import { getCurrentLocation } from '@/utils/locationHelpers';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { leaveSettingsService } from '@/services/leaveSettings.service';
+import { cn } from '@/lib/utils';
 
-export function StaffAttendanceCard() {
+interface StaffAttendanceCardProps {
+  className?: string;
+}
+
+export function StaffAttendanceCard({ className }: StaffAttendanceCardProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [checkInStatus, setCheckInStatus] = useState<{
@@ -180,7 +185,7 @@ export function StaffAttendanceCard() {
   };
 
   return (
-    <Card>
+    <Card className={cn(className)}>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
