@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Task, TaskStatus } from '@/types/task';
@@ -11,6 +11,7 @@ import { TaskAttachmentList } from './TaskAttachmentList';
 import { ApproveRejectDialog } from './ApproveRejectDialog';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -66,11 +67,18 @@ export function TaskDetailDialog({
   onRejectTask,
 }: TaskDetailDialogProps) {
   const [selectedStatus, setSelectedStatus] = useState<TaskStatus>(task.status);
+  const [progressValue, setProgressValue] = useState<number>(task.progress_percentage || 0);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [approvalMode, setApprovalMode] = useState<'approve' | 'reject'>('approve');
   
+  // Sync progress value when task changes
+  useEffect(() => {
+    setProgressValue(task.progress_percentage || 0);
+    setSelectedStatus(task.status);
+  }, [task.progress_percentage, task.status]);
+
   const overdue = isTaskOverdue(task);
   const canEdit = canEditTask(task, currentUserId);
   const canUpdate = canUpdateStatus(task, currentUserId);
@@ -81,9 +89,19 @@ export function TaskDetailDialog({
 
   const handleStatusChange = (newStatus: TaskStatus) => {
     setSelectedStatus(newStatus);
-    const progress = newStatus === 'completed' ? 100 : task.progress_percentage;
-    onUpdateStatus(task.id, newStatus, progress);
+    const newProgress = newStatus === 'completed' ? 100 : task.progress_percentage || 0;
+    setProgressValue(newProgress);
+    onUpdateStatus(task.id, newStatus, newProgress);
     toast.success('Task status updated');
+  };
+
+  const handleProgressChange = (value: number[]) => {
+    setProgressValue(value[0]);
+  };
+
+  const handleProgressCommit = (value: number[]) => {
+    onUpdateStatus(task.id, task.status, value[0]);
+    toast.success('Progress updated');
   };
 
   const handleDelete = () => {
@@ -151,15 +169,31 @@ export function TaskDetailDialog({
             <Separator />
 
             {/* Progress */}
-            {task.progress_percentage !== undefined && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="font-semibold">Progress</span>
-                  <span className="text-muted-foreground">{task.progress_percentage}%</span>
-                </div>
-                <Progress value={task.progress_percentage} className="h-2" />
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="font-semibold">Progress</span>
+                <span className="text-muted-foreground">{progressValue}%</span>
               </div>
-            )}
+              
+              {/* Interactive slider for assignee when status is in_progress */}
+              {isAssignee && task.status === 'in_progress' ? (
+                <div className="space-y-2">
+                  <Slider
+                    value={[progressValue]}
+                    onValueChange={handleProgressChange}
+                    onValueCommit={handleProgressCommit}
+                    max={100}
+                    step={5}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Drag to update progress (saves automatically)
+                  </p>
+                </div>
+              ) : (
+                <Progress value={progressValue} className="h-2" />
+              )}
+            </div>
 
             {/* Status Update for Assignee */}
             {isAssignee && !canApprove && (
@@ -172,6 +206,7 @@ export function TaskDetailDialog({
                   <SelectContent>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
