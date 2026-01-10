@@ -49,17 +49,36 @@ export function numberToWords(amount: number): string {
   return result;
 }
 
-// Calculate taxes for line items
+// GST rate configuration type
+export interface GSTRates {
+  cgst_rate: number;
+  sgst_rate: number;
+  igst_rate: number;
+}
+
+// Default GST rates
+const DEFAULT_GST_RATES: GSTRates = {
+  cgst_rate: 9,
+  sgst_rate: 9,
+  igst_rate: 18,
+};
+
+// Calculate taxes for line items with configurable rates
 export function calculateLineItemTaxes(
   item: Omit<InvoiceLineItem, 'id' | 'invoice_id'>,
-  isInterState: boolean
+  isInterState: boolean,
+  gstRates: GSTRates = DEFAULT_GST_RATES
 ): InvoiceLineItem {
   const baseAmount = item.quantity * item.rate;
   const discountAmount = item.discount_percent ? (baseAmount * item.discount_percent) / 100 : (item.discount_amount || 0);
   const taxableAmount = baseAmount - discountAmount;
   
+  const cgstRate = gstRates.cgst_rate;
+  const sgstRate = gstRates.sgst_rate;
+  const igstRate = gstRates.igst_rate;
+  
   if (isInterState) {
-    const igstAmount = (taxableAmount * (item.igst_rate || 18)) / 100;
+    const igstAmount = (taxableAmount * igstRate) / 100;
     return {
       ...item,
       discount_amount: discountAmount,
@@ -67,19 +86,19 @@ export function calculateLineItemTaxes(
       cgst_amount: 0,
       sgst_rate: 0,
       sgst_amount: 0,
-      igst_rate: item.igst_rate || 18,
+      igst_rate: igstRate,
       igst_amount: igstAmount,
       amount: taxableAmount + igstAmount,
     };
   } else {
-    const cgstAmount = (taxableAmount * (item.cgst_rate || 9)) / 100;
-    const sgstAmount = (taxableAmount * (item.sgst_rate || 9)) / 100;
+    const cgstAmount = (taxableAmount * cgstRate) / 100;
+    const sgstAmount = (taxableAmount * sgstRate) / 100;
     return {
       ...item,
       discount_amount: discountAmount,
-      cgst_rate: item.cgst_rate || 9,
+      cgst_rate: cgstRate,
       cgst_amount: cgstAmount,
-      sgst_rate: item.sgst_rate || 9,
+      sgst_rate: sgstRate,
       sgst_amount: sgstAmount,
       igst_rate: 0,
       igst_amount: 0,
@@ -88,15 +107,19 @@ export function calculateLineItemTaxes(
   }
 }
 
-// Calculate invoice totals
+// Calculate invoice totals with configurable rates
 export function calculateInvoiceTotals(
   lineItems: InvoiceLineItem[],
   isInterState: boolean,
-  tdsRate: number = 0
+  tdsRate: number = 0,
+  gstRates: GSTRates = DEFAULT_GST_RATES
 ): {
   sub_total: number;
+  cgst_rate: number;
   cgst_amount: number;
+  sgst_rate: number;
   sgst_amount: number;
+  igst_rate: number;
   igst_amount: number;
   tds_amount: number;
   total_amount: number;
@@ -110,7 +133,18 @@ export function calculateInvoiceTotals(
   const total_amount = sub_total + cgst_amount + sgst_amount + igst_amount;
   const balance_due = total_amount - tds_amount;
   
-  return { sub_total, cgst_amount, sgst_amount, igst_amount, tds_amount, total_amount, balance_due };
+  return { 
+    sub_total, 
+    cgst_rate: isInterState ? 0 : gstRates.cgst_rate,
+    cgst_amount, 
+    sgst_rate: isInterState ? 0 : gstRates.sgst_rate,
+    sgst_amount, 
+    igst_rate: isInterState ? gstRates.igst_rate : 0,
+    igst_amount, 
+    tds_amount, 
+    total_amount, 
+    balance_due 
+  };
 }
 
 // Check if invoice number already exists
@@ -223,17 +257,25 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice>
     throw new Error('Invoice number is required');
   }
   
+  // Fetch company profile to get GST rates
+  const companyProfile = await fetchDefaultCompanyProfile();
+  const gstRates: GSTRates = {
+    cgst_rate: companyProfile?.default_cgst_rate ?? 9,
+    sgst_rate: companyProfile?.default_sgst_rate ?? 9,
+    igst_rate: companyProfile?.default_igst_rate ?? 18,
+  };
+  
   // Determine if inter-state
   const isInterState = input.from_company_state_code !== input.to_company_state_code;
   
-  // Calculate line items with taxes
+  // Calculate line items with taxes using configured rates
   const calculatedItems = input.line_items.map((item, index) => ({
-    ...calculateLineItemTaxes(item, isInterState),
+    ...calculateLineItemTaxes(item, isInterState, gstRates),
     display_order: index,
   }));
   
-  // Calculate totals
-  const totals = calculateInvoiceTotals(calculatedItems, isInterState, 0);
+  // Calculate totals using configured rates
+  const totals = calculateInvoiceTotals(calculatedItems, isInterState, 0, gstRates);
   
   // Create invoice
   const { data: invoice, error: invoiceError } = await supabase
@@ -276,11 +318,11 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice>
       reference_number: input.reference_number,
       delivery_note: input.delivery_note,
       sub_total: totals.sub_total,
-      cgst_rate: isInterState ? 0 : 9,
+      cgst_rate: totals.cgst_rate,
       cgst_amount: totals.cgst_amount,
-      sgst_rate: isInterState ? 0 : 9,
+      sgst_rate: totals.sgst_rate,
       sgst_amount: totals.sgst_amount,
-      igst_rate: isInterState ? 18 : 0,
+      igst_rate: totals.igst_rate,
       igst_amount: totals.igst_amount,
       total_amount: totals.total_amount,
       balance_due: totals.balance_due,
