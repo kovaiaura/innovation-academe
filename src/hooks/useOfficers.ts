@@ -167,3 +167,83 @@ export function useDeleteOfficer() {
     },
   });
 }
+
+/**
+ * Cascade delete an officer and all related data:
+ * - Documents from storage and database
+ * - Institution assignments
+ * - Attendance records
+ * - Class access grants
+ */
+export function useDeleteOfficerCascade() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (officerId: string) => {
+      // 1. Get all documents for this officer to delete from storage
+      const { data: docs } = await supabase
+        .from('officer_documents')
+        .select('file_url')
+        .eq('officer_id', officerId);
+      
+      // 2. Delete files from storage bucket
+      if (docs && docs.length > 0) {
+        const filePaths: string[] = [];
+        for (const d of docs) {
+          try {
+            const url = new URL(d.file_url);
+            const pathMatch = url.pathname.match(/\/officer-documents\/(.+)/);
+            if (pathMatch) {
+              filePaths.push(decodeURIComponent(pathMatch[1]));
+            }
+          } catch {
+            // Skip invalid URLs
+          }
+        }
+        
+        if (filePaths.length > 0) {
+          await supabase.storage
+            .from('officer-documents')
+            .remove(filePaths);
+        }
+      }
+      
+      // Delete from related tables - ignore errors for tables that may not have data
+      // 3. Delete from officer_documents
+      await supabase.from('officer_documents').delete().eq('officer_id', officerId);
+      
+      // 4. Delete from officer_institution_assignments
+      await supabase.from('officer_institution_assignments').delete().eq('officer_id', officerId);
+      
+      // 5. Delete from officer_attendance
+      await supabase.from('officer_attendance').delete().eq('officer_id', officerId);
+      
+      // 6. Delete from officer_class_access_grants (both granting and receiving)
+      // Using explicit void return to avoid type instantiation issues
+      const deleteAccessGrants = async (column: string, id: string) => {
+        const query = supabase.from('officer_class_access_grants').delete();
+        await (query as any).eq(column, id);
+      };
+      await deleteAccessGrants('granting_officer_id', officerId);
+      await deleteAccessGrants('receiving_officer_id', officerId);
+      
+      // Finally delete from officers table
+      const { error } = await supabase
+        .from('officers')
+        .delete()
+        .eq('id', officerId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['officers'] });
+      queryClient.invalidateQueries({ queryKey: ['officer-institution-assignments'] });
+      toast.success('Officer and all related data deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to delete officer', {
+        description: error.message,
+      });
+    },
+  });
+}
