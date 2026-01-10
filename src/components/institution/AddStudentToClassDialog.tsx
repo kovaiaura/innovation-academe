@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DatePickerWithYearMonth } from "@/components/ui/date-picker-with-year-month";
 import { Student } from "@/types/student";
 import { InstitutionClass } from "@/types/institution";
 
@@ -233,34 +234,18 @@ export function AddStudentToClassDialog({
 
               <div>
                 <Label>Date of Birth *</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !dobDate && "text-muted-foreground",
-                        errors.date_of_birth && "border-destructive"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dobDate ? format(dobDate, "PPP") : "Pick a date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={dobDate}
-                      onSelect={(date) => {
-                        setDobDate(date);
-                        setFormData({ ...formData, date_of_birth: date ? format(date, 'yyyy-MM-dd') : '' });
-                      }}
-                      disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
+                <DatePickerWithYearMonth
+                  date={dobDate}
+                  onDateChange={(date) => {
+                    setDobDate(date);
+                    setFormData({ ...formData, date_of_birth: date ? format(date, 'yyyy-MM-dd') : '' });
+                  }}
+                  placeholder="Pick date of birth"
+                  minYear={1990}
+                  maxYear={new Date().getFullYear() - 3}
+                  disabled={(date) => date > new Date()}
+                  hasError={!!errors.date_of_birth}
+                />
                 {errors.date_of_birth && <p className="text-xs text-destructive mt-1">{errors.date_of_birth}</p>}
               </div>
 
