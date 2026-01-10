@@ -1,25 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { format, differenceInMinutes, parse } from 'date-fns';
+import { format } from 'date-fns';
 import {
   Calendar,
   Clock,
-  FileText,
-  BookOpen,
   Users,
   Package,
-  ArrowRight,
-  CheckCircle2,
-  School,
-  Briefcase,
-  CalendarCheck,
   AlertCircle,
   CheckCircle,
-  Check,
-  X,
   Building2,
-  LogOut,
-  Timer,
   TrendingUp,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,21 +16,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { Layout } from '@/components/layout/Layout';
-import { toast } from 'sonner';
-import { getOfficerById, loadOfficers } from '@/data/mockOfficerData';
-import { getOfficerTimetable as getOfficerTimetableData } from '@/data/mockOfficerTimetable';
-import type { OfficerTimetableSlot } from '@/types/officer';
-import {
-  getLeaveApplicationsByOfficer,
-  getApprovedLeaveDates,
-  getTodayLeaveDetails,
-  getAllLeaveApplications,
-  getLeaveBalance,
-} from '@/data/mockLeaveData';
-import type { LeaveApplication } from '@/types/attendance';
-import { getRoleBasePath } from '@/utils/roleHelpers';
-import { mockEventApplications } from '@/data/mockEventsData';
-import { SalaryTrackerCard } from '@/components/officer/SalaryTrackerCard';
 import { useInstitutionData } from '@/contexts/InstitutionDataContext';
 import { OfficerCheckInCard } from '@/components/officer/OfficerCheckInCard';
 import { DelegatedClassesCard } from '@/components/officer/DelegatedClassesCard';
@@ -51,42 +25,9 @@ import { useOfficerTodayAttendance } from '@/hooks/useOfficerAttendance';
 import { useOfficerSalaryCalculation, useOfficerDashboardStats, useOfficerTasks } from '@/hooks/useOfficerDashboardData';
 import { SalaryProgressCard } from '@/components/dashboard/SalaryProgressCard';
 import { TasksSummaryCard } from '@/components/dashboard/TasksSummaryCard';
-import { supabase } from '@/integrations/supabase/client';
-
-// Helper functions
-const getDayName = (date: Date) => {
-  return date.toLocaleDateString('en-US', { weekday: 'long' });
-};
-
-const getTodaySchedule = (slots: OfficerTimetableSlot[]) => {
-  const today = getDayName(new Date());
-  return slots
-    .filter(slot => slot.day === today)
-    .sort((a, b) => a.start_time.localeCompare(b.start_time));
-};
-
-const getUpcomingSlots = (slots: OfficerTimetableSlot[], count: number) => {
-  const today = getDayName(new Date());
-  const currentTime = new Date().toTimeString().slice(0, 5);
-  const daysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const todayIndex = daysOrder.indexOf(today);
-  
-  const futureSlots = slots
-    .filter(slot => {
-      const slotDayIndex = daysOrder.indexOf(slot.day);
-      if (slotDayIndex === todayIndex) {
-        return slot.start_time > currentTime;
-      }
-      return slotDayIndex > todayIndex;
-    })
-    .sort((a, b) => {
-      const dayCompare = daysOrder.indexOf(a.day) - daysOrder.indexOf(b.day);
-      if (dayCompare !== 0) return dayCompare;
-      return a.start_time.localeCompare(b.start_time);
-    });
-  
-  return futureSlots.slice(0, count);
-};
+import { useOfficerLeaveBalance } from '@/hooks/useOfficerLeaveBalance';
+import { useOfficerSchedule, getTodayScheduleFromSlots, getUpcomingSlotsFromSchedule } from '@/hooks/useOfficerSchedule';
+import { useOfficerPendingProjects } from '@/hooks/useOfficerPendingProjects';
 
 const getActivityIcon = (type: string) => {
   switch(type) {
@@ -108,15 +49,19 @@ const getActivityColor = (type: string) => {
   }
 };
 
+const getStatusLabel = (status: string) => {
+  switch(status) {
+    case 'pending_review': return 'Pending Review';
+    case 'submitted': return 'Submitted';
+    case 'ongoing': return 'Ongoing';
+    default: return status;
+  }
+};
+
 export default function OfficerDashboard() {
-  // Mock: Get pending event applications for officer's institution
-  const pendingApplications = mockEventApplications.filter(
-    app => app.institution_id === 'springfield-high' && app.status === 'pending'
-  ).slice(0, 5);
   const { user } = useAuth();
   const { tenantId } = useParams();
   const navigate = useNavigate();
-  const todayKey = format(new Date(), 'yyyy-MM-dd');
   const { institutions } = useInstitutionData();
   
   // Get officer profile from Supabase
@@ -140,100 +85,18 @@ export default function OfficerDashboard() {
   
   // Get tasks assigned to officer
   const { data: tasks = [], isLoading: isLoadingTasks } = useOfficerTasks(user?.id);
-
-  // Leave state
-  const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>([]);
-  const [approvedLeaveDates, setApprovedLeaveDates] = useState<string[]>([]);
-  const [isOnLeaveToday, setIsOnLeaveToday] = useState(false);
-  const [todayLeaveDetails, setTodayLeaveDetails] = useState<LeaveApplication | null>(null);
-  const [last7Days, setLast7Days] = useState<
-    Array<{ date: string; day: string; status: 'present' | 'absent' | 'leave' | 'weekend' | null; leaveType?: string }>
-  >([]);
   
-  // Get leave balance
-  const currentYear = new Date().getFullYear().toString();
-  const leaveBalance = user?.id ? getLeaveBalance(user.id, currentYear) : null;
+  // Get real leave balance from database
+  const currentYear = new Date().getFullYear();
+  const { data: leaveBalance, isLoading: isLoadingLeave } = useOfficerLeaveBalance(user?.id, currentYear);
   
-  // Substitute assignments state
-  const [substituteAssignments, setSubstituteAssignments] = useState<any[]>([]);
+  // Get real schedule from timetable assignments
+  const { data: scheduleData = [] } = useOfficerSchedule(officerProfile?.id, primaryInstitutionId);
+  const todaySlots = getTodayScheduleFromSlots(scheduleData);
+  const upcomingSlots = getUpcomingSlotsFromSchedule(scheduleData, 3);
   
-  const mockOfficerProfile = user?.id ? getOfficerById(user.id) : null;
-  const officerTimetable = getOfficerTimetableData(user?.id || '');
-  const todaySlots = getTodaySchedule(officerTimetable?.slots || []);
-  const upcomingSlots = getUpcomingSlots(officerTimetable?.slots || [], 3);
-
-  // Load leave data on mount
-  useEffect(() => {
-    // Load leave data
-    if (user?.id) {
-      const applications = getLeaveApplicationsByOfficer(user.id);
-      const approvedDates = getApprovedLeaveDates(user.id);
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const todayLeave = getTodayLeaveDetails(user.id, today);
-
-      setLeaveApplications(applications);
-      setApprovedLeaveDates(approvedDates);
-      setIsOnLeaveToday(approvedDates.includes(today));
-      setTodayLeaveDetails(todayLeave);
-      
-      // Find substitute assignments where this officer is the substitute
-      const allApplications = getAllLeaveApplications();
-      const mySubstituteAssignments: any[] = [];
-      
-      allApplications.forEach(app => {
-        if (app.status === 'approved' && app.substitute_assignments) {
-          app.substitute_assignments.forEach(assignment => {
-            if (assignment.substitute_officer_id === user.id) {
-              const slot = app.affected_slots?.find(s => s.slot_id === assignment.slot_id);
-              mySubstituteAssignments.push({
-                ...assignment,
-                slot,
-                original_officer_name: app.officer_name,
-                leave_id: app.id
-              });
-            }
-          });
-        }
-      });
-      
-      setSubstituteAssignments(mySubstituteAssignments);
-    }
-
-    // Generate last 7 days with leave status
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = format(date, 'yyyy-MM-dd');
-      const dayStr = format(date, 'EEE');
-      const dayOfWeek = date.getDay();
-
-      // Check if weekend
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-
-      // Check if this date is on approved leave
-      const isOnLeave = user?.id ? getApprovedLeaveDates(user.id).includes(dateStr) : false;
-      const leaveDetails = user?.id ? getTodayLeaveDetails(user.id, dateStr) : null;
-
-      const status = isWeekend
-        ? ('weekend' as const)
-        : isOnLeave
-        ? ('leave' as const)
-        : i === 0
-        ? null
-        : i % 3 === 0
-        ? ('absent' as const)
-        : ('present' as const);
-
-      days.push({
-        date: dateStr,
-        day: dayStr,
-        status,
-        leaveType: leaveDetails?.leave_type,
-      });
-    }
-    setLast7Days(days);
-  }, [user?.id, todayKey]);
+  // Get real pending projects
+  const { data: pendingProjects = [] } = useOfficerPendingProjects(primaryInstitutionId);
 
   const stats = [
     {
@@ -269,26 +132,6 @@ export default function OfficerDashboard() {
       bgColor: 'bg-orange-500/10',
     },
   ];
-
-  const pendingProjects = [
-    { id: '1', title: 'Smart Campus System', team: 'Team Alpha', status: 'Pending Review' },
-    { id: '2', title: 'Eco-Friendly App', team: 'Team Beta', status: 'Pending Review' },
-    { id: '3', title: 'Healthcare Chatbot', team: 'Team Gamma', status: 'Pending Review' },
-  ];
-
-  // Derive check-in state from Supabase attendance
-  const isCheckedIn = todayAttendance?.status === 'checked_in';
-  const checkInTime = todayAttendance?.check_in_time 
-    ? format(new Date(todayAttendance.check_in_time), 'hh:mm a') 
-    : null;
-  const checkInLocation = todayAttendance?.check_in_latitude 
-    ? { 
-        latitude: todayAttendance.check_in_latitude, 
-        longitude: todayAttendance.check_in_longitude || 0,
-        timestamp: todayAttendance.check_in_time || new Date().toISOString()
-      }
-    : null;
-  const locationValidated = todayAttendance?.check_in_validated ?? null;
 
   return (
     <Layout>
@@ -382,7 +225,7 @@ export default function OfficerDashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              {!officerTimetable || officerTimetable.slots.length === 0 ? (
+              {scheduleData.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p className="font-medium">No schedule assigned yet</p>
@@ -408,7 +251,7 @@ export default function OfficerDashboard() {
                             <div>
                               <p className="font-medium">{slot.subject}</p>
                               <p className="text-sm text-muted-foreground">
-                                {slot.class} • {slot.room}
+                                {slot.class_name} • {slot.room || 'No room'}
                               </p>
                               <div className="flex items-center gap-2 mt-1">
                                 <Clock className="h-3 w-3 text-muted-foreground" />
@@ -441,11 +284,11 @@ export default function OfficerDashboard() {
                             <div>
                               <p className="font-medium">{slot.subject}</p>
                               <p className="text-sm text-muted-foreground">
-                                {slot.day}, {slot.start_time} • {slot.class}
+                                {slot.day}, {slot.start_time} • {slot.class_name}
                               </p>
                             </div>
                           </div>
-                          <div className="text-xs text-muted-foreground">{slot.room}</div>
+                          <div className="text-xs text-muted-foreground">{slot.room || 'No room'}</div>
                         </div>
                       ))}
                     </div>
@@ -470,86 +313,47 @@ export default function OfficerDashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {pendingProjects.map((project) => (
-                  <div key={project.id} className="flex items-center justify-between border-b pb-3 last:border-0">
-                    <div className="flex items-start gap-3">
-                      <div className="bg-orange-500/10 p-2 rounded-lg">
-                        <TrendingUp className="h-4 w-4 text-orange-500" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{project.title}</p>
-                        <p className="text-sm text-muted-foreground">{project.team}</p>
-                      </div>
-                    </div>
-                    <span className="text-xs bg-orange-500/10 text-orange-500 px-2 py-1 rounded-full">
-                      {project.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Substitute Assignments Card */}
-          {substituteAssignments.length > 0 && (
-            <Card className="border-orange-200 dark:border-orange-800">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-orange-600" />
-                  My Substitute Assignments
-                </CardTitle>
-                <CardDescription>Classes you're covering for other officers</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {substituteAssignments.slice(0, 5).map((assignment, idx) => (
-                    <div key={idx} className="p-3 bg-orange-50 dark:bg-orange-950 rounded-lg border border-orange-200 dark:border-orange-800">
-                      <div className="flex justify-between items-start">
-                        <div className="space-y-1">
-                          <p className="font-semibold text-sm">{assignment.slot?.subject}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Covering for: {assignment.original_officer_name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(assignment.date), 'MMM dd, yyyy')} • {assignment.slot?.start_time}-{assignment.slot?.end_time}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {assignment.slot?.class} • {assignment.slot?.room}
-                          </p>
+              {pendingProjects.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <TrendingUp className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p className="text-sm">No projects pending review</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {pendingProjects.map((project) => (
+                    <div key={project.id} className="flex items-center justify-between border-b pb-3 last:border-0">
+                      <div className="flex items-start gap-3">
+                        <div className="bg-orange-500/10 p-2 rounded-lg">
+                          <TrendingUp className="h-4 w-4 text-orange-500" />
                         </div>
-                        <div className="text-right">
-                          <Badge className="bg-orange-100 text-orange-800">
-                            Substitute
-                          </Badge>
-                          <p className="text-xs text-muted-foreground mt-1">{assignment.hours}h</p>
+                        <div>
+                          <p className="font-medium">{project.title}</p>
+                          <p className="text-sm text-muted-foreground">{project.team}</p>
                         </div>
                       </div>
+                      <span className="text-xs bg-orange-500/10 text-orange-500 px-2 py-1 rounded-full">
+                        {getStatusLabel(project.status)}
+                      </span>
                     </div>
                   ))}
-                  {substituteAssignments.length > 5 && (
-                    <Button variant="outline" size="sm" className="w-full" asChild>
-                      <Link to={`/tenant/${tenantId}/officer/sessions`}>
-                        View All {substituteAssignments.length} Assignments
-                      </Link>
-                    </Button>
-                  )}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Leave Balance - Full Width */}
-        {leaveBalance && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Leave Balance ({currentYear})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Leave Balance ({currentYear})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoadingLeave ? (
+              <div className="text-center py-4 text-muted-foreground">Loading leave balance...</div>
+            ) : leaveBalance ? (
               <div className="grid grid-cols-3 gap-4">
                 <div className="flex flex-col items-center p-4 bg-muted/50 rounded-lg">
                   <span className="text-sm text-muted-foreground mb-2">Casual Leave</span>
@@ -570,9 +374,13 @@ export default function OfficerDashboard() {
                   </Badge>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <div className="text-center py-4 text-muted-foreground">
+                <p className="text-sm">No leave balance data available</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* My Salary Tracker - Real Data */}
         <SalaryProgressCard

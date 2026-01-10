@@ -159,12 +159,12 @@ export function useOfficerDashboardStats(officerId: string | undefined, institut
         .eq('institution_id', institutionId)
         .eq('teacher_id', officerId);
 
-      // Get active projects count
+      // Get active projects count (use multiple possible status values)
       const { count: projectsCount } = await supabase
         .from('projects')
         .select('*', { count: 'exact', head: true })
         .eq('institution_id', institutionId)
-        .eq('status', 'in_progress');
+        .in('status', ['in_progress', 'ongoing', 'submitted']);
 
       // Get lab equipment count
       const { count: equipmentCount } = await supabase
