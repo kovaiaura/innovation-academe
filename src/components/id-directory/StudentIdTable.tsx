@@ -20,7 +20,7 @@ interface StudentWithDetails {
   id: string;
   roll_number: string | null;
   admission_number: string | null;
-  full_name: string;
+  student_name: string;
   class_name: string | null;
   section: string | null;
   institution_name: string | null;
@@ -30,7 +30,7 @@ interface StudentWithDetails {
 
 export function StudentIdTable() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortField, setSortField] = useState<'roll_number' | 'full_name' | 'created_at'>('roll_number');
+  const [sortField, setSortField] = useState<'roll_number' | 'student_name' | 'created_at'>('roll_number');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const { data: students = [], isLoading } = useQuery({
@@ -42,7 +42,7 @@ export function StudentIdTable() {
           id,
           roll_number,
           admission_number,
-          full_name,
+          student_name,
           status,
           created_at,
           classes:class_id (
@@ -61,7 +61,7 @@ export function StudentIdTable() {
         id: s.id,
         roll_number: s.roll_number,
         admission_number: s.admission_number,
-        full_name: s.full_name,
+        student_name: s.student_name,
         class_name: s.classes?.class_name || null,
         section: s.classes?.section || null,
         institution_name: s.institutions?.name || null,
@@ -75,7 +75,7 @@ export function StudentIdTable() {
     let result = students.filter(student => 
       student.roll_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       student.admission_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.student_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       student.institution_name?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -92,7 +92,7 @@ export function StudentIdTable() {
     return result;
   }, [students, searchQuery, sortField, sortOrder]);
 
-  const handleSort = (field: 'roll_number' | 'full_name' | 'created_at') => {
+  const handleSort = (field: 'roll_number' | 'student_name' | 'created_at') => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -106,7 +106,7 @@ export function StudentIdTable() {
     const rows = filteredAndSorted.map(s => [
       s.roll_number || 'N/A',
       s.admission_number || 'N/A',
-      s.full_name,
+      s.student_name,
       s.class_name ? `${s.class_name}${s.section ? `-${s.section}` : ''}` : 'N/A',
       s.institution_name || 'N/A'
     ]);
@@ -172,7 +172,7 @@ export function StudentIdTable() {
                 <Button 
                   variant="ghost" 
                   className="h-auto p-0 hover:bg-transparent"
-                  onClick={() => handleSort('full_name')}
+                  onClick={() => handleSort('student_name')}
                 >
                   Name
                   <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -198,7 +198,7 @@ export function StudentIdTable() {
                   <TableCell className="font-mono">
                     {student.admission_number || 'N/A'}
                   </TableCell>
-                  <TableCell>{student.full_name}</TableCell>
+                  <TableCell>{student.student_name}</TableCell>
                   <TableCell>
                     {student.class_name 
                       ? `${student.class_name}${student.section ? `-${student.section}` : ''}`
