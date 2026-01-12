@@ -179,8 +179,14 @@ DROP TABLE IF EXISTS public.company_profiles CASCADE;
 -- Positions
 DROP TABLE IF EXISTS public.positions CASCADE;
 
+-- Drop sequences
+DROP SEQUENCE IF EXISTS public.inventory_items_sl_no_seq CASCADE;
+
+-- Drop enum types (optional - uncomment if needed)
+-- DROP TYPE IF EXISTS public.app_role CASCADE;
+
 -- Re-enable triggers
 SET session_replication_role = 'origin';
 
 -- Confirm completion
-DO $$ BEGIN RAISE NOTICE 'All tables dropped successfully!'; END $$;
+DO $$ BEGIN RAISE NOTICE 'All tables and sequences dropped successfully!'; END $$;
