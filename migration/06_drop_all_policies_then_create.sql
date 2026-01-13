@@ -166,7 +166,7 @@ USING (
     SELECT 1 FROM public.performance_appraisals pa
     JOIN public.officers o ON pa.trainer_id = o.id
     WHERE pa.id = appraisal_projects.appraisal_id
-    AND o.institution_id = public.get_user_institution_id(auth.uid())
+    AND pa.institution_id = public.get_user_institution_id(auth.uid())
   )
 );
 
