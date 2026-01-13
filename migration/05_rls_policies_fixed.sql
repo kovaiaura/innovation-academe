@@ -149,7 +149,7 @@ USING (
   public.has_role(auth.uid(), 'management'::public.app_role) AND
   EXISTS (
     SELECT 1 FROM public.performance_appraisals pa
-    JOIN public.officers o ON pa.officer_id = o.id
+    JOIN public.officers o ON pa.trainer_id = o.id
     WHERE pa.id = appraisal_projects.appraisal_id
     AND o.institution_id = public.get_user_institution_id(auth.uid())
   )
@@ -163,7 +163,7 @@ USING (
   public.has_role(auth.uid(), 'officer'::public.app_role) AND
   EXISTS (
     SELECT 1 FROM public.performance_appraisals pa
-    JOIN public.officers o ON pa.officer_id = o.id
+    JOIN public.officers o ON pa.trainer_id = o.id
     WHERE pa.id = appraisal_projects.appraisal_id
     AND o.user_id = auth.uid()
   )
@@ -177,7 +177,7 @@ USING (
   public.has_role(auth.uid(), 'officer'::public.app_role) AND
   EXISTS (
     SELECT 1 FROM public.performance_appraisals pa
-    JOIN public.officers o ON pa.officer_id = o.id
+    JOIN public.officers o ON pa.trainer_id = o.id
     WHERE pa.id = appraisal_projects.appraisal_id
     AND o.user_id = auth.uid()
   )
@@ -186,7 +186,7 @@ WITH CHECK (
   public.has_role(auth.uid(), 'officer'::public.app_role) AND
   EXISTS (
     SELECT 1 FROM public.performance_appraisals pa
-    JOIN public.officers o ON pa.officer_id = o.id
+    JOIN public.officers o ON pa.trainer_id = o.id
     WHERE pa.id = appraisal_projects.appraisal_id
     AND o.user_id = auth.uid()
   )
@@ -2540,7 +2540,7 @@ ON public.performance_appraisals
 FOR SELECT
 TO authenticated
 USING (
-  officer_id IN (SELECT id FROM public.officers WHERE user_id = auth.uid())
+  trainer_id IN (SELECT id FROM public.officers WHERE user_id = auth.uid())
 );
 
 CREATE POLICY "Officers can manage their own performance_appraisals"
@@ -2548,10 +2548,10 @@ ON public.performance_appraisals
 FOR ALL
 TO authenticated
 USING (
-  officer_id IN (SELECT id FROM public.officers WHERE user_id = auth.uid())
+  trainer_id IN (SELECT id FROM public.officers WHERE user_id = auth.uid())
 )
 WITH CHECK (
-  officer_id IN (SELECT id FROM public.officers WHERE user_id = auth.uid())
+  trainer_id IN (SELECT id FROM public.officers WHERE user_id = auth.uid())
 );
 
 CREATE POLICY "Super admin full access to performance_appraisals"
