@@ -109,13 +109,16 @@ Deno.serve(async (req) => {
         console.error('[CreateAdmin] Profile update error:', profileUpdateError);
       }
     } else {
-      // Create new user
+      // Create new user with institution_id in metadata
+      // This allows the handle_new_user trigger to set it atomically
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email: admin_email,
         password: admin_password,
         email_confirm: true,
         user_metadata: {
           name: admin_name,
+          institution_id: institution_id,
+          must_change_password: true,
         },
       });
 
@@ -130,34 +133,35 @@ Deno.serve(async (req) => {
       adminUserId = newUser.user.id;
       console.log('[CreateAdmin] Created new user:', adminUserId);
 
-      // Update profile with institution_id (profile should be auto-created by trigger)
-      // Wait a moment for the trigger to complete
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait briefly for trigger to complete, then verify and force update if needed
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      const { error: profileUpdateError } = await supabaseAdmin
+      const { data: verifyProfile } = await supabaseAdmin
         .from('profiles')
-        .update({ 
-          institution_id,
-          name: admin_name,
-          must_change_password: true,
-        })
-        .eq('id', adminUserId);
+        .select('id, institution_id')
+        .eq('id', adminUserId)
+        .single();
 
-      if (profileUpdateError) {
-        console.error('[CreateAdmin] Profile update error:', profileUpdateError);
-        // Try to insert if update failed (profile might not exist yet)
-        const { error: insertError } = await supabaseAdmin
+      if (!verifyProfile?.institution_id) {
+        console.log('[CreateAdmin] Profile institution_id is null, forcing update...');
+        const { error: profileUpdateError } = await supabaseAdmin
           .from('profiles')
-          .insert({
+          .upsert({
             id: adminUserId,
             email: admin_email,
             name: admin_name,
-            institution_id,
+            institution_id: institution_id,
             must_change_password: true,
-          });
-        
-        if (insertError) {
-          console.error('[CreateAdmin] Profile insert error:', insertError);
+          }, { onConflict: 'id' });
+
+        if (profileUpdateError) {
+          console.error('[CreateAdmin] Profile upsert error:', profileUpdateError);
+          // Rollback - delete auth user if profile setup fails
+          await supabaseAdmin.auth.admin.deleteUser(adminUserId);
+          return new Response(
+            JSON.stringify({ error: 'Failed to assign institution to admin. Please try again.' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
       }
     }

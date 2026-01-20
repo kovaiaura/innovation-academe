@@ -105,13 +105,17 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create new user
+    // Create new user with institution_id and class_id in metadata
+    // This allows the handle_new_user trigger to set them atomically
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: email,
       password: password,
       email_confirm: true,
       user_metadata: {
         name: student_name,
+        institution_id: institution_id,
+        class_id: class_id || null,
+        must_change_password: true,
       },
     });
 
@@ -162,39 +166,42 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Verify profile was created correctly
-    if (profileSuccess) {
-      const { data: verifyProfile, error: verifyError } = await supabaseAdmin
+    // Verify profile was created correctly with institution_id
+    const { data: verifyProfile, error: verifyError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, institution_id, class_id, name')
+      .eq('id', studentUserId)
+      .single();
+
+    if (verifyError || !verifyProfile) {
+      console.error('[CreateStudentUser] Profile verification failed:', verifyError);
+    } else if (!verifyProfile.institution_id) {
+      // Profile exists but institution_id is null - force update
+      console.log('[CreateStudentUser] Profile exists but institution_id is null, forcing update...');
+      const { error: forceUpdateError } = await supabaseAdmin
         .from('profiles')
-        .select('id, institution_id, class_id, name')
-        .eq('id', studentUserId)
-        .single();
+        .update({
+          institution_id: institution_id,
+          class_id: class_id || null,
+          name: student_name,
+          must_change_password: true,
+        })
+        .eq('id', studentUserId);
 
-      if (verifyError || !verifyProfile) {
-        console.error('[CreateStudentUser] Profile verification failed:', verifyError);
-      } else if (!verifyProfile.institution_id) {
-        // Profile exists but institution_id is null - force update
-        console.log('[CreateStudentUser] Profile exists but institution_id is null, forcing update...');
-        const { error: forceUpdateError } = await supabaseAdmin
-          .from('profiles')
-          .update({
-            institution_id: institution_id,
-            class_id: class_id || null,
-            name: student_name,
-            must_change_password: true,
-          })
-          .eq('id', studentUserId);
-
-        if (forceUpdateError) {
-          console.error('[CreateStudentUser] Force update failed:', forceUpdateError);
-        } else {
-          console.log('[CreateStudentUser] Force update successful');
-        }
+      if (forceUpdateError) {
+        console.error('[CreateStudentUser] Force update failed:', forceUpdateError);
+        // Critical failure - rollback by deleting the auth user
+        console.error('[CreateStudentUser] Rolling back - deleting auth user');
+        await supabaseAdmin.auth.admin.deleteUser(studentUserId);
+        return new Response(
+          JSON.stringify({ error: 'Failed to assign institution to student. Please try again.' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       } else {
-        console.log('[CreateStudentUser] Profile verified with institution_id:', verifyProfile.institution_id);
+        console.log('[CreateStudentUser] Force update successful');
       }
     } else {
-      console.error('[CreateStudentUser] Failed to create/update profile after', maxRetries, 'attempts');
+      console.log('[CreateStudentUser] Profile verified with institution_id:', verifyProfile.institution_id);
     }
 
     // Assign student role
