@@ -12,13 +12,60 @@ interface PasswordResetRequest {
   appUrl: string;
 }
 
+interface EmailTemplateSettings {
+  from_name: string;
+  from_email: string;
+  company_name: string;
+  logo_url: string;
+  header_color_start: string;
+  header_color_end: string;
+  button_color_start: string;
+  button_color_end: string;
+  footer_text: string;
+}
+
+const defaultEmailSettings: EmailTemplateSettings = {
+  from_name: 'Meta Skills Academy',
+  from_email: 'noreply@edu.metasageacademy.com',
+  company_name: 'Meta Skills Academy',
+  logo_url: '',
+  header_color_start: '#6366f1',
+  header_color_end: '#8b5cf6',
+  button_color_start: '#6366f1',
+  button_color_end: '#8b5cf6',
+  footer_text: 'This is an automated message, please do not reply.',
+};
+
+// Fetch email template settings from database
+async function getEmailTemplateSettings(supabase: any): Promise<EmailTemplateSettings> {
+  try {
+    const { data, error } = await supabase
+      .from('system_configurations')
+      .select('value')
+      .eq('key', 'email_template_settings')
+      .single();
+
+    if (error || !data?.value) {
+      console.log('Using default email settings');
+      return defaultEmailSettings;
+    }
+
+    return { ...defaultEmailSettings, ...data.value };
+  } catch (error) {
+    console.error('Error fetching email settings:', error);
+    return defaultEmailSettings;
+  }
+}
+
 // Send email using Resend API directly
-async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+async function sendEmail(to: string, subject: string, html: string, settings: EmailTemplateSettings): Promise<void> {
   const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
   
   if (!RESEND_API_KEY) {
     throw new Error("RESEND_API_KEY is not configured");
   }
+
+  const fromAddress = `${settings.from_name} <${settings.from_email}>`;
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -27,7 +74,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "Meta Skills Academy <noreply@edu.metasageacademy.com>",
+      from: fromAddress,
       to: [to],
       subject: subject,
       html: html,
@@ -111,7 +158,15 @@ const handler = async (req: Request): Promise<Response> => {
     const resetUrl = `${appUrl}/reset-password?token=${token}`;
     const displayName = userName || userData.name || email.split('@')[0];
 
-    // Send email via Resend
+    // Fetch email template settings
+    const emailSettings = await getEmailTemplateSettings(supabase);
+
+    // Build logo HTML if provided
+    const logoHtml = emailSettings.logo_url 
+      ? `<img src="${emailSettings.logo_url}" alt="${emailSettings.company_name}" style="height: 40px; margin-bottom: 8px;">`
+      : '';
+
+    // Send email via Resend with dynamic template
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -124,9 +179,10 @@ const handler = async (req: Request): Promise<Response> => {
         <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
           <div style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
             <!-- Header -->
-            <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 32px; text-align: center;">
+            <div style="background: linear-gradient(135deg, ${emailSettings.header_color_start} 0%, ${emailSettings.header_color_end} 100%); padding: 32px; text-align: center;">
+              ${logoHtml}
               <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">
-                Meta Skills Academy
+                ${emailSettings.company_name}
               </h1>
             </div>
             
@@ -145,7 +201,7 @@ const handler = async (req: Request): Promise<Response> => {
               </p>
               
               <div style="text-align: center; margin: 32px 0;">
-                <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
+                <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, ${emailSettings.button_color_start} 0%, ${emailSettings.button_color_end} 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px ${emailSettings.button_color_start}66;">
                   Reset Password
                 </a>
               </div>
@@ -157,7 +213,7 @@ const handler = async (req: Request): Promise<Response> => {
               <div style="background-color: #fafafa; border-radius: 8px; padding: 16px; margin-top: 24px;">
                 <p style="margin: 0; color: #71717a; font-size: 12px; line-height: 1.5;">
                   If the button doesn't work, copy and paste this link into your browser:<br>
-                  <a href="${resetUrl}" style="color: #6366f1; word-break: break-all;">${resetUrl}</a>
+                  <a href="${resetUrl}" style="color: ${emailSettings.header_color_start}; word-break: break-all;">${resetUrl}</a>
                 </p>
               </div>
             </div>
@@ -165,10 +221,10 @@ const handler = async (req: Request): Promise<Response> => {
             <!-- Footer -->
             <div style="background-color: #fafafa; padding: 24px 32px; text-align: center; border-top: 1px solid #e4e4e7;">
               <p style="margin: 0; color: #a1a1aa; font-size: 12px;">
-                © ${new Date().getFullYear()} Meta Skills Academy. All rights reserved.
+                © ${new Date().getFullYear()} ${emailSettings.company_name}. All rights reserved.
               </p>
               <p style="margin: 8px 0 0 0; color: #a1a1aa; font-size: 12px;">
-                This is an automated message, please do not reply.
+                ${emailSettings.footer_text}
               </p>
             </div>
           </div>
@@ -177,7 +233,7 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    await sendEmail(email, "Reset Your Password - Meta Skills Academy", emailHtml);
+    await sendEmail(email, `Reset Your Password - ${emailSettings.company_name}`, emailHtml, emailSettings);
 
     console.log("Password reset email sent successfully to:", email);
 
