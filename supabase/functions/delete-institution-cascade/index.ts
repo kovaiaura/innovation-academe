@@ -310,7 +310,36 @@ Deno.serve(async (req) => {
       .eq('institution_id', institutionId);
     if (!newsError) deletionLog.push('news_and_feeds');
 
-    // 27. Delete surveys
+    // 27a. Delete survey_response_answers (child records first)
+    const { data: surveyResponses } = await adminClient
+      .from('survey_responses')
+      .select('id')
+      .eq('institution_id', institutionId);
+    const surveyResponseIds = (surveyResponses || []).map(r => r.id);
+
+    if (surveyResponseIds.length > 0) {
+      const { error: surveyAnswersError } = await adminClient
+        .from('survey_response_answers')
+        .delete()
+        .in('response_id', surveyResponseIds);
+      if (!surveyAnswersError) deletionLog.push('survey_response_answers');
+    }
+
+    // 27b. Delete survey_responses
+    const { error: surveyResponsesError } = await adminClient
+      .from('survey_responses')
+      .delete()
+      .eq('institution_id', institutionId);
+    if (!surveyResponsesError) deletionLog.push('survey_responses');
+
+    // 27c. Delete purchase_requests for this institution
+    const { error: purchaseError } = await adminClient
+      .from('purchase_requests')
+      .delete()
+      .eq('institution_id', institutionId);
+    if (!purchaseError) deletionLog.push('purchase_requests');
+
+    // 27d. Delete surveys
     const { error: surveysError } = await adminClient
       .from('surveys')
       .delete()
