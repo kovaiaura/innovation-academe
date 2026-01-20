@@ -66,10 +66,10 @@ Deno.serve(async (req) => {
 
     console.log('[DeleteInstitution] Starting cascade delete for institution:', institutionId);
 
-    // Verify institution exists
+    // Verify institution exists and get admin_user_id
     const { data: institution, error: instError } = await adminClient
       .from('institutions')
-      .select('id, name')
+      .select('id, name, admin_user_id')
       .eq('id', institutionId)
       .single();
 
@@ -241,6 +241,25 @@ Deno.serve(async (req) => {
       .delete()
       .eq('institution_id', institutionId);
     if (!studentsError) deletionLog.push('students');
+
+    // 17b. Delete student auth users
+    if (studentUserIds.length > 0) {
+      console.log('[DeleteInstitution] Deleting', studentUserIds.length, 'student auth users');
+      let deletedAuthUsers = 0;
+      for (const userId of studentUserIds) {
+        try {
+          const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(userId);
+          if (!deleteAuthError) {
+            deletedAuthUsers++;
+          } else {
+            console.error('[DeleteInstitution] Failed to delete auth user:', userId, deleteAuthError);
+          }
+        } catch (e) {
+          console.error('[DeleteInstitution] Error deleting auth user:', userId, e);
+        }
+      }
+      deletionLog.push(`student_auth_users_deleted: ${deletedAuthUsers}`);
+    }
 
     // 18. Delete classes
     const { error: classesError } = await adminClient
@@ -433,12 +452,30 @@ Deno.serve(async (req) => {
     }
     if (officers && officers.length > 0) deletionLog.push(`officers_unassigned: ${officers.length}`);
 
-    // 33. Update profiles - set institution_id and class_id to NULL
+    // 33. Delete profiles for this institution (instead of nullifying)
     const { error: profilesError } = await adminClient
       .from('profiles')
-      .update({ institution_id: null, class_id: null })
+      .delete()
       .eq('institution_id', institutionId);
-    if (!profilesError) deletionLog.push('profiles_updated');
+    if (!profilesError) deletionLog.push('profiles_deleted');
+
+    // 33b. Delete institution admin auth user
+    if (institution.admin_user_id) {
+      console.log('[DeleteInstitution] Deleting institution admin auth user:', institution.admin_user_id);
+      try {
+        // First delete the admin's profile
+        await adminClient.from('profiles').delete().eq('id', institution.admin_user_id);
+        // Then delete the auth user
+        const { error: adminDeleteError } = await adminClient.auth.admin.deleteUser(institution.admin_user_id);
+        if (!adminDeleteError) {
+          deletionLog.push('institution_admin_auth_user_deleted');
+        } else {
+          console.error('[DeleteInstitution] Failed to delete admin auth user:', adminDeleteError);
+        }
+      } catch (e) {
+        console.error('[DeleteInstitution] Error deleting admin:', e);
+      }
+    }
 
     // 34. Finally delete the institution
     const { error: instDeleteError } = await adminClient
