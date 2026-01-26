@@ -50,7 +50,7 @@ const InstitutionProfileTab = () => {
 
           <div className="space-y-2">
             <Label htmlFor="academic-year">Academic Year</Label>
-            <Input id="academic-year" defaultValue="2024-2025" />
+            <Input id="academic-year" defaultValue="2025-2026" />
           </div>
 
           <div className="space-y-2">

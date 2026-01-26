@@ -111,7 +111,7 @@ export function useInstitutionPeriods(institutionId?: string) {
   };
 }
 
-export function useInstitutionTimetable(institutionId?: string, academicYear: string = '2024-25') {
+export function useInstitutionTimetable(institutionId?: string, academicYear: string = '2025-26') {
   const queryClient = useQueryClient();
 
   const { data: assignments = [], isLoading, error, refetch } = useQuery({

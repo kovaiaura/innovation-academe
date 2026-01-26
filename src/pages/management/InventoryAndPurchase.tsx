@@ -153,7 +153,7 @@ export default function InventoryAndPurchase() {
           establishedYear={(institutionData?.settings as any)?.established_year || new Date().getFullYear().toString()}
           location={`${(institutionData?.address as any)?.city || ''}, ${(institutionData?.address as any)?.state || ''}`}
           totalStudents={studentCount}
-          academicYear="2024-25"
+          academicYear="2025-26"
         />
         
         <Tabs defaultValue="inventory" className="w-full">

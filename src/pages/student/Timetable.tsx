@@ -13,7 +13,7 @@ export default function Timetable() {
   const { assignments, periods, periodMap, isLoading, error } = useClassTimetable(
     user?.institution_id,
     user?.class_id,
-    '2024-25'
+    '2025-26'
   );
 
   // Group assignments by day and sort by period display_order

@@ -5,7 +5,7 @@ import { PeriodConfig, TimetableAssignment } from './useTimetable';
 export function useClassTimetable(
   institutionId?: string,
   classId?: string,
-  academicYear: string = '2024-25'
+  academicYear: string = '2025-26'
 ) {
   const { data: periods = [], isLoading: isLoadingPeriods } = useQuery({
     queryKey: ['class-timetable-periods', institutionId],
