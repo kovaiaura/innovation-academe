@@ -18,7 +18,7 @@ export const InstitutionHeader = ({
   establishedYear = "1995",
   location = "Delhi, India",
   totalStudents = 0,
-  academicYear = "2024-25 (Semester 2)",
+  academicYear = "2025-26 (Semester 2)",
   userRole = "Management Portal",
   assignedOfficers
 }: InstitutionHeaderProps) => {

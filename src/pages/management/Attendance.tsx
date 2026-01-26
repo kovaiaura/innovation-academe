@@ -136,7 +136,7 @@ const Attendance = () => {
           establishedYear={institution.established_year}
           location={institution.location}
           totalStudents={studentCount}
-          academicYear="2024-25"
+          academicYear="2025-26"
           userRole="Management Portal"
           assignedOfficers={[]}
         />

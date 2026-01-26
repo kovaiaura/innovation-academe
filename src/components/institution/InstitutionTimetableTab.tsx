@@ -199,7 +199,7 @@ export const InstitutionTimetableTab = ({
     const assignment: InstitutionTimetableAssignment = {
       id: existingIndex >= 0 ? timetableData[existingIndex].id : crypto.randomUUID(),
       institution_id: institutionId,
-      academic_year: '2024-25',
+      academic_year: '2025-26',
       day: selectedCell.day,
       period_id: selectedCell.periodId,
       class_id: selectedClass,

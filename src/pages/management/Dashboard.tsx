@@ -169,7 +169,7 @@ const Dashboard = () => {
             establishedYear={institution.settings?.established_year}
             location={institution.address?.city || institution.address?.location}
             totalStudents={stats.totalStudents}
-            academicYear={institution.settings?.academic_year || "2024-25"}
+            academicYear={institution.settings?.academic_year || "2025-26"}
             userRole="Management Portal"
             assignedOfficers={assignedOfficers}
           />

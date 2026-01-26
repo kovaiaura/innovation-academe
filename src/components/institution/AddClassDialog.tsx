@@ -17,7 +17,7 @@ export function AddClassDialog({ open, onOpenChange, onSave, existingClass, inst
   const [formData, setFormData] = useState<Partial<InstitutionClass>>({
     class_name: '',
     display_order: 1,
-    academic_year: '2024-2025',
+    academic_year: '2025-2026',
     capacity: 40,
     room_number: '',
     status: 'active'
@@ -37,7 +37,7 @@ export function AddClassDialog({ open, onOpenChange, onSave, existingClass, inst
       setFormData({
         class_name: '',
         display_order: 1,
-        academic_year: '2024-2025',
+        academic_year: '2025-2026',
         capacity: 40,
         room_number: '',
         status: 'active'
