@@ -1,82 +1,81 @@
 
-## Plan: Update Academic Year from 2024-25 to 2025-26
+## Plan: Fix "Unknown" Team Members Display on Student Projects Page
 
-### Overview
-Update all hardcoded academic year values from "2024-25" (or "2024-2025") to "2025-26" (or "2025-2026") across the management dashboard header, fallback values, hooks, and related components.
+### Problem Identified
+When a student views their projects on the "My Innovation Projects" page, other team members' names display as "Unknown" instead of their actual names.
 
----
+### Root Cause
+The RLS (Row Level Security) policy on the `students` table is too restrictive for this use case:
 
-### Files to Update
+**Current Policy**: `Students can view own profile` allows only `(user_id = auth.uid())`
 
-#### 1. Management Header Component
-**File:** `src/components/management/InstitutionHeader.tsx`
-- **Line 21:** Change default prop from `"2024-25 (Semester 2)"` to `"2025-26 (Semester 2)"`
+This means a student can only see their **own** student record, but when the query tries to fetch other project team members' names via the nested join:
+```sql
+student:students(id, student_name, class_id)
+```
+The RLS policy blocks access to other students' records, returning `null` for their data.
 
----
-
-#### 2. Management Dashboard Pages (Fallback Values)
-
-| File | Line | Current | Updated |
-|------|------|---------|---------|
-| `src/pages/management/Dashboard.tsx` | 172 | `"2024-25"` | `"2025-26"` |
-| `src/pages/management/Officers.tsx` | 117 | `'2024-25'` | `'2025-26'` |
-| `src/pages/management/Students.tsx` | 204 | `'2024-25'` | `'2025-26'` |
-| `src/pages/management/Attendance.tsx` | 139 | `"2024-25"` | `"2025-26"` |
-| `src/pages/management/InventoryAndPurchase.tsx` | 156 | `"2024-25"` | `"2025-26"` |
+### Solution
+Add a new RLS policy that allows students to view **limited information** (only `id` and `student_name`) of other students who are members of the same project.
 
 ---
 
-#### 3. Settings Page
-**File:** `src/pages/management/Settings.tsx`
-- **Line 53:** Change `defaultValue="2024-2025"` to `defaultValue="2025-2026"`
+### Technical Implementation
+
+#### 1. Create a Helper Function (SECURITY DEFINER)
+A helper function to check if two students share a project membership:
+
+```sql
+CREATE OR REPLACE FUNCTION public.students_share_project(viewer_user_id uuid, target_student_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM project_members pm1
+    JOIN project_members pm2 ON pm1.project_id = pm2.project_id
+    JOIN students s ON s.id = pm1.student_id
+    WHERE s.user_id = viewer_user_id
+    AND pm2.student_id = target_student_id
+  )
+$$;
+```
+
+#### 2. Add New RLS Policy on `students` Table
+
+```sql
+CREATE POLICY "Students can view project teammates"
+ON public.students
+FOR SELECT
+TO authenticated
+USING (
+  has_role(auth.uid(), 'student'::app_role) 
+  AND students_share_project(auth.uid(), id)
+);
+```
+
+This policy allows a student to SELECT from the `students` table if the target student is a teammate on any shared project.
 
 ---
 
-#### 4. Add Class Dialog
-**File:** `src/components/institution/AddClassDialog.tsx`
-- **Line 20:** Change `academic_year: '2024-2025'` to `academic_year: '2025-2026'`
-- **Line 40:** Change `academic_year: '2024-2025'` to `academic_year: '2025-2026'`
+### What This Fixes
+- When AADHETH K views the "AI based rover" project, they can now see the names of all team members (not just their own name)
+- The `student:students(id, student_name, class_id)` nested select will return actual data instead of `null`
+- "Unknown" will be replaced with actual student names like "AADHETH K", "Student B", etc.
 
 ---
 
-#### 5. Timetable Hooks (Default Parameters)
+### Summary of Database Changes
 
-| File | Line | Current | Updated |
-|------|------|---------|---------|
-| `src/hooks/useClassTimetable.ts` | 8 | `academicYear: string = '2024-25'` | `academicYear: string = '2025-26'` |
-| `src/hooks/useTimetable.ts` | 114 | `academicYear: string = '2024-25'` | `academicYear: string = '2025-26'` |
-
----
-
-#### 6. Student Timetable Page
-**File:** `src/pages/student/Timetable.tsx`
-- **Line 16:** Change `'2024-25'` to `'2025-26'`
+| Change Type | Object | Description |
+|-------------|--------|-------------|
+| Create Function | `students_share_project` | Helper function to check if two students share a project |
+| Create Policy | `Students can view project teammates` | RLS policy allowing students to see teammate names |
 
 ---
 
-#### 7. Institution Timetable Tab
-**File:** `src/components/institution/InstitutionTimetableTab.tsx`
-- **Line 202:** Change `academic_year: '2024-25'` to `academic_year: '2025-26'`
-
----
-
-### Summary of All Changes
-
-| Category | Files | Changes |
-|----------|-------|---------|
-| Header Component | 1 | Default prop value |
-| Management Pages | 5 | Fallback strings |
-| Settings | 1 | Default input value |
-| Add Class Dialog | 1 | 2 state initializations |
-| Timetable Hooks | 2 | Default parameters |
-| Student Page | 1 | Hook call parameter |
-| Timetable Component | 1 | Assignment creation |
-
-**Total:** 12 files with 14 value changes
-
----
-
-### Notes
-- Database migration files are not being updated as they are historical records
-- Documentation files will not be updated (only code changes)
-- Existing data in the database with "2024-25" will remain unchanged (only affects new entries and UI defaults)
+### Files Affected
+No code changes needed - the existing query in `src/pages/student/Projects.tsx` will automatically work once the RLS policy is added.
