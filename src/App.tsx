@@ -143,6 +143,7 @@ import OfficerAssignments from "./pages/officer/Assignments";
 import ManagementAssignments from "./pages/management/Assignments";
 import ReportsManagement from "./pages/system-admin/ReportsManagement";
 import NewsletterManagement from "./pages/system-admin/NewsletterManagement";
+import PlatformGuide from "./pages/system-admin/PlatformGuide";
 import Newsletters from "./pages/shared/Newsletters";
 
 // HR Management imports
@@ -464,6 +465,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']}>
                   <SystemAdminPositionManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/platform-guide"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <PlatformGuide />
                 </ProtectedRoute>
               }
             />
