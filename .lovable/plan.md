@@ -1,191 +1,174 @@
 
-# Plan: Fix Course Assignment Counts and SDG Tracking
+# Plan: Fix Student SDG Contribution Page Data Loading
 
-## Problem Summary
+## Problem Analysis
 
-When courses are assigned to institution classes, the counts and SDG metrics are not reflected correctly across dashboards because:
+The Student SDG Contribution page shows 0 for all metrics because the queries are using incorrect IDs:
 
-1. **Class Detail Page** uses mock data (`getCourseAssignmentsByClass`) instead of querying the database
-2. **Institution Stats** queries `course_institution_assignments` instead of `course_class_assignments`
-3. **SDG Dashboard** (Management) only tracks SDGs from projects, ignoring course SDGs
-4. Same course assigned to multiple classes should be counted as **1 unique course** (not per-class-assignment)
-
----
-
-## Solution Overview
-
-### Database Query Logic Change
-
-**Current Logic (Incorrect)**:
-- `course_institution_assignments` table → counts courses "available" to institution
-- Mock data for class-level course display
-
-**New Logic (Correct)**:
-- `course_class_assignments` table → counts **unique** courses actually assigned to classes
-- Database-backed queries replacing mock data
-
----
-
-## Files to Modify
-
-### 1. `src/hooks/useInstitutionStats.ts`
-
-**Current** (Line 151-152):
+### Current Bug in SDGContribution.tsx (Lines 25-28):
 ```typescript
-supabase.from('course_institution_assignments')
-  .select('*', { count: 'exact', head: true })
-  .eq('institution_id', institutionId)
+const { data: memberProjects } = await supabase
+  .from('project_members')
+  .select('project_id')
+  .eq('student_id', user.id);  // WRONG: uses auth user ID
 ```
 
-**Updated**: Query `course_class_assignments` and count **distinct** `course_id` values:
+**The Issue**: `project_members.student_id` references `students.id` (the students table primary key), NOT the auth user ID (`user.id`). This query returns 0 results because no project_members record has `student_id` matching an auth user ID.
+
+### Correct Pattern (from Projects.tsx Lines 29-55):
 ```typescript
-// Get unique course IDs assigned to any class in this institution
-supabase.from('course_class_assignments')
-  .select('course_id')
-  .eq('institution_id', institutionId)
+// Step 1: Get student record by user_id
+const { data: studentData } = await supabase
+  .from('students')
+  .select('id')
+  .eq('user_id', user.id)
+  .maybeSingle();
+
+// Step 2: Use students.id to query project_members
+const { data: memberData } = await supabase
+  .from('project_members')
+  .select('project_id')
+  .eq('student_id', studentData.id);  // CORRECT: uses students.id
 ```
-Then use `new Set(data.map(d => d.course_id)).size` for unique count.
 
 ---
 
-### 2. `src/pages/system-admin/ClassDetail.tsx`
+## Solution
 
-**Current** (Lines 12, 39-44):
+Modify `src/pages/student/SDGContribution.tsx` to:
+1. First fetch the student record using `user_id`
+2. Use the student's `id` (from students table) to query project_members
+3. Keep the course query as-is (it correctly uses `profile.class_id`)
+
+---
+
+## Technical Changes
+
+### File: `src/pages/student/SDGContribution.tsx`
+
+**Before** (Lines 23-39):
 ```typescript
-import { getCourseAssignmentsByClass } from '@/data/mockClassCourseAssignments';
-// ...
-useState(() => {
-  if (classId) {
-    setCourseAssignments(getCourseAssignmentsByClass(classId));
+try {
+  // Get projects where student is a member
+  const { data: memberProjects } = await supabase
+    .from('project_members')
+    .select('project_id')
+    .eq('student_id', user.id);  // BUG: Wrong ID
+
+  const projectIds = memberProjects?.map(m => m.project_id) || [];
+
+  let studentProjects: any[] = [];
+  if (projectIds.length > 0) {
+    const { data } = await supabase
+      .from('projects')
+      .select('id, title, sdg_goals, status, progress, category')
+      .in('id', projectIds);
+    studentProjects = data || [];
   }
-});
 ```
 
-**Updated**: Use the existing `useClassCourseAssignments` hook from database:
+**After**:
 ```typescript
-import { useClassCourseAssignments } from '@/hooks/useClassCourseAssignments';
-// ...
-const { data: dbCourseAssignments = [] } = useClassCourseAssignments(classId);
-```
+try {
+  // Step 1: Get student record from students table using auth user_id
+  const { data: studentRecord } = await supabase
+    .from('students')
+    .select('id')
+    .eq('user_id', user.id)
+    .maybeSingle();
 
-Pass `dbCourseAssignments.length` to `ClassOverviewTab`.
+  let studentProjects: any[] = [];
+  
+  if (studentRecord?.id) {
+    // Step 2: Get projects where student is a member using students.id
+    const { data: memberProjects } = await supabase
+      .from('project_members')
+      .select('project_id')
+      .eq('student_id', studentRecord.id);  // FIXED: Use students.id
 
----
+    const projectIds = memberProjects?.map(m => m.project_id) || [];
 
-### 3. `src/pages/super-admin/CEOAnalyticsDashboard.tsx`
-
-**Current** (Line 177):
-```typescript
-supabase.from('course_institution_assignments')
-  .select('id', { count: 'exact', head: true })
-  .eq('institution_id', inst.id)
-```
-
-**Updated**: Query unique courses from `course_class_assignments`:
-```typescript
-supabase.from('course_class_assignments')
-  .select('course_id')
-  .eq('institution_id', inst.id)
-```
-Then count unique `course_id` values.
-
----
-
-### 4. `src/pages/management/SDGDashboard.tsx`
-
-**Current**: Only loads SDG data from `projects` table.
-
-**Updated**: Add course SDG tracking:
-```typescript
-// Get SDGs from courses assigned to this institution's classes
-const { data: courseAssignments } = await supabase
-  .from('course_class_assignments')
-  .select('course_id, courses(id, title, sdg_goals)')
-  .eq('institution_id', user.tenant_id);
-
-// Extract unique course SDGs
-const uniqueCourseIds = new Set<string>();
-const courseSDGCounts: Record<number, number> = {};
-courseAssignments?.forEach(ca => {
-  if (!uniqueCourseIds.has(ca.course_id)) {
-    uniqueCourseIds.add(ca.course_id);
-    const goals = ca.courses?.sdg_goals as number[] | null;
-    goals?.forEach(g => {
-      courseSDGCounts[g] = (courseSDGCounts[g] || 0) + 1;
-    });
+    if (projectIds.length > 0) {
+      const { data } = await supabase
+        .from('projects')
+        .select('id, title, sdg_goals, status, progress, category')
+        .in('id', projectIds);
+      studentProjects = data || [];
+    }
   }
-});
 ```
-
-Update UI to show:
-- **Active SDGs**: Combined from both projects AND courses
-- **SDG Courses**: Count of unique courses with SDG mappings
-- Chart includes course SDG distribution
 
 ---
 
-### 5. `src/services/sdg.service.ts`
+## Data Flow Diagram
 
-Update `getInstitutionContributions()` to:
-- Query `course_class_assignments` instead of `course_institution_assignments`
-- Count unique `course_id` values per institution
-- Merge course SDGs with project SDGs for accurate contribution score
+```text
+Current (Broken):
+user.id (auth) ──────► project_members.student_id ──► No match!
+                                   │
+                                   │ (expects students.id)
+                                   ▼
+                             Returns empty []
+
+Fixed:
+user.id (auth) ──► students.user_id ──► students.id ──► project_members.student_id ──► Match!
+```
 
 ---
 
-## Key Counting Logic
+## Database Verification
 
-### Unique Course Count (Per Institution)
-```sql
-SELECT COUNT(DISTINCT course_id) 
-FROM course_class_assignments 
-WHERE institution_id = ?
+| Table | Column | Value Type |
+|-------|--------|------------|
+| `profiles` | `id` | auth user UUID |
+| `students` | `user_id` | auth user UUID (foreign key to profiles.id) |
+| `students` | `id` | students table primary key UUID |
+| `project_members` | `student_id` | references `students.id` (NOT auth user ID) |
+
+---
+
+## Why Courses Query Works (But Still May Show 0)
+
+The courses query correctly uses `profile.class_id`:
+```typescript
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('class_id')
+  .eq('id', user.id)
+  .single();
+
+// Then queries course_class_assignments using profile.class_id
 ```
 
-### Class-Level Course Count
-```sql
-SELECT COUNT(*) 
-FROM course_class_assignments 
-WHERE class_id = ?
-```
+This should work if:
+1. The student's profile has a `class_id` set
+2. There are course assignments for that class with `sdg_goals` populated
 
-### SDG Aggregation
-```sql
-SELECT DISTINCT c.sdg_goals
-FROM course_class_assignments cca
-JOIN courses c ON cca.course_id = c.id
-WHERE cca.institution_id = ?
-```
-Flatten arrays and count unique SDG numbers.
+The course query is correct but may return 0 if:
+- Student's profile doesn't have `class_id` set
+- No courses are assigned to that class
+- Assigned courses don't have SDG goals
 
 ---
 
 ## Summary of Changes
 
-| File | Change Description |
-|------|-------------------|
-| `src/hooks/useInstitutionStats.ts` | Query `course_class_assignments` for unique course count |
-| `src/pages/system-admin/ClassDetail.tsx` | Replace mock data with `useClassCourseAssignments` hook |
-| `src/pages/super-admin/CEOAnalyticsDashboard.tsx` | Query unique courses from `course_class_assignments` |
-| `src/pages/management/SDGDashboard.tsx` | Add course SDG tracking alongside projects |
-| `src/services/sdg.service.ts` | Update contribution calculation with class-assigned courses |
+| File | Change |
+|------|--------|
+| `src/pages/student/SDGContribution.tsx` | Add student record lookup by `user_id` before querying project_members |
 
 ---
 
-## Expected Results After Fix
+## Expected Result After Fix
 
-| Dashboard | Metric | Before | After |
-|-----------|--------|--------|-------|
-| Class Detail (CEO) | Active Courses | 0 (mock) | Actual count from DB |
-| Management Dashboard | Courses Assigned | 0 | Unique courses across all classes |
-| SDG Dashboard (Management) | Active SDGs | Projects only | Projects + Courses |
-| CEO Analytics | Total Courses | 0 | Unique courses per institution |
+| Metric | Before | After |
+|--------|--------|-------|
+| Active SDGs | 0 | SDGs from projects + courses |
+| My Projects | 0 | Count of projects student is member of |
+| My Courses | 0 | Count of courses assigned to student's class |
+| Coverage | 0% | Percentage of 17 SDGs covered |
 
----
-
-## Notes
-
-- Same course assigned to multiple classes = **counted once** at institution level
-- Each class still shows its own assignment count (can be same course)
-- SDGs are aggregated from both **projects** and **courses** for complete picture
-- Existing `useClassCourseAssignments` hook already fetches from database correctly
+The page will correctly display:
+- Projects the student is a member of (via project_members)
+- Courses assigned to the student's class (via course_class_assignments)
+- Combined SDG goals from both sources
