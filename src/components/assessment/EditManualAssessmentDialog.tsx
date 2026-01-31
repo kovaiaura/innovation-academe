@@ -123,8 +123,11 @@ export function EditManualAssessmentDialog({
       const startDate = new Date(assessment.start_time);
       setConductedAt(startDate.toISOString().slice(0, 10));
 
+      // Get class ID from assignment
+      const classId = assignmentData?.class_id || selectedClassId;
+
       // Load existing attempts with student names
-      const { data: attemptsData } = await supabase
+      const { data: attemptsData, error: attemptsError } = await supabase
         .from('assessment_attempts')
         .select(`
           id,
@@ -135,6 +138,8 @@ export function EditManualAssessmentDialog({
           status
         `)
         .eq('assessment_id', assessment.id);
+
+      console.log('Attempts loaded:', attemptsData, 'Error:', attemptsError);
 
       if (attemptsData && attemptsData.length > 0) {
         // Get student names from profiles
@@ -155,6 +160,26 @@ export function EditManualAssessmentDialog({
           notes: attempt.manual_notes || '',
           is_absent: attempt.status === 'absent'
         })));
+      } else if (classId) {
+        // No existing attempts - load students from class to allow entering scores
+        const { data: studentsData } = await supabase
+          .from('students')
+          .select('id, student_name, user_id')
+          .eq('class_id', classId)
+          .eq('status', 'active');
+
+        if (studentsData && studentsData.length > 0) {
+          // These students don't have attempts yet - we'll need to create them on save
+          setStudentAttempts(studentsData.map(student => ({
+            id: `new-${student.user_id || student.id}`, // Mark as new
+            student_id: student.user_id || student.id,
+            student_name: student.student_name,
+            score: 0,
+            passed: false,
+            notes: '',
+            is_absent: false
+          })));
+        }
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -269,24 +294,50 @@ export function EditManualAssessmentDialog({
         }
       }
 
-      // Update student attempts
+      // Update or create student attempts
       for (const attempt of studentAttempts) {
         const percentage = totalMarks > 0 ? (attempt.score / totalMarks) * 100 : 0;
 
-        const { error: attemptError } = await supabase
-          .from('assessment_attempts')
-          .update({
-            score: attempt.score,
-            total_points: totalMarks,
-            percentage,
-            passed: attempt.passed,
-            manual_notes: attempt.notes,
-            status: attempt.is_absent ? 'absent' : 'evaluated'
-          })
-          .eq('id', attempt.id);
+        if (attempt.id.startsWith('new-')) {
+          // Create new attempt for this student
+          const { error: insertError } = await supabase
+            .from('assessment_attempts')
+            .insert({
+              assessment_id: assessment.id,
+              student_id: attempt.student_id,
+              institution_id: selectedInstitutionId,
+              class_id: selectedClassId,
+              score: attempt.score,
+              total_points: totalMarks,
+              percentage,
+              passed: attempt.passed,
+              manual_notes: attempt.notes,
+              status: attempt.is_absent ? 'absent' : 'evaluated',
+              is_manual: true,
+              started_at: new Date().toISOString(),
+              submitted_at: new Date().toISOString()
+            });
 
-        if (attemptError) {
-          console.error(`Error updating attempt ${attempt.id}:`, attemptError);
+          if (insertError) {
+            console.error(`Error creating attempt for ${attempt.student_name}:`, insertError);
+          }
+        } else {
+          // Update existing attempt
+          const { error: attemptError } = await supabase
+            .from('assessment_attempts')
+            .update({
+              score: attempt.score,
+              total_points: totalMarks,
+              percentage,
+              passed: attempt.passed,
+              manual_notes: attempt.notes,
+              status: attempt.is_absent ? 'absent' : 'evaluated'
+            })
+            .eq('id', attempt.id);
+
+          if (attemptError) {
+            console.error(`Error updating attempt ${attempt.id}:`, attemptError);
+          }
         }
       }
 
