@@ -1,174 +1,84 @@
 
-# Plan: Fix Student SDG Contribution Page Data Loading
+# Plan: Fix Manual Assessment Statistics Not Appearing in Management Dashboard
 
 ## Problem Analysis
 
-The Student SDG Contribution page shows 0 for all metrics because the queries are using incorrect IDs:
+After editing manual assessments, the pass rate, attempt count, and average score show **0%** in the Management Dashboard Assessment list and Analytics page, but correctly display when clicking "View" on individual assessments.
 
-### Current Bug in SDGContribution.tsx (Lines 25-28):
+### Root Cause
+
+Manual assessment student attempts are saved with status `'evaluated'` or `'absent'`:
 ```typescript
-const { data: memberProjects } = await supabase
-  .from('project_members')
-  .select('project_id')
-  .eq('student_id', user.id);  // WRONG: uses auth user ID
+status: attempt.is_absent ? 'absent' : 'evaluated'
 ```
 
-**The Issue**: `project_members.student_id` references `students.id` (the students table primary key), NOT the auth user ID (`user.id`). This query returns 0 results because no project_members record has `student_id` matching an auth user ID.
-
-### Correct Pattern (from Projects.tsx Lines 29-55):
+However, the **Assessment List** and **Analytics** pages only filter for these statuses:
 ```typescript
-// Step 1: Get student record by user_id
-const { data: studentData } = await supabase
-  .from('students')
-  .select('id')
-  .eq('user_id', user.id)
-  .maybeSingle();
-
-// Step 2: Use students.id to query project_members
-const { data: memberData } = await supabase
-  .from('project_members')
-  .select('project_id')
-  .eq('student_id', studentData.id);  // CORRECT: uses students.id
+.in('status', ['completed', 'submitted', 'auto_submitted'])
 ```
+
+The **View Dialog** correctly includes `'evaluated'`:
+```typescript  
+.in('status', ['completed', 'submitted', 'auto_submitted', 'evaluated'])
+```
+
+This mismatch means manual assessment attempts are excluded from the dashboard statistics.
 
 ---
 
 ## Solution
 
-Modify `src/pages/student/SDGContribution.tsx` to:
-1. First fetch the student record using `user_id`
-2. Use the student's `id` (from students table) to query project_members
-3. Keep the course query as-is (it correctly uses `profile.class_id`)
+Add `'evaluated'` to the status filters in both the Assessment List and Analytics pages to include manual assessment attempts in statistics calculations.
 
 ---
 
-## Technical Changes
+## Files to Modify
 
-### File: `src/pages/student/SDGContribution.tsx`
+### 1. `src/pages/management/Assessments.tsx`
 
-**Before** (Lines 23-39):
+**Line 80-81 (Current):**
 ```typescript
-try {
-  // Get projects where student is a member
-  const { data: memberProjects } = await supabase
-    .from('project_members')
-    .select('project_id')
-    .eq('student_id', user.id);  // BUG: Wrong ID
-
-  const projectIds = memberProjects?.map(m => m.project_id) || [];
-
-  let studentProjects: any[] = [];
-  if (projectIds.length > 0) {
-    const { data } = await supabase
-      .from('projects')
-      .select('id, title, sdg_goals, status, progress, category')
-      .in('id', projectIds);
-    studentProjects = data || [];
-  }
+.in('status', ['completed', 'submitted', 'auto_submitted']);
 ```
 
-**After**:
+**Updated:**
 ```typescript
-try {
-  // Step 1: Get student record from students table using auth user_id
-  const { data: studentRecord } = await supabase
-    .from('students')
-    .select('id')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  let studentProjects: any[] = [];
-  
-  if (studentRecord?.id) {
-    // Step 2: Get projects where student is a member using students.id
-    const { data: memberProjects } = await supabase
-      .from('project_members')
-      .select('project_id')
-      .eq('student_id', studentRecord.id);  // FIXED: Use students.id
-
-    const projectIds = memberProjects?.map(m => m.project_id) || [];
-
-    if (projectIds.length > 0) {
-      const { data } = await supabase
-        .from('projects')
-        .select('id, title, sdg_goals, status, progress, category')
-        .in('id', projectIds);
-      studentProjects = data || [];
-    }
-  }
+.in('status', ['completed', 'submitted', 'auto_submitted', 'evaluated']);
 ```
 
 ---
 
-## Data Flow Diagram
+### 2. `src/pages/management/Analytics.tsx`
 
-```text
-Current (Broken):
-user.id (auth) ──────► project_members.student_id ──► No match!
-                                   │
-                                   │ (expects students.id)
-                                   ▼
-                             Returns empty []
-
-Fixed:
-user.id (auth) ──► students.user_id ──► students.id ──► project_members.student_id ──► Match!
-```
-
----
-
-## Database Verification
-
-| Table | Column | Value Type |
-|-------|--------|------------|
-| `profiles` | `id` | auth user UUID |
-| `students` | `user_id` | auth user UUID (foreign key to profiles.id) |
-| `students` | `id` | students table primary key UUID |
-| `project_members` | `student_id` | references `students.id` (NOT auth user ID) |
-
----
-
-## Why Courses Query Works (But Still May Show 0)
-
-The courses query correctly uses `profile.class_id`:
+**Line 88 (Current):**
 ```typescript
-const { data: profile } = await supabase
-  .from('profiles')
-  .select('class_id')
-  .eq('id', user.id)
-  .single();
-
-// Then queries course_class_assignments using profile.class_id
+.in('status', ['completed', 'submitted', 'auto_submitted']);
 ```
 
-This should work if:
-1. The student's profile has a `class_id` set
-2. There are course assignments for that class with `sdg_goals` populated
-
-The course query is correct but may return 0 if:
-- Student's profile doesn't have `class_id` set
-- No courses are assigned to that class
-- Assigned courses don't have SDG goals
+**Updated:**
+```typescript
+.in('status', ['completed', 'submitted', 'auto_submitted', 'evaluated']);
+```
 
 ---
 
-## Summary of Changes
+## Summary
 
-| File | Change |
-|------|--------|
-| `src/pages/student/SDGContribution.tsx` | Add student record lookup by `user_id` before querying project_members |
+| File | Line | Change |
+|------|------|--------|
+| `src/pages/management/Assessments.tsx` | 81 | Add `'evaluated'` to status filter |
+| `src/pages/management/Analytics.tsx` | 88 | Add `'evaluated'` to status filter |
 
 ---
 
-## Expected Result After Fix
+## Expected Results After Fix
 
-| Metric | Before | After |
-|--------|--------|-------|
-| Active SDGs | 0 | SDGs from projects + courses |
-| My Projects | 0 | Count of projects student is member of |
-| My Courses | 0 | Count of courses assigned to student's class |
-| Coverage | 0% | Percentage of 17 SDGs covered |
-
-The page will correctly display:
-- Projects the student is a member of (via project_members)
-- Courses assigned to the student's class (via course_class_assignments)
-- Combined SDG goals from both sources
+| Dashboard | Metric | Before | After |
+|-----------|--------|--------|-------|
+| Assessment List | Attempts | 0 | Count of manual + online attempts |
+| Assessment List | Pass Rate | 0% | Accurate pass rate including manual |
+| Assessment List | Avg Score | 0.0% | Accurate average including manual |
+| Analytics | Avg Pass Rate | 0.0% | Combined pass rate |
+| Analytics | Avg Score | 0.0% | Combined average score |
+| Analytics | Performance Trends | Empty | Includes manual assessment data |
+| Analytics | Score Distribution | Empty | Includes manual assessment grades |
