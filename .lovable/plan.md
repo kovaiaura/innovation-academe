@@ -1,84 +1,159 @@
 
-# Plan: Fix Manual Assessment Statistics Not Appearing in Management Dashboard
+# Plan: Fix New Students Not Appearing in Manual Assessment Edit
 
 ## Problem Analysis
 
-After editing manual assessments, the pass rate, attempt count, and average score show **0%** in the Management Dashboard Assessment list and Analytics page, but correctly display when clicking "View" on individual assessments.
+When a student is added to a class **after** a manual assessment has been created:
+- Opening the assessment's "Edit" dialog shows **only the original students** who had attempts recorded
+- The newly added student is **missing** from the edit view
+- This prevents entering scores for students who joined the class later
 
-### Root Cause
+### Technical Root Cause
 
-Manual assessment student attempts are saved with status `'evaluated'` or `'absent'`:
-```typescript
-status: attempt.is_absent ? 'absent' : 'evaluated'
+In `EditManualAssessmentDialog.tsx` (lines 144-183), the logic has a critical flaw:
+
+```text
+Current Logic:
+IF existing attempts exist (attemptsData.length > 0)
+  → Show ONLY students with existing attempts
+ELSE
+  → Load all students from class
 ```
 
-However, the **Assessment List** and **Analytics** pages only filter for these statuses:
-```typescript
-.in('status', ['completed', 'submitted', 'auto_submitted'])
-```
+The `ELSE` branch only executes when there are **zero** attempts. Once any attempt exists, new students are excluded.
 
-The **View Dialog** correctly includes `'evaluated'`:
-```typescript  
-.in('status', ['completed', 'submitted', 'auto_submitted', 'evaluated'])
-```
+### Required Logic
 
-This mismatch means manual assessment attempts are excluded from the dashboard statistics.
-
----
-
-## Solution
-
-Add `'evaluated'` to the status filters in both the Assessment List and Analytics pages to include manual assessment attempts in statistics calculations.
-
----
-
-## Files to Modify
-
-### 1. `src/pages/management/Assessments.tsx`
-
-**Line 80-81 (Current):**
-```typescript
-.in('status', ['completed', 'submitted', 'auto_submitted']);
-```
-
-**Updated:**
-```typescript
-.in('status', ['completed', 'submitted', 'auto_submitted', 'evaluated']);
+```text
+Corrected Logic:
+1. Load ALL current active students from the class
+2. Load existing attempts for this assessment
+3. MERGE: Students with attempts (show their scores) + Students without attempts (show as new)
 ```
 
 ---
 
-### 2. `src/pages/management/Analytics.tsx`
+## Solution Overview
 
-**Line 88 (Current):**
+Modify the data loading logic in `EditManualAssessmentDialog.tsx` to:
+1. Always fetch current students from the class
+2. Load existing assessment attempts
+3. Merge both lists, preserving existing scores while including new students
+
+---
+
+## Technical Implementation
+
+### File: `src/components/assessment/EditManualAssessmentDialog.tsx`
+
+**Lines 126-183** need to be refactored:
+
+#### Current Code Flow (Problematic)
 ```typescript
-.in('status', ['completed', 'submitted', 'auto_submitted']);
+// Line 126-183
+const classId = assignmentData?.class_id || selectedClassId;
+
+// Load existing attempts
+const { data: attemptsData } = await supabase
+  .from('assessment_attempts')
+  .select(...)
+  .eq('assessment_id', assessment.id);
+
+if (attemptsData && attemptsData.length > 0) {
+  // ONLY shows students with attempts - NEW STUDENTS EXCLUDED
+  setStudentAttempts(attemptsData.map(...));
+} else if (classId) {
+  // Only loads class students when NO attempts exist
+  const { data: studentsData } = await supabase.from('students')...
+  setStudentAttempts(studentsData.map(...));
+}
 ```
 
-**Updated:**
+#### Updated Code Flow (Fixed)
 ```typescript
-.in('status', ['completed', 'submitted', 'auto_submitted', 'evaluated']);
+// 1. Always load current students from class
+const { data: studentsData } = await supabase
+  .from('students')
+  .select('id, student_name, user_id')
+  .eq('class_id', classId)
+  .eq('status', 'active');
+
+// 2. Load existing attempts
+const { data: attemptsData } = await supabase
+  .from('assessment_attempts')
+  .select(...)
+  .eq('assessment_id', assessment.id);
+
+// 3. Create a map of existing attempts by student_id
+const attemptMap = new Map(
+  (attemptsData || []).map(a => [a.student_id, a])
+);
+
+// 4. Merge: All students with their attempts (or blank for new students)
+const mergedAttempts = (studentsData || []).map(student => {
+  const studentUserId = student.user_id || student.id;
+  const existingAttempt = attemptMap.get(studentUserId);
+  
+  if (existingAttempt) {
+    return {
+      id: existingAttempt.id,
+      student_id: studentUserId,
+      student_name: student.student_name,
+      score: existingAttempt.score,
+      passed: existingAttempt.passed,
+      notes: existingAttempt.manual_notes || '',
+      is_absent: existingAttempt.status === 'absent'
+    };
+  } else {
+    return {
+      id: `new-${studentUserId}`,
+      student_id: studentUserId,
+      student_name: student.student_name,
+      score: 0,
+      passed: false,
+      notes: '',
+      is_absent: false
+    };
+  }
+});
+
+setStudentAttempts(mergedAttempts);
 ```
 
 ---
 
-## Summary
+## Related Features Analysis
 
-| File | Line | Change |
-|------|------|--------|
-| `src/pages/management/Assessments.tsx` | 81 | Add `'evaluated'` to status filter |
-| `src/pages/management/Analytics.tsx` | 88 | Add `'evaluated'` to status filter |
+### Features That Already Work Correctly
+
+| Feature | Access Pattern | Dynamic for New Students? |
+|---------|---------------|---------------------------|
+| **Courses** | Assigned to class via `course_class_assignments` | Yes - uses `class_id` dynamically |
+| **Assignments** | Assigned to class via `assignment_class_assignments` | Yes - uses `class_id` dynamically |
+| **Assessments (Student Taking)** | Uses `assessment_class_assignments.class_id` | Yes - new students can take assessments |
+
+### Features Requiring Manual Assignment
+
+| Feature | Access Pattern | Notes |
+|---------|---------------|-------|
+| **Projects** | Explicit `project_members` table | By design - projects have specific team members |
+
+The core issue is isolated to the **Manual Assessment Edit** dialog only.
 
 ---
 
-## Expected Results After Fix
+## Summary of Changes
 
-| Dashboard | Metric | Before | After |
-|-----------|--------|--------|-------|
-| Assessment List | Attempts | 0 | Count of manual + online attempts |
-| Assessment List | Pass Rate | 0% | Accurate pass rate including manual |
-| Assessment List | Avg Score | 0.0% | Accurate average including manual |
-| Analytics | Avg Pass Rate | 0.0% | Combined pass rate |
-| Analytics | Avg Score | 0.0% | Combined average score |
-| Analytics | Performance Trends | Empty | Includes manual assessment data |
-| Analytics | Score Distribution | Empty | Includes manual assessment grades |
+| File | Change |
+|------|--------|
+| `src/components/assessment/EditManualAssessmentDialog.tsx` | Refactor `loadData()` to merge current class students with existing attempts |
+
+---
+
+## Expected Outcome
+
+After the fix:
+- Opening "Edit" on a manual assessment will show **all current students** in the class
+- Students with existing attempts will display their recorded scores
+- Newly added students will appear with blank scores (marked as "new")
+- Saving will create attempt records for new students and update existing ones
