@@ -155,14 +155,17 @@ export function EditManualAssessmentDialog({
         );
 
         // Merge: All current students with their attempts (or blank for new students)
-        const mergedAttempts = (studentsData || []).map(student => {
-          const studentUserId = student.user_id || student.id;
-          const existingAttempt = attemptMap.get(studentUserId);
+      // Only include students with user accounts (user_id) since assessment_attempts.student_id
+      // has a foreign key to profiles.id (which equals auth user_id)
+      const studentsWithAccounts = (studentsData || []).filter(s => s.user_id);
+      
+      const mergedAttempts = studentsWithAccounts.map(student => {
+        const existingAttempt = attemptMap.get(student.user_id);
 
           if (existingAttempt) {
             return {
               id: existingAttempt.id,
-              student_id: studentUserId,
+            student_id: student.user_id,
               student_name: student.student_name,
               score: existingAttempt.score,
               passed: existingAttempt.passed,
@@ -172,8 +175,8 @@ export function EditManualAssessmentDialog({
           } else {
             // New student without an attempt - will be created on save
             return {
-              id: `new-${studentUserId}`,
-              student_id: studentUserId,
+            id: `new-${student.user_id}`,
+            student_id: student.user_id,
               student_name: student.student_name,
               score: 0,
               passed: false,
