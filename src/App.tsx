@@ -413,6 +413,13 @@ const App = () => (
               }
             />
             <Route
+              path="/system-admin/company-inventory"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="company_inventory">
+                  <CompanyInventory />
+                </ProtectedRoute>
+              }
+            <Route
               path="/system-admin/course-management"
               element={
                 <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="course_management">
