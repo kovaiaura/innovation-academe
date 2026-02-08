@@ -586,7 +586,8 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
         ? format(parseISO(record.check_out_time), "yyyy-MM-dd'T'HH:mm")
         : `${record.date}T18:00`,
       reason: '',
-      attendance_type: record.is_paid_leave ? 'paid_leave' : record.leave_type === 'lop' ? 'lop' : record.leave_id ? 'leave' : 'present',
+      // If it's already a leave day: paid_leave when is_paid_leave=true, otherwise lop
+      attendance_type: record.leave_id ? (record.is_paid_leave ? 'paid_leave' : 'lop') : 'present',
     });
     setCorrectionDialogOpen(true);
   };
@@ -605,71 +606,67 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       const tableName = isOfficer ? 'officer_attendance' : 'staff_attendance';
       const attendanceType = correctionData.attendance_type;
       
-      // For leave types, we don't need check-in/out times
+      // Leave corrections are stored in leave_applications (NOT in officer_attendance.status)
       if (attendanceType === 'paid_leave' || attendanceType === 'lop' || attendanceType === 'leave') {
-        // Mark as leave day
+        const leaveType = attendanceType === 'leave' ? 'sick' : 'casual';
+        const isLop = attendanceType === 'lop';
+        const paidDays = isLop ? 0 : 1;
+        const lopDays = isLop ? 1 : 0;
+
+        // If there is already an attendance record for this day, remove it to avoid showing times on a leave day.
         if (selectedRecord.attendance_id) {
-          // Update existing record to leave
-          const { error: updateError } = await supabase
+          const { error: deleteAttendanceError } = await supabase
             .from(tableName)
-            .update({
-              check_in_time: null,
-              check_out_time: null,
-              total_hours_worked: 0,
-              overtime_hours: 0,
-              is_manual_correction: true,
-              corrected_by: user.id,
-              correction_reason: correctionData.reason,
-              status: attendanceType === 'paid_leave' ? 'paid_leave' : attendanceType === 'lop' ? 'lop' : 'leave',
-            })
+            .delete()
             .eq('id', selectedRecord.attendance_id);
-
-          if (updateError) throw updateError;
-        } else {
-          // Create new leave record
-          const insertData: Record<string, unknown> = {
-            date: selectedRecord.date,
-            check_in_time: null,
-            check_out_time: null,
-            total_hours_worked: 0,
-            overtime_hours: 0,
-            is_manual_correction: true,
-            corrected_by: user.id,
-            correction_reason: correctionData.reason,
-            status: attendanceType === 'paid_leave' ? 'paid_leave' : attendanceType === 'lop' ? 'lop' : 'leave',
-          };
-
-          if (isOfficer) {
-            insertData.officer_id = selectedEmployee.id;
-          } else {
-            insertData.user_id = selectedEmployee.user_id;
-          }
-          
-          if (selectedEmployee.institution_id) {
-            insertData.institution_id = selectedEmployee.institution_id;
-          }
-
-          const { error: insertError } = await supabase
-            .from(tableName)
-            .insert(insertData as never);
-
-          if (insertError) throw insertError;
+          if (deleteAttendanceError) throw deleteAttendanceError;
         }
-        
+
+        // Create a single-day approved leave entry
+        const leavePayload = {
+          applicant_id: selectedEmployee.user_id,
+          applicant_name: selectedEmployee.name,
+          applicant_type: selectedEmployee.type,
+          officer_id: isOfficer ? selectedEmployee.id : null,
+          institution_id: selectedEmployee.institution_id,
+          start_date: selectedRecord.date,
+          end_date: selectedRecord.date,
+          leave_type: leaveType,
+          reason: correctionData.reason,
+          total_days: 1,
+          is_lop: isLop,
+          paid_days: paidDays,
+          lop_days: lopDays,
+          status: 'approved',
+          final_approved_by: user.id,
+          final_approved_by_name: user.name,
+          final_approved_at: new Date().toISOString(),
+        };
+
+        const { error: leaveInsertError } = await supabase
+          .from('leave_applications')
+          .insert(leavePayload as never);
+        if (leaveInsertError) throw leaveInsertError;
+
         // Log correction
         await supabase.from('attendance_corrections').insert({
           attendance_id: selectedRecord.attendance_id || 'new',
           attendance_type: selectedEmployee.type,
-          field_corrected: 'status',
-          original_value: selectedRecord.status || 'unmarked',
-          new_value: attendanceType,
+          field_corrected: 'leave_application',
+          original_value: selectedRecord.leave_id ? 'leave' : 'none',
+          new_value: `${attendanceType}:${leaveType}:${isLop ? 'lop' : 'paid'}`,
           reason: correctionData.reason,
           corrected_by: user.id,
           corrected_by_name: user.name,
         });
 
-        toast.success(`Marked as ${attendanceType === 'paid_leave' ? 'Paid Leave' : attendanceType === 'lop' ? 'LOP' : 'Leave'}`);
-      } else {
+        toast.success(
+          attendanceType === 'lop'
+            ? 'Marked as LOP'
+            : attendanceType === 'leave'
+              ? 'Marked as Sick Leave'
+              : 'Marked as Casual Leave'
+        );
         // Regular attendance correction with check-in/out times
         let totalHoursWorked = null;
         let overtimeHours = null;
@@ -1330,7 +1327,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                   <SelectItem value="paid_leave">
                     <div className="flex items-center gap-2">
                       <CalendarCheck className="h-4 w-4 text-blue-500" />
-                      Paid Leave
+                      Casual Leave (Paid)
                     </div>
                   </SelectItem>
                   <SelectItem value="lop">
@@ -1342,7 +1339,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                   <SelectItem value="leave">
                     <div className="flex items-center gap-2">
                       <TreePalm className="h-4 w-4 text-amber-500" />
-                      Leave (Unpaid)
+                      Sick Leave (Paid)
                     </div>
                   </SelectItem>
                 </SelectContent>
@@ -1376,13 +1373,13 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
               <div className="p-3 bg-muted rounded-md">
                 <p className="text-sm text-muted-foreground">
                   {correctionData.attendance_type === 'paid_leave' && (
-                    <>This day will be marked as <strong>Paid Leave</strong> - no salary deduction will be applied.</>
+                    <>This day will be marked as <strong>Casual Leave (Paid)</strong> - no salary deduction will be applied.</>
                   )}
                   {correctionData.attendance_type === 'lop' && (
                     <>This day will be marked as <strong>LOP</strong> - salary will be deducted for this day.</>
                   )}
                   {correctionData.attendance_type === 'leave' && (
-                    <>This day will be marked as <strong>Leave (Unpaid)</strong> - salary will be deducted for this day.</>
+                    <>This day will be marked as <strong>Sick Leave (Paid)</strong> - no salary deduction will be applied.</>
                   )}
                 </p>
               </div>
