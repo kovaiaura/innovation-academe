@@ -64,14 +64,25 @@ export const getOfficerSalaryDetails = async (officerId: string): Promise<{
   if (error) throw error;
   
   const annualSalary = data?.annual_salary || 0;
-  const monthlySalary = Math.round(annualSalary / 12 * 100) / 100;
   
   // Use stored salary structure or calculate from CTC
   let salaryStructure: SalaryStructure;
+  let monthlySalary: number;
+  
   if (data?.salary_structure && typeof data.salary_structure === 'object' && Object.keys(data.salary_structure).length > 0) {
     salaryStructure = data.salary_structure as unknown as SalaryStructure;
+    // Monthly salary = sum of all salary components
+    monthlySalary = (salaryStructure.basic_pay || 0) +
+      (salaryStructure.hra || 0) +
+      (salaryStructure.conveyance_allowance || 0) +
+      (salaryStructure.medical_allowance || 0) +
+      (salaryStructure.special_allowance || 0) +
+      (salaryStructure.da || 0) +
+      (salaryStructure.transport_allowance || 0) +
+      (salaryStructure.other_allowances || 0);
   } else {
     // Calculate default breakdown from CTC
+    monthlySalary = Math.round(annualSalary / 12 * 100) / 100;
     const basic = monthlySalary * (config.salary_components.basic_percentage / 100);
     const hra = monthlySalary * (config.salary_components.hra_percentage / 100);
     const conveyance = config.salary_components.conveyance_allowance;
@@ -129,14 +140,25 @@ export const getStaffSalaryDetails = async (userId: string): Promise<{
   // Calculate monthly salary from annual or hourly rate
   const hourlyRate = data?.hourly_rate || 500;
   const annualSalary = data?.annual_salary || (hourlyRate * 8 * 22 * 12);
-  const monthlySalary = Math.round(annualSalary / 12 * 100) / 100;
   
   // Use stored salary structure or calculate from CTC
   let salaryStructure: SalaryStructure;
+  let monthlySalary: number;
+  
   if (data?.salary_structure && typeof data.salary_structure === 'object' && Object.keys(data.salary_structure).length > 0) {
     salaryStructure = data.salary_structure as unknown as SalaryStructure;
+    // Monthly salary = sum of all salary components
+    monthlySalary = (salaryStructure.basic_pay || 0) +
+      (salaryStructure.hra || 0) +
+      (salaryStructure.conveyance_allowance || 0) +
+      (salaryStructure.medical_allowance || 0) +
+      (salaryStructure.special_allowance || 0) +
+      (salaryStructure.da || 0) +
+      (salaryStructure.transport_allowance || 0) +
+      (salaryStructure.other_allowances || 0);
   } else {
     // Calculate default breakdown from CTC
+    monthlySalary = Math.round(annualSalary / 12 * 100) / 100;
     const basic = monthlySalary * (config.salary_components.basic_percentage / 100);
     const hra = monthlySalary * (config.salary_components.hra_percentage / 100);
     const conveyance = config.salary_components.conveyance_allowance;
