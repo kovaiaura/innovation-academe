@@ -11,11 +11,20 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Upload, X, FileText, Image as ImageIcon, Loader2, Check, AlertCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Upload, X, FileText, Image as ImageIcon, Loader2, Check, AlertCircle, Calendar, AlertTriangle } from 'lucide-react';
 import { createPurchaseInvoice, fetchDefaultCompanyProfile, checkInvoiceNumberExists } from '@/services/invoice.service';
 import type { CompanyProfile } from '@/types/invoice';
+import { EXPENSE_CATEGORIES } from '@/types/payment';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, differenceInDays, addDays } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CreatePurchaseInvoiceDialogProps {
@@ -44,13 +53,16 @@ export function CreatePurchaseInvoiceDialog({
   const [vendorName, setVendorName] = useState('');
   const [vendorAddress, setVendorAddress] = useState('');
   const [vendorGstin, setVendorGstin] = useState('');
+  const [vendorPan, setVendorPan] = useState('');
   const [vendorPhone, setVendorPhone] = useState('');
   
   // Bill Details
   const [vendorInvoiceNumber, setVendorInvoiceNumber] = useState('');
   const [billDate, setBillDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [billReceiptDate, setBillReceiptDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dueDate, setDueDate] = useState('');
   const [totalAmount, setTotalAmount] = useState('');
+  const [expenseCategory, setExpenseCategory] = useState('');
   
   // Attachment
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
@@ -59,9 +71,16 @@ export function CreatePurchaseInvoiceDialog({
   // Notes
   const [notes, setNotes] = useState('');
 
+  // Calculate days until due
+  const daysUntilDue = dueDate 
+    ? differenceInDays(new Date(dueDate), new Date())
+    : null;
+
   useEffect(() => {
     if (open) {
       loadCompanyProfile();
+      // Set default due date to 30 days from bill date
+      setDueDate(format(addDays(new Date(), 30), 'yyyy-MM-dd'));
     }
   }, [open]);
 
@@ -225,6 +244,9 @@ export function CreatePurchaseInvoiceDialog({
         attachment_url: attachment.url,
         attachment_name: attachment.name,
         attachment_type: attachment.type,
+        vendor_pan: vendorPan || undefined,
+        bill_receipt_date: billReceiptDate || undefined,
+        expense_category: expenseCategory || undefined,
         line_items: [{
           description: `Purchase from ${vendorName}`,
           quantity: 1,
@@ -253,11 +275,14 @@ export function CreatePurchaseInvoiceDialog({
     setVendorName('');
     setVendorAddress('');
     setVendorGstin('');
+    setVendorPan('');
     setVendorPhone('');
     setVendorInvoiceNumber('');
     setBillDate(format(new Date(), 'yyyy-MM-dd'));
+    setBillReceiptDate(format(new Date(), 'yyyy-MM-dd'));
     setDueDate('');
     setTotalAmount('');
+    setExpenseCategory('');
     setAttachmentFile(null);
     setAttachmentPreview(null);
     setNotes('');
@@ -313,6 +338,15 @@ export function CreatePurchaseInvoiceDialog({
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label>PAN (for TDS)</Label>
+                  <Input
+                    value={vendorPan}
+                    onChange={(e) => setVendorPan(e.target.value.toUpperCase())}
+                    placeholder="ABCDE1234F"
+                    maxLength={10}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label>Phone</Label>
                   <Input
                     value={vendorPhone}
@@ -330,7 +364,7 @@ export function CreatePurchaseInvoiceDialog({
               <h3 className="font-semibold">Bill Details</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2 space-y-2">
-                  <Label htmlFor="invoiceNumber">Invoice Number (Our Reference) *</Label>
+                  <Label htmlFor="invoiceNumber">Our Reference Number *</Label>
                   <div className="relative">
                     <Input
                       id="invoiceNumber"
@@ -374,7 +408,7 @@ export function CreatePurchaseInvoiceDialog({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Bill Date *</Label>
+                  <Label>Bill Date (on invoice) *</Label>
                   <Input
                     type="date"
                     value={billDate}
@@ -382,12 +416,62 @@ export function CreatePurchaseInvoiceDialog({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Due Date</Label>
+                  <Label>Bill Receipt Date</Label>
                   <Input
                     type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
+                    value={billReceiptDate}
+                    onChange={(e) => setBillReceiptDate(e.target.value)}
                   />
+                </div>
+                
+                {/* Due Date with prominence */}
+                <div className="col-span-2 space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Payment Due Date
+                  </Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      className="flex-1"
+                    />
+                    {daysUntilDue !== null && (
+                      <Badge 
+                        variant={daysUntilDue < 0 ? 'destructive' : daysUntilDue <= 7 ? 'secondary' : 'outline'}
+                        className="shrink-0"
+                      >
+                        {daysUntilDue < 0 ? (
+                          <>
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            {Math.abs(daysUntilDue)}d overdue
+                          </>
+                        ) : daysUntilDue === 0 ? (
+                          'Due today'
+                        ) : (
+                          `${daysUntilDue} days left`
+                        )}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                {/* Expense Category */}
+                <div className="col-span-2 space-y-2">
+                  <Label>Expense Category</Label>
+                  <Select value={expenseCategory} onValueChange={setExpenseCategory}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EXPENSE_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>

@@ -153,6 +153,11 @@ export interface Invoice {
   attachment_name?: string;
   attachment_type?: string;
   
+  // Purchase-specific fields
+  vendor_pan?: string;
+  bill_receipt_date?: string;
+  expense_category?: string;
+  
   // E-Invoicing
   irn?: string;
   ack_number?: string;
@@ -214,6 +219,10 @@ export interface CreateInvoiceInput {
   attachment_url?: string; // For purchase invoices
   attachment_name?: string;
   attachment_type?: string;
+  // Purchase-specific fields
+  vendor_pan?: string;
+  bill_receipt_date?: string;
+  expense_category?: string;
   line_items: Omit<InvoiceLineItem, 'id' | 'invoice_id'>[];
 }
 

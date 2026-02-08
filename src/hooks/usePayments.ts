@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchPaymentsForInvoice, fetchPayments, createPayment, deletePayment } from '@/services/payment.service';
+import { fetchPaymentsForInvoice, fetchPayments, createPayment, updatePayment, deletePayment } from '@/services/payment.service';
 import type { Payment, CreatePaymentInput } from '@/types/payment';
 import { toast } from 'sonner';
 
@@ -43,6 +43,18 @@ export function usePaymentsForInvoice(invoiceId: string | null) {
     }
   };
 
+  const editPayment = async (id: string, input: Partial<CreatePaymentInput>) => {
+    try {
+      await updatePayment(id, input);
+      toast.success('Payment updated successfully');
+      await loadPayments();
+    } catch (err) {
+      console.error('Error updating payment:', err);
+      toast.error('Failed to update payment');
+      throw err;
+    }
+  };
+
   const removePayment = async (id: string) => {
     try {
       await deletePayment(id);
@@ -55,7 +67,7 @@ export function usePaymentsForInvoice(invoiceId: string | null) {
     }
   };
 
-  return { payments, loading, error, refetch: loadPayments, addPayment, removePayment };
+  return { payments, loading, error, refetch: loadPayments, addPayment, editPayment, removePayment };
 }
 
 export function useAllPayments(startDate?: string, endDate?: string) {
