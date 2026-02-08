@@ -1,48 +1,46 @@
 
-# Plan: Assessment Weightage Mapping System
+# Plan: Company Inventory Management System
 
 ## Overview
 
-Implement a comprehensive assessment mapping and weightage system where each class can have assessments categorized into:
-- **Formative Assessment 1 (FA1)** - 20% weightage
-- **Formative Assessment 2 (FA2)** - 20% weightage  
-- **Final Assessment** - 40% weightage
-- **Internal Assessment** - 20% weightage (manually entered by Officer)
-
-The system will automatically calculate weighted scores and display overall performance based on these categories.
+Implement a comprehensive **Company Inventory Management** system for the CEO/System Admin role, separate from the existing institution-level inventory. This system will manage Meta-Innova's internal stock with full audit-friendly tracking, stock entry (inward), stock issue (outward), supplier management, and detailed reports with Excel/PDF export capabilities.
 
 ---
 
 ## Architecture
 
 ```text
++---------------------------+        +---------------------------+
+|    company_item_master    |        |       company_suppliers   |
++---------------------------+        +---------------------------+
+| id (uuid)                 |        | id (uuid)                 |
+| item_code (unique)        |        | name                      |
+| item_name                 |        | contact_person            |
+| category                  |        | phone, email              |
+| unit_of_measure           |        | address, gstin            |
+| gst_percentage            |        | status (active/inactive)  |
+| reorder_level             |        | created_at                |
+| current_stock             |        +---------------------------+
+| created_by, created_at    |
 +---------------------------+
-|  class_assessment_mapping |  (New Table)
-+---------------------------+
-| id                        |
-| class_id (FK)             |
-| institution_id (FK)       |
-| academic_year             |
-| fa1_assessment_id (FK)    |  --> links to assessments.id
-| fa2_assessment_id (FK)    |  --> links to assessments.id
-| final_assessment_id (FK)  |  --> links to assessments.id
-| created_by                |
-| created_at / updated_at   |
-+---------------------------+
-
-+---------------------------+
-|  internal_assessment_marks|  (New Table - for manual entry)
-+---------------------------+
-| id                        |
-| class_id (FK)             |
-| institution_id (FK)       |
-| student_id (FK)           |
-| marks_obtained            |  (0-100 scale)
-| total_marks (default 100) |
-| academic_year             |
-| entered_by (FK)           |
-| notes                     |
-| created_at / updated_at   |
+            |
+            v
++---------------------------+        +---------------------------+
+|   company_stock_entries   |        |   company_stock_issues    |
++---------------------------+        +---------------------------+
+| id (uuid)                 |        | id (uuid)                 |
+| entry_date                |        | issue_date                |
+| entry_type (inward)       |        | issued_to_type            |
+| item_id (FK)              |        | (dept/project/school)     |
+| supplier_id (FK)          |        | issued_to_id              |
+| invoice_number            |        | issued_to_name            |
+| invoice_date              |        | item_id (FK)              |
+| quantity                  |        | quantity                  |
+| rate                      |        | purpose / reference       |
+| amount                    |        | created_by                |
+| batch_serial (optional)   |        | created_at                |
+| location_store (optional) |        +---------------------------+
+| created_by, created_at    |
 +---------------------------+
 ```
 
@@ -50,153 +48,155 @@ The system will automatically calculate weighted scores and display overall perf
 
 ## Database Changes
 
-### 1. Create `class_assessment_mapping` Table
-Stores the mapping of assessments to categories (FA1, FA2, Final) for each class.
+### 1. Create `company_suppliers` Table
+Stores supplier master data for the company inventory.
 
 ```sql
-CREATE TABLE public.class_assessment_mapping (
+CREATE TABLE public.company_suppliers (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  class_id uuid NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-  institution_id uuid NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
-  academic_year text NOT NULL DEFAULT '2024-25',
-  fa1_assessment_id uuid REFERENCES assessments(id) ON DELETE SET NULL,
-  fa2_assessment_id uuid REFERENCES assessments(id) ON DELETE SET NULL,
-  final_assessment_id uuid REFERENCES assessments(id) ON DELETE SET NULL,
+  name text NOT NULL,
+  contact_person text,
+  phone text,
+  email text,
+  address text,
+  city text,
+  state text,
+  pincode text,
+  gstin text,
+  status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  notes text,
   created_by uuid REFERENCES profiles(id),
   created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  UNIQUE(class_id, academic_year)
+  updated_at timestamptz DEFAULT now()
 );
 ```
 
-### 2. Create `internal_assessment_marks` Table
-Stores manual internal assessment marks entered by Officers.
+### 2. Create `company_item_master` Table
+Central item master with all required fields.
 
 ```sql
-CREATE TABLE public.internal_assessment_marks (
+CREATE TABLE public.company_item_master (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  class_id uuid NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-  institution_id uuid NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
-  student_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  marks_obtained numeric(5,2) NOT NULL DEFAULT 0 CHECK (marks_obtained >= 0),
-  total_marks numeric(5,2) NOT NULL DEFAULT 100 CHECK (total_marks > 0),
-  academic_year text NOT NULL DEFAULT '2024-25',
-  entered_by uuid REFERENCES profiles(id),
-  notes text,
+  item_code text UNIQUE NOT NULL,
+  item_name text NOT NULL,
+  category text,
+  unit_of_measure text NOT NULL DEFAULT 'Nos',
+  gst_percentage numeric(5,2) DEFAULT 0,
+  reorder_level integer DEFAULT 0,
+  current_stock integer NOT NULL DEFAULT 0,
+  status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  description text,
+  created_by uuid REFERENCES profiles(id),
   created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  UNIQUE(class_id, student_id, academic_year)
+  updated_at timestamptz DEFAULT now()
 );
 ```
 
-### 3. RLS Policies
-- Officers can read/write for their assigned institutions
-- CEO/System Admin can read/write all
-- Management can read/write for their institution
+### 3. Create `company_stock_entries` Table
+Records all inward stock movements.
+
+```sql
+CREATE TABLE public.company_stock_entries (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  entry_date date NOT NULL DEFAULT CURRENT_DATE,
+  item_id uuid NOT NULL REFERENCES company_item_master(id) ON DELETE RESTRICT,
+  supplier_id uuid REFERENCES company_suppliers(id),
+  invoice_number text,
+  invoice_date date,
+  quantity integer NOT NULL CHECK (quantity > 0),
+  rate numeric(12,2) NOT NULL DEFAULT 0,
+  amount numeric(14,2) GENERATED ALWAYS AS (quantity * rate) STORED,
+  batch_serial text,
+  location_store text,
+  notes text,
+  created_by uuid REFERENCES profiles(id),
+  created_at timestamptz DEFAULT now()
+);
+```
+
+### 4. Create `company_stock_issues` Table
+Records all outward stock movements.
+
+```sql
+CREATE TABLE public.company_stock_issues (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  issue_date date NOT NULL DEFAULT CURRENT_DATE,
+  item_id uuid NOT NULL REFERENCES company_item_master(id) ON DELETE RESTRICT,
+  quantity integer NOT NULL CHECK (quantity > 0),
+  issued_to_type text NOT NULL CHECK (issued_to_type IN ('department', 'project', 'institution', 'branch', 'other')),
+  issued_to_id uuid,
+  issued_to_name text NOT NULL,
+  purpose text,
+  reference_number text,
+  notes text,
+  admin_override boolean DEFAULT false,
+  created_by uuid REFERENCES profiles(id),
+  created_at timestamptz DEFAULT now()
+);
+```
+
+### 5. Database Functions & Triggers
+
+#### Auto-update stock on entry/issue
+```sql
+-- Trigger to update stock on new entry
+CREATE OR REPLACE FUNCTION update_stock_on_entry()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE company_item_master 
+  SET current_stock = current_stock + NEW.quantity,
+      updated_at = now()
+  WHERE id = NEW.item_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to update stock on issue (with negative stock prevention)
+CREATE OR REPLACE FUNCTION update_stock_on_issue()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_current_stock integer;
+BEGIN
+  SELECT current_stock INTO v_current_stock 
+  FROM company_item_master WHERE id = NEW.item_id;
+  
+  -- Prevent negative stock unless admin override
+  IF v_current_stock < NEW.quantity AND NOT NEW.admin_override THEN
+    RAISE EXCEPTION 'Insufficient stock. Current: %, Requested: %', v_current_stock, NEW.quantity;
+  END IF;
+  
+  UPDATE company_item_master 
+  SET current_stock = current_stock - NEW.quantity,
+      updated_at = now()
+  WHERE id = NEW.item_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### 6. RLS Policies
+- CEO/System Admin with `company_inventory` feature can read/write all
+- Other roles have no access unless explicitly granted via position visible_features
 
 ---
 
-## New Components
+## Feature Flag Addition
 
-### 1. Assessment Mapping UI Component
-**File:** `src/components/assessment/ClassAssessmentMappingDialog.tsx`
+### Update `SystemAdminFeature` Type
+Add new feature to `src/types/permissions.ts`:
 
-Dialog to map assessments to categories (FA1, FA2, Final) for a class:
-- Dropdown selectors for each category
-- Shows available assessments assigned to that class
-- Auto-calculates example weighted score
-
-### 2. Internal Marks Entry Component
-**File:** `src/components/assessment/InternalMarksEntry.tsx`
-
-Table-based form for Officers to enter internal assessment marks:
-- List all students in the class
-- Input field for marks (0-100)
-- Save all at once or individual save
-- Shows student name, current marks, notes
-
-### 3. Weighted Score Calculator
-**File:** `src/utils/assessmentWeightageCalculator.ts`
-
-Utility functions:
 ```typescript
-interface WeightedScoreResult {
-  fa1_score: number;        // Actual score (scaled to 20%)
-  fa2_score: number;        // Actual score (scaled to 20%)
-  final_score: number;      // Actual score (scaled to 40%)
-  internal_score: number;   // Actual score (scaled to 20%)
-  total_weighted: number;   // Out of 100
-  breakdown: {
-    fa1: { raw: number; percentage: number; weighted: number };
-    fa2: { raw: number; percentage: number; weighted: number };
-    final: { raw: number; percentage: number; weighted: number };
-    internal: { raw: number; percentage: number; weighted: number };
-  };
-}
-
-function calculateWeightedScore(
-  fa1Attempt: AssessmentAttempt | null,
-  fa2Attempt: AssessmentAttempt | null,
-  finalAttempt: AssessmentAttempt | null,
-  internalMarks: { obtained: number; total: number } | null
-): WeightedScoreResult;
+export type SystemAdminFeature = 
+  | ...existing features...
+  | 'company_inventory';
 ```
 
-### 4. Weighted Performance Display
-**File:** `src/components/analytics/WeightedAssessmentView.tsx`
+### Update Position Creation Dialogs
+Add to feature list in `CreatePositionDialog.tsx` and `EditPositionDialog.tsx`:
 
-Shows the weighted assessment breakdown for:
-- Individual students
-- Class aggregate
-- Institution aggregate
-
----
-
-## UI Integration Points
-
-### 1. CEO Dashboard - Institution Detail
-Add new tab or section under "Classes" to configure assessment mapping:
-- Navigate to class → "Assessment Mapping" tab
-- Configure FA1, FA2, Final assessment mapping
-- View weighted scores for all students
-
-### 2. Officer Dashboard - Assessment Management
-Add options for:
-- Map assessments to categories for assigned classes
-- Enter internal assessment marks
-- View class-wise weighted performance
-
-### 3. Management Dashboard - Analytics
-Enhance analytics to show:
-- Weighted assessment scores instead of simple averages
-- Breakdown by FA1, FA2, Final, Internal
-
-### 4. Student Dashboard
-Add new view showing:
-- Personal weighted score breakdown
-- Category-wise performance (FA1, FA2, Final, Internal)
-
----
-
-## Calculation Logic
-
-### Weightage Formula
+```typescript
+{ value: 'company_inventory', label: 'Company Inventory' },
 ```
-Total Score = (FA1% × 0.20) + (FA2% × 0.20) + (Final% × 0.40) + (Internal% × 0.20)
-```
-
-### Absent Handling
-- If a student is marked absent for an assessment, their score for that category = 0
-- The weightage still applies (they get 0 contribution from that category)
-
-### Example
-| Category | Raw Score | Total | Percentage | Weight | Contribution |
-|----------|-----------|-------|------------|--------|--------------|
-| FA1      | 24        | 30    | 80%        | 20%    | 16.0         |
-| FA2      | 18        | 30    | 60%        | 20%    | 12.0         |
-| Final    | 70        | 100   | 70%        | 40%    | 28.0         |
-| Internal | 85        | 100   | 85%        | 20%    | 17.0         |
-| **Total**|           |       |            |        | **73.0**     |
 
 ---
 
@@ -204,12 +204,20 @@ Total Score = (FA1% × 0.20) + (FA2% × 0.20) + (Final% × 0.40) + (Internal% ×
 
 | File | Purpose |
 |------|---------|
-| `src/components/assessment/ClassAssessmentMappingDialog.tsx` | UI for mapping assessments to categories |
-| `src/components/assessment/InternalMarksEntry.tsx` | Form for entering internal marks |
-| `src/components/analytics/WeightedAssessmentView.tsx` | Display weighted scores |
-| `src/hooks/useClassAssessmentMapping.ts` | Hook for CRUD on mapping table |
-| `src/hooks/useInternalMarks.ts` | Hook for CRUD on internal marks |
-| `src/utils/assessmentWeightageCalculator.ts` | Calculation utilities |
+| `src/pages/system-admin/CompanyInventory.tsx` | Main page with tabs for Items, Stock Entry, Stock Issue, Suppliers, Reports |
+| `src/components/company-inventory/ItemMasterTab.tsx` | Item master CRUD operations |
+| `src/components/company-inventory/StockEntryTab.tsx` | Inward stock entry form and list |
+| `src/components/company-inventory/StockIssueTab.tsx` | Outward stock issue form and list |
+| `src/components/company-inventory/SuppliersTab.tsx` | Supplier management |
+| `src/components/company-inventory/ReportsTab.tsx` | Stock ledger, current stock summary, supplier purchase history |
+| `src/components/company-inventory/AddItemDialog.tsx` | Dialog for adding/editing items |
+| `src/components/company-inventory/AddSupplierDialog.tsx` | Dialog for adding/editing suppliers |
+| `src/components/company-inventory/StockEntryDialog.tsx` | Dialog for recording inward stock |
+| `src/components/company-inventory/StockIssueDialog.tsx` | Dialog for recording outward stock |
+| `src/hooks/useCompanyInventory.ts` | React Query hooks for all CRUD operations |
+| `src/services/companyInventory.service.ts` | Supabase service functions |
+| `src/types/companyInventory.ts` | TypeScript interfaces |
+| `src/utils/companyInventoryExport.ts` | Excel/PDF export utilities |
 
 ---
 
@@ -217,49 +225,134 @@ Total Score = (FA1% × 0.20) + (FA2% × 0.20) + (Final% × 0.40) + (Internal% ×
 
 | File | Changes |
 |------|---------|
-| `src/pages/system-admin/InstitutionDetail.tsx` | Add assessment mapping access from class detail |
-| `src/pages/officer/AssessmentManagement.tsx` | Add mapping and internal marks entry options |
-| `src/components/institution/InstitutionClassesTab.tsx` | Add "Assessment Mapping" action button |
-| `src/hooks/useComprehensiveAnalytics.ts` | Include weighted scores in analytics |
-| `src/components/analytics/StudentAnalyticsView.tsx` | Show weighted assessment breakdown |
-| `src/components/analytics/ClassAnalyticsView.tsx` | Show class-level weighted scores |
-| `src/pages/management/Analytics.tsx` | Display weighted assessment view |
-| `src/pages/student/Dashboard.tsx` | Show student's weighted score summary |
+| `src/types/permissions.ts` | Add `company_inventory` to SystemAdminFeature type and ALL_SYSTEM_ADMIN_FEATURES array |
+| `src/components/position/CreatePositionDialog.tsx` | Add Company Inventory to feature checkbox list |
+| `src/components/position/EditPositionDialog.tsx` | Add Company Inventory to feature checkbox list |
+| `src/components/layout/Sidebar.tsx` | Add Company Inventory menu item with feature check |
+| `src/App.tsx` | Add route for `/company-inventory` |
+
+---
+
+## UI Components Breakdown
+
+### 1. Main Page: `CompanyInventory.tsx`
+- **Tabs**: Item Master | Stock Entry | Stock Issue | Suppliers | Reports
+- Header with quick stats (Total Items, Low Stock Alerts, Total Value)
+
+### 2. Item Master Tab
+- Search and filter
+- Table: Item Code, Name, Category, UoM, GST%, Current Stock, Reorder Level, Status
+- Add/Edit/Delete functionality
+- Low stock indicator (when current_stock ≤ reorder_level)
+
+### 3. Stock Entry (Inward) Tab
+- Entry form with fields: Date, Supplier, Invoice No, Invoice Date, Item, Qty, Rate, Batch/Serial, Location
+- Recent entries list with edit capability
+- Auto-link to existing invoices from Invoice Management (if purchase invoice exists)
+
+### 4. Stock Issue (Outward) Tab
+- Issue form: Date, Department/Project/Institution selector, Item, Quantity, Purpose
+- Negative stock warning with admin override checkbox (CEO only)
+- Recent issues list
+
+### 5. Suppliers Tab
+- CRUD for suppliers
+- View purchase history per supplier
+
+### 6. Reports Tab
+Three main reports with Excel/PDF export:
+
+1. **Stock Ledger**
+   - Select item and date range
+   - Shows: Opening, Inward entries, Outward issues, Closing balance
+   
+2. **Current Stock Summary**
+   - All items with current stock and value
+   - Highlight low stock items
+   
+3. **Supplier-wise Purchase History**
+   - Select supplier and date range
+   - List all purchases with totals
+
+---
+
+## Export Functionality
+
+### Excel Export
+Using the browser to generate CSV/Excel compatible format:
+```typescript
+function exportToExcel(data: any[], filename: string) {
+  const csvContent = convertToCSV(data);
+  const blob = new Blob([csvContent], { type: 'text/csv' });
+  downloadBlob(blob, `${filename}.csv`);
+}
+```
+
+### PDF Export
+Using `@react-pdf/renderer` (already installed):
+```typescript
+function generateStockLedgerPDF(data: StockLedgerData) {
+  // Generate PDF document with proper formatting
+}
+```
+
+---
+
+## Integration with Existing Systems
+
+### 1. Link with Invoice Management (Purchase Bills)
+- When recording stock entry, optionally link to existing purchase invoice
+- Auto-populate supplier/invoice details if linked
+
+### 2. Issue to Institution/Project
+- When issuing stock, select from existing institutions or projects
+- Track which institution/project received inventory
 
 ---
 
 ## User Flows
 
-### Flow 1: CEO/Officer Maps Assessments to Categories
-1. Navigate to Institution → Class
-2. Click "Assessment Mapping"
-3. Select FA1 assessment from dropdown (shows assessments assigned to this class)
-4. Select FA2 assessment
-5. Select Final assessment
-6. Save mapping
+### Flow 1: Add New Item to Master
+1. Navigate to Company Inventory → Item Master
+2. Click "Add Item"
+3. Enter: Item Code (auto-suggest or manual), Name, Category, UoM, GST%, Reorder Level
+4. Save → Item appears in master list with 0 stock
 
-### Flow 2: Officer Enters Internal Marks
-1. Navigate to Assessment Management
-2. Select class → "Internal Marks"
-3. See list of all students
-4. Enter marks for each student (0-100)
-5. Add optional notes
-6. Save
+### Flow 2: Record Stock Entry (Inward)
+1. Navigate to Stock Entry tab
+2. Click "New Entry"
+3. Select/search item, enter quantity, rate
+4. Select supplier (or add new)
+5. Enter invoice details
+6. Save → Stock automatically updates in Item Master
 
-### Flow 3: View Weighted Performance
-1. Navigate to Analytics (CEO/Officer/Management)
-2. Select "Weighted Assessment" view
-3. See breakdown: FA1 (20%), FA2 (20%), Final (40%), Internal (20%)
-4. View individual student or class aggregate scores
+### Flow 3: Issue Stock (Outward)
+1. Navigate to Stock Issue tab
+2. Click "New Issue"
+3. Select item → Shows available stock
+4. Select destination (Department/Project/Institution)
+5. Enter quantity and purpose
+6. If qty > available: Show warning, require admin override
+7. Save → Stock automatically decreases
+
+### Flow 4: Generate Report
+1. Navigate to Reports tab
+2. Select report type (Stock Ledger / Current Stock / Supplier History)
+3. Set filters (date range, item/supplier)
+4. View report in table
+5. Export to Excel or PDF
 
 ---
 
 ## Summary
 
-This implementation creates a structured assessment evaluation system with:
-- Fixed weightage categories aligned with academic standards
-- Flexible mapping of existing assessments to categories
-- Manual internal marks entry for officers
-- Automatic weighted score calculation
-- Zero score for absent students
-- Analytics integration showing weighted performance
+This implementation creates a complete company-level inventory management system with:
+- Full item master with GST and reorder tracking
+- Supplier management
+- Stock entry (inward) with invoice linking
+- Stock issue (outward) with destination tracking
+- Automatic stock balance updates via triggers
+- Negative stock prevention with admin override
+- Three comprehensive reports with export capability
+- Role-based access via `company_inventory` feature flag
+- Integration with existing invoice and institution systems
