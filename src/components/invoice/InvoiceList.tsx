@@ -35,7 +35,11 @@ import {
   CreditCard,
   History,
   Send,
-  Copy
+  FileText,
+  FileMinus,
+  FilePlus,
+  Upload,
+  ClipboardList
 } from 'lucide-react';
 import { InvoiceStatusBadge } from './InvoiceStatusBadge';
 import type { Invoice, InvoiceStatus } from '@/types/invoice';
@@ -50,6 +54,10 @@ interface InvoiceListProps {
   onDelete: (id: string) => void;
   onRecordPayment?: (invoice: Invoice) => void;
   onViewPayments?: (invoice: Invoice) => void;
+  onIssueCreditNote?: (invoice: Invoice) => void;
+  onIssueDebitNote?: (invoice: Invoice) => void;
+  onUploadTDS?: (invoice: Invoice) => void;
+  onViewAuditLog?: (invoice: Invoice) => void;
 }
 
 export function InvoiceList({
@@ -61,6 +69,10 @@ export function InvoiceList({
   onDelete,
   onRecordPayment,
   onViewPayments,
+  onIssueCreditNote,
+  onIssueDebitNote,
+  onUploadTDS,
+  onViewAuditLog,
 }: InvoiceListProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -79,8 +91,8 @@ export function InvoiceList({
     const status = invoice.payment_status || 'unpaid';
     const configs: Record<string, { label: string; className: string }> = {
       unpaid: { label: 'Unpaid', className: 'bg-muted text-muted-foreground' },
-      partial: { label: 'Partial', className: 'bg-amber-500/10 text-amber-600' },
-      paid: { label: 'Paid', className: 'bg-green-500/10 text-green-600' },
+      partial: { label: 'Partial', className: 'bg-secondary text-secondary-foreground' },
+      paid: { label: 'Paid', className: 'bg-primary/10 text-primary' },
     };
     const config = configs[status] || configs.unpaid;
     return <Badge className={config.className}>{config.label}</Badge>;
@@ -203,12 +215,12 @@ export function InvoiceList({
                       <TableCell className="text-right font-medium">
                         ₹{invoice.total_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </TableCell>
-                      <TableCell className="text-right text-green-600">
+                      <TableCell className="text-right text-primary">
                         ₹{(invoice.amount_paid || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         {balance > 0 ? (
-                          <span className="text-amber-600">
+                          <span className="text-destructive">
                             ₹{balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </span>
                         ) : (
@@ -286,6 +298,42 @@ export function InvoiceList({
                                 <CheckCircle className="h-4 w-4 mr-2" />
                                 Mark as Paid
                               </DropdownMenuItem>
+                            )}
+
+                            {/* Credit/Debit Notes */}
+                            {invoice.status !== 'cancelled' && invoice.status !== 'draft' && (
+                              <>
+                                <DropdownMenuSeparator />
+                                {onIssueCreditNote && (
+                                  <DropdownMenuItem onClick={() => onIssueCreditNote(invoice)}>
+                                    <FileMinus className="h-4 w-4 mr-2" />
+                                    Issue Credit Note
+                                  </DropdownMenuItem>
+                                )}
+                                {onIssueDebitNote && (
+                                  <DropdownMenuItem onClick={() => onIssueDebitNote(invoice)}>
+                                    <FilePlus className="h-4 w-4 mr-2" />
+                                    Issue Debit Note
+                                  </DropdownMenuItem>
+                                )}
+                                {onUploadTDS && invoice.tds_deducted_by === 'client' && (
+                                  <DropdownMenuItem onClick={() => onUploadTDS(invoice)}>
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    TDS Certificate
+                                  </DropdownMenuItem>
+                                )}
+                              </>
+                            )}
+
+                            {/* Audit Log */}
+                            {onViewAuditLog && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => onViewAuditLog(invoice)}>
+                                  <ClipboardList className="h-4 w-4 mr-2" />
+                                  View Audit Log
+                                </DropdownMenuItem>
+                              </>
                             )}
                             
                             {invoice.status === 'draft' && (
