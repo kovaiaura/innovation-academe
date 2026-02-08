@@ -26,6 +26,7 @@ import OfficerManagement from "./pages/system-admin/OfficerManagement";
 import SystemAdminOfficerAttendance from "./pages/system-admin/OfficerAttendance";
 import StaffAttendancePayroll from "./pages/system-admin/StaffAttendancePayroll";
 import InventoryManagement from "./pages/system-admin/InventoryManagement";
+import CompanyInventory from "./pages/system-admin/CompanyInventory";
 import CredentialManagement from "./pages/system-admin/CredentialManagement";
 import StudentDashboard from "./pages/student/Dashboard";
 import StudentCourses from "./pages/student/Courses";
@@ -419,6 +420,7 @@ const App = () => (
                   <CompanyInventory />
                 </ProtectedRoute>
               }
+            />
             <Route
               path="/system-admin/course-management"
               element={
