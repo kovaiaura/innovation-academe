@@ -453,12 +453,16 @@ export async function createPurchaseInvoice(input: CreateInvoiceInput): Promise<
       sub_total: totalAmount,
       total_amount: totalAmount,
       balance_due: totalAmount,
-      status: 'draft',
+      status: 'issued', // Purchase invoices start as issued (we received the bill)
       signature_url: companyProfile?.signature_url,
       created_by: userData?.user?.id,
       attachment_url: input.attachment_url,
       attachment_name: input.attachment_name,
       attachment_type: input.attachment_type,
+      // Purchase-specific fields
+      vendor_pan: input.vendor_pan,
+      bill_receipt_date: input.bill_receipt_date,
+      expense_category: input.expense_category,
     }])
     .select()
     .single();

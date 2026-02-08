@@ -42,8 +42,22 @@ export async function createPayment(input: CreatePaymentInput): Promise<Payment>
       ...input,
       tds_deducted: input.tds_deducted ?? false,
       tds_amount: input.tds_amount ?? 0,
+      is_self_deducted_tds: input.is_self_deducted_tds ?? false,
       created_by: userData?.user?.id,
     }])
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data as Payment;
+}
+
+// Update an existing payment
+export async function updatePayment(id: string, input: Partial<CreatePaymentInput>): Promise<Payment> {
+  const { data, error } = await supabase
+    .from('payments')
+    .update(input)
+    .eq('id', id)
     .select()
     .single();
   

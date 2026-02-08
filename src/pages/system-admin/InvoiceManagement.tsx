@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Plus, Building2, ShoppingCart, Package, Download, BarChart3, FileText } from 'lucide-react';
+import { Plus, Building2, ShoppingCart, Package, Download, BarChart3 } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { InvoiceList } from '@/components/invoice/InvoiceList';
+import { PurchaseInvoiceList } from '@/components/invoice/PurchaseInvoiceList';
 import { InvoiceSummaryCards } from '@/components/invoice/InvoiceSummaryCards';
 import { InvoiceMonthFilter } from '@/components/invoice/InvoiceMonthFilter';
 import { AgingReportChart } from '@/components/invoice/AgingReportChart';
@@ -12,6 +13,7 @@ import { CreatePurchaseInvoiceDialog } from '@/components/invoice/CreatePurchase
 import { ViewInvoiceDialog } from '@/components/invoice/ViewInvoiceDialog';
 import { ViewPurchaseInvoiceDialog } from '@/components/invoice/ViewPurchaseInvoiceDialog';
 import { RecordPaymentDialog } from '@/components/invoice/RecordPaymentDialog';
+import { RecordPurchasePaymentDialog } from '@/components/invoice/RecordPurchasePaymentDialog';
 import { PaymentHistoryDialog } from '@/components/invoice/PaymentHistoryDialog';
 import { InvoiceExportDialog } from '@/components/invoice/InvoiceExportDialog';
 import { CreateCreditNoteDialog } from '@/components/invoice/CreateCreditNoteDialog';
@@ -37,6 +39,7 @@ export default function InvoiceManagement() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewPurchaseDialogOpen, setViewPurchaseDialogOpen] = useState(false);
   const [recordPaymentDialogOpen, setRecordPaymentDialogOpen] = useState(false);
+  const [recordPurchasePaymentDialogOpen, setRecordPurchasePaymentDialogOpen] = useState(false);
   const [paymentHistoryDialogOpen, setPaymentHistoryDialogOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [creditNoteDialogOpen, setCreditNoteDialogOpen] = useState(false);
@@ -129,7 +132,11 @@ export default function InvoiceManagement() {
 
   const handleRecordPayment = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
-    setRecordPaymentDialogOpen(true);
+    if (invoice.invoice_type === 'purchase') {
+      setRecordPurchasePaymentDialogOpen(true);
+    } else {
+      setRecordPaymentDialogOpen(true);
+    }
   };
 
   const handleViewPayments = (invoice: Invoice) => {
@@ -220,7 +227,8 @@ export default function InvoiceManagement() {
             ))}
           </TabsList>
 
-          {(['institution', 'sales', 'purchase'] as InvoiceType[]).map((type) => (
+          {/* Institution and Sales Tabs */}
+          {(['institution', 'sales'] as InvoiceType[]).map((type) => (
             <TabsContent key={type} value={type} className="mt-6 space-y-6">
               {/* Summary Cards */}
               <InvoiceSummaryCards summary={summary} loading={loading} />
@@ -260,6 +268,41 @@ export default function InvoiceManagement() {
               />
             </TabsContent>
           ))}
+
+          {/* Purchase Tab - Uses specialized list */}
+          <TabsContent value="purchase" className="mt-6 space-y-6">
+            {/* Summary Cards */}
+            <InvoiceSummaryCards summary={summary} loading={loading} />
+
+            {/* Aging Chart */}
+            {showAgingChart && (
+              <AgingReportChart buckets={agingBuckets} loading={loading} />
+            )}
+
+            {/* Month Filter */}
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <InvoiceMonthFilter
+                selectedMonth={selectedMonth}
+                onMonthChange={setSelectedMonth}
+              />
+              {selectedMonth && (
+                <p className="text-sm text-muted-foreground">
+                  {filteredInvoices.length} purchase bills in selected period
+                </p>
+              )}
+            </div>
+
+            {/* Purchase Invoice List with specialized actions */}
+            <PurchaseInvoiceList
+              invoices={filteredInvoices}
+              loading={loading}
+              onView={handleView}
+              onDelete={handleDelete}
+              onRecordPayment={handleRecordPayment}
+              onViewPayments={handleViewPayments}
+              onViewAuditLog={handleViewAuditLog}
+            />
+          </TabsContent>
         </Tabs>
 
         {/* Dialogs */}
@@ -293,6 +336,13 @@ export default function InvoiceManagement() {
         <RecordPaymentDialog
           open={recordPaymentDialogOpen}
           onOpenChange={setRecordPaymentDialogOpen}
+          invoice={selectedInvoice}
+          onSubmit={handlePaymentSubmit}
+        />
+
+        <RecordPurchasePaymentDialog
+          open={recordPurchasePaymentDialogOpen}
+          onOpenChange={setRecordPurchasePaymentDialogOpen}
           invoice={selectedInvoice}
           onSubmit={handlePaymentSubmit}
         />

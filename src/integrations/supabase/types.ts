@@ -3565,6 +3565,7 @@ export type Database = {
           attachment_url: string | null
           balance_due: number
           bank_details: Json | null
+          bill_receipt_date: string | null
           cgst_amount: number | null
           cgst_rate: number | null
           created_at: string | null
@@ -3574,6 +3575,7 @@ export type Database = {
           delivery_note: string | null
           discount_amount: number | null
           due_date: string | null
+          expense_category: string | null
           from_company_address: string | null
           from_company_cin: string | null
           from_company_city: string | null
@@ -3633,6 +3635,7 @@ export type Database = {
           total_amount: number
           total_in_words: string | null
           updated_at: string | null
+          vendor_pan: string | null
         }
         Insert: {
           ack_date?: string | null
@@ -3643,6 +3646,7 @@ export type Database = {
           attachment_url?: string | null
           balance_due?: number
           bank_details?: Json | null
+          bill_receipt_date?: string | null
           cgst_amount?: number | null
           cgst_rate?: number | null
           created_at?: string | null
@@ -3652,6 +3656,7 @@ export type Database = {
           delivery_note?: string | null
           discount_amount?: number | null
           due_date?: string | null
+          expense_category?: string | null
           from_company_address?: string | null
           from_company_cin?: string | null
           from_company_city?: string | null
@@ -3711,6 +3716,7 @@ export type Database = {
           total_amount?: number
           total_in_words?: string | null
           updated_at?: string | null
+          vendor_pan?: string | null
         }
         Update: {
           ack_date?: string | null
@@ -3721,6 +3727,7 @@ export type Database = {
           attachment_url?: string | null
           balance_due?: number
           bank_details?: Json | null
+          bill_receipt_date?: string | null
           cgst_amount?: number | null
           cgst_rate?: number | null
           created_at?: string | null
@@ -3730,6 +3737,7 @@ export type Database = {
           delivery_note?: string | null
           discount_amount?: number | null
           due_date?: string | null
+          expense_category?: string | null
           from_company_address?: string | null
           from_company_cin?: string | null
           from_company_city?: string | null
@@ -3789,6 +3797,7 @@ export type Database = {
           total_amount?: number
           total_in_words?: string | null
           updated_at?: string | null
+          vendor_pan?: string | null
         }
         Relationships: [
           {
@@ -4964,7 +4973,9 @@ export type Database = {
           created_by: string | null
           id: string
           invoice_id: string
+          is_self_deducted_tds: boolean | null
           notes: string | null
+          our_tan: string | null
           payment_date: string
           payment_mode: string
           reference_number: string | null
@@ -4972,6 +4983,8 @@ export type Database = {
           tds_certificate_number: string | null
           tds_deducted: boolean | null
           tds_quarter: string | null
+          tds_rate: number | null
+          tds_section: string | null
           updated_at: string | null
         }
         Insert: {
@@ -4983,7 +4996,9 @@ export type Database = {
           created_by?: string | null
           id?: string
           invoice_id: string
+          is_self_deducted_tds?: boolean | null
           notes?: string | null
+          our_tan?: string | null
           payment_date?: string
           payment_mode: string
           reference_number?: string | null
@@ -4991,6 +5006,8 @@ export type Database = {
           tds_certificate_number?: string | null
           tds_deducted?: boolean | null
           tds_quarter?: string | null
+          tds_rate?: number | null
+          tds_section?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -5002,7 +5019,9 @@ export type Database = {
           created_by?: string | null
           id?: string
           invoice_id?: string
+          is_self_deducted_tds?: boolean | null
           notes?: string | null
+          our_tan?: string | null
           payment_date?: string
           payment_mode?: string
           reference_number?: string | null
@@ -5010,6 +5029,8 @@ export type Database = {
           tds_certificate_number?: string | null
           tds_deducted?: boolean | null
           tds_quarter?: string | null
+          tds_rate?: number | null
+          tds_section?: string | null
           updated_at?: string | null
         }
         Relationships: [
