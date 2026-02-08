@@ -68,7 +68,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       allowedRoles,
       path: location.pathname
     });
-    return <Navigate to="/unauthorized" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   // Check feature-based permission for system_admin
@@ -79,7 +79,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         requiredFeature,
         path: location.pathname
       });
-      return <Navigate to="/unauthorized" replace />;
+      return <Navigate to="/login" replace />;
     }
   }
 
