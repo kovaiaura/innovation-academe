@@ -7,6 +7,7 @@ interface InvoiceStatusBadgeProps {
 
 const statusConfig: Record<InvoiceStatus, { label: string; className: string }> = {
   draft: { label: 'Draft', className: 'bg-muted text-muted-foreground' },
+  sent: { label: 'Sent', className: 'bg-blue-500/10 text-blue-600' },
   issued: { label: 'Issued', className: 'bg-blue-500/10 text-blue-600' },
   paid: { label: 'Paid', className: 'bg-green-500/10 text-green-600' },
   cancelled: { label: 'Cancelled', className: 'bg-destructive/10 text-destructive' },
