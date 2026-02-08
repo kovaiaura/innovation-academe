@@ -106,9 +106,9 @@ export function SalaryProgressCard({
           </div>
         </div>
 
-        {/* Monthly Target */}
+        {/* Monthly Salary */}
         <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-          <span className="text-sm font-medium">Monthly Target</span>
+          <span className="text-sm font-medium">Monthly Salary</span>
           <span className="text-lg font-bold">{formatCurrency(monthlyBase)}</span>
         </div>
       </CardContent>

@@ -1051,6 +1051,11 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                       // Use actual days in month instead of fixed 30
                       const daysInMonth = getDaysInMonth(new Date(localYear, localMonth - 1));
                       const perDaySalary = salaryData.monthlySalary / daysInMonth;
+                      
+                      // Calculate payable days = present + paid holidays + paid leave + weekends
+                      const payableDays = (stats?.presentDays || 0) + (stats?.holidays || 0) + (stats?.paidLeaveDays || 0) + (stats?.weekendDays || 0);
+                      const payableTillNow = payableDays * perDaySalary;
+                      
                       // Only deduct for LOP days (approved LOP + unmarked), not paid leave
                       const lopDeduction = perDaySalary * (stats?.totalLopDays || 0);
                       const calculatedOvertimePay = (stats?.approvedOvertime || 0) * salaryData.hourlyRate * salaryData.overtimeMultiplier;
@@ -1066,6 +1071,17 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                               <p className="text-sm text-muted-foreground">{formatCurrency(salaryData.monthlySalary)} ÷ {daysInMonth} days</p>
                             </div>
                             <p className="text-xl font-bold text-primary">{formatCurrency(perDaySalary)}</p>
+                          </div>
+
+                          {/* Payable Till Now Card */}
+                          <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                            <div>
+                              <p className="text-xs text-green-700 dark:text-green-400 uppercase font-medium">Payable Till Now</p>
+                              <p className="text-sm text-green-600 dark:text-green-500">
+                                {stats?.presentDays || 0} present + {stats?.holidays || 0} holidays + {stats?.paidLeaveDays || 0} paid leave + {stats?.weekendDays || 0} weekends = {payableDays} days
+                              </p>
+                            </div>
+                            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(payableTillNow)}</p>
                           </div>
 
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

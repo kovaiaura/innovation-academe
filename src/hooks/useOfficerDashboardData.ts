@@ -1,11 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth, getDaysInMonth, eachDayOfInterval, isAfter } from 'date-fns';
+import { calendarDayTypeService } from '@/services/calendarDayType.service';
 
 interface AttendanceSummary {
   daysPresent: number;
   totalHoursWorked: number;
-  overtimeHours: number;
+  approvedOvertimeHours: number;
+  paidHolidays: number;
+  paidLeaveDays: number;
+  weekends: number;
+  payableDays: number; // present + paid holidays + paid leave + weekends
 }
 
 interface SalaryCalculation {
@@ -17,6 +22,11 @@ interface SalaryCalculation {
   overtimePay: number;
   totalEarnings: number;
   progressPercentage: number;
+  payableDays: number;
+  paidHolidays: number;
+  paidLeaveDays: number;
+  weekends: number;
+  perDaySalary: number;
 }
 
 interface DashboardStats {
@@ -36,79 +46,163 @@ interface Task {
 }
 
 /**
- * Hook to fetch officer's monthly attendance summary
+ * Hook to fetch officer's monthly attendance summary with proper payable days calculation
  */
-export function useOfficerAttendanceSummary(officerId: string | undefined) {
+export function useOfficerAttendanceSummary(officerId: string | undefined, institutionId: string | undefined) {
   const now = new Date();
-  const monthStart = format(startOfMonth(now), 'yyyy-MM-dd');
-  const monthEnd = format(endOfMonth(now), 'yyyy-MM-dd');
+  const monthStart = startOfMonth(now);
+  const monthEnd = endOfMonth(now);
+  const today = now;
+  const endDate = isAfter(monthEnd, today) ? today : monthEnd;
+
+  const startDateStr = format(monthStart, 'yyyy-MM-dd');
+  const endDateStr = format(endDate, 'yyyy-MM-dd');
 
   return useQuery({
-    queryKey: ['officer-attendance-summary', officerId, monthStart],
+    queryKey: ['officer-attendance-summary-v2', officerId, institutionId, startDateStr],
     queryFn: async (): Promise<AttendanceSummary> => {
-      if (!officerId) return { daysPresent: 0, totalHoursWorked: 0, overtimeHours: 0 };
+      if (!officerId) return { daysPresent: 0, totalHoursWorked: 0, approvedOvertimeHours: 0, paidHolidays: 0, paidLeaveDays: 0, weekends: 0, payableDays: 0 };
 
-      const { data, error } = await supabase
+      // Fetch attendance records
+      const { data: attendanceData, error: attError } = await supabase
         .from('officer_attendance')
-        .select('total_hours_worked, overtime_hours')
+        .select('date, total_hours_worked, overtime_hours')
         .eq('officer_id', officerId)
-        .gte('date', monthStart)
-        .lte('date', monthEnd)
+        .gte('date', startDateStr)
+        .lte('date', endDateStr)
         .in('status', ['checked_out', 'auto_checkout']);
 
-      if (error) throw error;
+      if (attError) throw attError;
 
-      const daysPresent = data?.length || 0;
-      const totalHoursWorked = data?.reduce((sum, d) => sum + (d.total_hours_worked || 0), 0) || 0;
-      const overtimeHours = data?.reduce((sum, d) => sum + (d.overtime_hours || 0), 0) || 0;
+      // Fetch approved overtime only
+      const { data: overtimeData } = await supabase
+        .from('overtime_requests')
+        .select('requested_hours')
+        .eq('officer_id', officerId)
+        .eq('status', 'approved')
+        .gte('date', startDateStr)
+        .lte('date', endDateStr);
 
-      return { daysPresent, totalHoursWorked, overtimeHours };
+      // Fetch holidays and weekends from calendar
+      const nonWorkingDays = await calendarDayTypeService.getNonWorkingDaysInRange(
+        'institution',
+        startDateStr,
+        endDateStr,
+        institutionId || undefined
+      );
+
+      // Fetch approved paid leaves
+      const { data: leavesData } = await supabase
+        .from('leave_applications')
+        .select('start_date, end_date, paid_days, is_lop')
+        .eq('applicant_id', officerId)
+        .eq('status', 'approved')
+        .or(`start_date.lte.${endDateStr},end_date.gte.${startDateStr}`);
+
+      // Calculate present days
+      const presentDates = new Set(attendanceData?.map(a => a.date) || []);
+      const daysPresent = presentDates.size;
+      const totalHoursWorked = attendanceData?.reduce((sum, d) => sum + (d.total_hours_worked || 0), 0) || 0;
+      
+      // Only approved overtime hours
+      const approvedOvertimeHours = overtimeData?.reduce((sum, o) => sum + (Number(o.requested_hours) || 0), 0) || 0;
+
+      // Count weekends up to today
+      const allDays = eachDayOfInterval({ start: monthStart, end: endDate });
+      const weekendSet = new Set(nonWorkingDays.weekends);
+      const holidaySet = new Set(nonWorkingDays.holidays);
+      
+      let weekends = 0;
+      let paidHolidays = 0;
+      
+      for (const day of allDays) {
+        const dateStr = format(day, 'yyyy-MM-dd');
+        if (weekendSet.has(dateStr)) {
+          weekends++;
+        } else if (holidaySet.has(dateStr)) {
+          paidHolidays++;
+        }
+      }
+
+      // Calculate paid leave days
+      let paidLeaveDays = 0;
+      (leavesData || []).forEach((leave) => {
+        if (!leave.is_lop && leave.paid_days) {
+          paidLeaveDays += leave.paid_days;
+        }
+      });
+
+      // Total payable days = present + paid holidays + paid leave + weekends
+      const payableDays = daysPresent + paidHolidays + paidLeaveDays + weekends;
+
+      return { 
+        daysPresent, 
+        totalHoursWorked, 
+        approvedOvertimeHours,
+        paidHolidays,
+        paidLeaveDays,
+        weekends,
+        payableDays
+      };
     },
     enabled: !!officerId,
   });
 }
 
 /**
- * Hook to calculate officer's salary based on attendance
+ * Hook to calculate officer's salary based on attendance with correct per-day calculation
  */
 export function useOfficerSalaryCalculation(
   officerId: string | undefined,
   annualSalary: number | undefined,
   overtimeMultiplier: number = 1.5,
-  normalWorkingHours: number = 8
+  normalWorkingHours: number = 8,
+  institutionId?: string
 ) {
-  const { data: attendanceSummary, isLoading } = useOfficerAttendanceSummary(officerId);
+  const { data: attendanceSummary, isLoading } = useOfficerAttendanceSummary(officerId, institutionId);
 
   const now = new Date();
-  const workingDaysInMonth = 26; // Approximate working days
+  // Use actual days in the month for per-day calculation
+  const daysInMonth = getDaysInMonth(now);
 
   const monthlyBase = (annualSalary || 0) / 12;
-  const perDayRate = monthlyBase / workingDaysInMonth;
-  const perHourRate = perDayRate / normalWorkingHours;
+  // Per day salary = monthly salary / actual days in month (28, 29, 30, or 31)
+  const perDaySalary = monthlyBase / daysInMonth;
+  const perHourRate = perDaySalary / normalWorkingHours;
 
   const daysPresent = attendanceSummary?.daysPresent || 0;
-  const overtimeHours = attendanceSummary?.overtimeHours || 0;
+  const payableDays = attendanceSummary?.payableDays || 0;
+  const paidHolidays = attendanceSummary?.paidHolidays || 0;
+  const paidLeaveDays = attendanceSummary?.paidLeaveDays || 0;
+  const weekends = attendanceSummary?.weekends || 0;
+  const approvedOvertimeHours = attendanceSummary?.approvedOvertimeHours || 0;
 
-  const earnedSalary = daysPresent * perDayRate;
-  const overtimePay = overtimeHours * perHourRate * overtimeMultiplier;
+  // Earned salary = payable days × per day salary
+  const earnedSalary = payableDays * perDaySalary;
+  // Overtime pay uses only approved overtime
+  const overtimePay = approvedOvertimeHours * perHourRate * overtimeMultiplier;
   const totalEarnings = earnedSalary + overtimePay;
 
-  // Calculate progress based on days worked / total working days
+  // Calculate progress based on days elapsed vs payable days
   const dayOfMonth = now.getDate();
-  const expectedDays = Math.min(dayOfMonth, workingDaysInMonth);
-  const progressPercentage = expectedDays > 0 ? (daysPresent / expectedDays) * 100 : 0;
+  const progressPercentage = dayOfMonth > 0 ? (payableDays / dayOfMonth) * 100 : 0;
 
   return {
     isLoading,
     data: {
       monthlyBase,
       daysPresent,
-      workingDays: workingDaysInMonth,
+      workingDays: daysInMonth,
       earnedSalary,
-      overtimeHours,
+      overtimeHours: approvedOvertimeHours,
       overtimePay,
       totalEarnings,
       progressPercentage: Math.min(progressPercentage, 100),
+      payableDays,
+      paidHolidays,
+      paidLeaveDays,
+      weekends,
+      perDaySalary,
     } as SalaryCalculation,
   };
 }
