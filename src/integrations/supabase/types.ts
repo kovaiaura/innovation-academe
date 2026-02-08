@@ -2052,6 +2052,122 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_debit_notes: {
+        Row: {
+          applied_date: string | null
+          applied_to_invoice_id: string | null
+          cgst_amount: number | null
+          cgst_rate: number | null
+          created_at: string | null
+          created_by: string | null
+          customer_address: string | null
+          customer_gstin: string | null
+          customer_name: string | null
+          id: string
+          igst_amount: number | null
+          igst_rate: number | null
+          institution_id: string | null
+          line_items: Json | null
+          note_date: string
+          note_number: string
+          note_type: string
+          notes: string | null
+          original_invoice_id: string | null
+          reason: string
+          sgst_amount: number | null
+          sgst_rate: number | null
+          status: string | null
+          subtotal: number | null
+          total_amount: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          applied_date?: string | null
+          applied_to_invoice_id?: string | null
+          cgst_amount?: number | null
+          cgst_rate?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          customer_address?: string | null
+          customer_gstin?: string | null
+          customer_name?: string | null
+          id?: string
+          igst_amount?: number | null
+          igst_rate?: number | null
+          institution_id?: string | null
+          line_items?: Json | null
+          note_date?: string
+          note_number: string
+          note_type: string
+          notes?: string | null
+          original_invoice_id?: string | null
+          reason: string
+          sgst_amount?: number | null
+          sgst_rate?: number | null
+          status?: string | null
+          subtotal?: number | null
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          applied_date?: string | null
+          applied_to_invoice_id?: string | null
+          cgst_amount?: number | null
+          cgst_rate?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          customer_address?: string | null
+          customer_gstin?: string | null
+          customer_name?: string | null
+          id?: string
+          igst_amount?: number | null
+          igst_rate?: number | null
+          institution_id?: string | null
+          line_items?: Json | null
+          note_date?: string
+          note_number?: string
+          note_type?: string
+          notes?: string | null
+          original_invoice_id?: string | null
+          reason?: string
+          sgst_amount?: number | null
+          sgst_rate?: number | null
+          status?: string | null
+          subtotal?: number | null
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_debit_notes_applied_to_invoice_id_fkey"
+            columns: ["applied_to_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_debit_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_debit_notes_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_debit_notes_original_invoice_id_fkey"
+            columns: ["original_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_contract_documents: {
         Row: {
           contract_id: string
@@ -3284,6 +3400,60 @@ export type Database = {
           },
         ]
       }
+      invoice_audit_log: {
+        Row: {
+          action: string
+          id: string
+          invoice_id: string
+          ip_address: string | null
+          new_values: Json | null
+          notes: string | null
+          old_values: Json | null
+          performed_at: string | null
+          performed_by: string | null
+          performed_by_name: string | null
+        }
+        Insert: {
+          action: string
+          id?: string
+          invoice_id: string
+          ip_address?: string | null
+          new_values?: Json | null
+          notes?: string | null
+          old_values?: Json | null
+          performed_at?: string | null
+          performed_by?: string | null
+          performed_by_name?: string | null
+        }
+        Update: {
+          action?: string
+          id?: string
+          invoice_id?: string
+          ip_address?: string | null
+          new_values?: Json | null
+          notes?: string | null
+          old_values?: Json | null
+          performed_at?: string | null
+          performed_by?: string | null
+          performed_by_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_audit_log_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_audit_log_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_line_items: {
         Row: {
           amount: number
@@ -3389,6 +3559,7 @@ export type Database = {
         Row: {
           ack_date: string | null
           ack_number: string | null
+          amount_paid: number | null
           attachment_name: string | null
           attachment_type: string | null
           attachment_url: string | null
@@ -3398,6 +3569,7 @@ export type Database = {
           cgst_rate: number | null
           created_at: string | null
           created_by: string | null
+          days_overdue: number | null
           declaration: string | null
           delivery_note: string | null
           discount_amount: number | null
@@ -3422,11 +3594,14 @@ export type Database = {
           invoice_number: string
           invoice_type: string
           irn: string | null
+          last_payment_date: string | null
           notes: string | null
           paid_date: string | null
           payment_method: string | null
+          payment_status: string | null
           place_of_supply: string | null
           reference_number: string | null
+          sent_date: string | null
           sgst_amount: number | null
           sgst_rate: number | null
           ship_to_address: string | null
@@ -3440,6 +3615,9 @@ export type Database = {
           status: string
           sub_total: number
           tds_amount: number | null
+          tds_certificate_number: string | null
+          tds_deducted_by: string | null
+          tds_quarter: string | null
           tds_rate: number | null
           terms: string | null
           terms_and_conditions: string | null
@@ -3459,6 +3637,7 @@ export type Database = {
         Insert: {
           ack_date?: string | null
           ack_number?: string | null
+          amount_paid?: number | null
           attachment_name?: string | null
           attachment_type?: string | null
           attachment_url?: string | null
@@ -3468,6 +3647,7 @@ export type Database = {
           cgst_rate?: number | null
           created_at?: string | null
           created_by?: string | null
+          days_overdue?: number | null
           declaration?: string | null
           delivery_note?: string | null
           discount_amount?: number | null
@@ -3492,11 +3672,14 @@ export type Database = {
           invoice_number: string
           invoice_type: string
           irn?: string | null
+          last_payment_date?: string | null
           notes?: string | null
           paid_date?: string | null
           payment_method?: string | null
+          payment_status?: string | null
           place_of_supply?: string | null
           reference_number?: string | null
+          sent_date?: string | null
           sgst_amount?: number | null
           sgst_rate?: number | null
           ship_to_address?: string | null
@@ -3510,6 +3693,9 @@ export type Database = {
           status?: string
           sub_total?: number
           tds_amount?: number | null
+          tds_certificate_number?: string | null
+          tds_deducted_by?: string | null
+          tds_quarter?: string | null
           tds_rate?: number | null
           terms?: string | null
           terms_and_conditions?: string | null
@@ -3529,6 +3715,7 @@ export type Database = {
         Update: {
           ack_date?: string | null
           ack_number?: string | null
+          amount_paid?: number | null
           attachment_name?: string | null
           attachment_type?: string | null
           attachment_url?: string | null
@@ -3538,6 +3725,7 @@ export type Database = {
           cgst_rate?: number | null
           created_at?: string | null
           created_by?: string | null
+          days_overdue?: number | null
           declaration?: string | null
           delivery_note?: string | null
           discount_amount?: number | null
@@ -3562,11 +3750,14 @@ export type Database = {
           invoice_number?: string
           invoice_type?: string
           irn?: string | null
+          last_payment_date?: string | null
           notes?: string | null
           paid_date?: string | null
           payment_method?: string | null
+          payment_status?: string | null
           place_of_supply?: string | null
           reference_number?: string | null
+          sent_date?: string | null
           sgst_amount?: number | null
           sgst_rate?: number | null
           ship_to_address?: string | null
@@ -3580,6 +3771,9 @@ export type Database = {
           status?: string
           sub_total?: number
           tds_amount?: number | null
+          tds_certificate_number?: string | null
+          tds_deducted_by?: string | null
+          tds_quarter?: string | null
           tds_rate?: number | null
           terms?: string | null
           terms_and_conditions?: string | null
@@ -4759,6 +4953,81 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          bank_name: string | null
+          cheque_date: string | null
+          cheque_number: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          invoice_id: string
+          notes: string | null
+          payment_date: string
+          payment_mode: string
+          reference_number: string | null
+          tds_amount: number | null
+          tds_certificate_number: string | null
+          tds_deducted: boolean | null
+          tds_quarter: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          bank_name?: string | null
+          cheque_date?: string | null
+          cheque_number?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          invoice_id: string
+          notes?: string | null
+          payment_date?: string
+          payment_mode: string
+          reference_number?: string | null
+          tds_amount?: number | null
+          tds_certificate_number?: string | null
+          tds_deducted?: boolean | null
+          tds_quarter?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          bank_name?: string | null
+          cheque_date?: string | null
+          cheque_number?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          invoice_id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_mode?: string
+          reference_number?: string | null
+          tds_amount?: number | null
+          tds_certificate_number?: string | null
+          tds_deducted?: boolean | null
+          tds_quarter?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payroll_records: {
         Row: {
@@ -7000,6 +7269,7 @@ export type Database = {
         Args: { p_class_module_assignment_id: string }
         Returns: undefined
       }
+      calculate_days_overdue: { Args: never; Returns: undefined }
       can_manage_events: { Args: { _user_id: string }; Returns: boolean }
       can_view_event: {
         Args: { _event_id: string; _status: string; _user_id: string }
@@ -7020,6 +7290,7 @@ export type Database = {
         Args: { p_invoice_type: string }
         Returns: string
       }
+      generate_note_number: { Args: { p_note_type: string }; Returns: string }
       generate_request_code: {
         Args: { prefix: string; table_name: string }
         Returns: string

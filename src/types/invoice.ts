@@ -1,5 +1,7 @@
 export type InvoiceType = 'institution' | 'sales' | 'purchase';
-export type InvoiceStatus = 'draft' | 'issued' | 'paid' | 'cancelled' | 'overdue';
+export type InvoiceStatus = 'draft' | 'issued' | 'paid' | 'cancelled' | 'overdue' | 'sent';
+export type PaymentStatus = 'unpaid' | 'partial' | 'paid';
+export type TDSDeductedBy = 'self' | 'client' | 'none';
 
 export interface BankDetails {
   account_holder?: string;
@@ -121,6 +123,16 @@ export interface Invoice {
   total_amount: number;
   balance_due: number;
   total_in_words?: string;
+  
+  // Payment tracking (new fields)
+  amount_paid?: number;
+  tds_deducted_by?: TDSDeductedBy;
+  tds_certificate_number?: string;
+  tds_quarter?: string;
+  payment_status?: PaymentStatus;
+  last_payment_date?: string;
+  sent_date?: string;
+  days_overdue?: number;
   
   // Status
   status: InvoiceStatus;
