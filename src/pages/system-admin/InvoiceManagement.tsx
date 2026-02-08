@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Plus, Building2, ShoppingCart, Package, Download, BarChart3 } from 'lucide-react';
+import { Plus, Building2, ShoppingCart, Package, Download, BarChart3, FileText } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { InvoiceList } from '@/components/invoice/InvoiceList';
 import { InvoiceSummaryCards } from '@/components/invoice/InvoiceSummaryCards';
@@ -14,6 +14,10 @@ import { ViewPurchaseInvoiceDialog } from '@/components/invoice/ViewPurchaseInvo
 import { RecordPaymentDialog } from '@/components/invoice/RecordPaymentDialog';
 import { PaymentHistoryDialog } from '@/components/invoice/PaymentHistoryDialog';
 import { InvoiceExportDialog } from '@/components/invoice/InvoiceExportDialog';
+import { CreateCreditNoteDialog } from '@/components/invoice/CreateCreditNoteDialog';
+import { CreateDebitNoteDialog } from '@/components/invoice/CreateDebitNoteDialog';
+import { TDSCertificateUpload } from '@/components/invoice/TDSCertificateUpload';
+import { InvoiceAuditLog } from '@/components/invoice/InvoiceAuditLog';
 import { useAllInvoicesSummary } from '@/hooks/useInvoiceSummary';
 import { usePaymentsForInvoice } from '@/hooks/usePayments';
 import { updateInvoiceStatus, deleteInvoice } from '@/services/invoice.service';
@@ -35,6 +39,10 @@ export default function InvoiceManagement() {
   const [recordPaymentDialogOpen, setRecordPaymentDialogOpen] = useState(false);
   const [paymentHistoryDialogOpen, setPaymentHistoryDialogOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [creditNoteDialogOpen, setCreditNoteDialogOpen] = useState(false);
+  const [debitNoteDialogOpen, setDebitNoteDialogOpen] = useState(false);
+  const [tdsUploadDialogOpen, setTdsUploadDialogOpen] = useState(false);
+  const [auditLogDialogOpen, setAuditLogDialogOpen] = useState(false);
   
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [institutions, setInstitutions] = useState<{ id: string; name: string }[]>([]);
@@ -134,6 +142,26 @@ export default function InvoiceManagement() {
     refetch();
   };
 
+  const handleIssueCreditNote = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setCreditNoteDialogOpen(true);
+  };
+
+  const handleIssueDebitNote = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setDebitNoteDialogOpen(true);
+  };
+
+  const handleUploadTDS = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setTdsUploadDialogOpen(true);
+  };
+
+  const handleViewAuditLog = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setAuditLogDialogOpen(true);
+  };
+
   const getTabIcon = (type: InvoiceType) => {
     switch (type) {
       case 'institution':
@@ -225,6 +253,10 @@ export default function InvoiceManagement() {
                 onDelete={handleDelete}
                 onRecordPayment={handleRecordPayment}
                 onViewPayments={handleViewPayments}
+                onIssueCreditNote={handleIssueCreditNote}
+                onIssueDebitNote={handleIssueDebitNote}
+                onUploadTDS={handleUploadTDS}
+                onViewAuditLog={handleViewAuditLog}
               />
             </TabsContent>
           ))}
@@ -277,6 +309,42 @@ export default function InvoiceManagement() {
           invoices={filteredInvoices}
           invoiceType={activeTab}
         />
+
+        <CreateCreditNoteDialog
+          open={creditNoteDialogOpen}
+          onOpenChange={setCreditNoteDialogOpen}
+          invoice={selectedInvoice}
+          onSuccess={refetch}
+        />
+
+        <CreateDebitNoteDialog
+          open={debitNoteDialogOpen}
+          onOpenChange={setDebitNoteDialogOpen}
+          invoice={selectedInvoice}
+          onSuccess={refetch}
+        />
+
+        {selectedInvoice && (
+          <>
+            <TDSCertificateUpload
+              open={tdsUploadDialogOpen}
+              onOpenChange={setTdsUploadDialogOpen}
+              invoiceId={selectedInvoice.id}
+              existingCertificate={{
+                certificate_number: selectedInvoice.tds_certificate_number,
+                quarter: selectedInvoice.tds_quarter,
+              }}
+              onSuccess={refetch}
+            />
+
+            <InvoiceAuditLog
+              open={auditLogDialogOpen}
+              onOpenChange={setAuditLogDialogOpen}
+              invoiceId={selectedInvoice.id}
+              invoiceNumber={selectedInvoice.invoice_number}
+            />
+          </>
+        )}
       </div>
     </Layout>
   );
