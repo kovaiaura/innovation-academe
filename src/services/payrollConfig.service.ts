@@ -64,7 +64,7 @@ export const getOfficerSalaryDetails = async (officerId: string): Promise<{
   if (error) throw error;
   
   const annualSalary = data?.annual_salary || 0;
-  const monthlySalary = annualSalary / 12;
+  const monthlySalary = Math.round(annualSalary / 12 * 100) / 100;
   
   // Use stored salary structure or calculate from CTC
   let salaryStructure: SalaryStructure;
@@ -129,7 +129,7 @@ export const getStaffSalaryDetails = async (userId: string): Promise<{
   // Calculate monthly salary from annual or hourly rate
   const hourlyRate = data?.hourly_rate || 500;
   const annualSalary = data?.annual_salary || (hourlyRate * 8 * 22 * 12);
-  const monthlySalary = annualSalary / 12;
+  const monthlySalary = Math.round(annualSalary / 12 * 100) / 100;
   
   // Use stored salary structure or calculate from CTC
   let salaryStructure: SalaryStructure;
