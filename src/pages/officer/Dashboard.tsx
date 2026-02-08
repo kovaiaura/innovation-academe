@@ -62,10 +62,13 @@ export default function OfficerDashboard() {
   // Get real dashboard stats
   const { data: dashboardStats } = useOfficerDashboardStats(officerProfile?.id, primaryInstitutionId);
   
-  // Get real salary calculation
+  // Get real salary calculation with institution context for calendar
   const { data: salaryData, isLoading: isLoadingSalary } = useOfficerSalaryCalculation(
     officerProfile?.id,
-    officerProfile?.annual_salary || undefined
+    officerProfile?.annual_salary || undefined,
+    1.5, // overtimeMultiplier
+    8,   // normalWorkingHours
+    primaryInstitutionId // institutionId for calendar lookup
   );
   
   // Get tasks assigned to officer
