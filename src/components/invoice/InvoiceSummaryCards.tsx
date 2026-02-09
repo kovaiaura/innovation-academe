@@ -2,61 +2,111 @@ import { Card, CardContent } from '@/components/ui/card';
 import { 
   IndianRupee, 
   TrendingUp, 
+  TrendingDown,
   Clock, 
   AlertTriangle, 
   FileCheck,
-  Receipt
+  Receipt,
+  FileText
 } from 'lucide-react';
 import type { InvoiceSummary } from '@/services/invoice-export.service';
+import type { InvoiceType } from '@/types/invoice';
 
 interface InvoiceSummaryCardsProps {
   summary: InvoiceSummary;
   loading?: boolean;
+  invoiceType?: InvoiceType;
 }
 
-export function InvoiceSummaryCards({ summary, loading }: InvoiceSummaryCardsProps) {
-  const cards = [
-    {
-      title: 'Total Invoiced',
-      value: summary.total_invoiced,
-      icon: Receipt,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-500/10',
-      subtitle: `${summary.invoice_count} invoices`,
-    },
-    {
-      title: 'Outstanding',
-      value: summary.total_outstanding,
-      icon: Clock,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-500/10',
-      subtitle: 'Balance due',
-    },
-    {
-      title: 'Collected',
-      value: summary.total_collected,
-      icon: TrendingUp,
-      color: 'text-green-600',
-      bgColor: 'bg-green-500/10',
-      subtitle: `${summary.paid_count} paid`,
-    },
-    {
-      title: 'Overdue',
-      value: summary.total_overdue,
-      icon: AlertTriangle,
-      color: 'text-red-600',
-      bgColor: 'bg-red-500/10',
-      subtitle: `${summary.overdue_count} overdue`,
-    },
-    {
-      title: 'TDS Receivable',
-      value: summary.tds_receivable,
-      icon: FileCheck,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-500/10',
-      subtitle: 'Client deducted',
-    },
-  ];
+export function InvoiceSummaryCards({ summary, loading, invoiceType = 'institution' }: InvoiceSummaryCardsProps) {
+  const isPurchase = invoiceType === 'purchase';
+  
+  // Configure cards based on invoice type
+  const cards = isPurchase 
+    ? [
+        {
+          title: 'Total Bills',
+          value: summary.total_invoiced,
+          icon: FileText,
+          color: 'text-blue-600',
+          bgColor: 'bg-blue-500/10',
+          subtitle: `${summary.invoice_count} vendor bills`,
+        },
+        {
+          title: 'Outstanding',
+          value: summary.total_outstanding,
+          icon: Clock,
+          color: 'text-amber-600',
+          bgColor: 'bg-amber-500/10',
+          subtitle: 'Balance to pay',
+        },
+        {
+          title: 'Amount Paid',
+          value: summary.total_collected,
+          icon: TrendingDown,
+          color: 'text-green-600',
+          bgColor: 'bg-green-500/10',
+          subtitle: `${summary.paid_count} settled`,
+        },
+        {
+          title: 'Overdue',
+          value: summary.total_overdue,
+          icon: AlertTriangle,
+          color: 'text-red-600',
+          bgColor: 'bg-red-500/10',
+          subtitle: `${summary.overdue_count} overdue`,
+        },
+        {
+          title: 'TDS Deducted',
+          value: summary.tds_deducted,
+          icon: FileCheck,
+          color: 'text-purple-600',
+          bgColor: 'bg-purple-500/10',
+          subtitle: 'By us',
+        },
+      ]
+    : [
+        {
+          title: 'Total Invoiced',
+          value: summary.total_invoiced,
+          icon: Receipt,
+          color: 'text-blue-600',
+          bgColor: 'bg-blue-500/10',
+          subtitle: `${summary.invoice_count} invoices`,
+        },
+        {
+          title: 'Outstanding',
+          value: summary.total_outstanding,
+          icon: Clock,
+          color: 'text-amber-600',
+          bgColor: 'bg-amber-500/10',
+          subtitle: 'Balance due',
+        },
+        {
+          title: 'Collected',
+          value: summary.total_collected,
+          icon: TrendingUp,
+          color: 'text-green-600',
+          bgColor: 'bg-green-500/10',
+          subtitle: `${summary.paid_count} paid`,
+        },
+        {
+          title: 'Overdue',
+          value: summary.total_overdue,
+          icon: AlertTriangle,
+          color: 'text-red-600',
+          bgColor: 'bg-red-500/10',
+          subtitle: `${summary.overdue_count} overdue`,
+        },
+        {
+          title: 'TDS Receivable',
+          value: summary.tds_receivable,
+          icon: FileCheck,
+          color: 'text-purple-600',
+          bgColor: 'bg-purple-500/10',
+          subtitle: 'Client deducted',
+        },
+      ];
 
   if (loading) {
     return (
