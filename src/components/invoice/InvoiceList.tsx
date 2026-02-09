@@ -177,8 +177,11 @@ export function InvoiceList({
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead className="text-right">Paid</TableHead>
                   <TableHead className="text-right">Balance</TableHead>
+                  <TableHead className="text-right">TDS</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Payment</TableHead>
+                  <TableHead>Mode</TableHead>
+                  <TableHead>Reference</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -186,6 +189,7 @@ export function InvoiceList({
                 {filteredInvoices.map((invoice) => {
                   const daysOverdue = getDaysOverdue(invoice);
                   const balance = (invoice.total_amount || 0) - (invoice.amount_paid || 0);
+                  const tdsAmount = invoice.tds_deducted_by === 'client' ? (invoice.tds_amount || 0) : 0;
                   
                   return (
                     <TableRow key={invoice.id}>
@@ -227,11 +231,26 @@ export function InvoiceList({
                           <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
+                      <TableCell className="text-right">
+                        {tdsAmount > 0 ? (
+                          <span className="text-purple-600">
+                            ₹{tdsAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <InvoiceStatusBadge status={invoice.status} />
                       </TableCell>
                       <TableCell>
                         {getPaymentStatusBadge(invoice)}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {invoice.payment_method || '-'}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[80px] truncate">
+                        {invoice.reference_number || '-'}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -336,19 +355,15 @@ export function InvoiceList({
                               </>
                             )}
                             
-                            {/* Delete - for drafts OR invoices with no payments */}
-                            {(invoice.status === 'draft' || (invoice.amount_paid || 0) === 0) && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => onDelete(invoice.id)}
-                                  className="text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </>
-                            )}
+                            {/* Delete - allow for any invoice */}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => onDelete(invoice.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

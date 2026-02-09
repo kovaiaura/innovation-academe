@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Plus, Building2, ShoppingCart, Package, Download, BarChart3 } from 'lucide-react';
+import { Plus, ShoppingCart, Package, Download } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { InvoiceList } from '@/components/invoice/InvoiceList';
 import { PurchaseInvoiceList } from '@/components/invoice/PurchaseInvoiceList';
-import { InvoiceSummaryCards } from '@/components/invoice/InvoiceSummaryCards';
+import { GlobalSummaryCards } from '@/components/invoice/GlobalSummaryCards';
 import { InvoiceMonthFilter } from '@/components/invoice/InvoiceMonthFilter';
-import { AgingReportChart } from '@/components/invoice/AgingReportChart';
+import { InvoiceReportSection } from '@/components/invoice/InvoiceReportSection';
 import { CreateInvoiceDialog } from '@/components/invoice/CreateInvoiceDialog';
 import { CreatePurchaseInvoiceDialog } from '@/components/invoice/CreatePurchaseInvoiceDialog';
 import { ViewInvoiceDialog } from '@/components/invoice/ViewInvoiceDialog';
@@ -20,18 +20,19 @@ import { CreateCreditNoteDialog } from '@/components/invoice/CreateCreditNoteDia
 import { CreateDebitNoteDialog } from '@/components/invoice/CreateDebitNoteDialog';
 import { TDSCertificateUpload } from '@/components/invoice/TDSCertificateUpload';
 import { InvoiceAuditLog } from '@/components/invoice/InvoiceAuditLog';
-import { useAllInvoicesSummary } from '@/hooks/useInvoiceSummary';
+import { useGlobalInvoiceSummary } from '@/hooks/useGlobalInvoiceSummary';
 import { usePaymentsForInvoice } from '@/hooks/usePayments';
 import { updateInvoiceStatus, deleteInvoice } from '@/services/invoice.service';
 import { supabase } from '@/integrations/supabase/client';
-import type { Invoice, InvoiceType, InvoiceStatus } from '@/types/invoice';
+import type { Invoice, InvoiceStatus } from '@/types/invoice';
 import type { CreatePaymentInput } from '@/types/payment';
 import { toast } from 'sonner';
 
+type BillingTab = 'sales' | 'purchase';
+
 export default function InvoiceManagement() {
-  const [activeTab, setActiveTab] = useState<InvoiceType>('institution');
+  const [activeTab, setActiveTab] = useState<BillingTab>('sales');
   const [selectedMonth, setSelectedMonth] = useState<Date | null>(null);
-  const [showAgingChart, setShowAgingChart] = useState(false);
   
   // Dialogs state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -50,7 +51,7 @@ export default function InvoiceManagement() {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [institutions, setInstitutions] = useState<{ id: string; name: string }[]>([]);
 
-  const { invoices, summary, agingBuckets, loading, refetch } = useAllInvoicesSummary(activeTab);
+  const { summary, allInvoices, allPayments, getAgingBuckets, loading, refetch } = useGlobalInvoiceSummary();
   
   // Payment hook for selected invoice
   const { addPayment } = usePaymentsForInvoice(selectedInvoice?.id || null);
@@ -67,16 +68,38 @@ export default function InvoiceManagement() {
     if (data) setInstitutions(data);
   };
 
-  // Filter invoices by selected month
-  const filteredInvoices = selectedMonth
-    ? invoices.filter(inv => {
+  // Filter invoices by type and selected month
+  const filteredInvoices = useMemo(() => {
+    let invoices = allInvoices;
+    
+    // Filter by type - Sales tab includes both sales and institution
+    if (activeTab === 'sales') {
+      invoices = invoices.filter(inv => 
+        inv.invoice_type === 'sales' || inv.invoice_type === 'institution'
+      );
+    } else {
+      invoices = invoices.filter(inv => inv.invoice_type === 'purchase');
+    }
+    
+    // Filter by month
+    if (selectedMonth) {
+      invoices = invoices.filter(inv => {
         const invDate = new Date(inv.invoice_date);
         return (
           invDate.getMonth() === selectedMonth.getMonth() &&
           invDate.getFullYear() === selectedMonth.getFullYear()
         );
-      })
-    : invoices;
+      });
+    }
+    
+    return invoices;
+  }, [allInvoices, activeTab, selectedMonth]);
+
+  // Get payments for current tab's invoices
+  const filteredPayments = useMemo(() => {
+    const invoiceIds = new Set(filteredInvoices.map(inv => inv.id));
+    return allPayments.filter(p => invoiceIds.has(p.invoice_id));
+  }, [filteredInvoices, allPayments]);
 
   const handleView = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -123,7 +146,7 @@ export default function InvoiceManagement() {
   const handleDelete = async (id: string) => {
     try {
       await deleteInvoice(id);
-      toast.success('Invoice deleted');
+      toast.success('Invoice deleted successfully');
       refetch();
     } catch (error) {
       toast.error('Failed to delete invoice');
@@ -169,21 +192,8 @@ export default function InvoiceManagement() {
     setAuditLogDialogOpen(true);
   };
 
-  const getTabIcon = (type: InvoiceType) => {
+  const getTabLabel = (type: BillingTab) => {
     switch (type) {
-      case 'institution':
-        return <Building2 className="h-4 w-4" />;
-      case 'sales':
-        return <ShoppingCart className="h-4 w-4" />;
-      case 'purchase':
-        return <Package className="h-4 w-4" />;
-    }
-  };
-
-  const getTabLabel = (type: InvoiceType) => {
-    switch (type) {
-      case 'institution':
-        return 'Institution Billing';
       case 'sales':
         return 'Sales Billing';
       case 'purchase':
@@ -206,10 +216,6 @@ export default function InvoiceManagement() {
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
-            <Button variant="outline" onClick={() => setShowAgingChart(!showAgingChart)}>
-              <BarChart3 className="h-4 w-4 mr-2" />
-              {showAgingChart ? 'Hide' : 'Show'} Aging
-            </Button>
             <Button onClick={handleCreateClick}>
               <Plus className="h-4 w-4 mr-2" />
               {activeTab === 'purchase' ? 'Record Purchase' : 'Create Invoice'}
@@ -217,68 +223,63 @@ export default function InvoiceManagement() {
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as InvoiceType)}>
-          <TabsList className="grid w-full max-w-lg grid-cols-3">
-            {(['institution', 'sales', 'purchase'] as InvoiceType[]).map((type) => (
-              <TabsTrigger key={type} value={type} className="gap-2">
-                {getTabIcon(type)}
-                <span className="hidden sm:inline">{getTabLabel(type)}</span>
-              </TabsTrigger>
-            ))}
+        {/* Global Summary Cards */}
+        <GlobalSummaryCards summary={summary} loading={loading} />
+
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as BillingTab)}>
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="sales" className="gap-2">
+              <ShoppingCart className="h-4 w-4" />
+              <span className="hidden sm:inline">{getTabLabel('sales')}</span>
+            </TabsTrigger>
+            <TabsTrigger value="purchase" className="gap-2">
+              <Package className="h-4 w-4" />
+              <span className="hidden sm:inline">{getTabLabel('purchase')}</span>
+            </TabsTrigger>
           </TabsList>
 
-          {/* Institution and Sales Tabs */}
-          {(['institution', 'sales'] as InvoiceType[]).map((type) => (
-            <TabsContent key={type} value={type} className="mt-6 space-y-6">
-              {/* Summary Cards */}
-              <InvoiceSummaryCards summary={summary} loading={loading} invoiceType={type} />
-
-              {/* Aging Chart */}
-              {showAgingChart && (
-                <AgingReportChart buckets={agingBuckets} loading={loading} invoiceType={type} />
-              )}
-
-              {/* Month Filter */}
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <InvoiceMonthFilter
-                  selectedMonth={selectedMonth}
-                  onMonthChange={setSelectedMonth}
-                />
-                {selectedMonth && (
-                  <p className="text-sm text-muted-foreground">
-                    {filteredInvoices.length} invoices in selected period
-                  </p>
-                )}
-              </div>
-
-              {/* Invoice List */}
-              <InvoiceList
-                invoices={filteredInvoices}
-                loading={loading}
-                onView={handleView}
-                onDownload={handleDownload}
-                onStatusChange={handleStatusChange}
-                onDelete={handleDelete}
-                onRecordPayment={handleRecordPayment}
-                onViewPayments={handleViewPayments}
-                onIssueCreditNote={handleIssueCreditNote}
-                onIssueDebitNote={handleIssueDebitNote}
-                onUploadTDS={handleUploadTDS}
-                onViewAuditLog={handleViewAuditLog}
+          {/* Sales Tab (includes Institution invoices) */}
+          <TabsContent value="sales" className="mt-6 space-y-6">
+            {/* Month Filter */}
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <InvoiceMonthFilter
+                selectedMonth={selectedMonth}
+                onMonthChange={setSelectedMonth}
               />
-            </TabsContent>
-          ))}
+              {selectedMonth && (
+                <p className="text-sm text-muted-foreground">
+                  {filteredInvoices.length} invoices in selected period
+                </p>
+              )}
+            </div>
 
-          {/* Purchase Tab - Uses specialized list */}
+            {/* Invoice List */}
+            <InvoiceList
+              invoices={filteredInvoices}
+              loading={loading}
+              onView={handleView}
+              onDownload={handleDownload}
+              onStatusChange={handleStatusChange}
+              onDelete={handleDelete}
+              onRecordPayment={handleRecordPayment}
+              onViewPayments={handleViewPayments}
+              onIssueCreditNote={handleIssueCreditNote}
+              onIssueDebitNote={handleIssueDebitNote}
+              onUploadTDS={handleUploadTDS}
+              onViewAuditLog={handleViewAuditLog}
+            />
+
+            {/* Report Section */}
+            <InvoiceReportSection
+              invoices={filteredInvoices}
+              payments={filteredPayments}
+              invoiceType="sales"
+              agingBuckets={getAgingBuckets('sales')}
+            />
+          </TabsContent>
+
+          {/* Purchase Tab */}
           <TabsContent value="purchase" className="mt-6 space-y-6">
-            {/* Summary Cards - Purchase specific terminology */}
-            <InvoiceSummaryCards summary={summary} loading={loading} invoiceType="purchase" />
-
-            {/* Aging Chart - Payables terminology */}
-            {showAgingChart && (
-              <AgingReportChart buckets={agingBuckets} loading={loading} invoiceType="purchase" />
-            )}
-
             {/* Month Filter */}
             <div className="flex items-center justify-between flex-wrap gap-4">
               <InvoiceMonthFilter
@@ -292,7 +293,7 @@ export default function InvoiceManagement() {
               )}
             </div>
 
-            {/* Purchase Invoice List with specialized actions */}
+            {/* Purchase Invoice List */}
             <PurchaseInvoiceList
               invoices={filteredInvoices}
               loading={loading}
@@ -302,6 +303,14 @@ export default function InvoiceManagement() {
               onViewPayments={handleViewPayments}
               onViewAuditLog={handleViewAuditLog}
             />
+
+            {/* Report Section */}
+            <InvoiceReportSection
+              invoices={filteredInvoices}
+              payments={filteredPayments}
+              invoiceType="purchase"
+              agingBuckets={getAgingBuckets('purchase')}
+            />
           </TabsContent>
         </Tabs>
 
@@ -309,7 +318,7 @@ export default function InvoiceManagement() {
         <CreateInvoiceDialog
           open={createDialogOpen}
           onOpenChange={setCreateDialogOpen}
-          invoiceType={activeTab}
+          invoiceType={activeTab === 'sales' ? 'sales' : 'purchase'}
           onSuccess={refetch}
           institutions={institutions}
         />
@@ -357,7 +366,7 @@ export default function InvoiceManagement() {
           open={exportDialogOpen}
           onOpenChange={setExportDialogOpen}
           invoices={filteredInvoices}
-          invoiceType={activeTab}
+          invoiceType={activeTab === 'sales' ? 'sales' : 'purchase'}
         />
 
         <CreateCreditNoteDialog
