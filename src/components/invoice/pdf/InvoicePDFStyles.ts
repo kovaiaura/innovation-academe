@@ -3,7 +3,7 @@ import { StyleSheet } from '@react-pdf/renderer';
 export const styles = StyleSheet.create({
   page: {
     padding: 40,
-    fontSize: 9,
+    fontSize: 10,
     fontFamily: 'Helvetica',
     backgroundColor: '#ffffff',
   },
@@ -23,6 +23,18 @@ export const styles = StyleSheet.create({
     fontSize: 10,
     textAlign: 'center',
     color: '#666666',
+    marginBottom: 15,
+  },
+  
+  // Logo styles
+  logoContainer: {
+    width: 120,
+    marginBottom: 10,
+  },
+  logo: {
+    maxWidth: 120,
+    maxHeight: 60,
+    objectFit: 'contain',
   },
   
   // Row and Column layouts
@@ -43,22 +55,23 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   companyBox: {
-    width: '48%',
+    width: '55%',
   },
   companyName: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 'bold',
     marginBottom: 4,
     color: '#1a1a2e',
   },
   companyDetail: {
-    fontSize: 8,
+    fontSize: 9,
     marginBottom: 2,
     color: '#444444',
   },
   
   // Invoice Details Box
   invoiceDetailsBox: {
+    width: '40%',
     border: '1 solid #e0e0e0',
     padding: 10,
     borderRadius: 4,
@@ -66,17 +79,18 @@ export const styles = StyleSheet.create({
   },
   invoiceDetailRow: {
     flexDirection: 'row',
-    marginBottom: 3,
+    marginBottom: 4,
   },
   invoiceDetailLabel: {
-    width: 90,
-    fontSize: 8,
+    width: 100,
+    fontSize: 9,
     color: '#666666',
   },
   invoiceDetailValue: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: 'bold',
     color: '#1a1a2e',
+    flex: 1,
   },
   
   // Parties Section
@@ -98,20 +112,20 @@ export const styles = StyleSheet.create({
     borderRadius: 4,
   },
   partyLabel: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: 'bold',
     color: '#666666',
     marginBottom: 6,
     textTransform: 'uppercase',
   },
   partyName: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 'bold',
     marginBottom: 4,
     color: '#1a1a2e',
   },
   partyDetail: {
-    fontSize: 8,
+    fontSize: 9,
     marginBottom: 2,
     color: '#444444',
   },
@@ -132,6 +146,7 @@ export const styles = StyleSheet.create({
     borderBottomColor: '#e0e0e0',
     paddingVertical: 8,
     paddingHorizontal: 4,
+    minHeight: 28,
   },
   tableRowAlt: {
     flexDirection: 'row',
@@ -140,31 +155,32 @@ export const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
     paddingVertical: 8,
     paddingHorizontal: 4,
+    minHeight: 28,
   },
   tableHeaderCell: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: 'bold',
     color: '#ffffff',
   },
   tableCell: {
-    fontSize: 8,
+    fontSize: 9,
     color: '#444444',
   },
   tableCellBold: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: 'bold',
     color: '#1a1a2e',
   },
   
-  // Column widths for table
+  // Column widths for table - adjusted for better visibility
   colSNo: { width: '5%', textAlign: 'center' },
-  colDesc: { width: '30%' },
+  colDesc: { width: '35%', paddingRight: 4 },
   colHSN: { width: '10%', textAlign: 'center' },
   colQty: { width: '8%', textAlign: 'right' },
   colUnit: { width: '7%', textAlign: 'center' },
   colRate: { width: '12%', textAlign: 'right' },
-  colTax: { width: '12%', textAlign: 'right' },
-  colAmount: { width: '16%', textAlign: 'right' },
+  colTax: { width: '10%', textAlign: 'right' },
+  colAmount: { width: '13%', textAlign: 'right' },
   
   // Totals Section
   totalsSection: {
@@ -173,39 +189,39 @@ export const styles = StyleSheet.create({
     marginBottom: 15,
   },
   totalsBox: {
-    width: 250,
+    width: 280,
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
   totalRowLast: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: 8,
     backgroundColor: '#1a1a2e',
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     marginTop: 4,
     borderRadius: 2,
   },
   totalLabel: {
-    fontSize: 9,
+    fontSize: 10,
     color: '#666666',
   },
   totalValue: {
-    fontSize: 9,
+    fontSize: 10,
     color: '#1a1a2e',
   },
   totalLabelBold: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 'bold',
     color: '#ffffff',
   },
   totalValueBold: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 'bold',
     color: '#ffffff',
   },
@@ -218,12 +234,12 @@ export const styles = StyleSheet.create({
     marginBottom: 15,
   },
   amountInWordsLabel: {
-    fontSize: 8,
+    fontSize: 9,
     color: '#666666',
     marginBottom: 2,
   },
   amountInWordsValue: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: 'bold',
     color: '#1a1a2e',
   },
@@ -241,7 +257,7 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   sectionTitle: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: 'bold',
     color: '#1a1a2e',
     marginBottom: 6,
@@ -251,14 +267,14 @@ export const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   bankDetail: {
-    fontSize: 8,
-    marginBottom: 2,
+    fontSize: 9,
+    marginBottom: 3,
     color: '#444444',
   },
   notes: {
-    fontSize: 8,
+    fontSize: 9,
     color: '#444444',
-    lineHeight: 1.4,
+    lineHeight: 1.5,
   },
   
   // Terms Section
@@ -269,9 +285,9 @@ export const styles = StyleSheet.create({
     borderTopColor: '#e0e0e0',
   },
   termsText: {
-    fontSize: 7,
+    fontSize: 8,
     color: '#666666',
-    lineHeight: 1.4,
+    lineHeight: 1.5,
   },
   
   // Signature
@@ -299,11 +315,11 @@ export const styles = StyleSheet.create({
     marginTop: 40,
   },
   signatureText: {
-    fontSize: 8,
+    fontSize: 9,
     color: '#666666',
   },
   signatureCompany: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: 'bold',
     color: '#1a1a2e',
     marginTop: 3,
@@ -319,11 +335,11 @@ export const styles = StyleSheet.create({
     marginBottom: 15,
   },
   eInvoiceLabel: {
-    fontSize: 7,
+    fontSize: 8,
     color: '#2e7d32',
   },
   eInvoiceValue: {
-    fontSize: 7,
+    fontSize: 8,
     fontWeight: 'bold',
     color: '#1b5e20',
   },
