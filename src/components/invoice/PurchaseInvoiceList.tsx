@@ -33,7 +33,6 @@ import {
   CreditCard,
   History,
   ClipboardList,
-  ExternalLink,
   AlertTriangle,
   CheckCircle2
 } from 'lucide-react';
@@ -185,6 +184,7 @@ export function PurchaseInvoiceList({
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead className="text-right">Paid</TableHead>
                   <TableHead className="text-right">Balance</TableHead>
+                  <TableHead className="text-right">TDS</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
@@ -193,6 +193,8 @@ export function PurchaseInvoiceList({
                 {filteredInvoices.map((invoice) => {
                   const balance = (invoice.total_amount || 0) - (invoice.amount_paid || 0);
                   const vendorName = invoice.from_company_name || invoice.to_company_name;
+                  // TDS we deducted - stored in invoice.tds_amount when tds_deducted_by = 'self' or from payments
+                  const tdsDeducted = invoice.tds_deducted_by === 'self' ? (invoice.tds_amount || 0) : 0;
                   
                   return (
                     <TableRow key={invoice.id}>
@@ -233,6 +235,15 @@ export function PurchaseInvoiceList({
                           <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
+                      <TableCell className="text-right">
+                        {tdsDeducted > 0 ? (
+                          <span className="text-purple-600">
+                            ₹{tdsDeducted.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         {getPaymentStatusBadge(invoice)}
                       </TableCell>
@@ -248,15 +259,6 @@ export function PurchaseInvoiceList({
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            
-                            {invoice.attachment_url && (
-                              <DropdownMenuItem asChild>
-                                <a href={invoice.attachment_url} target="_blank" rel="noopener noreferrer">
-                                  <ExternalLink className="h-4 w-4 mr-2" />
-                                  View Vendor Bill
-                                </a>
-                              </DropdownMenuItem>
-                            )}
                             
                             <DropdownMenuSeparator />
                             
@@ -286,19 +288,15 @@ export function PurchaseInvoiceList({
                               </>
                             )}
                             
-                            {/* Delete - only for unpaid bills */}
-                            {balance >= invoice.total_amount && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => onDelete(invoice.id)}
-                                  className="text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </>
-                            )}
+                            {/* Delete - allow for any invoice */}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => onDelete(invoice.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

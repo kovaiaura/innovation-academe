@@ -404,13 +404,44 @@ export async function updateInvoiceStatus(id: string, status: InvoiceStatus, pai
   if (error) throw error;
 }
 
-// Delete invoice (only drafts)
+// Delete invoice (any state) with cascade handling
 export async function deleteInvoice(id: string): Promise<void> {
+  // Delete related payments first
+  const { error: paymentsError } = await supabase
+    .from('payments')
+    .delete()
+    .eq('invoice_id', id);
+  
+  if (paymentsError) {
+    console.error('Error deleting payments:', paymentsError);
+    // Continue anyway - some invoices may not have payments
+  }
+  
+  // Delete related credit/debit notes
+  const { error: notesError } = await supabase
+    .from('credit_debit_notes')
+    .delete()
+    .or(`original_invoice_id.eq.${id},applied_to_invoice_id.eq.${id}`);
+  
+  if (notesError) {
+    console.error('Error deleting credit/debit notes:', notesError);
+  }
+  
+  // Delete related audit logs
+  const { error: auditError } = await supabase
+    .from('invoice_audit_log')
+    .delete()
+    .eq('invoice_id', id);
+  
+  if (auditError) {
+    console.error('Error deleting audit logs:', auditError);
+  }
+  
+  // Finally delete the invoice (line items will cascade automatically)
   const { error } = await supabase
     .from('invoices')
     .delete()
-    .eq('id', id)
-    .eq('status', 'draft');
+    .eq('id', id);
   
   if (error) throw error;
 }

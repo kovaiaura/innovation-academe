@@ -169,6 +169,7 @@ export function exportToCSV(
   const rows: string[][] = [];
   const isPurchase = invoiceType === 'purchase';
   const entityLabel = isPurchase ? 'Vendor' : 'Customer';
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
   
   if (type === 'register') {
     if (isPurchase) {
@@ -188,11 +189,13 @@ export function exportToCSV(
         'TDS Deducted',
         'Balance Due',
         'Payment Status',
-        'Category'
+        'Category',
+        'Invoice Link'
       );
       
       invoices.forEach(inv => {
         const balance = (inv.total_amount || 0) - (inv.amount_paid || 0);
+        const invoiceLink = inv.attachment_url || `${baseUrl}/invoice/${inv.id}`;
         rows.push([
           inv.invoice_number,
           inv.reference_number || '',
@@ -210,12 +213,14 @@ export function exportToCSV(
           balance.toFixed(2),
           inv.payment_status || 'unpaid',
           inv.expense_category || '',
+          invoiceLink,
         ]);
       });
     } else {
       headers.push(
         'Invoice No',
         'Date',
+        'Due Date',
         entityLabel,
         'GSTIN',
         'Subtotal',
@@ -227,13 +232,17 @@ export function exportToCSV(
         'Payment Status',
         'Amount Received',
         'TDS (Client)',
-        'Balance Due'
+        'Balance Due',
+        'Payment Mode',
+        'Invoice Link'
       );
       
       invoices.forEach(inv => {
+        const invoiceLink = `${baseUrl}/invoice/${inv.id}`;
         rows.push([
           inv.invoice_number,
           format(new Date(inv.invoice_date), 'dd/MM/yyyy'),
+          inv.due_date ? format(new Date(inv.due_date), 'dd/MM/yyyy') : '',
           inv.to_company_name,
           inv.to_company_gstin || '',
           (inv.sub_total || 0).toFixed(2),
@@ -244,8 +253,10 @@ export function exportToCSV(
           inv.status,
           inv.payment_status || 'unpaid',
           (inv.amount_paid || 0).toFixed(2),
-          (inv.tds_amount || 0).toFixed(2),
+          inv.tds_deducted_by === 'client' ? (inv.tds_amount || 0).toFixed(2) : '0.00',
           ((inv.total_amount || 0) - (inv.amount_paid || 0)).toFixed(2),
+          inv.payment_method || '',
+          invoiceLink,
         ]);
       });
     }
@@ -265,7 +276,8 @@ export function exportToCSV(
         'Amount Paid',
         'Balance to Pay',
         'Days Overdue',
-        'Status'
+        'Status',
+        'Invoice Link'
       );
       
       outstandingInvoices.forEach(inv => {
@@ -273,6 +285,7 @@ export function exportToCSV(
           ? Math.max(0, differenceInDays(new Date(), new Date(inv.due_date)))
           : 0;
         const balance = (inv.total_amount || 0) - (inv.amount_paid || 0);
+        const invoiceLink = inv.attachment_url || `${baseUrl}/invoice/${inv.id}`;
         
         rows.push([
           inv.invoice_number,
@@ -285,6 +298,7 @@ export function exportToCSV(
           balance.toFixed(2),
           daysOverdue.toString(),
           inv.payment_status || 'unpaid',
+          invoiceLink,
         ]);
       });
     } else {
@@ -297,13 +311,15 @@ export function exportToCSV(
         'Amount Received',
         'Balance Due',
         'Days Overdue',
-        'Status'
+        'Status',
+        'Invoice Link'
       );
       
       outstandingInvoices.forEach(inv => {
         const daysOverdue = inv.due_date 
           ? Math.max(0, differenceInDays(new Date(), new Date(inv.due_date)))
           : 0;
+        const invoiceLink = `${baseUrl}/invoice/${inv.id}`;
         
         rows.push([
           inv.invoice_number,
@@ -315,6 +331,7 @@ export function exportToCSV(
           ((inv.total_amount || 0) - (inv.amount_paid || 0)).toFixed(2),
           daysOverdue.toString(),
           inv.status,
+          invoiceLink,
         ]);
       });
     }
