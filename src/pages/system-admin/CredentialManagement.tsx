@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Key, Mail, Check, AlertCircle, RefreshCw, Loader2, X } from 'lucide-react';
+import { Search, Key, Mail, Check, AlertCircle, RefreshCw, Loader2, X, Download } from 'lucide-react';
 import { SetPasswordDialog } from '@/components/auth/SetPasswordDialog';
 import { BulkResetDialog } from '@/components/credential/BulkResetDialog';
 import { passwordService } from '@/services/password.service';
@@ -790,14 +790,43 @@ export default function CredentialManagement() {
 
                 {selectedInstitution && (
                   <>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search by roll number or name..."
-                        value={studentSearch}
-                        onChange={(e) => setStudentSearch(e.target.value)}
-                        className="pl-10"
-                      />
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search by roll number or name..."
+                          value={studentSearch}
+                          onChange={(e) => setStudentSearch(e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={filteredStudents.length === 0}
+                        onClick={() => {
+                          const instName = institutionsList.find(i => i.id === selectedInstitution)?.name || 'students';
+                          const csvHeader = 'Student Name,Login Email,Grade/Class';
+                          const csvRows = filteredStudents.map(s => {
+                            const name = `"${(s.student_name || '').replace(/"/g, '""')}"`;
+                            const email = `"${(s.email || s.parent_email || '').replace(/"/g, '""')}"`;
+                            const grade = `"${(s.class_name || '').replace(/"/g, '""')}"`;
+                            return `${name},${email},${grade}`;
+                          });
+                          const csv = [csvHeader, ...csvRows].join('\n');
+                          const blob = new Blob([csv], { type: 'text/csv' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${instName.replace(/\s+/g, '_')}_students.csv`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                          toast.success(`Exported ${filteredStudents.length} students`);
+                        }}
+                      >
+                        <Download className="h-4 w-4 mr-1" />
+                        Export CSV
+                      </Button>
                     </div>
 
                     {/* Bulk Action Bar */}
