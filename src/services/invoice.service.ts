@@ -406,7 +406,7 @@ export async function updateInvoiceStatus(id: string, status: InvoiceStatus, pai
 
 // Delete invoice (any state) with cascade handling
 export async function deleteInvoice(id: string): Promise<void> {
-  // Delete related payments first
+  // Delete related payments first (has ON DELETE CASCADE but delete explicitly to be safe)
   const { error: paymentsError } = await supabase
     .from('payments')
     .delete()
@@ -414,20 +414,29 @@ export async function deleteInvoice(id: string): Promise<void> {
   
   if (paymentsError) {
     console.error('Error deleting payments:', paymentsError);
-    // Continue anyway - some invoices may not have payments
   }
   
-  // Delete related credit/debit notes
-  const { error: notesError } = await supabase
+  // Delete credit/debit notes where this invoice is the original invoice
+  const { error: originalNotesError } = await supabase
     .from('credit_debit_notes')
     .delete()
-    .or(`original_invoice_id.eq.${id},applied_to_invoice_id.eq.${id}`);
+    .eq('original_invoice_id', id);
   
-  if (notesError) {
-    console.error('Error deleting credit/debit notes:', notesError);
+  if (originalNotesError) {
+    console.error('Error deleting original credit/debit notes:', originalNotesError);
   }
   
-  // Delete related audit logs
+  // Delete credit/debit notes where this invoice is the applied invoice
+  const { error: appliedNotesError } = await supabase
+    .from('credit_debit_notes')
+    .delete()
+    .eq('applied_to_invoice_id', id);
+  
+  if (appliedNotesError) {
+    console.error('Error deleting applied credit/debit notes:', appliedNotesError);
+  }
+  
+  // Delete related audit logs (has ON DELETE CASCADE but delete explicitly to be safe)
   const { error: auditError } = await supabase
     .from('invoice_audit_log')
     .delete()
@@ -437,7 +446,17 @@ export async function deleteInvoice(id: string): Promise<void> {
     console.error('Error deleting audit logs:', auditError);
   }
   
-  // Finally delete the invoice (line items will cascade automatically)
+  // Delete line items explicitly (has ON DELETE CASCADE but be explicit)
+  const { error: lineItemsError } = await supabase
+    .from('invoice_line_items')
+    .delete()
+    .eq('invoice_id', id);
+  
+  if (lineItemsError) {
+    console.error('Error deleting line items:', lineItemsError);
+  }
+  
+  // Finally delete the invoice
   const { error } = await supabase
     .from('invoices')
     .delete()
