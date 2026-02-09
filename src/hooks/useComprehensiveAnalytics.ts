@@ -308,15 +308,19 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
           ? (completionsCount / classContentCount) * 100 
           : 0;
 
-        // Calculate overall score (weighted average)
+        // Calculate overall score: Assessment 50% + Assignments 20% + Projects 20% + XP 10%
+        // assessmentAvg is already 0-100 (weighted assessment total)
+        // assignmentAvg is already 0-100
+        // projects: scale project count to 0-100 (cap at 5 projects = 100%)
+        const projectScore = Math.min(projectsCount * 20, 100);
+        // XP: scale to 0-100 (cap at 2000 XP = 100%)
+        const xpScore = Math.min((totalXp / 2000) * 100, 100);
+        
         const overallScore = (
-          (assessmentAvg * 0.3) +
-          (assessmentPassRate * 0.2) +
+          (assessmentAvg * 0.5) +
           (assignmentAvg * 0.2) +
-          (Math.min(totalXp / 100, 100) * 0.1) +
-          (Math.min(badgesCount * 10, 100) * 0.05) +
-          (Math.min(projectsCount * 20, 100) * 0.05) +
-          (courseCompletion * 0.1)
+          (projectScore * 0.2) +
+          (xpScore * 0.1)
         );
 
         studentPerformanceMap.set(student.id, {
