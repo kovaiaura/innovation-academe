@@ -1,4 +1,4 @@
-import { View, Text } from '@react-pdf/renderer';
+import { View, Text, Image } from '@react-pdf/renderer';
 import { styles } from './InvoicePDFStyles';
 import type { Invoice } from '@/types/invoice';
 import { formatDate } from '@/services/pdf.service';
@@ -6,9 +6,10 @@ import { formatDate } from '@/services/pdf.service';
 interface InvoicePDFHeaderProps {
   invoice: Invoice;
   copyType?: 'original' | 'duplicate' | 'triplicate';
+  logoUrl?: string | null;
 }
 
-export function InvoicePDFHeader({ invoice, copyType = 'original' }: InvoicePDFHeaderProps) {
+export function InvoicePDFHeader({ invoice, copyType = 'original', logoUrl }: InvoicePDFHeaderProps) {
   const copyText = {
     original: 'Original for Recipient',
     duplicate: 'Duplicate for Transporter',
@@ -45,8 +46,15 @@ export function InvoicePDFHeader({ invoice, copyType = 'original' }: InvoicePDFH
 
       {/* Company & Invoice Details */}
       <View style={styles.companySection}>
-        {/* From Company */}
+        {/* From Company with Logo */}
         <View style={styles.companyBox}>
+          {/* Company Logo */}
+          {logoUrl && (
+            <View style={styles.logoContainer}>
+              <Image src={logoUrl} style={styles.logo} />
+            </View>
+          )}
+          
           <Text style={styles.companyName}>{invoice.from_company_name}</Text>
           {invoice.from_company_address && (
             <Text style={styles.companyDetail}>{invoice.from_company_address}</Text>

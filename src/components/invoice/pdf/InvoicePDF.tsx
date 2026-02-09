@@ -10,9 +10,10 @@ import type { Invoice } from '@/types/invoice';
 interface InvoicePDFProps {
   invoice: Invoice;
   copyType?: 'original' | 'duplicate' | 'triplicate';
+  logoUrl?: string | null;
 }
 
-export function InvoicePDF({ invoice, copyType = 'original' }: InvoicePDFProps) {
+export function InvoicePDF({ invoice, copyType = 'original', logoUrl }: InvoicePDFProps) {
   return (
     <Document
       title={`Invoice ${invoice.invoice_number}`}
@@ -21,8 +22,8 @@ export function InvoicePDF({ invoice, copyType = 'original' }: InvoicePDFProps) 
       keywords={`invoice, ${invoice.invoice_type}, ${invoice.invoice_number}`}
     >
       <Page size="A4" style={styles.page}>
-        {/* Header with company info and invoice details */}
-        <InvoicePDFHeader invoice={invoice} copyType={copyType} />
+        {/* Header with company info, logo, and invoice details */}
+        <InvoicePDFHeader invoice={invoice} copyType={copyType} logoUrl={logoUrl} />
 
         {/* Bill To / Ship To */}
         <InvoicePDFParties invoice={invoice} />

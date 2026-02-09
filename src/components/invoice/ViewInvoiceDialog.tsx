@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { InvoicePDF } from './pdf/InvoicePDF';
 import { generatePDFFilename } from '@/services/pdf.service';
+import { fetchDefaultCompanyProfile } from '@/services/invoice.service';
 
 interface ViewInvoiceDialogProps {
   open: boolean;
@@ -29,6 +30,18 @@ export function ViewInvoiceDialog({
   invoice,
 }: ViewInvoiceDialogProps) {
   const [copyType] = useState<'original' | 'duplicate' | 'triplicate'>('original');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  
+  // Fetch company profile to get logo URL
+  useEffect(() => {
+    if (open && invoice) {
+      fetchDefaultCompanyProfile().then((profile) => {
+        if (profile?.logo_url) {
+          setLogoUrl(profile.logo_url);
+        }
+      }).catch(console.error);
+    }
+  }, [open, invoice]);
   
   if (!invoice) return null;
 
@@ -54,7 +67,7 @@ export function ViewInvoiceDialog({
               Print
             </Button>
             <PDFDownloadLink
-              document={<InvoicePDF invoice={invoice} copyType={copyType} />}
+              document={<InvoicePDF invoice={invoice} copyType={copyType} logoUrl={logoUrl} />}
               fileName={generatePDFFilename(invoice.invoice_number, invoice.invoice_type)}
             >
               {({ loading }) => (
@@ -82,6 +95,16 @@ export function ViewInvoiceDialog({
             <div className="grid grid-cols-2 gap-6">
               {/* From */}
               <div>
+                {/* Show logo in preview if available */}
+                {logoUrl && (
+                  <div className="mb-3">
+                    <img 
+                      src={logoUrl} 
+                      alt="Company Logo" 
+                      className="h-12 w-auto object-contain"
+                    />
+                  </div>
+                )}
                 <h3 className="font-semibold text-lg">{invoice.from_company_name}</h3>
                 <div className="text-sm text-muted-foreground mt-1 space-y-0.5">
                   <p>{invoice.from_company_address}</p>
