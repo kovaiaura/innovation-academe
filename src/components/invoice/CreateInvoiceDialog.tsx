@@ -438,7 +438,7 @@ export function CreateInvoiceDialog({
 
             <Separator />
 
-            {/* GST Configuration - Collapsible */}
+            {/* GST Configuration - Collapsible - Only IGST with dropdown */}
             <Collapsible defaultOpen={false}>
               <CollapsibleTrigger asChild>
                 <Button variant="outline" className="w-full justify-between">
@@ -446,7 +446,7 @@ export function CreateInvoiceDialog({
                     <Settings className="h-4 w-4" />
                     GST Configuration
                     <span className="text-xs text-muted-foreground ml-2">
-                      ({isInterState ? 'Inter-State' : 'Intra-State'})
+                      (Inter-State)
                     </span>
                   </span>
                   <ChevronDown className="h-4 w-4" />
@@ -456,73 +456,64 @@ export function CreateInvoiceDialog({
                 <div className="bg-muted/50 p-4 rounded-lg space-y-4">
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-muted-foreground">Transaction Type:</span>
-                    <span className={`font-medium ${isInterState ? 'text-orange-600' : 'text-green-600'}`}>
-                      {isInterState ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}
-                    </span>
+                    <span className="font-medium text-orange-600">Inter-State (IGST)</span>
                   </div>
                   
-                  {!isInterState ? (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>CGST Rate (%)</Label>
+                  <div className="space-y-2">
+                    <Label>IGST Rate</Label>
+                    <Select 
+                      value={gstRates.igst_rate.toString()} 
+                      onValueChange={(value) => {
+                        if (value === 'custom') {
+                          // Keep current value for custom input
+                          return;
+                        }
+                        const rate = parseFloat(value) || 0;
+                        setGstRates(prev => ({
+                          ...prev,
+                          igst_rate: rate,
+                          cgst_rate: 0,
+                          sgst_rate: 0,
+                        }));
+                      }}
+                    >
+                      <SelectTrigger className="w-48">
+                        <SelectValue placeholder="Select IGST rate" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">5%</SelectItem>
+                        <SelectItem value="18">18%</SelectItem>
+                        <SelectItem value="custom">Custom</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    {/* Show custom input when rate is not 5 or 18 */}
+                    {gstRates.igst_rate !== 5 && gstRates.igst_rate !== 18 && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <Label className="text-sm">Custom Rate (%):</Label>
                         <Input
                           type="number"
                           min="0"
                           max="50"
                           step="0.5"
-                          value={gstRates.cgst_rate}
+                          value={gstRates.igst_rate}
                           onChange={(e) => {
                             const rate = parseFloat(e.target.value) || 0;
                             setGstRates(prev => ({
                               ...prev,
-                              cgst_rate: rate,
-                              sgst_rate: rate, // Keep CGST and SGST equal
+                              igst_rate: rate,
+                              cgst_rate: 0,
+                              sgst_rate: 0,
                             }));
                           }}
+                          className="w-24"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label>SGST Rate (%)</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          max="50"
-                          step="0.5"
-                          value={gstRates.sgst_rate}
-                          onChange={(e) => {
-                            const rate = parseFloat(e.target.value) || 0;
-                            setGstRates(prev => ({
-                              ...prev,
-                              sgst_rate: rate,
-                              cgst_rate: rate, // Keep CGST and SGST equal
-                            }));
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <Label>IGST Rate (%)</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="50"
-                        step="0.5"
-                        value={gstRates.igst_rate}
-                        onChange={(e) => {
-                          const rate = parseFloat(e.target.value) || 0;
-                          setGstRates(prev => ({
-                            ...prev,
-                            igst_rate: rate,
-                          }));
-                        }}
-                        className="w-40"
-                      />
-                    </div>
-                  )}
+                    )}
+                  </div>
                   
                   <p className="text-xs text-muted-foreground">
-                    Default rates are loaded from company settings. You can override them for this invoice.
+                    Select IGST rate for this invoice. CGST/SGST will be set to 0 for inter-state transactions.
                   </p>
                 </div>
               </CollapsibleContent>
@@ -542,20 +533,12 @@ export function CreateInvoiceDialog({
 
             <Separator />
 
-            {/* Totals - Always show all three taxes */}
+            {/* Totals - Only show IGST */}
             <div className="flex justify-end">
               <div className="w-80 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Sub Total:</span>
                   <span>₹{totals.sub_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">CGST ({gstRates.cgst_rate}%):</span>
-                  <span>₹{totals.cgst_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">SGST ({gstRates.sgst_rate}%):</span>
-                  <span>₹{totals.sgst_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">IGST ({gstRates.igst_rate}%):</span>

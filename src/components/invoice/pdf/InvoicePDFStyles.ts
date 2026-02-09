@@ -2,7 +2,7 @@ import { StyleSheet } from '@react-pdf/renderer';
 
 export const styles = StyleSheet.create({
   page: {
-    padding: 40,
+    padding: 30,
     fontSize: 10,
     fontFamily: 'Helvetica',
     backgroundColor: '#ffffff',
@@ -10,30 +10,30 @@ export const styles = StyleSheet.create({
   
   // Header
   header: {
-    marginBottom: 20,
+    marginBottom: 15,
   },
   title: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 4,
-    color: '#1a1a2e',
+    marginBottom: 3,
+    color: '#0066cc',
   },
   subtitle: {
-    fontSize: 10,
+    fontSize: 9,
     textAlign: 'center',
     color: '#666666',
-    marginBottom: 15,
+    marginBottom: 10,
   },
   
   // Logo styles
   logoContainer: {
-    width: 120,
-    marginBottom: 10,
+    width: 100,
+    marginBottom: 8,
   },
   logo: {
-    maxWidth: 120,
-    maxHeight: 60,
+    maxWidth: 100,
+    maxHeight: 50,
     objectFit: 'contain',
   },
   
@@ -50,7 +50,7 @@ export const styles = StyleSheet.create({
   
   // Company Info Section
   companySection: {
-    marginBottom: 15,
+    marginBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
@@ -58,36 +58,36 @@ export const styles = StyleSheet.create({
     width: '55%',
   },
   companyName: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 3,
     color: '#1a1a2e',
   },
   companyDetail: {
-    fontSize: 9,
-    marginBottom: 2,
+    fontSize: 8,
+    marginBottom: 1,
     color: '#444444',
   },
   
   // Invoice Details Box
   invoiceDetailsBox: {
     width: '40%',
-    border: '1 solid #e0e0e0',
-    padding: 10,
-    borderRadius: 4,
+    border: '1 solid #0066cc',
+    padding: 8,
+    borderRadius: 3,
     backgroundColor: '#f8f9fa',
   },
   invoiceDetailRow: {
     flexDirection: 'row',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   invoiceDetailLabel: {
-    width: 100,
-    fontSize: 9,
+    width: 85,
+    fontSize: 8,
     color: '#666666',
   },
   invoiceDetailValue: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: 'bold',
     color: '#1a1a2e',
     flex: 1,
@@ -96,66 +96,66 @@ export const styles = StyleSheet.create({
   // Parties Section
   partiesSection: {
     flexDirection: 'row',
-    marginBottom: 15,
+    marginBottom: 10,
   },
   partyBox: {
     flex: 1,
-    padding: 10,
+    padding: 8,
     backgroundColor: '#f8f9fa',
-    borderRadius: 4,
-    marginRight: 10,
+    borderRadius: 3,
+    marginRight: 8,
   },
   partyBoxLast: {
     flex: 1,
-    padding: 10,
+    padding: 8,
     backgroundColor: '#f8f9fa',
-    borderRadius: 4,
+    borderRadius: 3,
   },
   partyLabel: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: 'bold',
     color: '#666666',
-    marginBottom: 6,
+    marginBottom: 4,
     textTransform: 'uppercase',
   },
   partyName: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 3,
     color: '#1a1a2e',
   },
   partyDetail: {
-    fontSize: 9,
-    marginBottom: 2,
+    fontSize: 8,
+    marginBottom: 1,
     color: '#444444',
   },
   
   // Table
   table: {
-    marginBottom: 15,
+    marginBottom: 10,
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#1a1a2e',
-    paddingVertical: 8,
+    backgroundColor: '#0066cc',
+    paddingVertical: 6,
     paddingHorizontal: 4,
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 4,
-    minHeight: 28,
+    minHeight: 24,
   },
   tableRowAlt: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
     backgroundColor: '#f8f9fa',
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 4,
-    minHeight: 28,
+    minHeight: 24,
   },
   tableHeaderCell: {
     fontSize: 9,
@@ -172,10 +172,14 @@ export const styles = StyleSheet.create({
     color: '#1a1a2e',
   },
   
-  // Column widths for table - adjusted for better visibility
-  colSNo: { width: '5%', textAlign: 'center' },
+  // Column widths for table - simplified layout matching sample
+  colSNo: { width: '6%', textAlign: 'center' },
+  colDescWide: { width: '60%', paddingRight: 4 },
+  colHSN: { width: '14%', textAlign: 'center' },
+  colAmountWide: { width: '20%', textAlign: 'right' },
+  
+  // Original column widths (kept for backwards compatibility)
   colDesc: { width: '35%', paddingRight: 4 },
-  colHSN: { width: '10%', textAlign: 'center' },
   colQty: { width: '8%', textAlign: 'right' },
   colUnit: { width: '7%', textAlign: 'center' },
   colRate: { width: '12%', textAlign: 'right' },
@@ -186,42 +190,42 @@ export const styles = StyleSheet.create({
   totalsSection: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginBottom: 15,
+    marginBottom: 10,
   },
   totalsBox: {
-    width: 280,
+    width: 220,
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 5,
+    paddingVertical: 4,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
   totalRowLast: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: 6,
     backgroundColor: '#1a1a2e',
-    paddingHorizontal: 10,
-    marginTop: 4,
+    paddingHorizontal: 8,
+    marginTop: 3,
     borderRadius: 2,
   },
   totalLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#666666',
   },
   totalValue: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#1a1a2e',
   },
   totalLabelBold: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 'bold',
     color: '#ffffff',
   },
   totalValueBold: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 'bold',
     color: '#ffffff',
   },
@@ -229,100 +233,101 @@ export const styles = StyleSheet.create({
   // Amount in Words
   amountInWords: {
     backgroundColor: '#f0f4f8',
-    padding: 10,
-    borderRadius: 4,
-    marginBottom: 15,
+    padding: 8,
+    borderRadius: 3,
+    marginBottom: 10,
   },
   amountInWordsLabel: {
-    fontSize: 9,
+    fontSize: 8,
     color: '#666666',
     marginBottom: 2,
   },
   amountInWordsValue: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
     color: '#1a1a2e',
+    fontStyle: 'italic',
   },
   
   // Footer Section
   footerSection: {
     flexDirection: 'row',
-    marginTop: 10,
+    marginTop: 8,
   },
   bankDetailsBox: {
     flex: 1,
-    marginRight: 15,
+    marginRight: 12,
   },
   notesBox: {
     flex: 1,
   },
   sectionTitle: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
     color: '#1a1a2e',
-    marginBottom: 6,
+    marginBottom: 4,
     textTransform: 'uppercase',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
-    paddingBottom: 4,
+    paddingBottom: 3,
   },
   bankDetail: {
-    fontSize: 9,
-    marginBottom: 3,
+    fontSize: 8,
+    marginBottom: 2,
     color: '#444444',
   },
   notes: {
-    fontSize: 9,
+    fontSize: 8,
     color: '#444444',
-    lineHeight: 1.5,
+    lineHeight: 1.4,
   },
   
   // Terms Section
   termsSection: {
-    marginTop: 15,
-    paddingTop: 10,
+    marginTop: 10,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
   },
   termsText: {
-    fontSize: 8,
+    fontSize: 7,
     color: '#666666',
-    lineHeight: 1.5,
+    lineHeight: 1.4,
   },
   
   // Signature
   signatureSection: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 30,
+    marginTop: 20,
   },
   signatureBox: {
-    width: 180,
+    width: 160,
     textAlign: 'center',
   },
   signatureImage: {
-    width: 100,
-    height: 50,
-    marginBottom: 5,
-    marginTop: 10,
+    width: 80,
+    height: 40,
+    marginBottom: 4,
+    marginTop: 8,
     objectFit: 'contain',
     alignSelf: 'center',
   },
   signatureLine: {
     borderTopWidth: 1,
     borderTopColor: '#1a1a2e',
-    marginBottom: 5,
-    marginTop: 40,
+    marginBottom: 4,
+    marginTop: 30,
   },
   signatureText: {
-    fontSize: 9,
+    fontSize: 8,
     color: '#666666',
   },
   signatureCompany: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
     color: '#1a1a2e',
-    marginTop: 3,
+    marginTop: 2,
   },
   
   // E-Invoice Section
@@ -330,16 +335,16 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     backgroundColor: '#e8f5e9',
-    padding: 8,
-    borderRadius: 4,
-    marginBottom: 15,
+    padding: 6,
+    borderRadius: 3,
+    marginBottom: 10,
   },
   eInvoiceLabel: {
-    fontSize: 8,
+    fontSize: 7,
     color: '#2e7d32',
   },
   eInvoiceValue: {
-    fontSize: 8,
+    fontSize: 7,
     fontWeight: 'bold',
     color: '#1b5e20',
   },
@@ -348,16 +353,16 @@ export const styles = StyleSheet.create({
   separator: {
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
-    marginVertical: 10,
+    marginVertical: 8,
   },
   
   // Page number
   pageNumber: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 15,
     left: 0,
     right: 0,
-    fontSize: 8,
+    fontSize: 7,
     textAlign: 'center',
     color: '#999999',
   },

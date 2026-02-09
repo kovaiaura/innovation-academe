@@ -2,12 +2,14 @@
 
 /**
  * Format amount as Indian Rupees with proper separators
+ * Using explicit rupee symbol to avoid font issues
  */
 export function formatCurrency(amount: number): string {
-  return '₹' + amount.toLocaleString('en-IN', {
+  const formatted = amount.toLocaleString('en-IN', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+  return `Rs. ${formatted}`;
 }
 
 /**
