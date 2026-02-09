@@ -8,6 +8,11 @@ interface InvoicePDFTotalsProps {
 }
 
 export function InvoicePDFTotals({ invoice }: InvoicePDFTotalsProps) {
+  // Determine if this is inter-state (show only IGST) or intra-state (show CGST+SGST)
+  const isInterState = invoice.from_company_state_code !== invoice.to_company_state_code;
+  const hasIGST = (invoice.igst_amount ?? 0) > 0 || (invoice.igst_rate ?? 0) > 0;
+  const hasCGSTSGST = ((invoice.cgst_amount ?? 0) > 0 || (invoice.sgst_amount ?? 0) > 0);
+
   return (
     <View>
       {/* Totals */}
@@ -25,25 +30,33 @@ export function InvoicePDFTotals({ invoice }: InvoicePDFTotalsProps) {
             </View>
           )}
 
-          {/* Always show all three taxes */}
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>CGST @{invoice.cgst_rate ?? 0}%:</Text>
-            <Text style={styles.totalValue}>
-              {formatCurrency(invoice.cgst_amount || 0)}
-            </Text>
-          </View>
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>SGST @{invoice.sgst_rate ?? 0}%:</Text>
-            <Text style={styles.totalValue}>
-              {formatCurrency(invoice.sgst_amount || 0)}
-            </Text>
-          </View>
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>IGST @{invoice.igst_rate ?? 0}%:</Text>
-            <Text style={styles.totalValue}>
-              {formatCurrency(invoice.igst_amount || 0)}
-            </Text>
-          </View>
+          {/* Show CGST and SGST only if they have values and not inter-state */}
+          {!isInterState && hasCGSTSGST && (
+            <>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>CGST @{invoice.cgst_rate ?? 0}%:</Text>
+                <Text style={styles.totalValue}>
+                  {formatCurrency(invoice.cgst_amount || 0)}
+                </Text>
+              </View>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>SGST @{invoice.sgst_rate ?? 0}%:</Text>
+                <Text style={styles.totalValue}>
+                  {formatCurrency(invoice.sgst_amount || 0)}
+                </Text>
+              </View>
+            </>
+          )}
+
+          {/* Show IGST - this is the primary tax display */}
+          {(hasIGST || isInterState) && (
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>IGST @{invoice.igst_rate ?? 0}%:</Text>
+              <Text style={styles.totalValue}>
+                {formatCurrency(invoice.igst_amount || 0)}
+              </Text>
+            </View>
+          )}
 
           {invoice.tds_amount && invoice.tds_amount > 0 && (
             <View style={styles.totalRow}>
