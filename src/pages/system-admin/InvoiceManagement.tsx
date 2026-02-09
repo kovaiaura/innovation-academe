@@ -1,7 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Plus, ShoppingCart, Package, Download } from 'lucide-react';
+import { Plus, ShoppingCart, Package, Download, ChevronDown } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Layout } from '@/components/layout/Layout';
 import { InvoiceList } from '@/components/invoice/InvoiceList';
 import { PurchaseInvoiceList } from '@/components/invoice/PurchaseInvoiceList';
@@ -24,7 +30,7 @@ import { useGlobalInvoiceSummary } from '@/hooks/useGlobalInvoiceSummary';
 import { usePaymentsForInvoice } from '@/hooks/usePayments';
 import { updateInvoiceStatus, deleteInvoice } from '@/services/invoice.service';
 import { supabase } from '@/integrations/supabase/client';
-import type { Invoice, InvoiceStatus } from '@/types/invoice';
+import type { Invoice, InvoiceStatus, InvoiceType } from '@/types/invoice';
 import type { CreatePaymentInput } from '@/types/payment';
 import { toast } from 'sonner';
 
@@ -36,6 +42,7 @@ export default function InvoiceManagement() {
   
   // Dialogs state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createInvoiceType, setCreateInvoiceType] = useState<InvoiceType>('sales');
   const [createPurchaseDialogOpen, setCreatePurchaseDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewPurchaseDialogOpen, setViewPurchaseDialogOpen] = useState(false);
@@ -125,12 +132,18 @@ export default function InvoiceManagement() {
     }
   };
 
-  const handleCreateClick = () => {
-    if (activeTab === 'purchase') {
-      setCreatePurchaseDialogOpen(true);
-    } else {
-      setCreateDialogOpen(true);
-    }
+  const handleCreateSalesInvoice = () => {
+    setCreateInvoiceType('sales');
+    setCreateDialogOpen(true);
+  };
+
+  const handleCreateInstitutionInvoice = () => {
+    setCreateInvoiceType('institution');
+    setCreateDialogOpen(true);
+  };
+
+  const handleCreatePurchase = () => {
+    setCreatePurchaseDialogOpen(true);
   };
 
   const handleStatusChange = async (id: string, status: InvoiceStatus) => {
@@ -216,10 +229,32 @@ export default function InvoiceManagement() {
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
-            <Button onClick={handleCreateClick}>
-              <Plus className="h-4 w-4 mr-2" />
-              {activeTab === 'purchase' ? 'Record Purchase' : 'Create Invoice'}
-            </Button>
+            {activeTab === 'purchase' ? (
+              <Button onClick={handleCreatePurchase}>
+                <Plus className="h-4 w-4 mr-2" />
+                Record Purchase
+              </Button>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Invoice
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleCreateSalesInvoice}>
+                    <ShoppingCart className="h-4 w-4 mr-2" />
+                    Sales Invoice
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleCreateInstitutionInvoice}>
+                    <Package className="h-4 w-4 mr-2" />
+                    Institution Invoice
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
 
@@ -318,7 +353,7 @@ export default function InvoiceManagement() {
         <CreateInvoiceDialog
           open={createDialogOpen}
           onOpenChange={setCreateDialogOpen}
-          invoiceType={activeTab === 'sales' ? 'sales' : 'purchase'}
+          invoiceType={createInvoiceType}
           onSuccess={refetch}
           institutions={institutions}
         />
