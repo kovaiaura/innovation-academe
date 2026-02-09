@@ -1,203 +1,166 @@
 
-# Purchase Billing Workflow Enhancement
+# Purchase Billing Fixes & Enhanced Summary Cards
 
-## Understanding the Requirements
+## Issues Identified
 
-You've correctly identified that **Purchase Billing** has a fundamentally different workflow from Sales/Institution billing:
+Based on the screenshots and code review:
 
-1. **Purchase = We BUY goods/services FROM vendors** (we receive invoices, we pay)
-2. **Sales/Institution = We SELL goods/services TO clients** (we send invoices, we get paid)
+### 1. Summary Cards Issues
+- **Current cards are generic** and use terms like "Collected" and "TDS Receivable" which don't make sense for Purchase Billing
+- For **Purchase Billing**, terminology should be:
+  - "Total Invoiced" → **"Total Bills"** (what we owe/owed to vendors)
+  - "Collected" → **"Amount Paid"** (what we paid to vendors)
+  - "TDS Receivable" → **"TDS Deducted by Us"** (TDS we withheld from vendors)
+  
+### 2. Missing Delete Option
+- **Sales Billing**: Delete option only appears for Draft invoices (line 339-350 in InvoiceList.tsx)
+- **Purchase Billing**: Delete option only appears when balance equals total (i.e., no payments made), but the condition is buried in PurchaseInvoiceList.tsx
 
-### Current Issues
+### 3. Export for Purchase
+- Current export uses "Customer" column header - needs "Vendor" for purchase
+- Missing purchase-specific fields like "Amount Paid" vs "Amount Received"
 
-The current implementation treats Purchase invoices similarly to Sales invoices, which is incorrect:
-- Shows "Mark as Sent" and "Mark as Issued" actions (not applicable - we receive the bill, not send it)
-- TDS section says "TDS Deducted by Client" (wrong - WE deduct TDS before paying vendor)
-- Missing proper "Make Payment" workflow where we record OUR payments to vendors
-- UI doesn't reflect the "we owe them" perspective
+### 4. Aging Chart for Purchase
+- Currently shows "Outstanding" which implies money owed TO us
+- For Purchase, it should show money we OWE TO vendors (Payables Aging)
 
----
-
-## Proposed Changes
-
-### 1. Purchase Invoice Actions Overhaul
-
-**Remove for Purchase:**
-- Mark as Sent
-- Mark as Issued
-- Issue Credit Note (different workflow for purchase)
-- Issue Debit Note
-- TDS Certificate Upload (we don't receive TDS certificates for purchases)
-
-**Keep/Add for Purchase:**
-- View (show bill details + attached vendor invoice)
-- Record Payment / Make Payment (when we pay the vendor)
-- Edit Payment (modify existing payment records)
-- Payment History (track all payments we made)
-- View Audit Log
-
-**Auto-behaviors:**
-- When total payments = bill amount → Auto-mark as "Paid"
-- Show "Pending" status until first payment, then "Partial" until fully paid
-
-### 2. Purchase-Specific Record Payment Dialog
-
-Create a new `RecordPurchasePaymentDialog` with these differences:
-
-| Field | Sales/Institution | Purchase |
-|-------|------------------|----------|
-| TDS Label | "TDS Deducted by Client" | "TDS Deducted by Us" |
-| TDS Meaning | Client withheld tax from payment | We withhold tax before paying |
-| TDS Input | Amount OR Certificate # | Percentage (2%, 10%) OR Amount |
-| Certificate | We receive from client | We issue (track Form 16A details) |
-
-**Payment Recording Fields:**
-- Payment Date
-- Amount Paid (net amount we transferred)
-- Payment Mode (NEFT/RTGS/IMPS/UPI/Cheque/Cash)
-- Reference/UTR Number
-- TDS Section:
-  - Toggle: "We Deducted TDS"
-  - If yes: TDS Rate (2%, 5%, 10%) OR Amount
-  - TDS Section (194J, 194C, etc.)
-  - Our TAN Number (for reference)
-- Bank/Cheque details (if applicable)
-- Notes
-
-### 3. Enhanced Create Purchase Invoice UI
-
-Improve the `CreatePurchaseInvoiceDialog` with:
-
-**Section 1: Vendor Details**
-- Vendor Name (searchable dropdown if vendor master exists)
-- Vendor Address
-- Vendor GSTIN
-- Vendor PAN (important for TDS)
-- Vendor Contact/Phone
-
-**Section 2: Bill Details**
-- Vendor Invoice Number (their invoice #)
-- Bill Date (date on vendor's invoice)
-- Bill Receipt Date (when we received it)
-- **Payment Due Date** (prominently shown with days until due)
-- Total Amount
-- GST Breakup (optional detailed view):
-  - Taxable Value
-  - CGST/SGST or IGST
-  - Total
-
-**Section 3: Attachment**
-- Upload vendor bill (PDF/Image) - required
-- Preview uploaded document
-
-**Section 4: Category/Notes**
-- Expense Category (optional dropdown)
-- Notes/Description
-- Internal Reference Number (our tracking #)
-
-### 4. Purchase Invoice List Enhancements
-
-**Modified Columns:**
-| Column | Description |
-|--------|-------------|
-| Bill # | Vendor's invoice number |
-| Vendor | Vendor name |
-| Bill Date | Date on vendor invoice |
-| Due Date | Payment due date (with "X days left" or "X days overdue") |
-| Amount | Total bill amount |
-| Paid | Amount we've paid so far |
-| Balance | Remaining amount to pay |
-| Status | Pending / Partial / Paid |
-
-**Status Colors:**
-- Pending (not yet due): Gray
-- Due Soon (within 7 days): Yellow
-- Overdue: Red
-- Partial: Orange
-- Paid: Green
-
-### 5. Database Schema Updates
-
-Add to `payments` table for purchase context:
-- `tds_section` (text) - e.g., '194J', '194C'
-- `our_tan` (text) - Our TAN for TDS deduction
-- `is_self_deducted_tds` (boolean) - True for purchase payments
-
-Modify `invoices` table:
-- `bill_receipt_date` (date) - When we received the vendor bill
-- `expense_category` (text) - Optional categorization
-
-### 6. Purchase-Specific Status Flow
-
-```text
-Received → Pending Payment → Partial → Paid
-              ↓
-           Overdue
-```
-
-- **Received**: Bill recorded but no payment made
-- **Pending Payment**: Awaiting payment (not overdue yet)
-- **Partial**: Some payment made
-- **Overdue**: Due date passed with balance remaining
-- **Paid**: Fully paid
+### 5. UI Issues in CreatePurchaseInvoiceDialog
+- The dialog looks fine based on screenshot but could use better layout
 
 ---
 
-## Implementation Files
+## Implementation Plan
 
-### Files to Create
-```text
-src/components/invoice/RecordPurchasePaymentDialog.tsx
-src/components/invoice/PurchaseInvoiceList.tsx (specialized list)
-```
+### Phase 1: Type-Aware Summary Cards
+
+Create separate card configurations based on invoice type:
+
+**For Institution/Sales Billing (Accounts Receivable):**
+| Card | Description |
+|------|-------------|
+| Total Invoiced | Sum of all invoices we issued |
+| Outstanding | Balance clients owe us |
+| Collected | Payments received from clients |
+| Overdue | Past-due receivables |
+| TDS Receivable | TDS clients deducted (we'll claim) |
+
+**For Purchase Billing (Accounts Payable):**
+| Card | Description |
+|------|-------------|
+| Total Bills | Sum of all vendor bills |
+| Outstanding | Balance we owe to vendors |
+| Amount Paid | Payments we made to vendors |
+| Overdue | Past-due payables |
+| TDS Deducted by Us | TDS we withheld from vendors |
+
+### Phase 2: Delete Invoice for Sales Billing
+
+Add delete option to `InvoiceList.tsx` for Sales/Institution invoices that are:
+- In "draft" status (already exists), OR
+- In any status but have no payments recorded (amount_paid = 0)
+
+This allows cleanup of mistakenly created invoices.
+
+### Phase 3: Enhanced Export for Purchase
+
+Update `invoice-export.service.ts` to:
+- Use "Vendor" instead of "Customer" for purchase exports
+- Add purchase-specific columns: "TDS Deducted", "Net Paid"
+- Export with terminology matching payables workflow
+
+### Phase 4: Aging Chart Terminology
+
+Update `AgingReportChart.tsx` to:
+- Accept `invoiceType` prop
+- Show "Payables Aging" title for purchase
+- Use "Amount we owe" instead of "Amount owed to us"
+
+### Phase 5: Summary Calculation Fix
+
+Update `invoice-export.service.ts` to:
+- Add `invoice_type` awareness to `calculateInvoiceSummary`
+- Calculate TDS correctly based on type:
+  - For Sales/Institution: TDS receivable (client deducted)
+  - For Purchase: TDS we deducted (self-deducted)
+
+---
+
+## Technical Implementation
 
 ### Files to Modify
+
+**1. `src/components/invoice/InvoiceSummaryCards.tsx`**
+- Add `invoiceType` prop
+- Create separate card configurations for receivables vs payables
+- Update labels and subtitles based on type
+
+**2. `src/components/invoice/InvoiceList.tsx`**
+- Add delete option for invoices with no payments (not just drafts)
+- Ensure delete confirmation for non-draft invoices
+
+**3. `src/services/invoice-export.service.ts`**
+- Update `exportToCSV` to accept `invoiceType` parameter
+- Create purchase-specific column headers
+- Add TDS tracking columns
+
+**4. `src/components/invoice/InvoiceExportDialog.tsx`**
+- Pass `invoiceType` to export function
+- Show type-specific export descriptions
+
+**5. `src/components/invoice/AgingReportChart.tsx`**
+- Add `invoiceType` prop
+- Update title: "Receivables Aging" vs "Payables Aging"
+- Adjust tooltip text based on type
+
+**6. `src/pages/system-admin/InvoiceManagement.tsx`**
+- Pass `invoiceType` to InvoiceSummaryCards
+- Pass `invoiceType` to AgingReportChart
+- Update delete handler for expanded delete capability
+
+**7. `src/hooks/useInvoiceSummary.ts`** (if needed)
+- Ensure TDS calculations consider invoice type
+
+---
+
+## Summary Cards Configuration
+
 ```text
-src/components/invoice/CreatePurchaseInvoiceDialog.tsx
-  - Add payment due date prominence
-  - Add vendor PAN field
-  - Add expense category
-  - Improve layout and UX
+Institution/Sales Billing:
++------------------+----------------+--------------+-----------+------------------+
+| Total Invoiced   | Outstanding    | Collected    | Overdue   | TDS Receivable   |
+| ₹X,XX,XXX        | ₹X,XX,XXX      | ₹X,XX,XXX    | ₹X,XX,XXX | ₹X,XX,XXX        |
+| X invoices       | Balance due    | X paid       | X overdue | Client deducted  |
++------------------+----------------+--------------+-----------+------------------+
 
-src/components/invoice/InvoiceList.tsx
-  - Add invoice_type awareness for actions
-  - Show different action menu for purchase
-
-src/pages/system-admin/InvoiceManagement.tsx
-  - Wire up new purchase payment dialog
-  - Different handling for purchase tab
-
-src/types/payment.ts
-  - Add tds_section, our_tan, is_self_deducted_tds
-
-src/services/payment.service.ts
-  - Support purchase-specific payment fields
-
-src/hooks/usePayments.ts
-  - Add updatePayment method for edit functionality
-```
-
-### Database Migration
-```sql
--- Add purchase-specific columns
-ALTER TABLE payments ADD COLUMN IF NOT EXISTS tds_section text;
-ALTER TABLE payments ADD COLUMN IF NOT EXISTS our_tan text;
-ALTER TABLE payments ADD COLUMN IF NOT EXISTS is_self_deducted_tds boolean DEFAULT false;
-
-ALTER TABLE invoices ADD COLUMN IF NOT EXISTS bill_receipt_date date;
-ALTER TABLE invoices ADD COLUMN IF NOT EXISTS expense_category text;
+Purchase Billing:
++------------------+----------------+--------------+-----------+------------------+
+| Total Bills      | Outstanding    | Paid         | Overdue   | TDS Deducted     |
+| ₹X,XX,XXX        | ₹X,XX,XXX      | ₹X,XX,XXX    | ₹X,XX,XXX | ₹X,XX,XXX        |
+| X bills          | Balance to pay | X settled    | X overdue | By us            |
++------------------+----------------+--------------+-----------+------------------+
 ```
 
 ---
 
-## Summary
+## Delete Invoice Logic
 
-This plan transforms Purchase Billing into a proper "Payables" module with:
-- Correct workflow perspective (we pay vendors, not receive payment)
-- Proper TDS handling (we deduct, not client)
-- Clear due date tracking and overdue alerts
-- Payment recording with edit capability
-- Auto-status updates when fully paid
-- Enhanced vendor bill entry with all required details
+**For Sales/Institution:**
+```text
+Can Delete If:
+- Status is "draft" (no restrictions), OR
+- amount_paid = 0 AND no linked payments exist
+```
 
-The key insight is that Purchase Billing operates as an **Accounts Payable** system, not a mirror of Sales/Institution which is **Accounts Receivable**.
+**For Purchase:**
+- Keep existing logic (can delete if no payments made)
+
+---
+
+## Expected Outcome
+
+After implementation:
+1. Summary cards will show correct terminology for each billing type
+2. Delete option available for Sales invoices without payments
+3. Export will produce type-appropriate reports
+4. Aging chart will use correct terminology (Receivables vs Payables)
+5. All calculations will correctly differentiate TDS handling
