@@ -16,14 +16,14 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 3,
+    marginBottom: 2,
     color: '#0066cc',
   },
   subtitle: {
     fontSize: 9,
     textAlign: 'center',
     color: '#666666',
-    marginBottom: 10,
+    marginBottom: 15,
   },
   
   // Logo styles
@@ -72,7 +72,7 @@ export const styles = StyleSheet.create({
   // Invoice Details Box
   invoiceDetailsBox: {
     width: '40%',
-    border: '1 solid #0066cc',
+    border: '1 solid #1a1a2e',
     padding: 8,
     borderRadius: 3,
     backgroundColor: '#f8f9fa',
@@ -136,7 +136,7 @@ export const styles = StyleSheet.create({
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#0066cc',
+    backgroundColor: '#1a1a2e',
     paddingVertical: 6,
     paddingHorizontal: 4,
   },
