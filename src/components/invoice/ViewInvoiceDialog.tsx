@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { InvoicePDF } from './pdf/InvoicePDF';
 import { generatePDFFilename } from '@/services/pdf.service';
-import { fetchDefaultCompanyProfile } from '@/services/invoice.service';
+import { fetchDefaultCompanyProfile, fetchInvoiceById } from '@/services/invoice.service';
 
 interface ViewInvoiceDialogProps {
   open: boolean;
@@ -27,38 +27,52 @@ interface ViewInvoiceDialogProps {
 export function ViewInvoiceDialog({
   open,
   onOpenChange,
-  invoice,
+  invoice: initialInvoice,
 }: ViewInvoiceDialogProps) {
   const [copyType] = useState<'original' | 'duplicate' | 'triplicate'>('original');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [loading, setLoading] = useState(false);
   
-  // Fetch company profile to get logo URL
+  // Fetch complete invoice with line items when dialog opens
   useEffect(() => {
-    if (open && invoice) {
-      fetchDefaultCompanyProfile().then((profile) => {
+    if (open && initialInvoice?.id) {
+      setLoading(true);
+      Promise.all([
+        fetchInvoiceById(initialInvoice.id),
+        fetchDefaultCompanyProfile()
+      ]).then(([fullInvoice, profile]) => {
+        if (fullInvoice) {
+          setInvoice(fullInvoice);
+        }
         if (profile?.logo_url) {
           setLogoUrl(profile.logo_url);
         }
-      }).catch(console.error);
+      }).catch(console.error)
+        .finally(() => setLoading(false));
+    } else {
+      setInvoice(null);
     }
-  }, [open, invoice]);
+  }, [open, initialInvoice?.id]);
   
-  if (!invoice) return null;
+  if (!initialInvoice) return null;
 
   const handlePrint = () => {
     window.print();
   };
 
-  const isInterState = invoice.from_company_state_code !== invoice.to_company_state_code;
+  // Use loaded invoice for display, fallback to initial
+  const displayInvoice = invoice || initialInvoice;
+  const isInterState = displayInvoice.from_company_state_code !== displayInvoice.to_company_state_code;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh]">
         <DialogHeader className="flex flex-row items-center justify-between">
           <div>
-            <DialogTitle>Invoice {invoice.invoice_number}</DialogTitle>
+            <DialogTitle>Invoice {displayInvoice.invoice_number}</DialogTitle>
             <div className="flex items-center gap-2 mt-1">
-              <InvoiceStatusBadge status={invoice.status} />
+              <InvoiceStatusBadge status={displayInvoice.status} />
             </div>
           </div>
           <div className="flex gap-2">
@@ -66,21 +80,29 @@ export function ViewInvoiceDialog({
               <Printer className="h-4 w-4 mr-2" />
               Print
             </Button>
-            <PDFDownloadLink
-              document={<InvoicePDF invoice={invoice} copyType={copyType} logoUrl={logoUrl} />}
-              fileName={generatePDFFilename(invoice.invoice_number, invoice.invoice_type)}
-            >
-              {({ loading }) => (
-                <Button size="sm" disabled={loading}>
-                  {loading ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Download className="h-4 w-4 mr-2" />
-                  )}
-                  {loading ? 'Generating...' : 'Download PDF'}
-                </Button>
-              )}
-            </PDFDownloadLink>
+            {invoice && (
+              <PDFDownloadLink
+                document={<InvoicePDF invoice={invoice} copyType={copyType} logoUrl={logoUrl} />}
+                fileName={generatePDFFilename(invoice.invoice_number, invoice.invoice_type)}
+              >
+                {({ loading: pdfLoading }) => (
+                  <Button size="sm" disabled={pdfLoading}>
+                    {pdfLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    {pdfLoading ? 'Generating...' : 'Download PDF'}
+                  </Button>
+                )}
+              </PDFDownloadLink>
+            )}
+            {!invoice && loading && (
+              <Button size="sm" disabled>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Loading...
+              </Button>
+            )}
           </div>
         </DialogHeader>
 
@@ -105,13 +127,13 @@ export function ViewInvoiceDialog({
                     />
                   </div>
                 )}
-                <h3 className="font-semibold text-lg">{invoice.from_company_name}</h3>
+                <h3 className="font-semibold text-lg">{displayInvoice.from_company_name}</h3>
                 <div className="text-sm text-muted-foreground mt-1 space-y-0.5">
-                  <p>{invoice.from_company_address}</p>
-                  <p>{invoice.from_company_city}, {invoice.from_company_state} {invoice.from_company_pincode}</p>
-                  {invoice.from_company_gstin && <p>GSTIN: {invoice.from_company_gstin}</p>}
-                  {invoice.from_company_phone && <p>Phone: {invoice.from_company_phone}</p>}
-                  {invoice.from_company_email && <p>Email: {invoice.from_company_email}</p>}
+                  <p>{displayInvoice.from_company_address}</p>
+                  <p>{displayInvoice.from_company_city}, {displayInvoice.from_company_state} {displayInvoice.from_company_pincode}</p>
+                  {displayInvoice.from_company_gstin && <p>GSTIN: {displayInvoice.from_company_gstin}</p>}
+                  {displayInvoice.from_company_phone && <p>Phone: {displayInvoice.from_company_phone}</p>}
+                  {displayInvoice.from_company_email && <p>Email: {displayInvoice.from_company_email}</p>}
                 </div>
               </div>
 
@@ -120,25 +142,25 @@ export function ViewInvoiceDialog({
                 <div className="inline-block text-left border rounded-lg p-3 bg-muted/30">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                     <span className="text-muted-foreground">Invoice Number:</span>
-                    <span className="font-medium">{invoice.invoice_number}</span>
+                    <span className="font-medium">{displayInvoice.invoice_number}</span>
                     <span className="text-muted-foreground">Invoice Date:</span>
-                    <span>{format(new Date(invoice.invoice_date), 'dd.MM.yyyy')}</span>
-                    {invoice.terms && (
+                    <span>{format(new Date(displayInvoice.invoice_date), 'dd.MM.yyyy')}</span>
+                    {displayInvoice.terms && (
                       <>
                         <span className="text-muted-foreground">Terms:</span>
-                        <span>{invoice.terms}</span>
+                        <span>{displayInvoice.terms}</span>
                       </>
                     )}
-                    {invoice.due_date && (
+                    {displayInvoice.due_date && (
                       <>
                         <span className="text-muted-foreground">Due Date:</span>
-                        <span>{format(new Date(invoice.due_date), 'dd.MM.yyyy')}</span>
+                        <span>{format(new Date(displayInvoice.due_date), 'dd.MM.yyyy')}</span>
                       </>
                     )}
-                    {invoice.place_of_supply && (
+                    {displayInvoice.place_of_supply && (
                       <>
                         <span className="text-muted-foreground">Place of Supply:</span>
-                        <span>{invoice.place_of_supply}</span>
+                        <span>{displayInvoice.place_of_supply}</span>
                       </>
                     )}
                   </div>
@@ -152,17 +174,17 @@ export function ViewInvoiceDialog({
             <div>
               <h4 className="text-sm font-semibold text-muted-foreground mb-2">BILL TO</h4>
               <div className="bg-muted/30 p-3 rounded-lg">
-                <p className="font-semibold">{invoice.to_company_name}</p>
+                <p className="font-semibold">{displayInvoice.to_company_name}</p>
                 <div className="text-sm text-muted-foreground mt-1 space-y-0.5">
-                  {invoice.to_company_address && <p>{invoice.to_company_address}</p>}
-                  {(invoice.to_company_city || invoice.to_company_state) && (
+                  {displayInvoice.to_company_address && <p>{displayInvoice.to_company_address}</p>}
+                  {(displayInvoice.to_company_city || displayInvoice.to_company_state) && (
                     <p>
-                      {invoice.to_company_city}
-                      {invoice.to_company_city && invoice.to_company_state && ', '}
-                      {invoice.to_company_state} {invoice.to_company_pincode}
+                      {displayInvoice.to_company_city}
+                      {displayInvoice.to_company_city && displayInvoice.to_company_state && ', '}
+                      {displayInvoice.to_company_state} {displayInvoice.to_company_pincode}
                     </p>
                   )}
-                  {invoice.to_company_gstin && <p>GSTIN: {invoice.to_company_gstin}</p>}
+                  {displayInvoice.to_company_gstin && <p>GSTIN: {displayInvoice.to_company_gstin}</p>}
                 </div>
               </div>
             </div>
@@ -180,7 +202,7 @@ export function ViewInvoiceDialog({
                   </tr>
                 </thead>
                 <tbody>
-                  {invoice.line_items?.map((item, index) => (
+                  {displayInvoice.line_items?.map((item, index) => (
                     <tr key={index} className="border-t">
                       <td className="p-3">{item.description}</td>
                       <td className="p-3 text-center">{item.hsn_sac_code || '-'}</td>
@@ -198,89 +220,89 @@ export function ViewInvoiceDialog({
               <div className="w-72 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Sub Total:</span>
-                  <span>₹{invoice.sub_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  <span>₹{displayInvoice.sub_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
                 {!isInterState ? (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">CGST ({invoice.cgst_rate}%):</span>
-                      <span>₹{(invoice.cgst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span className="text-muted-foreground">CGST ({displayInvoice.cgst_rate}%):</span>
+                      <span>₹{(displayInvoice.cgst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">SGST ({invoice.sgst_rate}%):</span>
-                      <span>₹{(invoice.sgst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span className="text-muted-foreground">SGST ({displayInvoice.sgst_rate}%):</span>
+                      <span>₹{(displayInvoice.sgst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                   </>
                 ) : (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">IGST ({invoice.igst_rate}%):</span>
-                    <span>₹{(invoice.igst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    <span className="text-muted-foreground">IGST ({displayInvoice.igst_rate}%):</span>
+                    <span>₹{(displayInvoice.igst_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
                 )}
-                {invoice.tds_amount && invoice.tds_amount > 0 && (
+                {displayInvoice.tds_amount && displayInvoice.tds_amount > 0 && (
                   <div className="flex justify-between text-destructive">
                     <span>TDS Withheld (-):</span>
-                    <span>₹{invoice.tds_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    <span>₹{displayInvoice.tds_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
                 )}
                 <Separator />
                 <div className="flex justify-between font-semibold text-base">
                   <span>Total:</span>
-                  <span>₹{invoice.total_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  <span>₹{displayInvoice.total_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
                 <div className="flex justify-between font-semibold">
                   <span>Balance Due:</span>
-                  <span>₹{invoice.balance_due.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  <span>₹{displayInvoice.balance_due.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
               </div>
             </div>
 
             {/* Total in Words */}
-            {invoice.total_in_words && (
+            {displayInvoice.total_in_words && (
               <div className="bg-muted/30 p-3 rounded-lg">
                 <span className="text-sm text-muted-foreground">Total In Words: </span>
-                <span className="text-sm font-medium">{invoice.total_in_words}</span>
+                <span className="text-sm font-medium">{displayInvoice.total_in_words}</span>
               </div>
             )}
 
             {/* Notes */}
-            {invoice.notes && (
+            {displayInvoice.notes && (
               <div>
                 <h4 className="text-sm font-semibold mb-2">Notes</h4>
-                <p className="text-sm text-muted-foreground">{invoice.notes}</p>
+                <p className="text-sm text-muted-foreground">{displayInvoice.notes}</p>
               </div>
             )}
 
             {/* Bank Details */}
-            {invoice.bank_details && Object.keys(invoice.bank_details).length > 0 && (
+            {displayInvoice.bank_details && Object.keys(displayInvoice.bank_details).length > 0 && (
               <div>
                 <h4 className="text-sm font-semibold mb-2">Bank Details</h4>
                 <div className="bg-muted/30 p-3 rounded-lg text-sm space-y-1">
-                  {invoice.bank_details.account_holder && (
-                    <p>Account Holder: {invoice.bank_details.account_holder}</p>
+                  {displayInvoice.bank_details.account_holder && (
+                    <p>Account Holder: {displayInvoice.bank_details.account_holder}</p>
                   )}
-                  {invoice.bank_details.bank_name && (
-                    <p>Bank: {invoice.bank_details.bank_name}</p>
+                  {displayInvoice.bank_details.bank_name && (
+                    <p>Bank: {displayInvoice.bank_details.bank_name}</p>
                   )}
-                  {invoice.bank_details.account_number && (
-                    <p>Account No: {invoice.bank_details.account_number}</p>
+                  {displayInvoice.bank_details.account_number && (
+                    <p>Account No: {displayInvoice.bank_details.account_number}</p>
                   )}
-                  {invoice.bank_details.account_type && (
-                    <p>Account Type: {invoice.bank_details.account_type}</p>
+                  {displayInvoice.bank_details.account_type && (
+                    <p>Account Type: {displayInvoice.bank_details.account_type}</p>
                   )}
-                  {invoice.bank_details.ifsc_code && (
-                    <p>IFSC Code: {invoice.bank_details.ifsc_code}</p>
+                  {displayInvoice.bank_details.ifsc_code && (
+                    <p>IFSC Code: {displayInvoice.bank_details.ifsc_code}</p>
                   )}
                 </div>
               </div>
             )}
 
             {/* Terms & Conditions */}
-            {invoice.terms_and_conditions && (
+            {displayInvoice.terms_and_conditions && (
               <div>
                 <h4 className="text-sm font-semibold mb-2">Terms & Conditions</h4>
                 <div className="text-sm text-muted-foreground whitespace-pre-line">
-                  {invoice.terms_and_conditions}
+                  {displayInvoice.terms_and_conditions}
                 </div>
               </div>
             )}
@@ -288,10 +310,10 @@ export function ViewInvoiceDialog({
             {/* Signature */}
             <div className="flex justify-end pt-6">
               <div className="text-center">
-                {invoice.signature_url ? (
+                {displayInvoice.signature_url ? (
                   <div className="flex justify-center mb-2">
                     <img
-                      src={invoice.signature_url}
+                      src={displayInvoice.signature_url}
                       alt="Authorized signatory signature"
                       className="h-14 w-auto object-contain"
                       loading="lazy"
@@ -303,7 +325,7 @@ export function ViewInvoiceDialog({
                   </div>
                 )}
                 <p className="text-sm text-muted-foreground mb-8">Authorized Signatory</p>
-                <p className="font-medium">For {invoice.from_company_name}</p>
+                <p className="font-medium">For {displayInvoice.from_company_name}</p>
               </div>
             </div>
           </div>
