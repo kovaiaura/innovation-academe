@@ -231,11 +231,11 @@ export default function InvoiceManagement() {
           {(['institution', 'sales'] as InvoiceType[]).map((type) => (
             <TabsContent key={type} value={type} className="mt-6 space-y-6">
               {/* Summary Cards */}
-              <InvoiceSummaryCards summary={summary} loading={loading} />
+              <InvoiceSummaryCards summary={summary} loading={loading} invoiceType={type} />
 
               {/* Aging Chart */}
               {showAgingChart && (
-                <AgingReportChart buckets={agingBuckets} loading={loading} />
+                <AgingReportChart buckets={agingBuckets} loading={loading} invoiceType={type} />
               )}
 
               {/* Month Filter */}
@@ -271,12 +271,12 @@ export default function InvoiceManagement() {
 
           {/* Purchase Tab - Uses specialized list */}
           <TabsContent value="purchase" className="mt-6 space-y-6">
-            {/* Summary Cards */}
-            <InvoiceSummaryCards summary={summary} loading={loading} />
+            {/* Summary Cards - Purchase specific terminology */}
+            <InvoiceSummaryCards summary={summary} loading={loading} invoiceType="purchase" />
 
-            {/* Aging Chart */}
+            {/* Aging Chart - Payables terminology */}
             {showAgingChart && (
-              <AgingReportChart buckets={agingBuckets} loading={loading} />
+              <AgingReportChart buckets={agingBuckets} loading={loading} invoiceType="purchase" />
             )}
 
             {/* Month Filter */}

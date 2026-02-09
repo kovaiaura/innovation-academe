@@ -41,7 +41,11 @@ export function calculateInvoiceSummary(
 ): InvoiceSummary {
   const total_invoiced = invoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
   const total_collected = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-  const tds_deducted = payments.reduce((sum, p) => sum + (p.tds_amount || 0), 0);
+  
+  // TDS deducted by us (for purchase - is_self_deducted_tds = true)
+  const tds_deducted = payments
+    .filter(p => p.is_self_deducted_tds)
+    .reduce((sum, p) => sum + (p.tds_amount || 0), 0);
   
   const outstandingInvoices = invoices.filter(inv => 
     inv.status !== 'paid' && inv.status !== 'cancelled'
@@ -57,6 +61,7 @@ export function calculateInvoiceSummary(
     0
   );
   
+  // TDS receivable (client deducted - for sales/institution)
   const tds_receivable = invoices
     .filter(inv => inv.tds_deducted_by === 'client')
     .reduce((sum, inv) => sum + (inv.tds_amount || 0), 0);
@@ -154,82 +159,165 @@ export function generateMonthlyReport(
   };
 }
 
-// Export to CSV format
+// Export to CSV format with type awareness
 export function exportToCSV(
   invoices: Invoice[],
-  type: 'register' | 'outstanding' | 'collection'
+  type: 'register' | 'outstanding' | 'collection',
+  invoiceType?: InvoiceType
 ): string {
   const headers: string[] = [];
   const rows: string[][] = [];
+  const isPurchase = invoiceType === 'purchase';
+  const entityLabel = isPurchase ? 'Vendor' : 'Customer';
   
   if (type === 'register') {
-    headers.push(
-      'Invoice No',
-      'Date',
-      'Customer',
-      'GSTIN',
-      'Subtotal',
-      'CGST',
-      'SGST',
-      'IGST',
-      'Total',
-      'Status',
-      'Payment Status',
-      'Amount Paid',
-      'Balance Due'
-    );
-    
-    invoices.forEach(inv => {
-      rows.push([
-        inv.invoice_number,
-        format(new Date(inv.invoice_date), 'dd/MM/yyyy'),
-        inv.to_company_name,
-        inv.to_company_gstin || '',
-        (inv.sub_total || 0).toFixed(2),
-        (inv.cgst_amount || 0).toFixed(2),
-        (inv.sgst_amount || 0).toFixed(2),
-        (inv.igst_amount || 0).toFixed(2),
-        (inv.total_amount || 0).toFixed(2),
-        inv.status,
-        inv.payment_status || 'unpaid',
-        (inv.amount_paid || 0).toFixed(2),
-        ((inv.total_amount || 0) - (inv.amount_paid || 0)).toFixed(2),
-      ]);
-    });
+    if (isPurchase) {
+      headers.push(
+        'Our Ref #',
+        'Vendor Bill #',
+        'Vendor',
+        'Vendor PAN',
+        'Bill Date',
+        'Due Date',
+        'Subtotal',
+        'CGST',
+        'SGST',
+        'IGST',
+        'Total Amount',
+        'Amount Paid',
+        'TDS Deducted',
+        'Balance Due',
+        'Payment Status',
+        'Category'
+      );
+      
+      invoices.forEach(inv => {
+        const balance = (inv.total_amount || 0) - (inv.amount_paid || 0);
+        rows.push([
+          inv.invoice_number,
+          inv.reference_number || '',
+          inv.from_company_name || inv.to_company_name || '',
+          inv.vendor_pan || '',
+          format(new Date(inv.invoice_date), 'dd/MM/yyyy'),
+          inv.due_date ? format(new Date(inv.due_date), 'dd/MM/yyyy') : '',
+          (inv.sub_total || 0).toFixed(2),
+          (inv.cgst_amount || 0).toFixed(2),
+          (inv.sgst_amount || 0).toFixed(2),
+          (inv.igst_amount || 0).toFixed(2),
+          (inv.total_amount || 0).toFixed(2),
+          (inv.amount_paid || 0).toFixed(2),
+          (inv.tds_amount || 0).toFixed(2),
+          balance.toFixed(2),
+          inv.payment_status || 'unpaid',
+          inv.expense_category || '',
+        ]);
+      });
+    } else {
+      headers.push(
+        'Invoice No',
+        'Date',
+        entityLabel,
+        'GSTIN',
+        'Subtotal',
+        'CGST',
+        'SGST',
+        'IGST',
+        'Total',
+        'Status',
+        'Payment Status',
+        'Amount Received',
+        'TDS (Client)',
+        'Balance Due'
+      );
+      
+      invoices.forEach(inv => {
+        rows.push([
+          inv.invoice_number,
+          format(new Date(inv.invoice_date), 'dd/MM/yyyy'),
+          inv.to_company_name,
+          inv.to_company_gstin || '',
+          (inv.sub_total || 0).toFixed(2),
+          (inv.cgst_amount || 0).toFixed(2),
+          (inv.sgst_amount || 0).toFixed(2),
+          (inv.igst_amount || 0).toFixed(2),
+          (inv.total_amount || 0).toFixed(2),
+          inv.status,
+          inv.payment_status || 'unpaid',
+          (inv.amount_paid || 0).toFixed(2),
+          (inv.tds_amount || 0).toFixed(2),
+          ((inv.total_amount || 0) - (inv.amount_paid || 0)).toFixed(2),
+        ]);
+      });
+    }
   } else if (type === 'outstanding') {
-    headers.push(
-      'Invoice No',
-      'Date',
-      'Due Date',
-      'Customer',
-      'Total Amount',
-      'Amount Paid',
-      'Balance Due',
-      'Days Overdue',
-      'Status'
-    );
-    
     const outstandingInvoices = invoices.filter(
       inv => inv.status !== 'paid' && inv.status !== 'cancelled'
     );
     
-    outstandingInvoices.forEach(inv => {
-      const daysOverdue = inv.due_date 
-        ? Math.max(0, differenceInDays(new Date(), new Date(inv.due_date)))
-        : 0;
+    if (isPurchase) {
+      headers.push(
+        'Our Ref #',
+        'Vendor Bill #',
+        'Vendor',
+        'Bill Date',
+        'Due Date',
+        'Total Amount',
+        'Amount Paid',
+        'Balance to Pay',
+        'Days Overdue',
+        'Status'
+      );
       
-      rows.push([
-        inv.invoice_number,
-        format(new Date(inv.invoice_date), 'dd/MM/yyyy'),
-        inv.due_date ? format(new Date(inv.due_date), 'dd/MM/yyyy') : '-',
-        inv.to_company_name,
-        (inv.total_amount || 0).toFixed(2),
-        (inv.amount_paid || 0).toFixed(2),
-        ((inv.total_amount || 0) - (inv.amount_paid || 0)).toFixed(2),
-        daysOverdue.toString(),
-        inv.status,
-      ]);
-    });
+      outstandingInvoices.forEach(inv => {
+        const daysOverdue = inv.due_date 
+          ? Math.max(0, differenceInDays(new Date(), new Date(inv.due_date)))
+          : 0;
+        const balance = (inv.total_amount || 0) - (inv.amount_paid || 0);
+        
+        rows.push([
+          inv.invoice_number,
+          inv.reference_number || '',
+          inv.from_company_name || inv.to_company_name || '',
+          format(new Date(inv.invoice_date), 'dd/MM/yyyy'),
+          inv.due_date ? format(new Date(inv.due_date), 'dd/MM/yyyy') : '-',
+          (inv.total_amount || 0).toFixed(2),
+          (inv.amount_paid || 0).toFixed(2),
+          balance.toFixed(2),
+          daysOverdue.toString(),
+          inv.payment_status || 'unpaid',
+        ]);
+      });
+    } else {
+      headers.push(
+        'Invoice No',
+        'Date',
+        'Due Date',
+        entityLabel,
+        'Total Amount',
+        'Amount Received',
+        'Balance Due',
+        'Days Overdue',
+        'Status'
+      );
+      
+      outstandingInvoices.forEach(inv => {
+        const daysOverdue = inv.due_date 
+          ? Math.max(0, differenceInDays(new Date(), new Date(inv.due_date)))
+          : 0;
+        
+        rows.push([
+          inv.invoice_number,
+          format(new Date(inv.invoice_date), 'dd/MM/yyyy'),
+          inv.due_date ? format(new Date(inv.due_date), 'dd/MM/yyyy') : '-',
+          inv.to_company_name,
+          (inv.total_amount || 0).toFixed(2),
+          (inv.amount_paid || 0).toFixed(2),
+          ((inv.total_amount || 0) - (inv.amount_paid || 0)).toFixed(2),
+          daysOverdue.toString(),
+          inv.status,
+        ]);
+      });
+    }
   }
   
   // Convert to CSV

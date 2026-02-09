@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Download, FileSpreadsheet, FileText } from 'lucide-react';
 import { exportToCSV, downloadCSV } from '@/services/invoice-export.service';
-import type { Invoice } from '@/types/invoice';
+import type { Invoice, InvoiceType } from '@/types/invoice';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -19,7 +19,7 @@ interface InvoiceExportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoices: Invoice[];
-  invoiceType: string;
+  invoiceType: InvoiceType;
 }
 
 type ExportType = 'register' | 'outstanding' | 'collection';
@@ -32,11 +32,13 @@ export function InvoiceExportDialog({
 }: InvoiceExportDialogProps) {
   const [exportType, setExportType] = useState<ExportType>('register');
   const [loading, setLoading] = useState(false);
+  
+  const isPurchase = invoiceType === 'purchase';
 
   const handleExport = async () => {
     setLoading(true);
     try {
-      const csvContent = exportToCSV(invoices, exportType);
+      const csvContent = exportToCSV(invoices, exportType, invoiceType);
       const filename = `${invoiceType}-${exportType}-${format(new Date(), 'yyyy-MM-dd')}.csv`;
       downloadCSV(csvContent, filename);
       toast.success('Export downloaded successfully');
@@ -49,20 +51,37 @@ export function InvoiceExportDialog({
     }
   };
 
-  const exportOptions = [
-    {
-      value: 'register' as ExportType,
-      label: 'Invoice Register',
-      description: 'Complete list of all invoices with GST details',
-      icon: FileSpreadsheet,
-    },
-    {
-      value: 'outstanding' as ExportType,
-      label: 'Outstanding Report',
-      description: 'Unpaid invoices with aging information',
-      icon: FileText,
-    },
-  ];
+  const exportOptions = isPurchase
+    ? [
+        {
+          value: 'register' as ExportType,
+          label: 'Purchase Register',
+          description: 'Complete list of all vendor bills with GST and payment details',
+          icon: FileSpreadsheet,
+        },
+        {
+          value: 'outstanding' as ExportType,
+          label: 'Payables Report',
+          description: 'Unpaid vendor bills with aging information',
+          icon: FileText,
+        },
+      ]
+    : [
+        {
+          value: 'register' as ExportType,
+          label: 'Invoice Register',
+          description: 'Complete list of all invoices with GST details',
+          icon: FileSpreadsheet,
+        },
+        {
+          value: 'outstanding' as ExportType,
+          label: 'Outstanding Report',
+          description: 'Unpaid invoices with aging information',
+          icon: FileText,
+        },
+      ];
+
+  const entityLabel = isPurchase ? 'vendor bills' : 'invoices';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -70,7 +89,7 @@ export function InvoiceExportDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Download className="h-5 w-5" />
-            Export Invoices
+            Export {isPurchase ? 'Purchase Bills' : 'Invoices'}
           </DialogTitle>
         </DialogHeader>
 
@@ -110,7 +129,7 @@ export function InvoiceExportDialog({
 
         <div className="bg-muted/50 p-3 rounded-lg">
           <p className="text-sm text-muted-foreground">
-            <strong>{invoices.length}</strong> invoices will be exported as CSV
+            <strong>{invoices.length}</strong> {entityLabel} will be exported as CSV
           </p>
         </div>
 

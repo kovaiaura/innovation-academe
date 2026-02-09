@@ -336,7 +336,8 @@ export function InvoiceList({
                               </>
                             )}
                             
-                            {invoice.status === 'draft' && (
+                            {/* Delete - for drafts OR invoices with no payments */}
+                            {(invoice.status === 'draft' || (invoice.amount_paid || 0) === 0) && (
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem

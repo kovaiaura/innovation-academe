@@ -10,20 +10,27 @@ import {
   Cell,
 } from 'recharts';
 import type { AgingBucket } from '@/services/invoice-export.service';
+import type { InvoiceType } from '@/types/invoice';
 
 interface AgingReportChartProps {
   buckets: AgingBucket[];
   loading?: boolean;
+  invoiceType?: InvoiceType;
 }
 
 const COLORS = ['#22c55e', '#eab308', '#f97316', '#ef4444', '#dc2626'];
 
-export function AgingReportChart({ buckets, loading }: AgingReportChartProps) {
+export function AgingReportChart({ buckets, loading, invoiceType = 'institution' }: AgingReportChartProps) {
+  const isPurchase = invoiceType === 'purchase';
+  const title = isPurchase ? 'Payables Aging' : 'Receivables Aging';
+  const totalLabel = isPurchase ? 'Total Payable' : 'Total Outstanding';
+  const tooltipLabel = isPurchase ? 'Amount we owe' : 'Amount owed to us';
+  
   if (loading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Aging Analysis</CardTitle>
+          <CardTitle>{title}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-64 bg-muted animate-pulse rounded" />
@@ -45,9 +52,9 @@ export function AgingReportChart({ buckets, loading }: AgingReportChartProps) {
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>Aging Analysis</CardTitle>
+          <CardTitle>{title}</CardTitle>
           <div className="text-right">
-            <p className="text-sm text-muted-foreground">Total Outstanding</p>
+            <p className="text-sm text-muted-foreground">{totalLabel}</p>
             <p className="text-xl font-bold">
               ₹{totalOutstanding.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
             </p>
@@ -77,10 +84,10 @@ export function AgingReportChart({ buckets, loading }: AgingReportChartProps) {
                       <div className="bg-background border rounded-lg shadow-lg p-3">
                         <p className="font-medium">{data.name}</p>
                         <p className="text-sm">
-                          Amount: ₹{data.amount.toLocaleString('en-IN')}
+                          {tooltipLabel}: ₹{data.amount.toLocaleString('en-IN')}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {data.count} invoice(s)
+                          {data.count} {isPurchase ? 'bill(s)' : 'invoice(s)'}
                         </p>
                       </div>
                     );
