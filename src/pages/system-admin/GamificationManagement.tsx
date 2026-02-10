@@ -6,10 +6,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  Trophy, Award, TrendingUp, BarChart3, Loader2, Users, RefreshCw, Sparkles
+  Trophy, Award, TrendingUp, BarChart3, Loader2, Users, RefreshCw, Sparkles, FileText
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { StudentPerformanceTable } from "@/components/gamification/StudentPerformanceTable";
+import { CertificateTemplateManager } from "@/components/gamification/CertificateTemplateManager";
 import { StudentPerformanceModal } from "@/components/gamification/StudentPerformanceModal";
 import { gamificationDbService } from "@/services/gamification-db.service";
 import { StudentPerformance, GamificationStats } from "@/types/gamification";
@@ -166,7 +167,7 @@ export default function GamificationManagement() {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">
               <BarChart3 className="h-4 w-4 mr-2" />
               Overview
@@ -178,6 +179,10 @@ export default function GamificationManagement() {
             <TabsTrigger value="badges">
               <Award className="h-4 w-4 mr-2" />
               Badges
+            </TabsTrigger>
+            <TabsTrigger value="certificates">
+              <FileText className="h-4 w-4 mr-2" />
+              Certificates
             </TabsTrigger>
           </TabsList>
 
@@ -407,6 +412,11 @@ export default function GamificationManagement() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Tab 4: Certificates */}
+          <TabsContent value="certificates" className="space-y-6">
+            <CertificateTemplateManager />
           </TabsContent>
         </Tabs>
 
