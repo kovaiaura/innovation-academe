@@ -857,58 +857,50 @@ export function useAllPublishedCourses() {
       if (coursesError) throw coursesError;
       if (!courses || courses.length === 0) return [];
 
-      // Get course IDs for module/session queries
+      // Helper to batch large .in() queries to avoid URL length limits
+      const BATCH_SIZE = 50;
+
       const fetchedCourseIds = courses.map(c => c.id);
 
-      // Get modules for all courses
-      const { data: modules, error: modulesError } = await supabase
-        .from('course_modules')
-        .select(`
-          id,
-          course_id,
-          title,
-          description,
-          display_order
-        `)
-        .in('course_id', fetchedCourseIds)
-        .order('display_order', { ascending: true });
-
-      if (modulesError) throw modulesError;
-
-      // Get sessions for all modules
-      const moduleIds = modules?.map(m => m.id) || [];
-      let sessions: any[] = [];
-      
-      if (moduleIds.length > 0) {
-        const { data: sessionsData, error: sessionsError } = await supabase
-          .from('course_sessions')
-          .select(`
-            id,
-            module_id,
-            title,
-            description,
-            display_order
-          `)
-          .in('module_id', moduleIds)
+      // Get modules for all courses (batched)
+      const modules: any[] = [];
+      for (let i = 0; i < fetchedCourseIds.length; i += BATCH_SIZE) {
+        const batch = fetchedCourseIds.slice(i, i + BATCH_SIZE);
+        const { data, error } = await supabase
+          .from('course_modules')
+          .select('id, course_id, title, description, display_order')
+          .in('course_id', batch)
           .order('display_order', { ascending: true });
-
-        if (sessionsError) throw sessionsError;
-        sessions = sessionsData || [];
+        if (error) throw error;
+        if (data) modules.push(...data);
       }
 
-      // Get content for all sessions
+      // Get sessions for all modules (batched)
+      const moduleIds = modules.map(m => m.id);
+      const sessions: any[] = [];
+      for (let i = 0; i < moduleIds.length; i += BATCH_SIZE) {
+        const batch = moduleIds.slice(i, i + BATCH_SIZE);
+        const { data, error } = await supabase
+          .from('course_sessions')
+          .select('id, module_id, title, description, display_order')
+          .in('module_id', batch)
+          .order('display_order', { ascending: true });
+        if (error) throw error;
+        if (data) sessions.push(...data);
+      }
+
+      // Get content for all sessions (batched)
       const sessionIds = sessions.map(s => s.id);
-      let content: any[] = [];
-      
-      if (sessionIds.length > 0) {
-        const { data: contentData, error: contentError } = await supabase
+      const content: any[] = [];
+      for (let i = 0; i < sessionIds.length; i += BATCH_SIZE) {
+        const batch = sessionIds.slice(i, i + BATCH_SIZE);
+        const { data, error } = await supabase
           .from('course_content')
           .select('id, course_id, module_id, session_id, title, type, file_path, youtube_url, duration_minutes, file_size_mb, display_order, views_count, created_at')
-          .in('session_id', sessionIds)
+          .in('session_id', batch)
           .order('display_order', { ascending: true });
-
-        if (contentError) throw contentError;
-        content = contentData || [];
+        if (error) throw error;
+        if (data) content.push(...data);
       }
 
       // Combine the data
