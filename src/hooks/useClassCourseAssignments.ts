@@ -830,48 +830,12 @@ export function useInstitutionCourseAssignments(institutionId?: string) {
   });
 }
 
-// Fetch all active courses (for management view - courses assigned to user's institution)
+// Fetch all active courses (for management view - ALL created courses visible to all institutions)
 export function useAllPublishedCourses() {
   return useQuery({
     queryKey: ['all-active-courses'],
     queryFn: async () => {
-      // First get current user's institution_id
-      const { data: { user } } = await supabase.auth.getUser();
-      let institutionId: string | null = null;
-      
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('institution_id')
-          .eq('id', user.id)
-          .maybeSingle();
-        institutionId = profile?.institution_id || null;
-      }
-
-      // Get courses assigned to this institution via course_institution_assignments
-      let courseIds: string[] = [];
-      if (institutionId) {
-        const { data: assignments } = await supabase
-          .from('course_institution_assignments')
-          .select('course_id')
-          .eq('institution_id', institutionId);
-        courseIds = (assignments || []).map(a => a.course_id);
-      }
-
-      if (courseIds.length === 0) {
-        // Fallback: also check course_class_assignments for this institution
-        if (institutionId) {
-          const { data: classAssignments } = await supabase
-            .from('course_class_assignments')
-            .select('course_id')
-            .eq('institution_id', institutionId);
-          courseIds = [...new Set((classAssignments || []).map(a => a.course_id))];
-        }
-      }
-
-      if (courseIds.length === 0) return [];
-
-      // Get all active/published courses that are assigned to this institution
+      // Get all active/published courses - no institution filtering
       const { data: courses, error: coursesError } = await supabase
         .from('courses')
         .select(`
@@ -887,7 +851,6 @@ export function useAllPublishedCourses() {
           learning_outcomes,
           created_at
         `)
-        .in('id', courseIds)
         .in('status', ['active', 'published'])
         .order('created_at', { ascending: false });
 
