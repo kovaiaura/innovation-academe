@@ -830,12 +830,48 @@ export function useInstitutionCourseAssignments(institutionId?: string) {
   });
 }
 
-// Fetch all active courses (for management view - all CEO active/published courses)
+// Fetch all active courses (for management view - courses assigned to user's institution)
 export function useAllPublishedCourses() {
   return useQuery({
     queryKey: ['all-active-courses'],
     queryFn: async () => {
-      // Get all active/published courses (management sees both active and published)
+      // First get current user's institution_id
+      const { data: { user } } = await supabase.auth.getUser();
+      let institutionId: string | null = null;
+      
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('institution_id')
+          .eq('id', user.id)
+          .maybeSingle();
+        institutionId = profile?.institution_id || null;
+      }
+
+      // Get courses assigned to this institution via course_institution_assignments
+      let courseIds: string[] = [];
+      if (institutionId) {
+        const { data: assignments } = await supabase
+          .from('course_institution_assignments')
+          .select('course_id')
+          .eq('institution_id', institutionId);
+        courseIds = (assignments || []).map(a => a.course_id);
+      }
+
+      if (courseIds.length === 0) {
+        // Fallback: also check course_class_assignments for this institution
+        if (institutionId) {
+          const { data: classAssignments } = await supabase
+            .from('course_class_assignments')
+            .select('course_id')
+            .eq('institution_id', institutionId);
+          courseIds = [...new Set((classAssignments || []).map(a => a.course_id))];
+        }
+      }
+
+      if (courseIds.length === 0) return [];
+
+      // Get all active/published courses that are assigned to this institution
       const { data: courses, error: coursesError } = await supabase
         .from('courses')
         .select(`
@@ -851,14 +887,15 @@ export function useAllPublishedCourses() {
           learning_outcomes,
           created_at
         `)
+        .in('id', courseIds)
         .in('status', ['active', 'published'])
         .order('created_at', { ascending: false });
 
       if (coursesError) throw coursesError;
       if (!courses || courses.length === 0) return [];
 
-      // Get course IDs
-      const courseIds = courses.map(c => c.id);
+      // Get course IDs for module/session queries
+      const fetchedCourseIds = courses.map(c => c.id);
 
       // Get modules for all courses
       const { data: modules, error: modulesError } = await supabase
@@ -870,7 +907,7 @@ export function useAllPublishedCourses() {
           description,
           display_order
         `)
-        .in('course_id', courseIds)
+        .in('course_id', fetchedCourseIds)
         .order('display_order', { ascending: true });
 
       if (modulesError) throw modulesError;
@@ -903,7 +940,7 @@ export function useAllPublishedCourses() {
       if (sessionIds.length > 0) {
         const { data: contentData, error: contentError } = await supabase
           .from('course_content')
-          .select('*')
+          .select('id, course_id, module_id, session_id, title, type, file_path, youtube_url, duration_minutes, file_size_mb, display_order, views_count, created_at')
           .in('session_id', sessionIds)
           .order('display_order', { ascending: true });
 
