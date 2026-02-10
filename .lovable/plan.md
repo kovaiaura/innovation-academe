@@ -1,186 +1,85 @@
 
-# Invoice PDF Template Enhancement Plan
 
-## Issues Identified
+## Revamp Attendance Management Page - 2 Tabs Only
 
-Based on the code analysis and your requirements:
+### Overview
+Restructure the management Attendance page from 4 tabs (Innovation Officers, Class Sessions, Students, Analytics) to just 2 focused tabs:
 
-### Issue 1: Company Logo Not Showing in PDF
-- **Root Cause**: The `InvoicePDFHeader.tsx` component does NOT include any logo rendering
-- The `logo_url` is stored in `company_profiles` table and available in Invoice Settings > Branding
-- However, the PDF header component never fetches or displays this logo
-- The sample PDF template shows a logo should appear at the top left
-
-### Issue 2: Values Half Hidden in Downloaded PDF
-- **Root Cause**: The table column widths in `InvoicePDFStyles.ts` are too narrow
-- Current column widths total only ~100% but the Tax column contains two lines of text (tax type + amount)
-- The cell content overflows and gets clipped
-- Font sizes may also be too small for proper rendering
-
-### Issue 3: GST Not Editable During Invoice Creation
-- **Current State**: GST rates ARE loaded from company profile and used for calculations
-- However, there's NO UI to let users change the GST rates per invoice during creation
-- The rates are fetched but displayed as read-only in the totals section
+1. **Officer Attendance** - Daily attendance, upcoming approved leaves
+2. **Class Sessions** - Date-filtered view of scheduled periods with completion status, handler info, student count, and course/session details
 
 ---
 
-## Proposed Changes
+### Tab 1: Officer Attendance (Enhanced)
 
-### 1. Add Company Logo to PDF Header
+Keep the existing `OfficerAttendanceTab` component but enhance it with an additional section showing **upcoming approved leaves** for the institution's officers.
 
-Update `InvoicePDFHeader.tsx` to:
-- Accept `logoUrl` as a prop
-- Display the logo in the header section (top left, matching sample template layout)
-- Add logo styles to `InvoicePDFStyles.ts`
+**New section added below the attendance table:**
+- Query `leave_applications` table filtered by `institution_id`, `status = 'approved'`, and `start_date >= today`
+- Display a card/table showing: officer name, leave type, start date, end date, total days, reason
+- Sorted by nearest upcoming leave first
 
-Update `InvoicePDF.tsx` to:
-- Accept `companyProfile` prop containing `logo_url`
-- Pass `logoUrl` to `InvoicePDFHeader`
-
-Update `ViewInvoiceDialog.tsx` to:
-- Fetch company profile to get logo_url
-- Pass it to `InvoicePDF` component
-
-**New Header Layout:**
-```text
-+------------------+----------------------------------+
-|   [COMPANY LOGO] |  Invoice Number: MSA/MSD/031    |
-|                  |  Invoice Date: 02.01.2026       |
-|                  |  Terms: Custom                   |
-|                  |  Due Date: 08.01.2026           |
-|                  |  Place of Supply: Delhi (07)    |
-+------------------+----------------------------------+
-| Company Name                                        |
-| Address, City, State, PIN                           |
-| GSTIN: XXXXX | Phone: XXXXX | Email: xxx@xxx       |
-+----------------------------------------------------+
-```
-
-### 2. Fix PDF Table Layout for Better Visibility
-
-Update `InvoicePDFStyles.ts`:
-- Increase overall font sizes (current 8px is too small)
-- Adjust column widths to prevent overflow
-- Use `wrap: false` on critical elements to prevent mid-row page breaks
-- Ensure text doesn't get clipped
-
-**Updated Column Widths:**
-| Column | Current | Proposed |
-|--------|---------|----------|
-| S.No | 5% | 5% |
-| Description | 30% | 35% |
-| HSN/SAC | 10% | 10% |
-| Qty | 8% | 8% |
-| Unit | 7% | 7% |
-| Rate | 12% | 12% |
-| Tax | 12% | 10% |
-| Amount | 16% | 13% |
-
-**Font Size Updates:**
-| Element | Current | Proposed |
-|---------|---------|----------|
-| Table cells | 8px | 9px |
-| Headers | 8px | 10px |
-| Total labels | 9px | 10px |
-
-### 3. Add GST Rate Editing in Invoice Creation
-
-Update `CreateInvoiceDialog.tsx`:
-- Add a collapsible "GST Configuration" section
-- Allow users to edit CGST, SGST, IGST rates per invoice
-- Default values come from company profile but can be overridden
-- Show clear inter-state vs intra-state logic
-- Recalculate totals when GST rates change
-
-**New GST Section in Create Invoice Dialog:**
-```text
-+----------------------------------------------------+
-| GST Configuration                    [Collapse]    |
-+----------------------------------------------------+
-| Transaction Type: [Intra-State / Inter-State] auto |
-|                                                     |
-| For Intra-State:                                    |
-|   CGST Rate: [__9__]%    SGST Rate: [__9__]%       |
-|                                                     |
-| For Inter-State:                                    |
-|   IGST Rate: [__18__]%                              |
-+----------------------------------------------------+
-```
+**Data sources:**
+- `officer_attendance` table (existing) - daily check-in/check-out records
+- `leave_applications` table - filter by officer_id matching institution officers, status = 'approved', start_date >= today
 
 ---
 
-## Files to Modify
+### Tab 2: Class Sessions (Restructured)
 
-### PDF Components
-```
-src/components/invoice/pdf/InvoicePDFStyles.ts
-  - Add logo styles
-  - Increase font sizes
-  - Adjust column widths
-  - Fix overflow issues
+Replace the existing `ClassSessionAttendanceTab` with a date-focused view showing:
 
-src/components/invoice/pdf/InvoicePDFHeader.tsx
-  - Add logo rendering with Image component
-  - Restructure layout to match sample template
+**Controls:**
+- Date picker (defaults to today)
+- Class filter dropdown (optional)
 
-src/components/invoice/pdf/InvoicePDF.tsx
-  - Accept logoUrl prop
-  - Pass to header component
+**For the selected date, show:**
+1. Fetch all scheduled periods from `institution_timetable_assignments` for that day of week + `institution_periods` for time info
+2. Cross-reference with `class_session_attendance` records for that date to see which were completed
+3. Display a table with columns:
+   - Period / Time (from `institution_periods`)
+   - Class Name (from timetable assignment)
+   - Officer/Handler (from timetable assignment or class_session_attendance)
+   - Status: Completed / Pending
+   - Students Present / Total (from `class_session_attendance` if completed)
+   - Course / Session Covered (from `class_session_attendance.subject` field, populated when officer marks session complete)
 
-src/components/invoice/ViewInvoiceDialog.tsx
-  - Fetch company profile for logo_url
-  - Pass to InvoicePDF component
-```
-
-### Invoice Creation
-```
-src/components/invoice/CreateInvoiceDialog.tsx
-  - Add GST rate input fields
-  - Add collapsible section for GST configuration
-  - Allow per-invoice GST rate customization
-```
-
-### Types (if needed)
-```
-src/types/invoice.ts
-  - Add logo_url to Invoice type if needed for PDF generation
-```
+**Data sources:**
+- `institution_timetable_assignments` - scheduled periods for the day of week
+- `institution_periods` - period time slots (start_time, end_time, label)
+- `class_session_attendance` - completed session records with student counts and subject info
 
 ---
 
-## Sample Template Matching
+### Technical Changes
 
-Based on the uploaded PDF (MSA_MSD_031.pdf), the invoice should follow this structure:
+#### File: `src/pages/management/Attendance.tsx`
+- Remove `StudentAttendanceTab` and `AttendanceStatisticsCharts` imports
+- Change tabs from 4 to 2: "Officer Attendance" and "Class Sessions"
+- Update tab state type to `'officers' | 'class-sessions'`
+- Remove Students and Analytics TabsContent blocks
+- Update grid to `grid-cols-2` for TabsList
 
-**Header Section:**
-- "TAX INVOICE" title centered
-- Company logo on left side
-- Invoice details box on right (Invoice Number, Date, Terms, Due Date, Place of Supply)
-- Company details below logo (Name, Address, GSTIN, Phone, Email, Website)
+#### File: `src/components/attendance/OfficerAttendanceTab.tsx`
+- Add a new section at the bottom: "Upcoming Approved Leaves"
+- Query `leave_applications` where officer_id is in institution's officers, status = 'approved', start_date >= today
+- Display as a simple card with a table listing upcoming leaves
 
-**Bill To Section:**
-- Customer/Institution name and full address
-- Country: India (if applicable)
-
-**Line Items Table:**
-- Description | HSN/SAC | Amount columns
-- Alternating row colors for readability
-- Sub Total, IGST (or CGST+SGST), Total Amount rows
-- Balance Due row
-
-**Footer Section:**
-- Total In Words
-- Notes section
-- Account Details (Bank info)
-- Terms & Conditions (numbered list)
-- Authorized Signatory with signature image and company name
+#### File: `src/components/attendance/ClassSessionAttendanceTab.tsx`
+- Major restructure: change from month/day toggle view to a **date-picker driven** daily view
+- For selected date:
+  - Get day of week (e.g., "Monday")
+  - Fetch timetable assignments for that day + institution
+  - Fetch periods for time slots
+  - Fetch `class_session_attendance` records for that date
+  - Merge: show all scheduled periods, mark completed ones with session data
+- Table columns: Period Time, Class, Scheduled Officer, Status (Completed/Pending), Students Present/Total, Course/Session Covered
+- Remove monthly summary view and complex filter controls
+- Keep class filter and CSV export
 
 ---
 
-## Expected Outcome
+### Summary of Removed Tabs
+- **Students tab** - removed (student-level attendance data is still accessible through the Class Sessions tab's attendance records)
+- **Analytics tab** - removed (can be accessed from the main Analytics page)
 
-After implementation:
-1. Company logo from Settings > Invoice > Branding will appear on all generated PDFs
-2. PDF values will be fully visible without clipping or overflow
-3. Users can customize GST rates during invoice creation (not locked to company defaults)
-4. PDF template matches the professional format shown in the sample
