@@ -2,90 +2,72 @@ import { Layout } from "@/components/layout/Layout";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, GraduationCap, CalendarCheck, CheckCircle2, Clock, BarChart3 } from "lucide-react";
+import { Users, CalendarCheck, CheckCircle2, Clock } from "lucide-react";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { OfficerAttendanceTab } from "@/components/attendance/OfficerAttendanceTab";
-import { StudentAttendanceTab } from "@/components/attendance/StudentAttendanceTab";
 import { ClassSessionAttendanceTab } from "@/components/attendance/ClassSessionAttendanceTab";
-import { AttendanceStatisticsCharts } from "@/components/attendance/AttendanceStatisticsCharts";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { transformDbToApp } from "@/hooks/useInstitutions";
-import { format, startOfDay, endOfDay } from "date-fns";
+import { format } from "date-fns";
 
 const Attendance = () => {
-  const [activeTab, setActiveTab] = useState<'officers' | 'class-sessions' | 'students' | 'analytics'>('officers');
+  const [activeTab, setActiveTab] = useState<'officers' | 'class-sessions'>('officers');
   
-  // Get tenant slug from URL params
   const { tenantId } = useParams<{ tenantId: string }>();
   
-  // Fetch institution directly by slug
   const { data: institution, isLoading } = useQuery({
     queryKey: ['institution-by-slug', tenantId],
     queryFn: async () => {
       if (!tenantId) return null;
-      
       const { data, error } = await supabase
         .from('institutions')
         .select('*')
         .eq('slug', tenantId)
         .single();
-      
       if (error) {
         console.error('[Attendance] Failed to fetch institution:', error);
         return null;
       }
-      
       return transformDbToApp(data);
     },
     enabled: !!tenantId,
   });
 
-  // Fetch actual student count from students table
   const { data: studentCount = 0 } = useQuery({
     queryKey: ['institution-student-count', institution?.id],
     queryFn: async () => {
       if (!institution?.id) return 0;
-      
       const { count, error } = await supabase
         .from('students')
         .select('*', { count: 'exact', head: true })
         .eq('institution_id', institution.id)
         .eq('status', 'active');
-      
-      if (error) {
-        console.error('[Attendance] Failed to fetch student count:', error);
-        return 0;
-      }
+      if (error) return 0;
       return count || 0;
     },
     enabled: !!institution?.id,
   });
 
-  // Fetch today's quick stats
   const { data: todayStats } = useQuery({
     queryKey: ['attendance-today-stats', institution?.id],
     queryFn: async () => {
       if (!institution?.id) return null;
-      
       const today = format(new Date(), 'yyyy-MM-dd');
       
-      // Fetch today's class sessions
       const { data: sessions } = await supabase
         .from('class_session_attendance')
         .select('id, is_session_completed, students_present, students_late, total_students')
         .eq('institution_id', institution.id)
         .eq('date', today);
       
-      // Fetch today's officer attendance
       const { data: officerAttendance } = await supabase
         .from('officer_attendance')
         .select('id, status')
         .eq('institution_id', institution.id)
         .eq('date', today);
       
-      // Count officers assigned to this institution
       const { data: officers } = await supabase
         .from('officers')
         .select('id')
@@ -93,13 +75,11 @@ const Attendance = () => {
         .eq('status', 'active');
       
       const completedSessions = sessions?.filter(s => s.is_session_completed).length || 0;
-      const totalSessions = sessions?.length || 0;
       const officersCheckedIn = officerAttendance?.filter(o => o.status === 'checked_in' || o.status === 'checked_out').length || 0;
       const totalOfficers = officers?.length || 0;
       
       return {
         completedSessions,
-        totalSessions,
         officersCheckedIn,
         totalOfficers,
         hasAnyActivity: completedSessions > 0 || officersCheckedIn > 0,
@@ -143,10 +123,9 @@ const Attendance = () => {
         
         <div>
           <h1 className="text-3xl font-bold">Attendance Management</h1>
-          <p className="text-muted-foreground">Track attendance for officers, class sessions, and students</p>
+          <p className="text-muted-foreground">Track attendance for officers and class sessions</p>
         </div>
 
-        {/* Today's Quick Stats */}
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="border-l-4 border-l-primary">
             <CardContent className="pt-4">
@@ -210,22 +189,14 @@ const Attendance = () => {
         </div>
         
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-          <TabsList className="grid w-full grid-cols-4 max-w-4xl">
+          <TabsList className="grid w-full grid-cols-2 max-w-2xl">
             <TabsTrigger value="officers" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Innovation Officers
+              Officer Attendance
             </TabsTrigger>
             <TabsTrigger value="class-sessions" className="flex items-center gap-2">
               <CalendarCheck className="h-4 w-4" />
               Class Sessions
-            </TabsTrigger>
-            <TabsTrigger value="students" className="flex items-center gap-2">
-              <GraduationCap className="h-4 w-4" />
-              Students
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Analytics
             </TabsTrigger>
           </TabsList>
           
@@ -235,14 +206,6 @@ const Attendance = () => {
           
           <TabsContent value="class-sessions" className="mt-6">
             <ClassSessionAttendanceTab institutionId={institution.id} />
-          </TabsContent>
-          
-          <TabsContent value="students" className="mt-6">
-            <StudentAttendanceTab institutionId={institution.id} />
-          </TabsContent>
-          
-          <TabsContent value="analytics" className="mt-6">
-            <AttendanceStatisticsCharts institutionId={institution.id} />
           </TabsContent>
         </Tabs>
       </div>
