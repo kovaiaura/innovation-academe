@@ -1,9 +1,8 @@
 import { useState, useMemo } from 'react';
-import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { format, getDay } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -19,32 +18,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar, Users, UserCheck, Clock, CheckCircle2, Download, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
-import { useInstitutionClassAttendance, useClassAttendanceRealtime, aggregateClassAttendanceStats } from '@/hooks/useClassSessionAttendance';
-import { Skeleton } from '@/components/ui/skeleton';
-import { MonthlySessionsSummary } from './MonthlySessionsSummary';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Calendar, CheckCircle2, Download, Clock, CalendarIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 interface ClassSessionAttendanceTabProps {
   institutionId?: string;
 }
 
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttendanceTabProps) {
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [viewMode, setViewMode] = useState<'day' | 'month'>('month');
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('all');
-  const [selectedOfficerFilter, setSelectedOfficerFilter] = useState<string>('all');
-  
-  // Calculate date range based on view mode
-  const startDate = viewMode === 'day' ? selectedDate : format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-  const endDate = viewMode === 'day' ? selectedDate : format(endOfMonth(currentMonth), 'yyyy-MM-dd');
-  
-  const { data: attendanceData, isLoading } = useInstitutionClassAttendance(institutionId, startDate, endDate);
-  
-  // Enable realtime updates
-  useClassAttendanceRealtime(institutionId);
+
+  const dateStr = format(selectedDate, 'yyyy-MM-dd');
+  const dayOfWeek = DAY_NAMES[getDay(selectedDate)];
 
   // Fetch classes for filter
   const { data: classes = [] } = useQuery({
@@ -63,9 +60,58 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
     enabled: !!institutionId,
   });
 
-  // Fetch officers for filter
+  // Fetch timetable assignments for the selected day
+  const { data: timetableAssignments = [], isLoading: loadingTimetable } = useQuery({
+    queryKey: ['timetable-assignments', institutionId, dayOfWeek],
+    queryFn: async () => {
+      if (!institutionId) return [];
+      const { data, error } = await supabase
+        .from('institution_timetable_assignments')
+        .select('*')
+        .eq('institution_id', institutionId)
+        .eq('day', dayOfWeek);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!institutionId,
+  });
+
+  // Fetch periods for time info
+  const { data: periods = [] } = useQuery({
+    queryKey: ['institution-periods', institutionId],
+    queryFn: async () => {
+      if (!institutionId) return [];
+      const { data, error } = await supabase
+        .from('institution_periods')
+        .select('*')
+        .eq('institution_id', institutionId)
+        .eq('is_break', false)
+        .order('display_order');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!institutionId,
+  });
+
+  // Fetch class_session_attendance records for the selected date
+  const { data: sessionRecords = [], isLoading: loadingSessions } = useQuery({
+    queryKey: ['class-session-attendance', institutionId, dateStr],
+    queryFn: async () => {
+      if (!institutionId) return [];
+      const { data, error } = await supabase
+        .from('class_session_attendance')
+        .select('*')
+        .eq('institution_id', institutionId)
+        .eq('date', dateStr);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!institutionId,
+  });
+
+  // Fetch officer names for display
   const { data: officers = [] } = useQuery({
-    queryKey: ['institution-officers', institutionId],
+    queryKey: ['institution-officers-names', institutionId],
     queryFn: async () => {
       if (!institutionId) return [];
       const { data, error } = await supabase
@@ -79,85 +125,83 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
     enabled: !!institutionId,
   });
 
-  // Filter data based on selections
-  const filteredData = useMemo(() => {
-    if (!attendanceData) return [];
-    
-    return attendanceData.filter(record => {
-      if (selectedClassFilter !== 'all' && record.class_id !== selectedClassFilter) {
-        return false;
-      }
-      if (selectedOfficerFilter !== 'all' && record.officer_id !== selectedOfficerFilter) {
-        return false;
-      }
-      return true;
-    });
-  }, [attendanceData, selectedClassFilter, selectedOfficerFilter]);
-  
-  const stats = aggregateClassAttendanceStats(filteredData || []);
+  const officerMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    officers.forEach(o => { map[o.id] = o.full_name; });
+    return map;
+  }, [officers]);
 
-  // Map data for MonthlySessionsSummary
-  const sessionsForSummary = useMemo(() => {
-    return filteredData.map(record => ({
-      id: record.id,
-      date: record.date,
-      class_name: (record as any).class_name || 'Unknown',
-      officer_name: (record as any).officer_name || 'Unknown',
-      subject: record.subject || undefined,
-      period_time: record.period_time || undefined,
-      students_present: record.students_present,
-      students_absent: record.students_absent,
-      total_students: record.total_students,
-      is_session_completed: record.is_session_completed,
-    }));
-  }, [filteredData]);
-  
-  const handlePrevMonth = () => {
-    setCurrentMonth(prev => subMonths(prev, 1));
-  };
-  
-  const handleNextMonth = () => {
-    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-  };
+  const periodMap = useMemo(() => {
+    const map: Record<string, { label: string; start_time: string; end_time: string; display_order: number }> = {};
+    periods.forEach(p => { map[p.id] = { label: p.label, start_time: p.start_time, end_time: p.end_time, display_order: p.display_order }; });
+    return map;
+  }, [periods]);
 
-  const clearFilters = () => {
-    setSelectedClassFilter('all');
-    setSelectedOfficerFilter('all');
-  };
+  // Merge timetable with session records
+  const mergedData = useMemo(() => {
+    let assignments = timetableAssignments;
 
-  const hasFilters = selectedClassFilter !== 'all' || selectedOfficerFilter !== 'all';
-  
+    // Apply class filter
+    if (selectedClassFilter !== 'all') {
+      assignments = assignments.filter(a => a.class_id === selectedClassFilter);
+    }
+
+    return assignments
+      .map(assignment => {
+        const period = periodMap[assignment.period_id];
+        // Find matching session record
+        const session = sessionRecords.find(
+          s => s.timetable_assignment_id === assignment.id
+        );
+
+        return {
+          id: assignment.id,
+          periodLabel: period?.label || '-',
+          periodTime: period ? `${period.start_time} - ${period.end_time}` : '-',
+          displayOrder: period?.display_order ?? 999,
+          className: assignment.class_name,
+          classId: assignment.class_id,
+          scheduledOfficer: assignment.teacher_name || (assignment.teacher_id ? officerMap[assignment.teacher_id] : null) || '-',
+          isCompleted: session?.is_session_completed ?? false,
+          studentsPresent: session?.students_present ?? null,
+          totalStudents: session?.total_students ?? null,
+          subject: session?.subject || null,
+          completedBy: session?.completed_by ? officerMap[session.completed_by] : null,
+        };
+      })
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+  }, [timetableAssignments, sessionRecords, periodMap, officerMap, selectedClassFilter]);
+
+  const completedCount = mergedData.filter(d => d.isCompleted).length;
+  const pendingCount = mergedData.filter(d => !d.isCompleted).length;
+
+  const isLoading = loadingTimetable || loadingSessions;
+
   const handleExportCSV = () => {
-    if (!filteredData || filteredData.length === 0) return;
-    
+    if (mergedData.length === 0) return;
     const csvContent = [
-      ['Date', 'Class', 'Subject', 'Period', 'Officer', 'Total', 'Present', 'Absent', 'Late', 'Attendance %', 'Completed'],
-      ...filteredData.map(record => [
-        record.date,
-        (record as any).class_name || '-',
-        record.subject || '-',
-        record.period_time || '-',
-        (record as any).officer_name || '-',
-        record.total_students,
-        record.students_present,
-        record.students_absent,
-        record.students_late,
-        record.total_students > 0 
-          ? ((record.students_present + record.students_late) / record.total_students * 100).toFixed(1) + '%'
-          : '0%',
-        record.is_session_completed ? 'Yes' : 'No'
+      ['Period', 'Time', 'Class', 'Scheduled Officer', 'Status', 'Students Present', 'Total Students', 'Course/Session Covered'],
+      ...mergedData.map(row => [
+        row.periodLabel,
+        row.periodTime,
+        row.className,
+        row.scheduledOfficer,
+        row.isCompleted ? 'Completed' : 'Pending',
+        row.studentsPresent ?? '-',
+        row.totalStudents ?? '-',
+        row.subject || '-',
       ])
     ].map(row => row.join(',')).join('\n');
-    
+
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `class_attendance_${startDate}_to_${endDate}.csv`;
+    link.download = `class_sessions_${dateStr}.csv`;
     link.click();
     window.URL.revokeObjectURL(url);
   };
-  
+
   if (!institutionId) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -165,7 +209,7 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-6">
       {/* Controls */}
@@ -174,9 +218,9 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Class Session Attendance
+              Class Sessions — {format(selectedDate, 'EEEE, MMMM d, yyyy')}
             </CardTitle>
-            <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={!filteredData?.length}>
+            <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={mergedData.length === 0}>
               <Download className="h-4 w-4 mr-2" />
               Export CSV
             </Button>
@@ -184,42 +228,32 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4 flex-wrap">
-            <Select value={viewMode} onValueChange={(v) => setViewMode(v as 'day' | 'month')}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="View mode" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="day">Daily View</SelectItem>
-                <SelectItem value="month">Monthly View</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            {viewMode === 'day' ? (
-              <Input 
-                type="date" 
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-[180px]"
-              />
-            ) : (
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" onClick={handlePrevMonth}>
-                  <ChevronLeft className="h-4 w-4" />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-[220px] justify-start text-left font-normal",
+                    !selectedDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {format(selectedDate, 'PPP')}
                 </Button>
-                <span className="font-medium min-w-[120px] text-center">
-                  {format(currentMonth, 'MMMM yyyy')}
-                </span>
-                <Button variant="outline" size="icon" onClick={handleNextMonth}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(d) => d && setSelectedDate(d)}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
 
-            <div className="h-6 w-px bg-border" />
-
-            {/* Filters */}
             <Select value={selectedClassFilter} onValueChange={setSelectedClassFilter}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="All Classes" />
               </SelectTrigger>
               <SelectContent>
@@ -231,110 +265,36 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
                 ))}
               </SelectContent>
             </Select>
-
-            <Select value={selectedOfficerFilter} onValueChange={setSelectedOfficerFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="All Officers" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Officers</SelectItem>
-                {officers.map(officer => (
-                  <SelectItem key={officer.id} value={officer.id}>
-                    {officer.full_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {hasFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                <Filter className="h-4 w-4 mr-1" />
-                Clear filters
-              </Button>
-            )}
           </div>
         </CardContent>
       </Card>
-      
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+
+      {/* Summary stats */}
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-16" /> : (
-              <div className="text-2xl font-bold">{stats.totalSessions}</div>
-            )}
+          <CardContent className="pt-4">
+            <p className="text-sm text-muted-foreground">Total Scheduled</p>
+            <p className="text-2xl font-bold">{mergedData.length}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-16" /> : (
-              <>
-                <div className="text-2xl font-bold text-green-600">{stats.completedSessions}</div>
-                <p className="text-xs text-muted-foreground">
-                  {stats.sessionCompletionRate.toFixed(0)}% completion rate
-                </p>
-              </>
-            )}
+          <CardContent className="pt-4">
+            <p className="text-sm text-muted-foreground">Completed</p>
+            <p className="text-2xl font-bold text-green-600">{completedCount}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Students Tracked</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-16" /> : (
-              <div className="text-2xl font-bold">{stats.totalStudentsMarked}</div>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Attendance</CardTitle>
-            <UserCheck className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-16" /> : (
-              <>
-                <div className="text-2xl font-bold text-blue-600">
-                  {stats.completedSessions > 0 ? `${stats.averageAttendance.toFixed(1)}%` : 'N/A'}
-                </div>
-                {stats.completedSessions === 0 && (
-                  <p className="text-xs text-muted-foreground">Awaiting sessions</p>
-                )}
-              </>
-            )}
+          <CardContent className="pt-4">
+            <p className="text-sm text-muted-foreground">Pending</p>
+            <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Monthly Summary (only in month view) */}
-      {viewMode === 'month' && !isLoading && (
-        <MonthlySessionsSummary 
-          sessions={sessionsForSummary}
-          currentMonth={currentMonth}
-        />
-      )}
-      
-      {/* Attendance Table */}
+      {/* Sessions Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-medium">
-            Session Details
-            {hasFilters && (
-              <Badge variant="secondary" className="ml-2">
-                Filtered
-              </Badge>
-            )}
-          </CardTitle>
+          <CardTitle className="text-sm font-medium">Scheduled Periods</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -343,84 +303,65 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
-          ) : !filteredData || filteredData.length === 0 ? (
+          ) : mergedData.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="font-medium">No class sessions completed yet</p>
-              <p className="text-sm mt-1">Sessions will appear here once officers mark attendance for their classes.</p>
+              <p className="font-medium">No scheduled periods for {dayOfWeek}</p>
+              <p className="text-sm mt-1">Check the timetable configuration or select a different date.</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Class</TableHead>
-                  <TableHead>Subject</TableHead>
                   <TableHead>Period</TableHead>
-                  <TableHead>Officer</TableHead>
-                  <TableHead className="text-center">Present</TableHead>
-                  <TableHead className="text-center">Absent</TableHead>
-                  <TableHead className="text-center">Late</TableHead>
-                  <TableHead className="text-center">Attendance %</TableHead>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Class</TableHead>
+                  <TableHead>Scheduled Officer</TableHead>
                   <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-center">Students</TableHead>
+                  <TableHead>Course / Session Covered</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredData.map((record) => {
-                  const attendanceRate = record.total_students > 0 
-                    ? ((record.students_present + record.students_late) / record.total_students * 100)
-                    : 0;
-                  
-                  return (
-                    <TableRow key={record.id}>
-                      <TableCell className="font-medium">
-                        {format(new Date(record.date), 'MMM dd, yyyy')}
-                      </TableCell>
-                      <TableCell>{(record as any).class_name || '-'}</TableCell>
-                      <TableCell>{record.subject || '-'}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-sm">{record.period_time || '-'}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{(record as any).officer_name || '-'}</TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800">
-                          {record.students_present}
+                {mergedData.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell className="font-medium">{row.periodLabel}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 text-sm">
+                        <Clock className="h-3 w-3 text-muted-foreground" />
+                        {row.periodTime}
+                      </div>
+                    </TableCell>
+                    <TableCell>{row.className}</TableCell>
+                    <TableCell>{row.completedBy || row.scheduledOfficer}</TableCell>
+                    <TableCell className="text-center">
+                      {row.isCompleted ? (
+                        <Badge className="bg-green-500">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Completed
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800">
-                          {record.students_absent}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-300 dark:border-yellow-800">
-                          {record.students_late}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className={`font-medium ${
-                          attendanceRate >= 80 ? 'text-green-600 dark:text-green-400' : 
-                          attendanceRate >= 60 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
-                        }`}>
-                          {attendanceRate.toFixed(1)}%
+                      ) : (
+                        <Badge variant="secondary">Pending</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {row.isCompleted && row.studentsPresent !== null ? (
+                        <span className="font-medium">
+                          {row.studentsPresent} / {row.totalStudents}
                         </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {record.is_session_completed ? (
-                          <Badge className="bg-green-500">
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            Completed
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">Pending</Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {row.subject ? (
+                        <span className="text-sm">{row.subject}</span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           )}

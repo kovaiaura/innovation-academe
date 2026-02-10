@@ -5,12 +5,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Download, Calendar, Search, Eye, MapPin, Loader2 } from 'lucide-react';
+import { Download, Calendar, Search, Eye, MapPin, Loader2, CalendarClock } from 'lucide-react';
 import { toast } from 'sonner';
 import { AttendanceCalendar } from './AttendanceCalendar';
 import { OfficerAttendanceRecord } from '@/types/attendance';
 import { calculateAttendancePercentage, exportToCSV } from '@/utils/attendanceHelpers';
-import { format, subMonths, startOfMonth } from 'date-fns';
+import { format, subMonths } from 'date-fns';
 import { 
   useInstitutionMonthlyAttendance, 
   useOfficerAttendanceRealtime,
@@ -31,22 +31,17 @@ export function OfficerAttendanceTab({ institutionId }: OfficerAttendanceTabProp
   const [selectedOfficer, setSelectedOfficer] = useState<OfficerAttendanceRecord | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
-  // Enable realtime updates
   useOfficerAttendanceRealtime(institutionId);
 
-  // Generate month options (last 12 months)
   const monthOptions = useMemo(() => {
     const months = [];
     for (let i = 0; i < 12; i++) {
       const date = subMonths(currentDate, i);
-      const value = format(date, 'yyyy-MM');
-      const label = format(date, 'MMMM yyyy');
-      months.push({ value, label });
+      months.push({ value: format(date, 'yyyy-MM'), label: format(date, 'MMMM yyyy') });
     }
     return months;
   }, []);
 
-  // Fetch officers assigned to this institution
   const { data: officers = [] } = useQuery({
     queryKey: ['officers', institutionId],
     queryFn: async () => {
@@ -61,7 +56,6 @@ export function OfficerAttendanceTab({ institutionId }: OfficerAttendanceTabProp
     enabled: !!institutionId,
   });
 
-  // Fetch institution details
   const { data: institutions = [] } = useQuery({
     queryKey: ['institutions', institutionId],
     queryFn: async () => {
@@ -76,13 +70,30 @@ export function OfficerAttendanceTab({ institutionId }: OfficerAttendanceTabProp
     enabled: !!institutionId,
   });
 
-  // Fetch attendance data from Supabase
   const { data: attendanceRecords = [], isLoading } = useInstitutionMonthlyAttendance(
     institutionId || '',
     selectedMonth
   );
 
-  // Aggregate attendance data by officer
+  // Fetch upcoming approved leaves
+  const { data: upcomingLeaves = [] } = useQuery({
+    queryKey: ['upcoming-approved-leaves', institutionId],
+    queryFn: async () => {
+      if (!institutionId) return [];
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const { data, error } = await supabase
+        .from('leave_applications')
+        .select('*')
+        .eq('institution_id', institutionId)
+        .eq('status', 'approved')
+        .gte('start_date', today)
+        .order('start_date', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!institutionId,
+  });
+
   const attendanceData = useMemo(() => {
     return aggregateAttendanceByOfficer(
       attendanceRecords,
@@ -119,13 +130,11 @@ export function OfficerAttendanceTab({ institutionId }: OfficerAttendanceTabProp
       'Overtime Hours': record.overtime_hours.toFixed(1),
       'Last Marked': record.last_marked_date,
     }));
-    
     exportToCSV(exportData, `attendance-summary-${selectedMonth}.csv`);
     toast.success('Attendance summary exported successfully');
   };
 
   const handleViewCalendar = (officer: AggregatedOfficerAttendance) => {
-    // Convert to the expected format for AttendanceCalendar
     const calendarData: OfficerAttendanceRecord = {
       officer_id: officer.officer_id,
       officer_name: officer.officer_name,
@@ -163,17 +172,12 @@ export function OfficerAttendanceTab({ institutionId }: OfficerAttendanceTabProp
     setIsCalendarOpen(true);
   };
 
-  // Helper to render GPS validation badge
   const getValidationStatus = (records: AggregatedOfficerAttendance['daily_records']) => {
     if (records.length === 0) return null;
-    
     const validated = records.filter(r => r.check_in_validated).length;
     const total = records.filter(r => r.status === 'checked_in' || r.status === 'checked_out').length;
-    
     if (total === 0) return null;
-    
     const percentage = (validated / total) * 100;
-    
     return (
       <Badge 
         variant="outline" 
@@ -238,7 +242,6 @@ export function OfficerAttendanceTab({ institutionId }: OfficerAttendanceTabProp
             <p className="text-xs text-muted-foreground">Active officers tracked</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Avg Attendance Rate</CardTitle>
@@ -249,7 +252,6 @@ export function OfficerAttendanceTab({ institutionId }: OfficerAttendanceTabProp
             <p className="text-xs text-muted-foreground">Across all officers</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Present Days</CardTitle>
@@ -328,11 +330,7 @@ export function OfficerAttendanceTab({ institutionId }: OfficerAttendanceTabProp
                       {record.last_marked_date ? format(new Date(record.last_marked_date), 'MMM dd, yyyy') : '-'}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewCalendar(record)}
-                      >
+                      <Button variant="ghost" size="sm" onClick={() => handleViewCalendar(record)}>
                         <Eye className="h-4 w-4 mr-1" />
                         View
                       </Button>
@@ -344,6 +342,49 @@ export function OfficerAttendanceTab({ institutionId }: OfficerAttendanceTabProp
           )}
         </CardContent>
       </Card>
+
+      {/* Upcoming Approved Leaves */}
+      {upcomingLeaves.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarClock className="h-5 w-5" />
+              Upcoming Approved Leaves
+            </CardTitle>
+            <CardDescription>Officers with upcoming approved leave from this institution</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Officer Name</TableHead>
+                  <TableHead>Leave Type</TableHead>
+                  <TableHead>Start Date</TableHead>
+                  <TableHead>End Date</TableHead>
+                  <TableHead className="text-center">Total Days</TableHead>
+                  <TableHead>Reason</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {upcomingLeaves.map((leave) => (
+                  <TableRow key={leave.id}>
+                    <TableCell className="font-medium">{leave.applicant_name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="capitalize">
+                        {leave.leave_type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{format(new Date(leave.start_date), 'MMM dd, yyyy')}</TableCell>
+                    <TableCell>{format(new Date(leave.end_date), 'MMM dd, yyyy')}</TableCell>
+                    <TableCell className="text-center font-medium">{leave.total_days}</TableCell>
+                    <TableCell className="max-w-[200px] truncate text-muted-foreground">{leave.reason}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {selectedOfficer && (
         <AttendanceCalendar
