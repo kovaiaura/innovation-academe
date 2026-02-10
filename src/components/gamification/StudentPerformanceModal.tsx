@@ -14,7 +14,7 @@ interface StudentPerformanceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   student: StudentPerformance | null;
-  onAdjustPoints: (studentId: string, points: number, reason: string) => void;
+  onAdjustPoints?: (studentId: string, points: number, reason: string) => void;
 }
 
 export const StudentPerformanceModal = ({ 
