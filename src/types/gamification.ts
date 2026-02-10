@@ -3,9 +3,9 @@ export interface BadgeConfig {
   name: string;
   description: string;
   icon: string;
-  category: 'achievement' | 'participation' | 'excellence' | 'milestone';
+  category: 'project' | 'achievement' | 'assessment' | 'assignment';
   unlock_criteria: {
-    type: 'points' | 'attendance' | 'projects' | 'assessments' | 'assignments' | 'streak' | 'custom';
+    type: 'projects' | 'achievements' | 'assessments' | 'assignments';
     threshold: number;
     description: string;
   };
@@ -17,10 +17,9 @@ export interface BadgeConfig {
 
 export interface XPRule {
   id: string;
-  activity: 'assessment_completion' | 'assessment_pass' | 'assessment_perfect_score' | 
-            'level_completion' | 'project_membership' | 'project_award' | 'project_completion' |
-            'session_attendance' | 'daily_streak' | 
-            'assignment_submission' | 'assignment_pass' | 'assignment_perfect_score';
+  activity: 'project_membership' | 'project_award' | 'daily_streak' |
+            'assessment_completion' | 'assessment_perfect_score' |
+            'assignment_submission' | 'assignment_perfect_score';
   points: number;
   multiplier?: number;
   description: string;
@@ -51,11 +50,11 @@ export interface StudentPerformance {
   streak_days: number;
   last_activity: string;
   points_breakdown: {
-    sessions: number;
     projects: number;
-    attendance: number;
+    achievements: number;
     assessments: number;
-    levels: number;
+    assignments: number;
+    daily_login: number;
   };
 }
 

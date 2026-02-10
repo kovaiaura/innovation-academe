@@ -9,6 +9,7 @@ import {
   GraduationCap, FileText, Award, TrendingUp, BarChart3, Loader2, Globe 
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { gamificationDbService } from '@/services/gamification-db.service';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
@@ -78,6 +79,8 @@ export default function CEOAnalyticsDashboard() {
     isLoading: true,
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRecalculating, setIsRecalculating] = useState(false);
+  const [recalculateStatus, setRecalculateStatus] = useState('');
 
   const fetchStats = async () => {
     try {
@@ -229,6 +232,22 @@ export default function CEOAnalyticsDashboard() {
     await fetchStats();
     setIsRefreshing(false);
     toast.success('Analytics refreshed');
+  };
+
+  const handleRecalculate = async () => {
+    if (!confirm('This will reset ALL student XP, badges, and streaks, then recalculate from scratch. Continue?')) return;
+    setIsRecalculating(true);
+    setRecalculateStatus('Starting...');
+    try {
+      const result = await gamificationDbService.recalculateAllXPAndBadges((msg) => setRecalculateStatus(msg));
+      toast.success(`Done! ${result.studentsProcessed} students, ${result.totalXP} XP, ${result.badgesAwarded} badges`);
+      await fetchStats();
+    } catch (error) {
+      console.error('Recalculate error:', error);
+      toast.error('Recalculation failed');
+    } finally {
+      setIsRecalculating(false);
+    }
   };
 
   // Prepare chart data
@@ -468,7 +487,7 @@ export default function CEOAnalyticsDashboard() {
               </CardTitle>
               <CardDescription>Student engagement through gamification</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Total XP Earned</p>
@@ -479,6 +498,22 @@ export default function CEOAnalyticsDashboard() {
                   <p className="text-2xl font-bold">{stats.xpTransactions}</p>
                 </div>
               </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="w-full"
+                disabled={isRecalculating}
+                onClick={handleRecalculate}
+              >
+                {isRecalculating ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Recalculating...</>
+                ) : (
+                  <><RefreshCw className="mr-2 h-4 w-4" /> Recalculate All XP & Badges</>
+                )}
+              </Button>
+              {recalculateStatus && (
+                <p className="text-xs text-muted-foreground">{recalculateStatus}</p>
+              )}
             </CardContent>
           </Card>
 

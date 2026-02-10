@@ -332,6 +332,30 @@ export const assignmentService = {
       .single();
 
     if (error) throw error;
+
+    // Award assignment XP
+    try {
+      if (data?.student_id && data?.institution_id) {
+        const { gamificationDbService } = await import('@/services/gamification-db.service');
+        // Get total marks for this assignment
+        const { data: assignment } = await supabase
+          .from('assignments')
+          .select('total_marks')
+          .eq('id', data.assignment_id)
+          .single();
+        
+        await gamificationDbService.awardAssignmentXP(
+          data.student_id,
+          data.institution_id,
+          data.assignment_id,
+          marks,
+          assignment?.total_marks || null
+        );
+      }
+    } catch (xpError) {
+      console.error('Error awarding assignment XP:', xpError);
+    }
+
     return data;
   },
 

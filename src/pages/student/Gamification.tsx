@@ -31,10 +31,11 @@ interface GamificationData {
     criteria_type: string;
   }>;
   points_breakdown: {
-    sessions: number;
     projects: number;
-    attendance: number;
+    achievements: number;
     assessments: number;
+    assignments: number;
+    daily_login: number;
   };
 }
 
@@ -120,39 +121,32 @@ export default function Gamification() {
       // Process earned badges
       const earnedBadgeIds = new Set(studentBadges.map(b => b.badge?.id));
       
-      // Calculate locked badges with progress
+      // Calculate locked badges with progress based on actual counts
+      const counts = await gamificationDbService.getStudentActivityCounts(studentId);
+      
       const lockedBadges = allBadges
         .filter(b => b.is_active && !earnedBadgeIds.has(b.id))
         .map(b => {
           const criteria = b.unlock_criteria as any;
           const threshold = criteria?.threshold || 1;
-          let progress = 0;
           let current = 0;
           
           switch (criteria?.type) {
-            case 'points':
-              current = totalXP;
-              progress = Math.min(100, Math.round((current / threshold) * 100));
+            case 'projects':
+              current = counts.projects;
               break;
-            case 'streak':
-              current = streak?.current_streak || 0;
-              progress = Math.min(100, Math.round((current / threshold) * 100));
+            case 'achievements':
+              current = counts.achievements;
               break;
             case 'assessments':
-              current = activityCounts['assessment_completion'] || 0;
-              progress = Math.min(100, Math.round((current / threshold) * 100));
+              current = counts.assessments;
               break;
-            case 'projects':
-              current = uniqueActivities['project_membership']?.size || 0;
-              progress = Math.min(100, Math.round((current / threshold) * 100));
+            case 'assignments':
+              current = counts.assignments;
               break;
-            case 'attendance':
-              current = activityCounts['session_attendance'] || 0;
-              progress = Math.min(100, Math.round((current / threshold) * 100));
-              break;
-            default:
-              progress = 0;
           }
+          
+          const progress = Math.min(100, Math.round((current / threshold) * 100));
           
           return {
             id: b.id,
@@ -177,12 +171,7 @@ export default function Gamification() {
           earned_at: b.earned_at
         })),
         badges_locked: lockedBadges,
-        points_breakdown: {
-          sessions: xpBreakdown['session_attendance'] || 0,
-          projects: (xpBreakdown['project_membership'] || 0) + (xpBreakdown['project_award'] || 0),
-          attendance: xpBreakdown['session_attendance'] || 0,
-          assessments: (xpBreakdown['assessment_completion'] || 0) + (xpBreakdown['assessment_pass'] || 0) + (xpBreakdown['assessment_perfect_score'] || 0)
-        }
+        points_breakdown: gamificationDbService.getCategorizedBreakdown(xpBreakdown)
       });
       
       // Build leaderboard
