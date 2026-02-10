@@ -6,44 +6,51 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  Trophy, 
-  Award, 
-  TrendingUp, 
-  Plus, 
-  Pencil, 
-  Trash2,
-  BarChart3,
-  FileText,
-  Loader2
+  Trophy, Award, TrendingUp, BarChart3, Loader2, Users, RefreshCw, Sparkles
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
-import { GamificationStatsCards } from "@/components/gamification/GamificationStatsCards";
-import { ActivityFeed } from "@/components/gamification/ActivityFeed";
-import { BadgeConfigDialog } from "@/components/gamification/BadgeConfigDialog";
-import { XPRuleEditor } from "@/components/gamification/XPRuleEditor";
 import { StudentPerformanceTable } from "@/components/gamification/StudentPerformanceTable";
 import { StudentPerformanceModal } from "@/components/gamification/StudentPerformanceModal";
-import { LeaderboardConfigCard } from "@/components/gamification/LeaderboardConfigCard";
-import { CertificateTemplateManager } from "@/components/gamification/CertificateTemplateManager";
-import { StreakLeaderboard } from "@/components/gamification/StreakLeaderboard";
-import { gamificationDbService, DBBadge, DBXPRule } from "@/services/gamification-db.service";
-import { BadgeConfig, XPRule, StudentPerformance, LeaderboardConfig, GamificationStats, ActivityLog } from "@/types/gamification";
+import { gamificationDbService } from "@/services/gamification-db.service";
+import { StudentPerformance, GamificationStats } from "@/types/gamification";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
+
+const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
+
+const BADGE_DEFINITIONS = [
+  { name: '1 Project', category: 'project', icon: '🎯', threshold: 1, description: 'Joined your first project' },
+  { name: '5 Projects', category: 'project', icon: '🎯', threshold: 5, description: 'Joined 5 projects' },
+  { name: '10 Projects', category: 'project', icon: '🎯', threshold: 10, description: 'Joined 10 projects' },
+  { name: '15 Projects', category: 'project', icon: '🎯', threshold: 15, description: 'Joined 15 projects' },
+  { name: '20 Projects', category: 'project', icon: '🎯', threshold: 20, description: 'Joined 20 projects' },
+  { name: '1 Achievement', category: 'achievement', icon: '🏆', threshold: 1, description: 'First project award' },
+  { name: '5 Achievements', category: 'achievement', icon: '🏆', threshold: 5, description: '5 project awards' },
+  { name: '10 Achievements', category: 'achievement', icon: '🏆', threshold: 10, description: '10 project awards' },
+  { name: '20 Achievements', category: 'achievement', icon: '🏆', threshold: 20, description: '20 project awards' },
+  { name: '5 Assessments', category: 'assessment', icon: '📝', threshold: 5, description: 'Completed 5 assessments' },
+  { name: '10 Assessments', category: 'assessment', icon: '📝', threshold: 10, description: 'Completed 10 assessments' },
+  { name: '15 Assessments', category: 'assessment', icon: '📝', threshold: 15, description: 'Completed 15 assessments' },
+  { name: '20 Assessments', category: 'assessment', icon: '📝', threshold: 20, description: 'Completed 20 assessments' },
+  { name: '5 Assignments', category: 'assignment', icon: '📄', threshold: 5, description: 'Completed 5 assignments' },
+  { name: '10 Assignments', category: 'assignment', icon: '📄', threshold: 10, description: 'Completed 10 assignments' },
+  { name: '15 Assignments', category: 'assignment', icon: '📄', threshold: 15, description: 'Completed 15 assignments' },
+  { name: '20 Assignments', category: 'assignment', icon: '📄', threshold: 20, description: 'Completed 20 assignments' },
+];
 
 export default function GamificationManagement() {
   const [loading, setLoading] = useState(true);
-  const [badges, setBadges] = useState<BadgeConfig[]>([]);
-  const [xpRules, setXpRules] = useState<XPRule[]>([]);
   const [students, setStudents] = useState<StudentPerformance[]>([]);
-  const [leaderboards, setLeaderboards] = useState<LeaderboardConfig[]>([]);
   const [stats, setStats] = useState<GamificationStats | null>(null);
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
-
-  const [badgeDialogOpen, setBadgeDialogOpen] = useState(false);
-  const [editingBadge, setEditingBadge] = useState<BadgeConfig | undefined>();
   const [selectedStudent, setSelectedStudent] = useState<StudentPerformance | null>(null);
   const [performanceModalOpen, setPerformanceModalOpen] = useState(false);
   const [institutionFilter, setInstitutionFilter] = useState<string>("all");
+  const [isRecalculating, setIsRecalculating] = useState(false);
+  const [recalculateStatus, setRecalculateStatus] = useState('');
+  const [badgeEarnedCounts, setBadgeEarnedCounts] = useState<Record<string, number>>({});
+  const [xpBreakdown, setXpBreakdown] = useState<{ name: string; value: number }[]>([]);
+  const [totalBadgesEarned, setTotalBadgesEarned] = useState(0);
 
   useEffect(() => {
     loadData();
@@ -52,45 +59,50 @@ export default function GamificationManagement() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [badgesData, rulesData, statsData, activityData, leaderboardData, studentsData] = await Promise.all([
-        gamificationDbService.getBadges(),
-        gamificationDbService.getXPRules(),
+      const [statsData, studentsData] = await Promise.all([
         gamificationDbService.getGamificationStats(),
-        gamificationDbService.getRecentActivity(10),
-        gamificationDbService.getLeaderboardConfigs(),
         gamificationDbService.getLeaderboard(undefined, 50)
       ]);
 
-      setBadges(badgesData.map(b => ({
-        id: b.id,
-        name: b.name,
-        description: b.description || '',
-        icon: b.icon,
-        category: b.category as BadgeConfig['category'],
-        unlock_criteria: {
-          type: (b.unlock_criteria as any)?.type || 'custom',
-          threshold: (b.unlock_criteria as any)?.threshold || 0,
-          description: (b.unlock_criteria as any)?.description || ''
-        },
-        xp_reward: b.xp_reward,
-        is_active: b.is_active,
-        created_at: b.created_at,
-        created_by: b.created_by || ''
-      })));
-
-      setXpRules(rulesData.map(r => ({
-        id: r.id,
-        activity: r.activity as XPRule['activity'],
-        points: r.points,
-        multiplier: r.multiplier || undefined,
-        description: r.description || '',
-        is_active: r.is_active
-      })));
-
       setStats(statsData);
-      setActivityLogs(activityData);
-      setLeaderboards(leaderboardData);
       setStudents(studentsData);
+
+      // Fetch XP breakdown by category
+      const { data: xpData } = await supabase
+        .from('student_xp_transactions')
+        .select('activity_type, points_earned');
+
+      if (xpData) {
+        const categoryMap: Record<string, number> = {};
+        xpData.forEach(t => {
+          let cat = t.activity_type;
+          if (cat === 'project_membership') cat = 'Projects';
+          else if (cat === 'project_award') cat = 'Achievements';
+          else if (cat === 'assessment_completion' || cat === 'assessment_perfect_score') cat = 'Assessments';
+          else if (cat === 'assignment_submission' || cat === 'assignment_perfect_score') cat = 'Assignments';
+          else if (cat === 'daily_streak') cat = 'Daily Login';
+          else cat = 'Other';
+          categoryMap[cat] = (categoryMap[cat] || 0) + t.points_earned;
+        });
+        setXpBreakdown(Object.entries(categoryMap).map(([name, value]) => ({ name, value })));
+      }
+
+      // Fetch badge earned counts
+      const { data: badgeData } = await supabase
+        .from('student_badges')
+        .select('badge_id, gamification_badges(name)');
+
+      const counts: Record<string, number> = {};
+      let total = 0;
+      badgeData?.forEach(b => {
+        const name = (b.gamification_badges as any)?.name;
+        if (name) {
+          counts[name] = (counts[name] || 0) + 1;
+          total++;
+        }
+      });
+      setBadgeEarnedCounts(counts);
+      setTotalBadgesEarned(total);
     } catch (error) {
       console.error('Error loading gamification data:', error);
       toast.error('Failed to load gamification data');
@@ -99,85 +111,26 @@ export default function GamificationManagement() {
     }
   };
 
-  const handleSaveBadge = async (badge: Partial<BadgeConfig>) => {
+  const handleRecalculate = async () => {
+    if (!confirm('This will reset ALL student XP, badges, and streaks, then recalculate from scratch. Continue?')) return;
+    setIsRecalculating(true);
+    setRecalculateStatus('Starting...');
     try {
-      if (editingBadge) {
-        await gamificationDbService.updateBadge(editingBadge.id, {
-          name: badge.name,
-          description: badge.description,
-          icon: badge.icon,
-          category: badge.category,
-          unlock_criteria: badge.unlock_criteria,
-          xp_reward: badge.xp_reward,
-          is_active: badge.is_active
-        });
-        toast.success('Badge updated successfully');
-      } else {
-        await gamificationDbService.createBadge({
-          name: badge.name,
-          description: badge.description,
-          icon: badge.icon,
-          category: badge.category,
-          unlock_criteria: badge.unlock_criteria,
-          xp_reward: badge.xp_reward,
-          is_active: badge.is_active
-        });
-        toast.success('Badge created successfully');
-      }
-      loadData();
-      setEditingBadge(undefined);
+      const result = await gamificationDbService.recalculateAllXPAndBadges((msg) => setRecalculateStatus(msg));
+      toast.success(`Done! ${result.studentsProcessed} students, ${result.totalXP} XP, ${result.badgesAwarded} badges`);
+      await loadData();
     } catch (error) {
-      console.error('Error saving badge:', error);
-      toast.error('Failed to save badge');
-    }
-  };
-
-  const handleDeleteBadge = async (id: string) => {
-    try {
-      await gamificationDbService.deleteBadge(id);
-      toast.success('Badge deleted successfully');
-      loadData();
-    } catch (error) {
-      console.error('Error deleting badge:', error);
-      toast.error('Failed to delete badge');
-    }
-  };
-
-  const handleUpdateXPRule = async (rule: XPRule) => {
-    try {
-      await gamificationDbService.updateXPRule(rule.id, {
-        points: rule.points,
-        multiplier: rule.multiplier,
-        description: rule.description,
-        is_active: rule.is_active
-      });
-      toast.success('XP rule updated');
-      loadData();
-    } catch (error) {
-      console.error('Error updating XP rule:', error);
-      toast.error('Failed to update XP rule');
+      console.error('Recalculate error:', error);
+      toast.error('Recalculation failed');
+    } finally {
+      setIsRecalculating(false);
+      setRecalculateStatus('');
     }
   };
 
   const handleViewStudentDetails = (student: StudentPerformance) => {
     setSelectedStudent(student);
     setPerformanceModalOpen(true);
-  };
-
-  const handleAdjustPoints = async (studentId: string, points: number, reason: string) => {
-    // This would require additional implementation
-    toast.info('Point adjustment feature coming soon');
-  };
-
-  const handleSaveLeaderboard = async (config: LeaderboardConfig) => {
-    try {
-      await gamificationDbService.updateLeaderboardConfig(config.institution_id, config);
-      toast.success('Leaderboard config saved');
-      loadData();
-    } catch (error) {
-      console.error('Error saving leaderboard:', error);
-      toast.error('Failed to save leaderboard config');
-    }
   };
 
   const filteredStudents = students.filter(s => {
@@ -207,173 +160,177 @@ export default function GamificationManagement() {
               Gamification Management
             </h1>
             <p className="text-muted-foreground mt-1">
-              Configure and monitor gamification across all institutions
+              Monitor and manage student XP & badges across all institutions
             </p>
           </div>
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="overview">
               <BarChart3 className="h-4 w-4 mr-2" />
               Overview
-            </TabsTrigger>
-            <TabsTrigger value="badges">
-              <Award className="h-4 w-4 mr-2" />
-              Badges & XP
-            </TabsTrigger>
-            <TabsTrigger value="certificates">
-              <FileText className="h-4 w-4 mr-2" />
-              Certificates
             </TabsTrigger>
             <TabsTrigger value="performance">
               <TrendingUp className="h-4 w-4 mr-2" />
               Student Performance
             </TabsTrigger>
-            <TabsTrigger value="leaderboards">
-              <Trophy className="h-4 w-4 mr-2" />
-              Leaderboards
+            <TabsTrigger value="badges">
+              <Award className="h-4 w-4 mr-2" />
+              Badges
             </TabsTrigger>
           </TabsList>
 
-          {/* Tab 1: Overview Dashboard */}
+          {/* Tab 1: Overview */}
           <TabsContent value="overview" className="space-y-6">
-            {stats && <GamificationStatsCards stats={stats} />}
-
-            <div className="grid md:grid-cols-2 gap-6">
+            {/* Stats Cards */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
-                <CardHeader>
-                  <CardTitle>Top Performing Institutions</CardTitle>
-                  <CardDescription>By average student points</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {stats?.top_institutions.length === 0 && (
-                      <p className="text-muted-foreground text-sm">No data yet</p>
-                    )}
-                    {stats?.top_institutions.map((inst, index) => (
-                      <div key={inst.id} className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
-                            <span className="text-sm font-bold">#{index + 1}</span>
-                          </div>
-                          <div>
-                            <p className="font-medium">{inst.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {inst.total_students} students
-                            </p>
-                          </div>
-                        </div>
-                        <Badge variant="secondary">
-                          {inst.avg_points} XP avg
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
+                  <div className="text-2xl font-bold">{stats?.total_students || 0}</div>
+                  <p className="text-xs text-muted-foreground">Across all institutions</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">XP Distributed</CardTitle>
+                  <Trophy className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{(stats?.total_points_distributed || 0).toLocaleString()}</div>
+                  <p className="text-xs text-muted-foreground">Total XP earned</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Badges Earned</CardTitle>
+                  <Sparkles className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{totalBadgesEarned}</div>
+                  <p className="text-xs text-muted-foreground">By students</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Badge Types</CardTitle>
+                  <Award className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{BADGE_DEFINITIONS.length}</div>
+                  <p className="text-xs text-muted-foreground">Available to earn</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Recalculate */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <RefreshCw className="h-5 w-5" />
+                  Recalculate XP & Badges
+                </CardTitle>
+                <CardDescription>
+                  Reset all student XP, badges, and streaks, then recalculate from existing records (projects, assessments, assignments, awards)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  variant="destructive"
+                  disabled={isRecalculating}
+                  onClick={handleRecalculate}
+                >
+                  {isRecalculating ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Recalculating...</>
+                  ) : (
+                    <><RefreshCw className="mr-2 h-4 w-4" /> Recalculate All XP & Badges</>
+                  )}
+                </Button>
+                {recalculateStatus && (
+                  <p className="text-sm text-muted-foreground mt-2">{recalculateStatus}</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* XP Distribution & Top Students */}
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>XP Distribution</CardTitle>
+                  <CardDescription>Points breakdown by category</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {xpBreakdown.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={280}>
+                      <PieChart>
+                        <Pie
+                          data={xpBreakdown}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
+                          {xpBreakdown.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px'
+                          }}
+                          formatter={(value: number) => [`${value.toLocaleString()} XP`, '']}
+                        />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-64 text-muted-foreground">
+                      No XP data available
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
-              <ActivityFeed activities={activityLogs} />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-primary" />
+                    Top 5 Students
+                  </CardTitle>
+                  <CardDescription>By total XP earned</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {students.slice(0, 5).map((student, idx) => (
+                      <div key={student.student_id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-sm w-6">#{idx + 1}</span>
+                          <div>
+                            <p className="font-medium text-sm">{student.student_name}</p>
+                            <p className="text-xs text-muted-foreground">{student.institution_name}</p>
+                          </div>
+                        </div>
+                        <Badge variant="secondary">{student.total_points} XP</Badge>
+                      </div>
+                    ))}
+                    {students.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">No student data yet</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
-          {/* Tab 2: Badges & XP Configuration */}
-          <TabsContent value="badges" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Badge Management</CardTitle>
-                    <CardDescription>Create and configure badges for students to earn</CardDescription>
-                  </div>
-                  <Button onClick={() => {
-                    setEditingBadge(undefined);
-                    setBadgeDialogOpen(true);
-                  }}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Badge
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Icon</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Criteria</TableHead>
-                        <TableHead>XP Reward</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {badges.map((badge) => (
-                        <TableRow key={badge.id}>
-                          <TableCell className="text-2xl">{badge.icon}</TableCell>
-                          <TableCell className="font-medium">{badge.name}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{badge.category}</Badge>
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {badge.unlock_criteria.description}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary">+{badge.xp_reward} XP</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={badge.is_active ? "default" : "secondary"}>
-                              {badge.is_active ? 'Active' : 'Inactive'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  setEditingBadge(badge);
-                                  setBadgeDialogOpen(true);
-                                }}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleDeleteBadge(badge.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>XP Rules Configuration</CardTitle>
-                <CardDescription>Configure points awarded for different activities</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <XPRuleEditor rules={xpRules} onUpdate={handleUpdateXPRule} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Tab 3: Certificates */}
-          <TabsContent value="certificates" className="space-y-6">
-            <CertificateTemplateManager />
-          </TabsContent>
-
-          {/* Tab 5: Student Performance */}
+          {/* Tab 2: Student Performance */}
           <TabsContent value="performance" className="space-y-6">
             <Card>
               <CardHeader>
@@ -404,75 +361,59 @@ export default function GamificationManagement() {
             </Card>
           </TabsContent>
 
-          {/* Tab 6: Leaderboards */}
-          <TabsContent value="leaderboards" className="space-y-6">
-            {/* Streak Leaderboard */}
-            <div className="grid md:grid-cols-2 gap-6">
-              <StreakLeaderboard limit={10} />
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Trophy className="h-5 w-5 text-primary" />
-                    XP Leaderboard
-                  </CardTitle>
-                  <CardDescription>Top students by total points</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {students.slice(0, 5).map((student, idx) => (
-                      <div key={student.student_id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                        <div className="flex items-center gap-3">
-                          <span className="font-bold text-sm">#{idx + 1}</span>
-                          <div>
-                            <p className="font-medium text-sm">{student.student_name}</p>
-                            <p className="text-xs text-muted-foreground">{student.institution_name}</p>
-                          </div>
-                        </div>
-                        <Badge variant="secondary">{student.total_points} XP</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Institution Leaderboard Configs */}
-            <h3 className="text-lg font-semibold mt-6">Institution Leaderboard Configurations</h3>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {leaderboards.length === 0 && (
-                <Card className="col-span-full">
-                  <CardContent className="py-12 text-center">
-                    <Trophy className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium">No Leaderboard Configurations</h3>
-                    <p className="text-muted-foreground">Leaderboards will appear when institutions are configured</p>
-                  </CardContent>
-                </Card>
-              )}
-              {leaderboards.map(config => (
-                <LeaderboardConfigCard
-                  key={config.id}
-                  config={config}
-                  students={students}
-                  onSave={handleSaveLeaderboard}
-                />
-              ))}
-            </div>
+          {/* Tab 3: Badges (Read-only) */}
+          <TabsContent value="badges" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Badge Definitions</CardTitle>
+                <CardDescription>
+                  Fixed set of {BADGE_DEFINITIONS.length} badges awarded based on activity count thresholds. No XP is granted for earning badges.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-16">Icon</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Criteria</TableHead>
+                        <TableHead>Threshold</TableHead>
+                        <TableHead className="text-right">Students Earned</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {BADGE_DEFINITIONS.map((badge) => (
+                        <TableRow key={badge.name}>
+                          <TableCell className="text-2xl">{badge.icon}</TableCell>
+                          <TableCell className="font-medium">{badge.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="capitalize">{badge.category}</Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {badge.description}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{badge.threshold}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {badgeEarnedCounts[badge.name] || 0}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
-        <BadgeConfigDialog
-          open={badgeDialogOpen}
-          onOpenChange={setBadgeDialogOpen}
-          badge={editingBadge}
-          onSave={handleSaveBadge}
-        />
-
         <StudentPerformanceModal
+          student={selectedStudent}
           open={performanceModalOpen}
           onOpenChange={setPerformanceModalOpen}
-          student={selectedStudent}
-          onAdjustPoints={handleAdjustPoints}
         />
       </div>
     </Layout>
