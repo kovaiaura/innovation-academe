@@ -23,13 +23,13 @@ export const BadgeConfigDialog = ({ open, onOpenChange, badge, onSave }: BadgeCo
     name: '',
     description: '',
     icon: '🎯',
-    category: 'achievement',
+    category: 'project',
     unlock_criteria: {
-      type: 'points',
-      threshold: 100,
+      type: 'projects',
+      threshold: 1,
       description: ''
     },
-    xp_reward: 50,
+    xp_reward: 0,
     is_active: true
   });
 
@@ -115,23 +115,14 @@ export const BadgeConfigDialog = ({ open, onOpenChange, badge, onSave }: BadgeCo
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="project">Project</SelectItem>
                   <SelectItem value="achievement">Achievement</SelectItem>
-                  <SelectItem value="participation">Participation</SelectItem>
-                  <SelectItem value="excellence">Excellence</SelectItem>
-                  <SelectItem value="milestone">Milestone</SelectItem>
+                  <SelectItem value="assessment">Assessment</SelectItem>
+                  <SelectItem value="assignment">Assignment</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="xp_reward">XP Reward</Label>
-              <Input
-                id="xp_reward"
-                type="number"
-                value={formData.xp_reward}
-                onChange={(e) => setFormData({ ...formData, xp_reward: parseInt(e.target.value) })}
-              />
-            </div>
           </div>
 
           <div className="border rounded-lg p-4 space-y-4">
@@ -151,12 +142,10 @@ export const BadgeConfigDialog = ({ open, onOpenChange, badge, onSave }: BadgeCo
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="points">Points</SelectItem>
-                    <SelectItem value="attendance">Attendance</SelectItem>
                     <SelectItem value="projects">Projects</SelectItem>
+                    <SelectItem value="achievements">Achievements</SelectItem>
                     <SelectItem value="assessments">Assessments</SelectItem>
-                    <SelectItem value="streak">Streak</SelectItem>
-                    <SelectItem value="custom">Custom</SelectItem>
+                    <SelectItem value="assignments">Assignments</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
