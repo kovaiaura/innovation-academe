@@ -163,7 +163,7 @@ export function useAllInstitutionsAnalytics() {
           engagement_score: engagementScore,
           engagement_trend: trend,
           risk_level: riskLevel,
-          last_login_date: lastActivityDate > 0 ? new Date(lastActivityDate).toISOString() : new Date().toISOString(),
+          last_login_date: lastActivityDate > 0 ? new Date(lastActivityDate).toISOString() : '',
           days_since_last_activity: daysSinceActivity,
           support_tickets: {
             open: 0,
