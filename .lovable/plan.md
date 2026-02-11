@@ -1,73 +1,121 @@
 
 
-## Multi-Fix Plan: Gamification, Dashboard, and Inventory Improvements
+## Course Outcome Analytics
 
-This plan addresses 5 separate issues across different pages.
-
----
-
-### Fix 1: "Last Active" showing "less than a minute ago" for all students
-
-**Root Cause:** In `src/services/gamification-db.service.ts` line 621, the `last_activity` field is hardcoded to `new Date().toISOString()` (current time) instead of fetching the actual last XP transaction timestamp.
-
-**Fix:** Query the most recent `earned_at` from `student_xp_transactions` for each student. If no transactions exist, show "Never" instead of a fake timestamp.
-
-**Files:**
-- `src/services/gamification-db.service.ts` -- In `getLeaderboard()`, after building the sorted list, query the latest `earned_at` per student from `student_xp_transactions` and use that as `last_activity`. Fall back to `null` if none.
-- `src/components/gamification/StudentPerformanceTable.tsx` -- Update line 120 to handle null/missing `last_activity`: show "Never" if null, otherwise use `formatDistanceToNow`.
+This feature links assessment questions to specific course content (Course > Module/Level > Session), enabling performance analysis at every level -- helping students see their strengths/weaknesses and helping staff decide which topics to revisit.
 
 ---
 
-### Fix 2: XP Distribution graph -- add colors and change to bar chart
+### Part 1: Database -- Add Course Mapping to Assessment Questions
 
-**Current state:** The XP Distribution on the Gamification Overview tab uses a pie chart with CSS variable colors that appear as black/dark in the current theme.
+Add 3 nullable columns to the `assessment_questions` table:
 
-**Fix in `src/pages/system-admin/GamificationManagement.tsx`:**
-- Replace the `PieChart` with a `BarChart` using `recharts` `BarChart`, `Bar`, `XAxis`, `YAxis`, `CartesianGrid` components.
-- Use distinct, vibrant color fills for each category bar (e.g., blue for Projects, green for Achievements, orange for Assessments, purple for Assignments, teal for Daily Login).
-- Add a color-coded legend.
+| Column | Type | Description |
+|---|---|---|
+| `course_id` | uuid (FK to courses) | Which course this question relates to |
+| `module_id` | uuid (FK to course_modules) | Which level/module |
+| `session_id` | uuid (FK to course_sessions) | Which session/topic |
 
----
-
-### Fix 3: Officer Dashboard Lab Inventory -- add search bar
-
-**File:** `src/pages/officer/Inventory.tsx`
-
-**Fix:** Add a search input at the top of the inventory tab (before the stats cards or between stats and table) that filters inventory items by name or description. Add a `searchTerm` state variable and filter the `inventory` array before rendering.
+All nullable so existing questions remain valid. A single migration adds the columns and foreign keys.
 
 ---
 
-### Fix 4: CEO Dashboard -- modern graphs, colors, and student engagement graph
+### Part 2: Question Builder -- Add Course/Level/Session Selectors
 
-**File:** `src/pages/super-admin/CEOAnalyticsDashboard.tsx`
+**File:** `src/components/assessment/QuestionBuilder.tsx`
 
-**Changes:**
-1. **Institution Comparison chart:** Change to use `AreaChart` with curved lines (`type="monotone"`) and gradient fills for a modern look. Use distinct vibrant colors instead of CSS variables.
-2. **Student Distribution:** Improve pie chart with better colors and labels.
-3. **Add Student Engagement graph:** New card showing student login activity. Query `student_streaks` table to get `last_activity_date` data, aggregate into daily/weekly/monthly counts, and display as a curved `AreaChart` with tabs for Daily/Weekly/Monthly views.
-4. **Add additional useful graphs:**
-   - XP Growth Trend (line chart showing cumulative XP over time from `student_xp_transactions.earned_at`)
-   - Project Activity (count of projects by status)
-5. Apply modern color palette throughout all charts.
+Add a "Course Mapping (Optional)" section with 3 cascading dropdowns:
+1. **Course** -- fetches all courses from DB
+2. **Level (Module)** -- filters by selected course
+3. **Session** -- filters by selected module
+
+When a course is selected, modules load; when a module is selected, sessions load. All optional.
+
+**File:** `src/types/assessment.ts`
+
+Add `course_id?`, `module_id?`, `session_id?` to `AssessmentQuestion` interface.
+
+**File:** `src/services/assessment.service.ts`
+
+Update `addQuestions()` and `updateQuestion()` to include the 3 new fields when inserting/updating.
 
 ---
 
-### Fix 5: CEO Dashboard Assessment Performance showing 0 values
+### Part 3: Course Outcome Analytics Pages
 
-**Root Cause:** The query filters by `.eq('status', 'completed')` but the actual assessment status in the database is `evaluated` (and possibly `submitted`, `auto_submitted`). So the filter returns 0 results.
+Create a shared analytics component and role-specific wrapper pages.
 
-**Fix in `src/pages/super-admin/CEOAnalyticsDashboard.tsx`:**
-- Change the assessment attempts query from `.eq('status', 'completed')` to `.in('status', ['completed', 'evaluated', 'submitted', 'auto_submitted'])` to capture all finished attempts.
+#### 3a. Shared Hook: `src/hooks/useCourseOutcomeAnalytics.ts`
+
+Fetches and computes:
+- All questions that have `course_id` set (joined with answers + attempts)
+- Grouped accuracy rates by course, module, and session
+- Accepts optional filters: `institutionId`, `classId`, `studentId`
+- Returns: per-course accuracy, per-module accuracy, per-session accuracy, strongest/weakest topics
+
+#### 3b. Shared Component: `src/components/course-outcomes/CourseOutcomeAnalytics.tsx`
+
+Displays:
+- **Overall Course Strength** -- horizontal bar chart showing accuracy % per course
+- **Module Breakdown** -- expandable per course, bar chart showing accuracy per module/level
+- **Session Detail** -- drill-down per module, showing accuracy per session/topic
+- **Strength/Weakness Summary** -- cards highlighting top 3 strong and top 3 weak areas
+- Color coding: green (>75%), yellow (50-75%), red (<50%)
+
+#### 3c. Role-Specific Pages
+
+| Role | Page Path | Component | Behavior |
+|---|---|---|---|
+| Student | `/course-outcomes` | `StudentCourseOutcomes.tsx` | Shows only their own data; "My Strengths" and "Needs Improvement" sections |
+| Officer | `/course-outcomes` | `OfficerCourseOutcomes.tsx` | Class-wise and individual student drill-down for their institution |
+| Management | `/course-outcomes` | `ManagementCourseOutcomes.tsx` | Institution-wide view with class filter, student drill-down |
+| CEO/System Admin | `/course-outcomes` | `AdminCourseOutcomes.tsx` | Cross-institution comparison, drill into any institution > class > student |
+
+---
+
+### Part 4: Sidebar Menu + Routing
+
+**File:** `src/components/layout/Sidebar.tsx`
+
+Add "Course Outcomes" menu item for all 4 roles:
+- `system_admin` (feature: `'course_management'` -- reuses existing feature flag)
+- `management`
+- `officer`
+- `student`
+
+**File:** `src/types/permissions.ts`
+
+No new feature flag needed -- reuse `course_management` for system_admin visibility.
+
+**File:** `src/App.tsx` (or routing config)
+
+Add route `/course-outcomes` mapped to the appropriate role-specific page component.
+
+---
+
+### Part 5: Question List Display Update
+
+**File:** `src/components/assessment/QuestionList.tsx`
+
+Show a small badge/tag on each question card indicating the mapped course/session (if any), e.g., "Python Basics > Level 2 > Variables".
 
 ---
 
 ### Technical Summary
 
-| File | Changes |
+| File | Change |
 |---|---|
-| `src/services/gamification-db.service.ts` | Fix `last_activity` to use real timestamp from latest XP transaction |
-| `src/components/gamification/StudentPerformanceTable.tsx` | Handle null `last_activity` gracefully ("Never") |
-| `src/pages/system-admin/GamificationManagement.tsx` | Replace XP Distribution pie chart with colored bar chart |
-| `src/pages/officer/Inventory.tsx` | Add search bar to filter inventory items |
-| `src/pages/super-admin/CEOAnalyticsDashboard.tsx` | Fix assessment status filter; modernize chart styling with curves/gradients; add Student Engagement and XP Growth charts |
+| **DB Migration** | Add `course_id`, `module_id`, `session_id` columns to `assessment_questions` |
+| `src/types/assessment.ts` | Add 3 optional fields to `AssessmentQuestion` |
+| `src/components/assessment/QuestionBuilder.tsx` | Add cascading course/module/session dropdowns |
+| `src/services/assessment.service.ts` | Include new fields in insert/update/transform |
+| `src/hooks/useCourseOutcomeAnalytics.ts` | **New** -- data fetching + accuracy computation |
+| `src/components/course-outcomes/CourseOutcomeAnalytics.tsx` | **New** -- shared chart/visualization component |
+| `src/pages/student/StudentCourseOutcomes.tsx` | **New** -- student view |
+| `src/pages/officer/OfficerCourseOutcomes.tsx` | **New** -- officer view |
+| `src/pages/management/ManagementCourseOutcomes.tsx` | **New** -- management view |
+| `src/pages/super-admin/AdminCourseOutcomes.tsx` | **New** -- CEO/admin view |
+| `src/components/layout/Sidebar.tsx` | Add "Course Outcomes" menu for all roles |
+| `src/components/assessment/QuestionList.tsx` | Show course mapping badge |
+| `src/App.tsx` | Add `/course-outcomes` route |
 
