@@ -298,48 +298,57 @@ export type Database = {
           assessment_id: string
           code_snippet: string | null
           correct_option_id: string
+          course_id: string | null
           created_at: string
           display_order: number
           explanation: string | null
           id: string
           image_url: string | null
+          module_id: string | null
           options: Json
           points: number
           question_number: number
           question_text: string
           question_type: string
+          session_id: string | null
           time_limit_seconds: number | null
         }
         Insert: {
           assessment_id: string
           code_snippet?: string | null
           correct_option_id: string
+          course_id?: string | null
           created_at?: string
           display_order?: number
           explanation?: string | null
           id?: string
           image_url?: string | null
+          module_id?: string | null
           options?: Json
           points?: number
           question_number: number
           question_text: string
           question_type?: string
+          session_id?: string | null
           time_limit_seconds?: number | null
         }
         Update: {
           assessment_id?: string
           code_snippet?: string | null
           correct_option_id?: string
+          course_id?: string | null
           created_at?: string
           display_order?: number
           explanation?: string | null
           id?: string
           image_url?: string | null
+          module_id?: string | null
           options?: Json
           points?: number
           question_number?: number
           question_text?: string
           question_type?: string
+          session_id?: string | null
           time_limit_seconds?: number | null
         }
         Relationships: [
@@ -348,6 +357,27 @@ export type Database = {
             columns: ["assessment_id"]
             isOneToOne: false
             referencedRelation: "assessments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_questions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_questions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_questions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "course_sessions"
             referencedColumns: ["id"]
           },
         ]
