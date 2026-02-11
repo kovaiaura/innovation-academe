@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import ViewMouDialog from '@/components/institution/ViewMouDialog';
 import { PinLockDialog } from '@/components/system-admin/PinLockDialog';
 import { EngagementDashboard } from '@/components/institution/EngagementDashboard';
-import { AtRiskInstitutions } from '@/components/institution/AtRiskInstitutions';
+
 import { InstitutionEditDialog } from '@/components/institution/InstitutionEditDialog';
 
 // Define Institution type locally (previously from context)
@@ -1066,9 +1066,6 @@ export default function InstitutionManagement() {
             ) : analyticsData && analyticsData.length > 0 ? (
               <>
                 <EngagementDashboard data={analyticsData} />
-                <AtRiskInstitutions 
-                  data={analyticsData.filter(d => d.risk_level === 'high' || d.risk_level === 'medium')} 
-                />
               </>
             ) : (
               <Card>
