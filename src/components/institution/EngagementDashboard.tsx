@@ -115,14 +115,12 @@ export function EngagementDashboard({ data }: EngagementDashboardProps) {
   const projectComparisonData = useMemo(() => {
     return data.map((inst) => {
       const instProjects = extraData?.projects?.filter(p => p.institution_id === inst.institution_id) || [];
-      const submitted = instProjects.filter(p => p.status === 'submitted').length;
-      const evaluated = instProjects.filter(p => p.status === 'evaluated').length;
-      const inProgress = instProjects.filter(p => p.status === 'in_progress' || p.status === 'draft').length;
+      const ongoing = instProjects.filter(p => ['ongoing', 'in_progress', 'draft', 'pending_review'].includes(p.status)).length;
+      const completed = instProjects.filter(p => ['completed', 'evaluated', 'submitted'].includes(p.status)).length;
       return {
         name: inst.institution_name.split(' ').slice(0, 2).join(' '),
-        submitted,
-        evaluated,
-        inProgress,
+        ongoing,
+        completed,
         total: instProjects.length,
       };
     });
@@ -289,9 +287,9 @@ export function EngagementDashboard({ data }: EngagementDashboardProps) {
               <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 11 }} />
               <Tooltip contentStyle={tooltipStyle} />
               <Legend wrapperStyle={{ fontSize: '11px' }} />
-              <Bar dataKey="inProgress" fill="#6366f1" name="In Progress" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="submitted" fill="#06b6d4" name="Submitted" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="evaluated" fill="#10b981" name="Evaluated" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="ongoing" fill="#6366f1" name="In Progress" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="completed" fill="#10b981" name="Completed" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="total" fill="#f59e0b" name="Total" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
