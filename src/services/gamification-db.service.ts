@@ -607,6 +607,23 @@ export const gamificationDbService = {
       });
     }
     
+    // Fetch actual last activity timestamps from XP transactions
+    const leaderboardStudentIds = sorted.map(s => s.student_id);
+    const lastActivityMap: Record<string, string> = {};
+    if (leaderboardStudentIds.length > 0) {
+      const { data: activityData } = await supabase
+        .from('student_xp_transactions')
+        .select('student_id, earned_at')
+        .in('student_id', leaderboardStudentIds)
+        .order('earned_at', { ascending: false });
+      
+      activityData?.forEach(a => {
+        if (!lastActivityMap[a.student_id]) {
+          lastActivityMap[a.student_id] = a.earned_at;
+        }
+      });
+    }
+
     return sorted.map((s, index) => ({
       student_id: s.student_id,
       student_name: s.student_name,
@@ -618,7 +635,7 @@ export const gamificationDbService = {
       rank: index + 1,
       badges_earned: badgeCounts[s.student_id] || 0,
       streak_days: streakMap[s.student_id] || 0,
-      last_activity: new Date().toISOString(),
+      last_activity: lastActivityMap[s.student_id] || null,
       points_breakdown: this.getCategorizedBreakdown(s.points_breakdown)
     }));
   },
