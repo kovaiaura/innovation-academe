@@ -16,9 +16,16 @@ import { gamificationDbService } from "@/services/gamification-db.service";
 import { StudentPerformance, GamificationStats } from "@/types/gamification";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell } from "recharts";
 
-const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
+const XP_COLORS: Record<string, string> = {
+  'Projects': '#3B82F6',
+  'Achievements': '#22C55E', 
+  'Assessments': '#F97316',
+  'Assignments': '#A855F7',
+  'Daily Login': '#14B8A6',
+  'Other': '#6B7280',
+};
 
 const BADGE_DEFINITIONS = [
   { name: '1 Project', category: 'project', icon: '🎯', threshold: 1, description: 'Joined your first project' },
@@ -271,20 +278,10 @@ export default function GamificationManagement() {
                 <CardContent>
                   {xpBreakdown.length > 0 ? (
                     <ResponsiveContainer width="100%" height={280}>
-                      <PieChart>
-                        <Pie
-                          data={xpBreakdown}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={100}
-                          paddingAngle={3}
-                          dataKey="value"
-                        >
-                          {xpBreakdown.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
+                      <BarChart data={xpBreakdown} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="name" className="text-xs" tick={{ fontSize: 11 }} />
+                        <YAxis className="text-xs" tick={{ fontSize: 11 }} />
                         <Tooltip
                           contentStyle={{
                             backgroundColor: 'hsl(var(--card))',
@@ -294,7 +291,12 @@ export default function GamificationManagement() {
                           formatter={(value: number) => [`${value.toLocaleString()} XP`, '']}
                         />
                         <Legend />
-                      </PieChart>
+                        <Bar dataKey="value" name="XP Points" radius={[4, 4, 0, 0]}>
+                          {xpBreakdown.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={XP_COLORS[entry.name] || '#6B7280'} />
+                          ))}
+                        </Bar>
+                      </BarChart>
                     </ResponsiveContainer>
                   ) : (
                     <div className="flex items-center justify-center h-64 text-muted-foreground">

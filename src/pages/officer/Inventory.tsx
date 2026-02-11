@@ -81,6 +81,15 @@ export default function Inventory() {
   const [issueQuantity, setIssueQuantity] = useState(1);
   const [issueSeverity, setIssueSeverity] = useState<'low' | 'medium' | 'high' | 'critical'>('medium');
 
+  const [inventorySearch, setInventorySearch] = useState('');
+  
+  const filteredInventory = inventory.filter(item => {
+    if (!inventorySearch.trim()) return true;
+    const search = inventorySearch.toLowerCase();
+    return (item.name?.toLowerCase().includes(search)) || 
+           (item.description?.toLowerCase().includes(search));
+  });
+
   const totalValue = inventory.reduce((sum, item) => sum + (item.total_value || 0), 0);
   const totalUnits = inventory.reduce((sum, item) => sum + (item.units || 0), 0);
 
@@ -203,6 +212,12 @@ export default function Inventory() {
 
           {/* Inventory Tab */}
           <TabsContent value="inventory" className="space-y-6">
+            <Input
+              placeholder="Search inventory by name or description..."
+              value={inventorySearch}
+              onChange={(e) => setInventorySearch(e.target.value)}
+              className="max-w-md"
+            />
             <div className="grid gap-4 md:grid-cols-4">
               <Card>
                 <CardHeader className="pb-2">
@@ -246,11 +261,13 @@ export default function Inventory() {
                   <p className="text-muted-foreground">Loading inventory...</p>
                 </CardContent>
               </Card>
-            ) : inventory.length === 0 ? (
+            ) : filteredInventory.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
                   <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">No inventory items found</p>
+                  <p className="text-muted-foreground">
+                    {inventorySearch ? 'No items match your search' : 'No inventory items found'}
+                  </p>
                 </CardContent>
               </Card>
             ) : (
@@ -268,7 +285,7 @@ export default function Inventory() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {inventory.map((item) => (
+                    {filteredInventory.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell>{item.sl_no}</TableCell>
                         <TableCell className="font-medium">{item.name}</TableCell>

@@ -117,7 +117,9 @@ export const StudentPerformanceTable = ({ performances, onViewDetails }: Student
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {formatDistanceToNow(new Date(student.last_activity), { addSuffix: true })}
+                    {student.last_activity 
+                      ? formatDistanceToNow(new Date(student.last_activity), { addSuffix: true })
+                      : 'Never'}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
