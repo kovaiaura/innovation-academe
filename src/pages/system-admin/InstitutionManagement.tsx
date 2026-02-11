@@ -19,7 +19,6 @@ import ViewMouDialog from '@/components/institution/ViewMouDialog';
 import { PinLockDialog } from '@/components/system-admin/PinLockDialog';
 import { EngagementDashboard } from '@/components/institution/EngagementDashboard';
 import { AtRiskInstitutions } from '@/components/institution/AtRiskInstitutions';
-import { InstitutionComparisonTable } from '@/components/institution/InstitutionComparisonTable';
 import { InstitutionEditDialog } from '@/components/institution/InstitutionEditDialog';
 
 // Define Institution type locally (previously from context)
@@ -1070,7 +1069,6 @@ export default function InstitutionManagement() {
                 <AtRiskInstitutions 
                   data={analyticsData.filter(d => d.risk_level === 'high' || d.risk_level === 'medium')} 
                 />
-                <InstitutionComparisonTable data={analyticsData} />
               </>
             ) : (
               <Card>

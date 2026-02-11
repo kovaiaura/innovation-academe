@@ -84,12 +84,17 @@ export function AtRiskInstitutions({ data }: AtRiskInstitutionsProps) {
                             <span>Low assessment participation: {institution.assessment_metrics.average_participation_rate}%</span>
                           </div>
                         )}
-                        {institution.days_since_last_activity > 7 && (
+                        {institution.days_since_last_activity > 7 && institution.last_login_date ? (
                           <div className="flex items-center gap-2 text-sm bg-red-500/10 p-2 rounded">
                             <Clock className="h-4 w-4 text-red-600" />
                             <span>No activity for {institution.days_since_last_activity} days (Last: {format(new Date(institution.last_login_date), 'MMM dd')})</span>
                           </div>
-                        )}
+                        ) : !institution.last_login_date || institution.days_since_last_activity >= 999 ? (
+                          <div className="flex items-center gap-2 text-sm bg-red-500/10 p-2 rounded">
+                            <Clock className="h-4 w-4 text-red-600" />
+                            <span>No activity recorded yet</span>
+                          </div>
+                        ) : null}
                         {institution.engagement_trend === 'declining' && (
                           <div className="flex items-center gap-2 text-sm bg-red-500/10 p-2 rounded">
                             <TrendingDown className="h-4 w-4 text-red-600" />
@@ -129,8 +134,11 @@ export function AtRiskInstitutions({ data }: AtRiskInstitutionsProps) {
                         <li>Provide additional training and onboarding support</li>
                         <li>Review and address open support tickets</li>
                         <li>Offer dedicated success manager assistance</li>
-                        {institution.days_since_last_activity > 7 && (
+                        {institution.last_login_date && institution.days_since_last_activity > 7 && institution.days_since_last_activity < 999 && (
                           <li>Immediate follow-up required - no activity for {institution.days_since_last_activity} days</li>
+                        )}
+                        {(!institution.last_login_date || institution.days_since_last_activity >= 999) && (
+                          <li>Immediate follow-up required - no activity has been recorded</li>
                         )}
                       </ul>
                     </div>
