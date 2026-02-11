@@ -137,6 +137,9 @@ function transformQuestion(dbQuestion: DbQuestion): AssessmentQuestion {
     image_url: dbQuestion.image_url || undefined,
     code_snippet: dbQuestion.code_snippet || undefined,
     explanation: dbQuestion.explanation || undefined,
+    course_id: (dbQuestion as any).course_id || undefined,
+    module_id: (dbQuestion as any).module_id || undefined,
+    session_id: (dbQuestion as any).session_id || undefined,
     order: dbQuestion.display_order,
     created_at: dbQuestion.created_at
   };
@@ -360,7 +363,10 @@ export const assessmentService = {
       image_url: q.image_url,
       code_snippet: q.code_snippet,
       explanation: q.explanation,
-      display_order: q.order || index
+      display_order: q.order || index,
+      course_id: q.course_id || null,
+      module_id: q.module_id || null,
+      session_id: q.session_id || null
     }));
 
     const { error } = await supabase
@@ -398,19 +404,25 @@ export const assessmentService = {
   },
 
   async updateQuestion(questionId: string, data: Partial<AssessmentQuestion>): Promise<boolean> {
+    const updateData: Record<string, unknown> = {
+      question_text: data.question_text,
+      options: data.options ? JSON.parse(JSON.stringify(data.options)) : undefined,
+      correct_option_id: data.correct_option_id,
+      points: data.points,
+      time_limit_seconds: data.time_limit_seconds,
+      image_url: data.image_url,
+      code_snippet: data.code_snippet,
+      explanation: data.explanation,
+      display_order: data.order
+    };
+    // Include course mapping fields if provided (allow null to clear)
+    if ('course_id' in data) updateData.course_id = data.course_id || null;
+    if ('module_id' in data) updateData.module_id = data.module_id || null;
+    if ('session_id' in data) updateData.session_id = data.session_id || null;
+
     const { error } = await supabase
       .from('assessment_questions')
-      .update({
-        question_text: data.question_text,
-        options: data.options ? JSON.parse(JSON.stringify(data.options)) : undefined,
-        correct_option_id: data.correct_option_id,
-        points: data.points,
-        time_limit_seconds: data.time_limit_seconds,
-        image_url: data.image_url,
-        code_snippet: data.code_snippet,
-        explanation: data.explanation,
-        display_order: data.order
-      })
+      .update(updateData)
       .eq('id', questionId);
 
     if (error) {

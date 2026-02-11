@@ -1,8 +1,10 @@
+import { useState, useEffect } from 'react';
 import { AssessmentQuestion } from '@/types/assessment';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, Trash2, GripVertical, Clock, Award } from 'lucide-react';
+import { Pencil, Trash2, GripVertical, Clock, Award, BookOpen } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface QuestionListProps {
   questions: AssessmentQuestion[];
@@ -11,6 +13,39 @@ interface QuestionListProps {
 }
 
 export const QuestionList = ({ questions, onEdit, onDelete }: QuestionListProps) => {
+  const [courseNames, setCourseNames] = useState<Record<string, string>>({});
+
+  // Fetch course/module/session names for display
+  useEffect(() => {
+    const courseIds = [...new Set(questions.map(q => q.course_id).filter(Boolean))] as string[];
+    const moduleIds = [...new Set(questions.map(q => q.module_id).filter(Boolean))] as string[];
+    const sessionIds = [...new Set(questions.map(q => q.session_id).filter(Boolean))] as string[];
+
+    if (courseIds.length === 0 && moduleIds.length === 0 && sessionIds.length === 0) return;
+
+    const fetchNames = async () => {
+      const names: Record<string, string> = {};
+      const [courses, modules, sessions] = await Promise.all([
+        courseIds.length > 0 ? supabase.from('courses').select('id, title').in('id', courseIds) : { data: [] },
+        moduleIds.length > 0 ? supabase.from('course_modules').select('id, title').in('id', moduleIds) : { data: [] },
+        sessionIds.length > 0 ? supabase.from('course_sessions').select('id, title').in('id', sessionIds) : { data: [] },
+      ]);
+      (courses.data || []).forEach(c => { names[c.id] = c.title; });
+      (modules.data || []).forEach(m => { names[m.id] = m.title; });
+      (sessions.data || []).forEach(s => { names[s.id] = s.title; });
+      setCourseNames(names);
+    };
+    fetchNames();
+  }, [questions]);
+
+  const getCourseMappingLabel = (q: AssessmentQuestion): string | null => {
+    const parts: string[] = [];
+    if (q.course_id && courseNames[q.course_id]) parts.push(courseNames[q.course_id]);
+    if (q.module_id && courseNames[q.module_id]) parts.push(courseNames[q.module_id]);
+    if (q.session_id && courseNames[q.session_id]) parts.push(courseNames[q.session_id]);
+    return parts.length > 0 ? parts.join(' > ') : null;
+  };
+
   if (questions.length === 0) {
     return (
       <Card>
@@ -79,6 +114,16 @@ export const QuestionList = ({ questions, onEdit, onDelete }: QuestionListProps)
                     <Badge variant="secondary" className="text-xs">Has Code</Badge>
                   )}
                 </div>
+                {/* Course Mapping */}
+                {(() => {
+                  const label = getCourseMappingLabel(question);
+                  return label ? (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <BookOpen className="h-3 w-3" />
+                      <span>{label}</span>
+                    </div>
+                  ) : null;
+                })()}
               </div>
 
               {/* Actions */}

@@ -71,6 +71,11 @@ export interface AssessmentQuestion {
   // Explanation (shown after submission)
   explanation?: string;
   
+  // Course Mapping (for Course Outcome Analytics)
+  course_id?: string;
+  module_id?: string;
+  session_id?: string;
+  
   // Metadata
   order: number;
   created_at: string;

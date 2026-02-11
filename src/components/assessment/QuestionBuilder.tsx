@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Plus, Trash2, Image as ImageIcon, Code, Upload, Loader2 } from 'lucide-react';
 import { AssessmentQuestion, MCQOption } from '@/types/assessment';
 import { supabase } from '@/integrations/supabase/client';
+import { CourseMappingSelector } from './CourseMappingSelector';
 
 interface QuestionBuilderProps {
   question?: Partial<AssessmentQuestion>;
@@ -34,6 +35,9 @@ export const QuestionBuilder = ({ question, questionNumber, onSave, onCancel }: 
   const [showImageInput, setShowImageInput] = useState(!!question?.image_url);
   const [showCodeInput, setShowCodeInput] = useState(!!question?.code_snippet);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [courseId, setCourseId] = useState<string | undefined>(question?.course_id);
+  const [moduleId, setModuleId] = useState<string | undefined>(question?.module_id);
+  const [sessionId, setSessionId] = useState<string | undefined>(question?.session_id);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -99,6 +103,9 @@ export const QuestionBuilder = ({ question, questionNumber, onSave, onCancel }: 
       explanation: explanation || undefined,
       image_url: imageUrl || undefined,
       code_snippet: codeSnippet || undefined,
+      course_id: courseId,
+      module_id: moduleId,
+      session_id: sessionId,
       order: questionNumber,
       created_at: question?.created_at || new Date().toISOString()
     };
@@ -232,6 +239,16 @@ export const QuestionBuilder = ({ question, questionNumber, onSave, onCancel }: 
             rows={3}
           />
         </div>
+
+        {/* Course Mapping */}
+        <CourseMappingSelector
+          courseId={courseId}
+          moduleId={moduleId}
+          sessionId={sessionId}
+          onCourseChange={setCourseId}
+          onModuleChange={setModuleId}
+          onSessionChange={setSessionId}
+        />
 
         {/* Actions */}
         <div className="flex gap-3 justify-end">
