@@ -238,7 +238,7 @@ export function exportToCSV(
       );
       
       invoices.forEach(inv => {
-        const invoiceLink = `${baseUrl}/invoice/${inv.id}`;
+        const invoiceLink = inv.attachment_url || 'Download from app';
         rows.push([
           inv.invoice_number,
           format(new Date(inv.invoice_date), 'dd/MM/yyyy'),
@@ -319,7 +319,7 @@ export function exportToCSV(
         const daysOverdue = inv.due_date 
           ? Math.max(0, differenceInDays(new Date(), new Date(inv.due_date)))
           : 0;
-        const invoiceLink = `${baseUrl}/invoice/${inv.id}`;
+        const invoiceLink = inv.attachment_url || 'Download from app';
         
         rows.push([
           inv.invoice_number,
