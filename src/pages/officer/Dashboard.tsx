@@ -219,10 +219,12 @@ export default function OfficerDashboard() {
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {/* Column 1: Daily Attendance */}
           {officerProfile && primaryInstitutionId ? (
-            <OfficerCheckInCard 
-              officerId={officerProfile.id} 
-              institutionId={primaryInstitutionId}
-            />
+            <div className="min-h-[320px]">
+              <OfficerCheckInCard 
+                officerId={officerProfile.id} 
+                institutionId={primaryInstitutionId}
+              />
+            </div>
           ) : (
             <Card className="min-h-[320px]">
               <CardHeader>

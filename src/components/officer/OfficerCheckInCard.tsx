@@ -3,7 +3,7 @@
  * Persists to Supabase officer_attendance table
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +11,9 @@ import { Clock, MapPin, Loader2, AlertCircle, CheckCircle2, XCircle, Building2, 
 import { useAuth } from '@/contexts/AuthContext';
 import { getCurrentLocation } from '@/utils/locationHelpers';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, startOfWeek, addDays, isToday, isBefore } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   useOfficerTodayAttendance,
   useCheckIn,
@@ -386,7 +388,79 @@ export function OfficerCheckInCard({ officerId, institutionId, onStatusChange }:
             )}
           </Button>
         </div>
+
+        {/* This Week Attendance Dots */}
+        <WeeklyAttendanceDots officerId={officerId} institutionId={institutionId} />
       </CardContent>
     </Card>
+  );
+}
+
+function WeeklyAttendanceDots({ officerId, institutionId }: { officerId: string; institutionId: string }) {
+  const weekDays = useMemo(() => {
+    const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
+    return Array.from({ length: 6 }, (_, i) => ({
+      date: addDays(monday, i),
+      label: ['M', 'T', 'W', 'T', 'F', 'S'][i],
+    }));
+  }, []);
+
+  const mondayStr = format(weekDays[0].date, 'yyyy-MM-dd');
+  const saturdayStr = format(weekDays[5].date, 'yyyy-MM-dd');
+
+  const { data: weekRecords } = useQuery({
+    queryKey: ['officer-week-attendance', officerId, mondayStr],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('officer_attendance')
+        .select('date, status')
+        .eq('officer_id', officerId)
+        .eq('institution_id', institutionId)
+        .gte('date', mondayStr)
+        .lte('date', saturdayStr);
+      return data || [];
+    },
+    enabled: !!officerId && !!institutionId,
+  });
+
+  const attendedDates = new Set(
+    (weekRecords || [])
+      .filter(r => r.status === 'checked_in' || r.status === 'checked_out')
+      .map(r => r.date)
+  );
+
+  return (
+    <div className="pt-2 border-t border-border/50">
+      <p className="text-[10px] font-medium text-muted-foreground mb-2 uppercase tracking-wider">This Week</p>
+      <div className="flex items-center justify-between gap-1">
+        {weekDays.map(({ date, label }) => {
+          const dateStr = format(date, 'yyyy-MM-dd');
+          const attended = attendedDates.has(dateStr);
+          const today = isToday(date);
+          const past = isBefore(date, new Date()) && !today;
+
+          return (
+            <div key={dateStr} className="flex flex-col items-center gap-1">
+              <div
+                className={`h-5 w-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-colors
+                  ${attended
+                    ? 'bg-green-500 text-white'
+                    : past
+                      ? 'bg-muted text-muted-foreground/50'
+                      : 'bg-muted/50 text-muted-foreground/30'
+                  }
+                  ${today ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}
+                `}
+              >
+                {attended ? '✓' : ''}
+              </div>
+              <span className={`text-[9px] ${today ? 'font-bold text-foreground' : 'text-muted-foreground'}`}>
+                {label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
