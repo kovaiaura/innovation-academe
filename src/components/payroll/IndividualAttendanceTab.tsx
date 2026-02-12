@@ -1125,14 +1125,14 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                           </div>
                           <div className="col-span-2 md:col-span-4 pt-2 border-t mt-2">
                             <Button 
-                              onClick={() => {
-                                const ss = salaryData.salaryStructure;
+                              onClick={async () => {
+                const ss = salaryData.salaryStructure;
                                 const si = salaryData.statutoryInfo;
                                 
                                 // Calculate statutory deductions using real info
                                 const basicPay = ss.basic_pay || 0;
                                 const hraAmt = ss.hra || 0;
-                                const conveyanceAmt = ss.conveyance_allowance || 0;
+                                const conveyanceAmt = ss.conveyance_allowance || ss.transport_allowance || 0;
                                 const medicalAmt = ss.medical_allowance || 0;
                                 const specialAmt = ss.special_allowance || 0;
                                 
@@ -1142,6 +1142,26 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                                 
                                 const grossEarnings = basicPay + hraAmt + conveyanceAmt + medicalAmt + specialAmt + overtimePay;
                                 const totalDeductions = lopDeduction + pfDeduction + esiDeduction + ptDeduction;
+
+                                // Fetch bank details
+                                let bankDetails = { bank_name: '', bank_account_number: '', bank_ifsc: '', bank_branch: '' };
+                                try {
+                                  if (selectedEmployee.type === 'officer') {
+                                    const { data: officerBank } = await supabase
+                                      .from('officers')
+                                      .select('bank_name, bank_account_number, bank_ifsc, bank_branch')
+                                      .eq('id', selectedEmployee.id)
+                                      .single();
+                                    if (officerBank) bankDetails = { bank_name: officerBank.bank_name || '', bank_account_number: officerBank.bank_account_number || '', bank_ifsc: officerBank.bank_ifsc || '', bank_branch: officerBank.bank_branch || '' };
+                                  } else {
+                                    const { data: profileBank } = await supabase
+                                      .from('profiles')
+                                      .select('bank_name, bank_account_number, bank_ifsc, bank_branch')
+                                      .eq('id', selectedEmployee.user_id)
+                                      .single();
+                                    if (profileBank) bankDetails = { bank_name: profileBank.bank_name || '', bank_account_number: profileBank.bank_account_number || '', bank_ifsc: profileBank.bank_ifsc || '', bank_branch: profileBank.bank_branch || '' };
+                                  }
+                                } catch (e) { console.error('Failed to fetch bank details', e); }
                                 
                                 const payslip = {
                                   employee_name: selectedEmployee.name,
@@ -1150,14 +1170,12 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                                   institution_name: '',
                                   month: localMonth,
                                   year: localYear,
-                                  // Use real salary structure
                                   basic_salary: basicPay,
                                   hra: hraAmt,
                                   conveyance_allowance: conveyanceAmt,
                                   medical_allowance: medicalAmt,
                                   special_allowance: specialAmt,
                                   overtime_pay: overtimePay,
-                                  // Use real statutory deductions
                                   pf_deduction: pfDeduction,
                                   esi: esiDeduction,
                                   professional_tax: ptDeduction,
@@ -1176,6 +1194,10 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                                   gross_earnings: grossEarnings,
                                   total_deductions: totalDeductions,
                                   net_pay: grossEarnings - totalDeductions,
+                                  bank_name: bankDetails.bank_name,
+                                  bank_account_number: bankDetails.bank_account_number,
+                                  bank_ifsc: bankDetails.bank_ifsc,
+                                  bank_branch: bankDetails.bank_branch,
                                 };
                                 setPayslipData(payslip);
                                 setPayslipDialogOpen(true);
