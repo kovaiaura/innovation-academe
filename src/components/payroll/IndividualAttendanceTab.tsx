@@ -1130,11 +1130,17 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                                 const si = salaryData.statutoryInfo;
                                 
                                 // Calculate statutory deductions using real info
-                                const pfDeduction = si.pf_applicable ? calculatePFDeduction(ss.basic_pay) : 0;
+                                const basicPay = ss.basic_pay || 0;
+                                const hraAmt = ss.hra || 0;
+                                const conveyanceAmt = ss.conveyance_allowance || 0;
+                                const medicalAmt = ss.medical_allowance || 0;
+                                const specialAmt = ss.special_allowance || 0;
+                                
+                                const pfDeduction = si.pf_applicable ? calculatePFDeduction(basicPay) : 0;
                                 const esiDeduction = si.esi_applicable ? calculateESIDeduction(salaryData.monthlySalary) : 0;
                                 const ptDeduction = si.pt_applicable ? calculateProfessionalTax(salaryData.monthlySalary, si.pt_state) : 0;
                                 
-                                const grossEarnings = ss.basic_pay + ss.hra + ss.conveyance_allowance + ss.medical_allowance + ss.special_allowance + overtimePay;
+                                const grossEarnings = basicPay + hraAmt + conveyanceAmt + medicalAmt + specialAmt + overtimePay;
                                 const totalDeductions = lopDeduction + pfDeduction + esiDeduction + ptDeduction;
                                 
                                 const payslip = {
@@ -1145,11 +1151,11 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                                   month: localMonth,
                                   year: localYear,
                                   // Use real salary structure
-                                  basic_salary: ss.basic_pay,
-                                  hra: ss.hra,
-                                  conveyance_allowance: ss.conveyance_allowance,
-                                  medical_allowance: ss.medical_allowance,
-                                  special_allowance: ss.special_allowance,
+                                  basic_salary: basicPay,
+                                  hra: hraAmt,
+                                  conveyance_allowance: conveyanceAmt,
+                                  medical_allowance: medicalAmt,
+                                  special_allowance: specialAmt,
                                   overtime_pay: overtimePay,
                                   // Use real statutory deductions
                                   pf_deduction: pfDeduction,
