@@ -1,61 +1,40 @@
 
 
-## Revamp Officer Daily Attendance Card
+## Fill the Empty Space in Daily Attendance Card
 
-The current `OfficerCheckInCard` has too much content causing the Check In/Check Out buttons to overflow outside the card boundary. The fix involves a complete UI revamp with a minimal, compact design that's fully responsive.
+The Daily Attendance card is shorter than the adjacent "Projects Pending" and "My Tasks" cards (which have `min-h-[320px]`), creating visible empty space. The fix is to add a **"This Week" attendance summary** below the buttons -- a compact row of 6 day-dots (Mon-Sat) showing check-in status for the current week.
 
 ---
 
-### Changes to: `src/components/officer/OfficerCheckInCard.tsx`
+### What gets added
 
-**Current problems:**
-- Institution info bar, time display, hours worked, overtime, location validation, map toggle, GPS warning, buttons, and instructions all stack vertically -- too much for the card height
-- Buttons overflow on smaller screens
+A small "This Week" section at the bottom of the card showing:
+- 6 circles (Mon-Sat), each colored:
+  - **Green** = checked in that day
+  - **Gray/muted** = no attendance record
+  - **Current day** = highlighted ring
+- Day labels below each dot (M, T, W, T, F, S)
 
-**New minimal design:**
-
-1. **Compact header** -- Title "Daily Attendance" with status badge inline, remove the subtitle text
-
-2. **Condensed info row** -- Institution name + GPS badge on a single small line (no separate card-like container)
-
-3. **Time display** -- Keep the 2-column check-in/check-out times but use smaller text sizing
-
-4. **Remove from default view:**
-   - Hours worked bar (only show if checked in, as a small inline text, not a full-width bar)
-   - Overtime bar (merge into hours display as a suffix)
-   - Location validation row (fold into status badge or remove)
-   - Map collapsible (remove from dashboard card entirely -- it's available on the profile page)
-   - GPS "not configured" warning (simplify to a small inline note)
-   - Bottom instruction text (remove entirely)
-
-5. **Buttons** -- Use `size="default"` instead of `size="lg"`, ensure they stay inside the card with `flex-wrap` as a safety net
-
-6. **Responsive** -- Use `overflow-hidden` on the Card, ensure all content uses `min-w-0` and `truncate` where needed
+This gives the officer a quick visual of their weekly attendance pattern and fills the empty space naturally.
 
 ---
 
 ### Technical Details
 
-**File:** `src/components/officer/OfficerCheckInCard.tsx` (lines 293-477)
+**File:** `src/components/officer/OfficerCheckInCard.tsx`
 
-The return JSX will be restructured to:
+1. Add a query to fetch this week's attendance records from `officer_attendance` table (Mon-Sat of current week), using the existing supabase client
+2. Add a "This Week" row below the buttons section with 6 small dot indicators
+3. Each dot checks if there's an attendance record for that day
 
-```text
-Card (overflow-hidden)
-  CardHeader (compact, pb-3)
-    Row: "Daily Attendance" + StatusBadge
-  CardContent (space-y-3, not space-y-4)
-    Institution row (text-xs, inline)
-    Time grid (2-col, smaller text)
-    Hours worked (inline text if checked in, not a full bar)
-    Buttons row (size="default", flex gap-2)
-```
+**File:** `src/pages/officer/Dashboard.tsx`
 
-Key removals:
-- Map collapsible section (lines 386-410)
-- GPS not configured warning block (lines 412-421)  
-- Bottom instruction paragraph (lines 465-473)
-- Overtime separate display block (lines 362-370) -- merged into hours text
-- Location validation row (lines 372-384) -- removed from this card
+Add `min-h-[320px]` to the `OfficerCheckInCard` wrapper div to match sibling cards, ensuring consistent grid row height even if the weekly dots don't fully fill the space.
 
-This keeps the card compact, ensures buttons never overflow, and maintains all critical functionality (check-in, check-out, time display, status).
+### Changes Summary
+
+| File | Change |
+|---|---|
+| `src/components/officer/OfficerCheckInCard.tsx` | Add weekly attendance dots section + fetch week's attendance data |
+| `src/pages/officer/Dashboard.tsx` | Wrap attendance card with consistent min-height |
+
