@@ -4,10 +4,10 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, MapPin, Loader2, AlertCircle, CheckCircle2, XCircle, Building2, Map, MapPinOff } from 'lucide-react';
+import { Clock, MapPin, Loader2, AlertCircle, CheckCircle2, XCircle, Building2, MapPinOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCurrentLocation } from '@/utils/locationHelpers';
 import { toast } from 'sonner';
@@ -18,8 +18,6 @@ import {
   useCheckOut,
   useInstitutionGPSSettings,
 } from '@/hooks/useOfficerAttendance';
-import { LocationMapPreview } from './LocationMapPreview';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { leaveSettingsService } from '@/services/leaveSettings.service';
 
 interface OfficerCheckInCardProps {
@@ -291,56 +289,53 @@ export function OfficerCheckInCard({ officerId, institutionId, onStatusChange }:
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Daily Attendance
-            </CardTitle>
-            <CardDescription>GPS-verified check-in and check-out</CardDescription>
-          </div>
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-3 pt-4 px-4">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-1.5 text-base">
+            <Clock className="h-4 w-4 shrink-0" />
+            Daily Attendance
+          </CardTitle>
           {getStatusBadge()}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Institution Info */}
+      <CardContent className="space-y-3 px-4 pb-4 pt-0">
+        {/* Institution + GPS inline */}
         {institutionSettings && (
-          <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">{institutionSettings.name}</span>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
+            <Building2 className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate font-medium">{institutionSettings.name}</span>
             {!gpsEnabled ? (
-              <Badge variant="secondary" className="ml-auto text-xs gap-1">
-                <MapPinOff className="h-3 w-3" />
-                GPS Disabled
+              <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0 gap-0.5 shrink-0">
+                <MapPinOff className="h-2.5 w-2.5" />
+                GPS Off
               </Badge>
             ) : institutionSettings.gps_location ? (
-              <Badge variant="outline" className="ml-auto text-xs gap-1">
-                <MapPin className="h-3 w-3" />
-                GPS Enabled
+              <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0 gap-0.5 shrink-0">
+                <MapPin className="h-2.5 w-2.5" />
+                GPS
               </Badge>
             ) : (
-              <Badge variant="destructive" className="ml-auto text-xs">
-                GPS Not Configured
+              <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-0 shrink-0">
+                No GPS
               </Badge>
             )}
           </div>
         )}
 
-        {/* Time Display */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">Check-in Time</p>
-            <p className="text-lg font-semibold">
+        {/* Time Display - compact */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-xs text-muted-foreground">Check-in</p>
+            <p className="text-sm font-semibold">
               {todayAttendance?.check_in_time
                 ? format(new Date(todayAttendance.check_in_time), 'hh:mm a')
                 : '--:--'}
             </p>
           </div>
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">Check-out Time</p>
-            <p className="text-lg font-semibold">
+          <div>
+            <p className="text-xs text-muted-foreground">Check-out</p>
+            <p className="text-sm font-semibold">
               {todayAttendance?.check_out_time
                 ? format(new Date(todayAttendance.check_out_time), 'hh:mm a')
                 : '--:--'}
@@ -348,129 +343,49 @@ export function OfficerCheckInCard({ officerId, institutionId, onStatusChange }:
           </div>
         </div>
 
-        {/* Hours Worked */}
+        {/* Hours worked - inline text */}
         {(isCheckedIn || isCheckedOut) && (
-          <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Hours Worked Today</span>
-            </div>
-            <span className="text-lg font-bold">{hoursWorked.toFixed(2)} hrs</span>
-          </div>
-        )}
-
-        {/* Overtime Display */}
-        {isCheckedOut && (todayAttendance?.overtime_hours || 0) > 0 && (
-          <div className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
-            <span className="text-sm font-medium text-amber-700 dark:text-amber-400">Overtime</span>
-            <span className="text-lg font-bold text-amber-700 dark:text-amber-400">
-              {todayAttendance.overtime_hours?.toFixed(2)} hrs
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Hours worked</span>
+            <span className="font-semibold">
+              {hoursWorked.toFixed(2)}h
+              {isCheckedOut && (todayAttendance?.overtime_hours || 0) > 0 && (
+                <span className="text-amber-600 dark:text-amber-400 ml-1">
+                  (+{todayAttendance!.overtime_hours!.toFixed(1)}h OT)
+                </span>
+              )}
             </span>
-          </div>
-        )}
-
-        {/* Location Validation */}
-        {todayAttendance && (
-          <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Location:</span>
-            {getLocationBadge()}
-            {todayAttendance.check_in_distance_meters !== null && (
-              <span className="text-xs text-muted-foreground ml-auto">
-                {todayAttendance.check_in_distance_meters}m from institution
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Visual Map - Only show if GPS coordinates are valid (not 0,0) */}
-        {institutionSettings?.gps_location && 
-         (institutionSettings.gps_location.latitude !== 0 || institutionSettings.gps_location.longitude !== 0) && (
-          <Collapsible open={showMap} onOpenChange={setShowMap}>
-            <CollapsibleTrigger asChild>
-              <Button variant="outline" size="sm" className="w-full">
-                <Map className="h-4 w-4 mr-2" />
-                {showMap ? 'Hide Location Map' : 'View Location Map'}
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-3">
-              <LocationMapPreview
-                institutionLatitude={institutionSettings.gps_location.latitude}
-                institutionLongitude={institutionSettings.gps_location.longitude}
-                institutionName={institutionSettings.name}
-                allowedRadius={institutionSettings.attendance_radius_meters}
-                officerLatitude={todayAttendance?.check_in_latitude ?? currentLocation?.latitude}
-                officerLongitude={todayAttendance?.check_in_longitude ?? currentLocation?.longitude}
-                officerDistance={todayAttendance?.check_in_distance_meters ?? undefined}
-                isValidated={todayAttendance?.check_in_validated ?? undefined}
-                showOfficerLocation={!!(todayAttendance?.check_in_latitude || currentLocation)}
-              />
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-        
-        {/* Show message when GPS coordinates are (0,0) */}
-        {institutionSettings?.gps_location && 
-         institutionSettings.gps_location.latitude === 0 && 
-         institutionSettings.gps_location.longitude === 0 && (
-          <div className="text-center py-3 text-muted-foreground bg-muted/50 rounded-lg">
-            <MapPinOff className="h-6 w-6 mx-auto mb-2 opacity-50" />
-            <p className="text-sm font-medium">GPS coordinates not configured</p>
-            <p className="text-xs">Contact admin to set up institution location</p>
           </div>
         )}
 
         {/* Action Buttons */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button
             onClick={handleCheckIn}
-            disabled={isLoading || isCheckedIn || isCheckedOut || (!gpsEnabled && false) || (gpsEnabled && (!institutionSettings?.gps_location || (institutionSettings.gps_location.latitude === 0 && institutionSettings.gps_location.longitude === 0)))}
-            className="flex-1"
-            size="lg"
+            disabled={isLoading || isCheckedIn || isCheckedOut || (gpsEnabled && (!institutionSettings?.gps_location || (institutionSettings.gps_location.latitude === 0 && institutionSettings.gps_location.longitude === 0)))}
+            className="flex-1 min-w-[100px]"
+            size="default"
           >
             {isLoading && !isCheckedIn ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Getting Location...
-              </>
+              <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Locating...</>
             ) : (
-              <>
-                <Clock className="h-4 w-4 mr-2" />
-                Check In
-              </>
+              <><Clock className="h-4 w-4 mr-1.5" />Check In</>
             )}
           </Button>
-
           <Button
             onClick={handleCheckOut}
-            disabled={isLoading || !isCheckedIn || isCheckedOut || (!gpsEnabled && false) || (gpsEnabled && (!institutionSettings?.gps_location || (institutionSettings.gps_location.latitude === 0 && institutionSettings.gps_location.longitude === 0)))}
+            disabled={isLoading || !isCheckedIn || isCheckedOut || (gpsEnabled && (!institutionSettings?.gps_location || (institutionSettings.gps_location.latitude === 0 && institutionSettings.gps_location.longitude === 0)))}
             variant="outline"
-            className="flex-1"
-            size="lg"
+            className="flex-1 min-w-[100px]"
+            size="default"
           >
             {isLoading && isCheckedIn ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Getting Location...
-              </>
+              <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Locating...</>
             ) : (
-              <>
-                <Clock className="h-4 w-4 mr-2" />
-                Check Out
-              </>
+              <><Clock className="h-4 w-4 mr-1.5" />Check Out</>
             )}
           </Button>
         </div>
-
-        {/* Instructions */}
-        <p className="text-xs text-muted-foreground text-center">
-          Your GPS location will be verified against the institution's coordinates.
-          {institutionSettings?.attendance_radius_meters && (
-            <span className="block mt-1">
-              Allowed radius: {institutionSettings.attendance_radius_meters}m
-            </span>
-          )}
-        </p>
       </CardContent>
     </Card>
   );
