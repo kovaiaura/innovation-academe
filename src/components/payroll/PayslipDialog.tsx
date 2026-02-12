@@ -82,29 +82,45 @@ const printStyles = `
     size: A4;
     margin: 10mm;
   }
-  body * {
-    visibility: hidden !important;
+  /* Hide everything except payslip */
+  body > *:not(#payslip-print-root) {
+    display: none !important;
   }
-  #payslip-print-area, #payslip-print-area * {
-    visibility: visible !important;
+  /* Remove dialog backdrop and chrome */
+  [data-radix-dialog-overlay],
+  [role="dialog"] > button,
+  .print-hidden {
+    display: none !important;
+  }
+  [role="dialog"] {
+    position: static !important;
+    transform: none !important;
+    max-width: none !important;
+    max-height: none !important;
+    width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    background: white !important;
   }
   #payslip-print-area {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
     width: 100% !important;
     max-width: none !important;
     max-height: none !important;
     overflow: visible !important;
-    padding: 0 !important;
-    margin: 0 !important;
+    break-inside: avoid;
   }
   a {
     text-decoration: none !important;
     color: inherit !important;
+    pointer-events: none !important;
   }
-  .print-hidden {
-    display: none !important;
+  /* Force print backgrounds */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
 `;
@@ -153,7 +169,7 @@ export function PayslipDialog({
 
   const maxRows = Math.max(earnings.length, deductions.length);
 
-  const hasBankDetails = payslipData.bank_name || payslipData.bank_account_number;
+  // Always show bank details section
 
   const handleDownload = () => {
     window.print();
@@ -275,29 +291,27 @@ export function PayslipDialog({
             </div>
 
             {/* Bank Details */}
-            {hasBankDetails && (
-              <div className="mx-4 mb-3 border border-gray-300 rounded-lg overflow-hidden">
-                <div className="bg-gray-50 px-4 py-1.5 border-b border-gray-300">
-                  <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Bank Details</span>
-                </div>
-                <table className="w-full text-xs">
-                  <tbody>
-                    <tr className="border-b border-gray-100">
-                      <td className="py-1.5 px-4 text-gray-500 font-medium w-[120px]">Bank Name</td>
-                      <td className="py-1.5 px-2 font-semibold text-gray-800">{payslipData.bank_name || '-'}</td>
-                      <td className="py-1.5 px-4 text-gray-500 font-medium w-[120px] border-l border-gray-200">Account No.</td>
-                      <td className="py-1.5 px-2 font-semibold text-gray-800">{payslipData.bank_account_number || '-'}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1.5 px-4 text-gray-500 font-medium">IFSC Code</td>
-                      <td className="py-1.5 px-2 font-semibold text-gray-800">{payslipData.bank_ifsc || '-'}</td>
-                      <td className="py-1.5 px-4 text-gray-500 font-medium border-l border-gray-200">Branch</td>
-                      <td className="py-1.5 px-2 font-semibold text-gray-800">{payslipData.bank_branch || '-'}</td>
-                    </tr>
-                  </tbody>
-                </table>
+            <div className="mx-4 mb-3 border border-gray-300 rounded-lg overflow-hidden">
+              <div className="bg-gray-50 px-4 py-1.5 border-b border-gray-300">
+                <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Bank Details</span>
               </div>
-            )}
+              <table className="w-full text-xs">
+                <tbody>
+                  <tr className="border-b border-gray-100">
+                    <td className="py-1.5 px-4 text-gray-500 font-medium w-[120px]">Bank Name</td>
+                    <td className="py-1.5 px-2 font-semibold text-gray-800">{payslipData.bank_name || '-'}</td>
+                    <td className="py-1.5 px-4 text-gray-500 font-medium w-[120px] border-l border-gray-200">Account No.</td>
+                    <td className="py-1.5 px-2 font-semibold text-gray-800">{payslipData.bank_account_number || '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1.5 px-4 text-gray-500 font-medium">IFSC Code</td>
+                    <td className="py-1.5 px-2 font-semibold text-gray-800">{payslipData.bank_ifsc || '-'}</td>
+                    <td className="py-1.5 px-4 text-gray-500 font-medium border-l border-gray-200">Branch</td>
+                    <td className="py-1.5 px-2 font-semibold text-gray-800">{payslipData.bank_branch || '-'}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             {/* Attendance Summary */}
             <div className="px-4 pb-3">
