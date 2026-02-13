@@ -46,7 +46,26 @@ interface PayslipPDFProps {
 }
 
 const safe = (v: number | undefined | null) => (typeof v === 'number' && !isNaN(v) ? v : 0);
-const fmt = (n: number) => `₹${safe(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmtIndian = (n: number): string => {
+  const val = safe(n).toFixed(2);
+  const [intPart, decPart] = val.split('.');
+  const isNeg = intPart.startsWith('-');
+  const digits = isNeg ? intPart.slice(1) : intPart;
+  let formatted = '';
+  if (digits.length <= 3) {
+    formatted = digits;
+  } else {
+    formatted = digits.slice(-3);
+    let remaining = digits.slice(0, -3);
+    while (remaining.length > 2) {
+      formatted = remaining.slice(-2) + ',' + formatted;
+      remaining = remaining.slice(0, -2);
+    }
+    if (remaining.length > 0) formatted = remaining + ',' + formatted;
+  }
+  return (isNeg ? '-' : '') + '\u20B9' + formatted + '.' + decPart;
+};
+const fmt = fmtIndian;
 
 const s = StyleSheet.create({
   page: { padding: 30, fontSize: 9, fontFamily: 'Helvetica', color: '#1a1a1a' },
