@@ -1,39 +1,49 @@
 
 
-## Fix Blank Payslip PDF Download
+## Fix Payslip NaN Values and Create Professional Zoho-Style Design
 
-### Root Cause
+### Problem
+1. **NaN values** in Conveyance Allowance, Gross Earnings, and Net Pay -- caused by salary structure fields being undefined when used in arithmetic
+2. **No company logo** displayed in the payslip header despite `logo_url` being fetched
+3. **UI is basic** -- needs a professional Zoho-style payslip layout
 
-The current `window.print()` approach fails because the print CSS rule `body > *:not(#payslip-print-root)` hides everything -- but there is no element with id `payslip-print-root`. The actual payslip content lives inside `#payslip-print-area`, which is nested inside a Radix dialog portal. This mismatch causes the entire page (including the payslip) to be hidden during print, resulting in a blank PDF.
+---
 
-Additionally, `window.print()` inherently adds browser headers (date/time) and footers (URL), which the user does not want.
+### Changes
 
-### Solution
+#### 1. Fix NaN in `IndividualAttendanceTab.tsx` (payslip generation logic, ~line 1137)
 
-Replace `window.print()` entirely with a proper PDF generation approach using `html2canvas` and `jsPDF`. This will:
+Add `|| 0` fallback to all salary structure fields when building the payslip data object:
 
-- Capture the payslip element as an image and embed it into a real downloadable PDF file
-- Eliminate all browser header/footer/URL issues completely
-- Produce a clean, professional PDF with no clickable links
-- Trigger a direct file download instead of opening the print dialog
+```
+gross_earnings = (ss.basic_pay || 0) + (ss.hra || 0) + (ss.conveyance_allowance || 0) + (ss.medical_allowance || 0) + (ss.special_allowance || 0) + overtimePay
+```
 
-### Technical Details
+Also apply `|| 0` to each individual field passed into the payslip object (basic_salary, hra, conveyance_allowance, medical_allowance, special_allowance).
 
-**Install dependencies:** `html2canvas` and `jspdf`
+#### 2. Fix NaN in `PayslipDialog.tsx` (display layer)
 
-**File: `src/components/payroll/PayslipDialog.tsx`**
+Update `formatCurrency` calls to guard against NaN: wrap each amount with `(amount || 0)` so even if bad data gets through, it displays as Rs.0.00 instead of Rs.NaN.
 
-1. Remove the `printStyles` CSS block entirely (no longer needed)
-2. Remove the `<style>` tag injection
-3. Replace the `handleDownload` function:
-   - Use `html2canvas` to render `#payslip-print-area` as a high-resolution canvas (scale: 2)
-   - Convert the canvas to a JPEG image
-   - Create a `jsPDF` instance with A4 dimensions
-   - Add the image to fill the page width with correct aspect ratio
-   - Save as `Payslip_{EmployeeName}_{Month}.pdf`
-4. Remove all `print:` Tailwind utility classes and `print-hidden` class names (no longer relevant)
+#### 3. Add Company Logo to Payslip Header
+
+In `PayslipDialog.tsx`, render `companyProfile.logo_url` as an image in the header section (left side, before company name). This is the same logo used in invoices, fetched from `company_profiles.logo_url`.
+
+#### 4. Professional Zoho-Style Payslip Redesign
+
+Redesign the `PayslipDialog.tsx` layout to match a professional Zoho-style salary slip:
+
+- **Header**: Company logo (left) + Company name and address below it. "SALARY SLIP" badge and month on the right
+- **Employee Details**: Clean bordered table-style row with Employee Name, ID, Designation, Institution, Department
+- **Earnings and Deductions**: Side-by-side table with proper borders, alternating row backgrounds, clear section headers with colored text
+- **Net Pay Section**: Bold highlighted box with large net pay amount, gross and deduction summary on the right
+- **Attendance Summary**: Compact grid of colored stat boxes
+- **Footer**: Computer-generated notice with generation timestamp
+
+### Files Modified
 
 | File | Change |
 |---|---|
-| `src/components/payroll/PayslipDialog.tsx` | Replace `window.print()` with `html2canvas` + `jsPDF` for real PDF generation; remove all print CSS |
+| `src/components/payroll/IndividualAttendanceTab.tsx` | Add `\|\| 0` guards to all salary structure fields in payslip generation (~line 1129-1172) |
+| `src/components/payroll/PayslipDialog.tsx` | Add logo display, NaN guards, professional Zoho-style layout redesign |
 
