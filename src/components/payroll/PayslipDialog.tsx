@@ -3,6 +3,7 @@
  * Professional Zoho-style payslip view with PDF export capability
  */
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -10,9 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Download } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/utils/attendanceHelpers';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface PayslipData {
   employee_name: string;
@@ -75,55 +78,7 @@ interface PayslipDialogProps {
 
 const safe = (v: number | undefined | null) => (typeof v === 'number' && !isNaN(v) ? v : 0);
 
-// Print-specific styles injected into the page
-const printStyles = `
-@media print {
-  @page {
-    size: A4;
-    margin: 10mm;
-  }
-  /* Hide everything except payslip */
-  body > *:not(#payslip-print-root) {
-    display: none !important;
-  }
-  /* Remove dialog backdrop and chrome */
-  [data-radix-dialog-overlay],
-  [role="dialog"] > button,
-  .print-hidden {
-    display: none !important;
-  }
-  [role="dialog"] {
-    position: static !important;
-    transform: none !important;
-    max-width: none !important;
-    max-height: none !important;
-    width: 100% !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: visible !important;
-    background: white !important;
-  }
-  #payslip-print-area {
-    width: 100% !important;
-    max-width: none !important;
-    max-height: none !important;
-    overflow: visible !important;
-    break-inside: avoid;
-  }
-  a {
-    text-decoration: none !important;
-    color: inherit !important;
-    pointer-events: none !important;
-  }
-  /* Force print backgrounds */
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-}
-`;
+// Print styles removed - using html2canvas + jsPDF instead
 
 export function PayslipDialog({
   open,
@@ -131,6 +86,8 @@ export function PayslipDialog({
   payslipData,
   companyProfile,
 }: PayslipDialogProps) {
+  const [downloading, setDownloading] = useState(false);
+
   if (!payslipData) return null;
 
   const companyName = companyProfile?.company_name || 'Company Name';
@@ -171,8 +128,32 @@ export function PayslipDialog({
 
   // Always show bank details section
 
-  const handleDownload = () => {
-    window.print();
+  const handleDownload = async () => {
+    const element = document.getElementById('payslip-print-area');
+    if (!element) return;
+    setDownloading(true);
+    try {
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth - 20;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const yOffset = imgHeight > pageHeight - 20 ? 10 : 10;
+      pdf.addImage(imgData, 'JPEG', 10, yOffset, imgWidth, imgHeight);
+      const fileName = `Payslip_${payslipData.employee_name.replace(/\s+/g, '_')}_${monthName.replace(/\s+/g, '_')}.pdf`;
+      pdf.save(fileName);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const attendanceStats = [
@@ -185,11 +166,9 @@ export function PayslipDialog({
   ];
 
   return (
-    <>
-      <style>{printStyles}</style>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto print:max-w-none print:max-h-none print:overflow-visible print:border-none print:shadow-none">
-          <DialogHeader className="print-hidden">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
             <DialogTitle>Payslip - {monthName}</DialogTitle>
           </DialogHeader>
 
@@ -333,14 +312,13 @@ export function PayslipDialog({
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-2 print-hidden">
-            <Button onClick={handleDownload}>
-              <Download className="h-4 w-4 mr-2" />
-              Download PDF
+          <div className="flex justify-end gap-2">
+            <Button onClick={handleDownload} disabled={downloading}>
+              {downloading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              {downloading ? 'Generating...' : 'Download PDF'}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
-    </>
   );
 }
