@@ -132,7 +132,7 @@ export function PayslipPDF({ data, companyName, companyAddress, logoUrl }: Paysl
         {/* Header */}
         <View style={s.headerRow}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-            {logoUrl && <Image src={logoUrl} style={s.logo} />}
+            
             <View>
               <Text style={s.companyName}>{companyName}</Text>
               <Text style={s.companyAddr}>{companyAddress}</Text>
