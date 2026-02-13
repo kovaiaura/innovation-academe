@@ -1,47 +1,46 @@
 
 
-## Fix Conveyance Allowance, Add Bank Details, and Darken Payslip Colors
+## Fix Payslip PDF: Replace Screenshot with Proper Selectable PDF
 
-### Problem Analysis
+### Problem
+The payslip PDF is generated using `window.print()`, which creates a browser print-to-PDF. This produces a screenshot-like output where text is not selectable, browser headers/footers/URLs appear, and clicking on elements may redirect. The invoice system already uses `@react-pdf/renderer` which creates proper, clean PDFs with selectable text.
 
-1. **Conveyance Allowance shows 0**: The officer "Jeeva Kumar M" has a `salary_structure` stored in the database with ALL values as 0 (basic_pay: 0, hra: 0, etc.) and uses `transport_allowance` instead of `conveyance_allowance`. The code sees the stored structure has keys, so it uses it as-is instead of auto-calculating from the annual salary (500,000). This means all salary components come through as 0 except for `transport_allowance` which maps to a different field name.
-
-2. **No bank details on payslip**: The officers table has `bank_name`, `bank_account_number`, `bank_ifsc`, and `bank_branch` columns, but these are never fetched or displayed in the payslip.
-
-3. **Net Payable and Deductions text too light**: The blue box and red deduction totals need darker, higher-contrast colors for print legibility.
+### Solution
+Replace the `window.print()` approach with `@react-pdf/renderer` (already installed in the project), creating a dedicated `PayslipPDF` component -- the same approach used for invoices.
 
 ---
 
 ### Changes
 
-#### 1. Fix salary structure fallback logic (`src/services/payrollConfig.service.ts`)
+#### 1. Create `src/components/payroll/pdf/PayslipPDF.tsx` (new file)
 
-The condition at line 72 currently checks if the salary_structure object exists and has keys. The fix:
-- Check if the salary_structure actually has meaningful values (sum of components > 0)
-- If all components are zero, fall back to calculating from annual CTC
-- Map `transport_allowance` to `conveyance_allowance` when reading stored data
+A `@react-pdf/renderer` Document component that renders the full payslip as a proper PDF with:
+- Company logo + name + address header with "SALARY SLIP" title
+- Employee details table (Name, ID, Designation, Institution, Bank Details)
+- Side-by-side Earnings and Deductions tables with alternating row backgrounds
+- Net Payable Amount section with dark navy background and white text
+- Attendance Summary grid
+- Footer with computer-generated notice
+- All text is native PDF text (selectable, searchable, no links, no browser artifacts)
+- Uses inline `StyleSheet.create()` styles matching the existing Zoho-style design
+- Dark colors for Net Payable (`#1a1a2e` background) and Total Deductions (`#7b1a1a` text)
 
-#### 2. Fetch and pass bank details to payslip (`src/components/payroll/IndividualAttendanceTab.tsx`)
+#### 2. Update `src/components/payroll/PayslipDialog.tsx`
 
-- The `getOfficerSalaryData` service already fetches from the officers table -- extend it to also select `bank_name`, `bank_account_number`, `bank_ifsc`, `bank_branch`
-- Pass these fields into the payslip data object when generating the payslip
+- Import `PDFDownloadLink` from `@react-pdf/renderer` and the new `PayslipPDF` component
+- Replace the `window.print()` download button with a `PDFDownloadLink` wrapper that generates a proper PDF file
+- Keep the existing on-screen preview dialog as-is (it still renders the HTML version for viewing)
+- The download button will generate a clean PDF file named like `Payslip_EmployeeName_Month_Year.pdf`
 
-#### 3. Add bank details section to PayslipDialog (`src/components/payroll/PayslipDialog.tsx`)
+#### 3. Revert unnecessary print CSS in `src/index.css`
 
-- Add `bank_name`, `bank_account_number`, `bank_ifsc`, `bank_branch` to the PayslipData interface
-- Display a "Bank Details" section between the Employee Details table and the Earnings/Deductions section, showing Bank Name, Account Number, IFSC Code, and Branch
-
-#### 4. Darken Net Payable and Deductions colors (`src/components/payroll/PayslipDialog.tsx`)
-
-- Change the Net Payable box from `bg-blue-600` to `bg-blue-900` with bolder white text
-- Change the Total Deductions row from `text-red-700` to `text-red-900 font-extrabold`
-- Increase the Gross/Deductions summary text opacity from `opacity-90` to full white
+Remove the duplicate `@media print` block (the `@page { margin-top: 0; margin-bottom: 0; }` override) since we no longer rely on `window.print()` for payslips. Keep the base print styles that other features may use.
 
 ### Files Modified
 
 | File | Change |
 |---|---|
-| `src/services/payrollConfig.service.ts` | Fix salary structure fallback: check sum > 0, map transport_allowance to conveyance_allowance, return bank details |
-| `src/components/payroll/IndividualAttendanceTab.tsx` | Pass bank details fields to payslip data object |
-| `src/components/payroll/PayslipDialog.tsx` | Add bank details section, darken Net Pay box and Deduction colors |
+| `src/components/payroll/pdf/PayslipPDF.tsx` | New file: `@react-pdf/renderer` Document for professional payslip PDF |
+| `src/components/payroll/PayslipDialog.tsx` | Replace `window.print()` with `PDFDownloadLink` using PayslipPDF |
+| `src/index.css` | Clean up duplicate print CSS block |
 
