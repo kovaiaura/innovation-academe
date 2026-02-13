@@ -52,12 +52,13 @@ export const getOfficerSalaryDetails = async (officerId: string): Promise<{
   designation: string | null;
   hourlyRate: number;
   overtimeMultiplier: number;
+  bankDetails: { bank_name?: string; bank_account_number?: string; bank_ifsc?: string; bank_branch?: string };
 }> => {
   const config = await getPayrollConfig();
   
   const { data, error } = await supabase
     .from('officers')
-    .select('annual_salary, salary_structure, statutory_info, designation, hourly_rate, overtime_rate_multiplier')
+    .select('annual_salary, salary_structure, statutory_info, designation, hourly_rate, overtime_rate_multiplier, bank_name, bank_account_number, bank_ifsc, bank_branch')
     .eq('id', officerId)
     .single();
   
@@ -69,16 +70,30 @@ export const getOfficerSalaryDetails = async (officerId: string): Promise<{
   let salaryStructure: SalaryStructure;
   let monthlySalary: number;
   
-  if (data?.salary_structure && typeof data.salary_structure === 'object' && Object.keys(data.salary_structure).length > 0) {
-    salaryStructure = data.salary_structure as unknown as SalaryStructure;
-    // Monthly salary = sum of all salary components
+  const rawSS = data?.salary_structure as unknown as Record<string, number> | null;
+  // Check if stored structure has meaningful values (sum > 0), also map transport_allowance -> conveyance_allowance
+  const hasStoredStructure = rawSS && typeof rawSS === 'object' && Object.keys(rawSS).length > 0;
+  const storedSum = hasStoredStructure ? Object.values(rawSS).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
+  
+  if (hasStoredStructure && storedSum > 0) {
+    // Map transport_allowance to conveyance_allowance if needed
+    const conveyance = (rawSS.conveyance_allowance || 0) || (rawSS.transport_allowance || 0);
+    salaryStructure = {
+      basic_pay: rawSS.basic_pay || 0,
+      hra: rawSS.hra || 0,
+      conveyance_allowance: conveyance,
+      medical_allowance: rawSS.medical_allowance || 0,
+      special_allowance: rawSS.special_allowance || 0,
+      da: rawSS.da || 0,
+      transport_allowance: rawSS.transport_allowance || 0,
+      other_allowances: rawSS.other_allowances || 0,
+    };
     monthlySalary = (salaryStructure.basic_pay || 0) +
       (salaryStructure.hra || 0) +
       (salaryStructure.conveyance_allowance || 0) +
       (salaryStructure.medical_allowance || 0) +
       (salaryStructure.special_allowance || 0) +
       (salaryStructure.da || 0) +
-      (salaryStructure.transport_allowance || 0) +
       (salaryStructure.other_allowances || 0);
   } else {
     // Calculate default breakdown from CTC
@@ -114,6 +129,12 @@ export const getOfficerSalaryDetails = async (officerId: string): Promise<{
     designation: data?.designation || null,
     hourlyRate: data?.hourly_rate || (monthlySalary / 22 / 8),
     overtimeMultiplier: data?.overtime_rate_multiplier || config.overtime_settings.default_multiplier,
+    bankDetails: {
+      bank_name: data?.bank_name || undefined,
+      bank_account_number: data?.bank_account_number || undefined,
+      bank_ifsc: data?.bank_ifsc || undefined,
+      bank_branch: data?.bank_branch || undefined,
+    },
   };
 };
 

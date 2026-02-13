@@ -135,6 +135,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     salaryStructure: SalaryStructure;
     statutoryInfo: StatutoryInfo;
     designation: string | null;
+    bankDetails?: { bank_name?: string; bank_account_number?: string; bank_ifsc?: string; bank_branch?: string };
   } | null>(null);
   const [payrollConfig, setPayrollConfig] = useState<PayrollConfig | null>(null);
   const [companyProfile, setCompanyProfile] = useState<{
@@ -261,6 +262,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
           salaryStructure: details.salaryStructure,
           statutoryInfo: details.statutoryInfo,
           designation: details.designation,
+          bankDetails: details.bankDetails,
         });
       } else {
         const details = await getStaffSalaryDetails(selectedEmployee.id);
@@ -1176,6 +1178,11 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                                   gross_earnings: grossEarnings,
                                   total_deductions: totalDeductions,
                                   net_pay: grossEarnings - totalDeductions,
+                                  // Bank details
+                                  bank_name: salaryData.bankDetails?.bank_name,
+                                  bank_account_number: salaryData.bankDetails?.bank_account_number,
+                                  bank_ifsc: salaryData.bankDetails?.bank_ifsc,
+                                  bank_branch: salaryData.bankDetails?.bank_branch,
                                 };
                                 setPayslipData(payslip);
                                 setPayslipDialogOpen(true);
