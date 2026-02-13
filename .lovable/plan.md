@@ -1,49 +1,47 @@
 
 
-## Fix Payslip NaN Values and Create Professional Zoho-Style Design
+## Fix Conveyance Allowance, Add Bank Details, and Darken Payslip Colors
 
-### Problem
-1. **NaN values** in Conveyance Allowance, Gross Earnings, and Net Pay -- caused by salary structure fields being undefined when used in arithmetic
-2. **No company logo** displayed in the payslip header despite `logo_url` being fetched
-3. **UI is basic** -- needs a professional Zoho-style payslip layout
+### Problem Analysis
+
+1. **Conveyance Allowance shows 0**: The officer "Jeeva Kumar M" has a `salary_structure` stored in the database with ALL values as 0 (basic_pay: 0, hra: 0, etc.) and uses `transport_allowance` instead of `conveyance_allowance`. The code sees the stored structure has keys, so it uses it as-is instead of auto-calculating from the annual salary (500,000). This means all salary components come through as 0 except for `transport_allowance` which maps to a different field name.
+
+2. **No bank details on payslip**: The officers table has `bank_name`, `bank_account_number`, `bank_ifsc`, and `bank_branch` columns, but these are never fetched or displayed in the payslip.
+
+3. **Net Payable and Deductions text too light**: The blue box and red deduction totals need darker, higher-contrast colors for print legibility.
 
 ---
 
 ### Changes
 
-#### 1. Fix NaN in `IndividualAttendanceTab.tsx` (payslip generation logic, ~line 1137)
+#### 1. Fix salary structure fallback logic (`src/services/payrollConfig.service.ts`)
 
-Add `|| 0` fallback to all salary structure fields when building the payslip data object:
+The condition at line 72 currently checks if the salary_structure object exists and has keys. The fix:
+- Check if the salary_structure actually has meaningful values (sum of components > 0)
+- If all components are zero, fall back to calculating from annual CTC
+- Map `transport_allowance` to `conveyance_allowance` when reading stored data
 
-```
-gross_earnings = (ss.basic_pay || 0) + (ss.hra || 0) + (ss.conveyance_allowance || 0) + (ss.medical_allowance || 0) + (ss.special_allowance || 0) + overtimePay
-```
+#### 2. Fetch and pass bank details to payslip (`src/components/payroll/IndividualAttendanceTab.tsx`)
 
-Also apply `|| 0` to each individual field passed into the payslip object (basic_salary, hra, conveyance_allowance, medical_allowance, special_allowance).
+- The `getOfficerSalaryData` service already fetches from the officers table -- extend it to also select `bank_name`, `bank_account_number`, `bank_ifsc`, `bank_branch`
+- Pass these fields into the payslip data object when generating the payslip
 
-#### 2. Fix NaN in `PayslipDialog.tsx` (display layer)
+#### 3. Add bank details section to PayslipDialog (`src/components/payroll/PayslipDialog.tsx`)
 
-Update `formatCurrency` calls to guard against NaN: wrap each amount with `(amount || 0)` so even if bad data gets through, it displays as Rs.0.00 instead of Rs.NaN.
+- Add `bank_name`, `bank_account_number`, `bank_ifsc`, `bank_branch` to the PayslipData interface
+- Display a "Bank Details" section between the Employee Details table and the Earnings/Deductions section, showing Bank Name, Account Number, IFSC Code, and Branch
 
-#### 3. Add Company Logo to Payslip Header
+#### 4. Darken Net Payable and Deductions colors (`src/components/payroll/PayslipDialog.tsx`)
 
-In `PayslipDialog.tsx`, render `companyProfile.logo_url` as an image in the header section (left side, before company name). This is the same logo used in invoices, fetched from `company_profiles.logo_url`.
-
-#### 4. Professional Zoho-Style Payslip Redesign
-
-Redesign the `PayslipDialog.tsx` layout to match a professional Zoho-style salary slip:
-
-- **Header**: Company logo (left) + Company name and address below it. "SALARY SLIP" badge and month on the right
-- **Employee Details**: Clean bordered table-style row with Employee Name, ID, Designation, Institution, Department
-- **Earnings and Deductions**: Side-by-side table with proper borders, alternating row backgrounds, clear section headers with colored text
-- **Net Pay Section**: Bold highlighted box with large net pay amount, gross and deduction summary on the right
-- **Attendance Summary**: Compact grid of colored stat boxes
-- **Footer**: Computer-generated notice with generation timestamp
+- Change the Net Payable box from `bg-blue-600` to `bg-blue-900` with bolder white text
+- Change the Total Deductions row from `text-red-700` to `text-red-900 font-extrabold`
+- Increase the Gross/Deductions summary text opacity from `opacity-90` to full white
 
 ### Files Modified
 
 | File | Change |
 |---|---|
-| `src/components/payroll/IndividualAttendanceTab.tsx` | Add `\|\| 0` guards to all salary structure fields in payslip generation (~line 1129-1172) |
-| `src/components/payroll/PayslipDialog.tsx` | Add logo display, NaN guards, professional Zoho-style layout redesign |
+| `src/services/payrollConfig.service.ts` | Fix salary structure fallback: check sum > 0, map transport_allowance to conveyance_allowance, return bank details |
+| `src/components/payroll/IndividualAttendanceTab.tsx` | Pass bank details fields to payslip data object |
+| `src/components/payroll/PayslipDialog.tsx` | Add bank details section, darken Net Pay box and Deduction colors |
 
