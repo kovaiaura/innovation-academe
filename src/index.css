@@ -114,10 +114,4 @@ All colors MUST be HSL.
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-
-  /* Hide browser-generated headers, footers, URLs, page numbers, and timestamps */
-  @page {
-    margin-top: 0;
-    margin-bottom: 0;
-  }
 }

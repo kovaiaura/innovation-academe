@@ -3,6 +3,7 @@
  * Professional Zoho-style payslip view with PDF export capability
  */
 
+import { PDFDownloadLink } from '@react-pdf/renderer';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,6 +14,7 @@ import {
 import { Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/utils/attendanceHelpers';
+import { PayslipPDF } from './pdf/PayslipPDF';
 
 interface PayslipData {
   employee_name: string;
@@ -119,9 +121,8 @@ export function PayslipDialog({
 
   const maxRows = Math.max(earnings.length, deductions.length);
 
-  const handleDownload = () => {
-    window.print();
-  };
+  const companyAddr = companyAddress;
+  const pdfFileName = `Payslip_${payslipData.employee_name.replace(/\s+/g, '_')}_${monthName.replace(/\s+/g, '_')}.pdf`;
 
   const attendanceStats = [
     { label: 'Working Days', value: safe(payslipData.working_days), color: 'text-foreground', bg: 'bg-muted/50' },
@@ -273,10 +274,24 @@ export function PayslipDialog({
 
         {/* Actions */}
         <div className="flex justify-end gap-2 print:hidden">
-          <Button onClick={handleDownload}>
-            <Download className="h-4 w-4 mr-2" />
-            Download PDF
-          </Button>
+          <PDFDownloadLink
+            document={
+              <PayslipPDF
+                data={payslipData}
+                companyName={companyName}
+                companyAddress={companyAddr}
+                logoUrl={logoUrl}
+              />
+            }
+            fileName={pdfFileName}
+          >
+            {({ loading }) => (
+              <Button disabled={loading}>
+                <Download className="h-4 w-4 mr-2" />
+                {loading ? 'Generating...' : 'Download PDF'}
+              </Button>
+            )}
+          </PDFDownloadLink>
         </div>
       </DialogContent>
     </Dialog>
