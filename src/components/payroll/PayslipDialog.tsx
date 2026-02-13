@@ -220,8 +220,8 @@ export function PayslipDialog({
 
             {/* Deductions */}
             <div>
-              <div className="bg-red-50 px-4 py-2 border-b border-gray-300">
-                <span className="text-xs font-extrabold text-red-900 uppercase tracking-wider">Deductions</span>
+              <div className="px-4 py-2 border-b border-gray-300" style={{ backgroundColor: '#fde8e8' }}>
+                <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: '#7b1a1a' }}>Deductions</span>
               </div>
               {deductions.map((item, i) => (
                 <div key={i} className={`flex justify-between px-4 py-1.5 text-xs ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'} border-b border-gray-100`}>
@@ -232,22 +232,22 @@ export function PayslipDialog({
               {Array.from({ length: maxRows - deductions.length }).map((_, i) => (
                 <div key={`d-pad-${i}`} className={`px-4 py-1.5 text-xs ${(deductions.length + i) % 2 === 0 ? 'bg-white' : 'bg-gray-50'} border-b border-gray-100`}>&nbsp;</div>
               ))}
-              <div className="flex justify-between px-4 py-2 bg-red-100 border-t border-red-300">
-                <span className="text-xs font-extrabold text-red-900">TOTAL DEDUCTIONS</span>
-                <span className="text-xs font-extrabold text-red-900">{formatCurrency(totalDeductions)}</span>
+              <div className="flex justify-between px-4 py-2 border-t" style={{ backgroundColor: '#fde8e8', borderColor: '#e53e3e' }}>
+                <span className="text-xs font-extrabold" style={{ color: '#7b1a1a' }}>TOTAL DEDUCTIONS</span>
+                <span className="text-xs font-extrabold" style={{ color: '#7b1a1a' }}>{formatCurrency(totalDeductions)}</span>
               </div>
             </div>
           </div>
 
           {/* Net Pay */}
-          <div className="flex items-center justify-between p-4 bg-blue-900 text-white mx-4 my-4 rounded-lg">
+          <div className="flex items-center justify-between p-4 mx-4 my-4 rounded-lg" style={{ backgroundColor: '#1a1a2e', color: '#ffffff' }}>
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-blue-200">Net Payable Amount</p>
-              <p className="text-2xl font-extrabold tracking-tight">{formatCurrency(netPay)}</p>
+              <p className="text-[10px] uppercase tracking-wider" style={{ color: '#a0b4d0' }}>Net Payable Amount</p>
+              <p className="text-2xl font-extrabold tracking-tight" style={{ color: '#ffffff' }}>{formatCurrency(netPay)}</p>
             </div>
             <div className="text-right text-xs space-y-0.5">
-              <p className="text-white">Gross: {formatCurrency(grossEarnings)}</p>
-              <p className="text-white">Deductions: {formatCurrency(totalDeductions)}</p>
+              <p style={{ color: '#ffffff', fontWeight: 700 }}>Gross: {formatCurrency(grossEarnings)}</p>
+              <p style={{ color: '#ffffff', fontWeight: 700 }}>Deductions: {formatCurrency(totalDeductions)}</p>
             </div>
           </div>
 
