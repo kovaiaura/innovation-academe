@@ -63,7 +63,7 @@ const fmtIndian = (n: number): string => {
     }
     if (remaining.length > 0) formatted = remaining + ',' + formatted;
   }
-  return (isNeg ? '-' : '') + '\u20B9' + formatted + '.' + decPart;
+  return (isNeg ? '-' : '') + 'Rs.' + formatted + '.' + decPart;
 };
 const fmt = fmtIndian;
 
