@@ -1,46 +1,51 @@
 
 
-## Fix Payslip PDF: Replace Screenshot with Proper Selectable PDF
+## Fix Currency Formatting in Payslip PDF
 
 ### Problem
-The payslip PDF is generated using `window.print()`, which creates a browser print-to-PDF. This produces a screenshot-like output where text is not selectable, browser headers/footers/URLs appear, and clicking on elements may redirect. The invoice system already uses `@react-pdf/renderer` which creates proper, clean PDFs with selectable text.
+`Number.toLocaleString('en-IN', ...)` does not work correctly inside `@react-pdf/renderer` because it runs in a worker/limited JS environment without full locale support. This causes:
+- A stray "1" appearing before values
+- No rupee symbol displayed
+- Incorrect number formatting
 
 ### Solution
-Replace the `window.print()` approach with `@react-pdf/renderer` (already installed in the project), creating a dedicated `PayslipPDF` component -- the same approach used for invoices.
+Replace the `fmt()` function on line 49 of `PayslipPDF.tsx` with a manual Indian number formatting function that:
+- Prepends the rupee symbol
+- Formats numbers in the Indian numbering system (e.g., 1,23,456.78)
+- Does not rely on `toLocaleString`
 
----
+### Implementation
 
-### Changes
+**File: `src/components/payroll/pdf/PayslipPDF.tsx`**
 
-#### 1. Create `src/components/payroll/pdf/PayslipPDF.tsx` (new file)
+Replace line 49:
+```typescript
+const fmt = (n: number) => `₹${safe(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+```
 
-A `@react-pdf/renderer` Document component that renders the full payslip as a proper PDF with:
-- Company logo + name + address header with "SALARY SLIP" title
-- Employee details table (Name, ID, Designation, Institution, Bank Details)
-- Side-by-side Earnings and Deductions tables with alternating row backgrounds
-- Net Payable Amount section with dark navy background and white text
-- Attendance Summary grid
-- Footer with computer-generated notice
-- All text is native PDF text (selectable, searchable, no links, no browser artifacts)
-- Uses inline `StyleSheet.create()` styles matching the existing Zoho-style design
-- Dark colors for Net Payable (`#1a1a2e` background) and Total Deductions (`#7b1a1a` text)
+With a manual formatter:
+```typescript
+const fmtIndian = (n: number): string => {
+  const val = safe(n).toFixed(2);
+  const [intPart, decPart] = val.split('.');
+  const isNeg = intPart.startsWith('-');
+  const digits = isNeg ? intPart.slice(1) : intPart;
+  let formatted = '';
+  if (digits.length <= 3) {
+    formatted = digits;
+  } else {
+    formatted = digits.slice(-3);
+    let remaining = digits.slice(0, -3);
+    while (remaining.length > 2) {
+      formatted = remaining.slice(-2) + ',' + formatted;
+      remaining = remaining.slice(0, -2);
+    }
+    if (remaining.length > 0) formatted = remaining + ',' + formatted;
+  }
+  return (isNeg ? '-' : '') + '\u20B9' + formatted + '.' + decPart;
+};
+const fmt = fmtIndian;
+```
 
-#### 2. Update `src/components/payroll/PayslipDialog.tsx`
-
-- Import `PDFDownloadLink` from `@react-pdf/renderer` and the new `PayslipPDF` component
-- Replace the `window.print()` download button with a `PDFDownloadLink` wrapper that generates a proper PDF file
-- Keep the existing on-screen preview dialog as-is (it still renders the HTML version for viewing)
-- The download button will generate a clean PDF file named like `Payslip_EmployeeName_Month_Year.pdf`
-
-#### 3. Revert unnecessary print CSS in `src/index.css`
-
-Remove the duplicate `@media print` block (the `@page { margin-top: 0; margin-bottom: 0; }` override) since we no longer rely on `window.print()` for payslips. Keep the base print styles that other features may use.
-
-### Files Modified
-
-| File | Change |
-|---|---|
-| `src/components/payroll/pdf/PayslipPDF.tsx` | New file: `@react-pdf/renderer` Document for professional payslip PDF |
-| `src/components/payroll/PayslipDialog.tsx` | Replace `window.print()` with `PDFDownloadLink` using PayslipPDF |
-| `src/index.css` | Clean up duplicate print CSS block |
+This single change fixes all currency displays throughout the PDF since every value goes through `fmt()`.
 
