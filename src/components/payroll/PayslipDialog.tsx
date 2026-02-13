@@ -22,6 +22,10 @@ interface PayslipData {
   institution_name?: string;
   pan?: string;
   bank_account?: string;
+  bank_name?: string;
+  bank_account_number?: string;
+  bank_ifsc?: string;
+  bank_branch?: string;
   month: number;
   year: number;
   pay_date?: string;
@@ -165,12 +169,28 @@ export function PayslipDialog({
                   <td className="py-2 px-4 text-gray-500 font-medium w-[120px] border-l border-gray-200">Employee ID</td>
                   <td className="py-2 px-2 font-semibold text-gray-800">{payslipData.employee_id}</td>
                 </tr>
-                <tr>
+                <tr className="border-b border-gray-200">
                   <td className="py-2 px-4 text-gray-500 font-medium">Designation</td>
                   <td className="py-2 px-2 font-semibold text-gray-800">{payslipData.designation}</td>
                   <td className="py-2 px-4 text-gray-500 font-medium border-l border-gray-200">Institution</td>
                   <td className="py-2 px-2 font-semibold text-gray-800">{payslipData.institution_name || '-'}</td>
                 </tr>
+                {(payslipData.bank_name || payslipData.bank_account_number) && (
+                  <>
+                    <tr className="border-b border-gray-200">
+                      <td className="py-2 px-4 text-gray-500 font-medium">Bank Name</td>
+                      <td className="py-2 px-2 font-semibold text-gray-800">{payslipData.bank_name || '-'}</td>
+                      <td className="py-2 px-4 text-gray-500 font-medium border-l border-gray-200">Account No.</td>
+                      <td className="py-2 px-2 font-semibold text-gray-800">{payslipData.bank_account_number || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-4 text-gray-500 font-medium">IFSC Code</td>
+                      <td className="py-2 px-2 font-semibold text-gray-800">{payslipData.bank_ifsc || '-'}</td>
+                      <td className="py-2 px-4 text-gray-500 font-medium border-l border-gray-200">Branch</td>
+                      <td className="py-2 px-2 font-semibold text-gray-800">{payslipData.bank_branch || '-'}</td>
+                    </tr>
+                  </>
+                )}
               </tbody>
             </table>
           </div>
@@ -201,7 +221,7 @@ export function PayslipDialog({
             {/* Deductions */}
             <div>
               <div className="bg-red-50 px-4 py-2 border-b border-gray-300">
-                <span className="text-xs font-bold text-red-700 uppercase tracking-wider">Deductions</span>
+                <span className="text-xs font-extrabold text-red-900 uppercase tracking-wider">Deductions</span>
               </div>
               {deductions.map((item, i) => (
                 <div key={i} className={`flex justify-between px-4 py-1.5 text-xs ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'} border-b border-gray-100`}>
@@ -212,22 +232,22 @@ export function PayslipDialog({
               {Array.from({ length: maxRows - deductions.length }).map((_, i) => (
                 <div key={`d-pad-${i}`} className={`px-4 py-1.5 text-xs ${(deductions.length + i) % 2 === 0 ? 'bg-white' : 'bg-gray-50'} border-b border-gray-100`}>&nbsp;</div>
               ))}
-              <div className="flex justify-between px-4 py-2 bg-red-50 border-t border-red-200">
-                <span className="text-xs font-bold text-red-700">TOTAL DEDUCTIONS</span>
-                <span className="text-xs font-bold text-red-700">{formatCurrency(totalDeductions)}</span>
+              <div className="flex justify-between px-4 py-2 bg-red-100 border-t border-red-300">
+                <span className="text-xs font-extrabold text-red-900">TOTAL DEDUCTIONS</span>
+                <span className="text-xs font-extrabold text-red-900">{formatCurrency(totalDeductions)}</span>
               </div>
             </div>
           </div>
 
           {/* Net Pay */}
-          <div className="flex items-center justify-between p-4 bg-blue-600 text-white mx-4 my-4 rounded-lg">
+          <div className="flex items-center justify-between p-4 bg-blue-900 text-white mx-4 my-4 rounded-lg">
             <div>
-              <p className="text-[10px] uppercase tracking-wider opacity-80">Net Payable Amount</p>
-              <p className="text-2xl font-bold tracking-tight">{formatCurrency(netPay)}</p>
+              <p className="text-[10px] uppercase tracking-wider text-blue-200">Net Payable Amount</p>
+              <p className="text-2xl font-extrabold tracking-tight">{formatCurrency(netPay)}</p>
             </div>
-            <div className="text-right text-xs opacity-90 space-y-0.5">
-              <p>Gross: {formatCurrency(grossEarnings)}</p>
-              <p>Deductions: {formatCurrency(totalDeductions)}</p>
+            <div className="text-right text-xs space-y-0.5">
+              <p className="text-white">Gross: {formatCurrency(grossEarnings)}</p>
+              <p className="text-white">Deductions: {formatCurrency(totalDeductions)}</p>
             </div>
           </div>
 
