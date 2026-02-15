@@ -67,6 +67,7 @@ const menuItems: MenuItem[] = [
   // Super Admin menu items - Technical oversight
   { label: 'System Config', icon: <Settings className="h-5 w-5" />, path: '/system-config', roles: ['super_admin'] },
   { label: 'System Logs', icon: <History className="h-5 w-5" />, path: '/audit-logs', roles: ['super_admin'] },
+  { label: 'Awards & Achievements', icon: <Trophy className="h-5 w-5" />, path: '/awards', roles: ['super_admin'] },
   // System Admin menu items - Business operations
   { label: 'Institution Management', icon: <Building2 className="h-5 w-5" />, path: '/institutions', roles: ['system_admin'], feature: 'institution_management' },
   { label: 'Course Management', icon: <BookOpen className="h-5 w-5" />, path: '/course-management', roles: ['system_admin'], feature: 'course_management' },
@@ -78,6 +79,7 @@ const menuItems: MenuItem[] = [
   { label: 'Officer Management', icon: <Users className="h-5 w-5" />, path: '/officers', roles: ['system_admin'], feature: 'officer_management' },
   // Project Management
   { label: 'Project Management', icon: <Target className="h-5 w-5" />, path: '/project-management', roles: ['system_admin'], feature: 'project_management' },
+  { label: 'Awards & Achievements', icon: <Trophy className="h-5 w-5" />, path: '/awards', roles: ['system_admin'], feature: 'awards_achievements' as any },
   // Inventory & Purchase
   { label: 'Inventory Management', icon: <Package className="h-5 w-5" />, path: '/inventory-management', roles: ['system_admin'], feature: 'inventory_management' },
   { label: 'Company Inventory', icon: <Package className="h-5 w-5" />, path: '/company-inventory', roles: ['system_admin'], feature: 'company_inventory' },
@@ -127,6 +129,7 @@ const menuItems: MenuItem[] = [
   { label: 'Course Outcomes', icon: <PieChart className="h-5 w-5" />, path: '/course-outcomes', roles: ['officer'] },
   { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['officer'] },
   { label: 'Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['officer'] },
+  { label: 'Awards & Achievements', icon: <Trophy className="h-5 w-5" />, path: '/awards', roles: ['officer'] },
   { label: 'Lab Inventory', icon: <Package className="h-5 w-5" />, path: '/inventory', roles: ['officer'] },
   { label: 'Class Attendance', icon: <UserCheck className="h-5 w-5" />, path: '/attendance', roles: ['officer'] },
   { label: 'Leave Management', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-management', roles: ['officer'] },
@@ -142,6 +145,7 @@ const menuItems: MenuItem[] = [
   { label: 'Course Outcomes', icon: <PieChart className="h-5 w-5" />, path: '/course-outcomes', roles: ['student'] },
   
   { label: 'My Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['student'] },
+  { label: 'Awards & Achievements', icon: <Trophy className="h-5 w-5" />, path: '/awards', roles: ['student'] },
   { label: 'Events Management', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['student'] },
   { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['student'] },
   { label: 'Certificates', icon: <Award className="h-5 w-5" />, path: '/certificates', roles: ['student'] },
@@ -165,6 +169,7 @@ const menuItems: MenuItem[] = [
   { label: 'Analytics', icon: <BarChart className="h-5 w-5" />, path: '/analytics', roles: ['management'] },
   { label: 'Inventory & Purchase', icon: <Package className="h-5 w-5" />, path: '/inventory-purchase', roles: ['management'] },
   { label: 'Projects & Awards', icon: <Target className="h-5 w-5" />, path: '/projects-certificates', roles: ['management'] },
+  { label: 'Awards & Achievements', icon: <Trophy className="h-5 w-5" />, path: '/awards', roles: ['management'] },
   { label: 'SDG Dashboard', icon: <Target className="h-5 w-5" />, path: '/sdg-dashboard', roles: ['management'] },
   { label: 'Events Management', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['management'] },
   { label: 'Reports', icon: <FileText className="h-5 w-5" />, path: '/reports', roles: ['management'] },

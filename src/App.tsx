@@ -150,6 +150,7 @@ import StudentCourseOutcomes from "./pages/student/CourseOutcomes";
 import OfficerCourseOutcomes from "./pages/officer/CourseOutcomes";
 import ManagementCourseOutcomes from "./pages/management/CourseOutcomes";
 import AdminCourseOutcomes from "./pages/super-admin/CourseOutcomes";
+import AwardsAchievements from "./pages/shared/AwardsAchievements";
 
 // HR Management imports
 import HRDashboard from "./pages/system-admin/hr/HRDashboard";
@@ -228,6 +229,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['super_admin']}>
                   <NotificationsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/super-admin/awards"
+              element={
+                <ProtectedRoute allowedRoles={['super_admin']}>
+                  <AwardsAchievements />
                 </ProtectedRoute>
               }
             />
@@ -462,6 +471,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="project_management">
                   <ProjectManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/awards"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <AwardsAchievements />
                 </ProtectedRoute>
               }
             />
@@ -892,6 +909,15 @@ const App = () => (
             />
 
             <Route
+              path="/tenant/:tenantId/officer/awards"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <AwardsAchievements />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/tenant/:tenantId/officer/newsletters"
               element={
                 <ProtectedRoute allowedRoles={['officer']}>
@@ -1086,6 +1112,15 @@ const App = () => (
             />
 
             <Route
+              path="/tenant/:tenantId/management/awards"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <AwardsAchievements />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/tenant/:tenantId/management/newsletters"
               element={
                 <ProtectedRoute allowedRoles={['management']}>
@@ -1272,6 +1307,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['student']}>
                   <StudentWebinars />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/awards"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <AwardsAchievements />
                 </ProtectedRoute>
               }
             />
