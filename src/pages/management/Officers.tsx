@@ -212,7 +212,7 @@ const Officers = () => {
                             </div>
                             <div className="flex items-center gap-2 text-sm">
                               <Calendar className="h-4 w-4 text-green-500" />
-                              <span className="text-muted-foreground">{teachingHoursMap[officer.officer_id] || 0}h Teaching</span>
+                              <span className="text-muted-foreground">{teachingHoursMap[officer.officer_id] || 0}h Working Hours This Month</span>
                             </div>
                           </div>
                         </div>

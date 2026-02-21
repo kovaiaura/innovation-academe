@@ -6,12 +6,17 @@ interface TeachingHoursMap {
 }
 
 export function useOfficerTeachingHours(institutionId?: string) {
+  // Get current month boundaries
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+
   return useQuery({
-    queryKey: ['officer-teaching-hours', institutionId],
+    queryKey: ['officer-teaching-hours', institutionId, monthStart],
     queryFn: async (): Promise<TeachingHoursMap> => {
       if (!institutionId) return {};
 
-      // Fetch all completed sessions with period info via timetable assignment
+      // Fetch completed sessions for the current month
       const { data: completedSessions, error } = await supabase
         .from('class_session_attendance')
         .select(`
@@ -28,7 +33,9 @@ export function useOfficerTeachingHours(institutionId?: string) {
           )
         `)
         .eq('institution_id', institutionId)
-        .eq('is_session_completed', true);
+        .eq('is_session_completed', true)
+        .gte('date', monthStart)
+        .lte('date', monthEnd);
 
       if (error) {
         console.error('Error fetching completed sessions:', error);
