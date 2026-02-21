@@ -3,6 +3,7 @@ import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Target, FolderKanban, Users, TrendingUp, BookOpen } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { SDG_GOALS, getSDGByNumber } from '@/services/sdg.service';
@@ -17,6 +18,7 @@ export default function ManagementSDGDashboard() {
   const [totalStudents, setTotalStudents] = useState(0);
   const [uniqueCourses, setUniqueCourses] = useState(0);
   const [courseSdgCounts, setCourseSdgCounts] = useState<Record<number, number>>({});
+  const [coursesList, setCoursesList] = useState<{ id: string; title: string; course_code: string; sdg_goals: number[] }[]>([]);
 
   useEffect(() => {
     const loadInstitutionSDGData = async () => {
@@ -64,18 +66,27 @@ export default function ManagementSDGDashboard() {
         // Get courses assigned to this institution's classes with their SDGs
         const { data: courseAssignments } = await supabase
           .from('course_class_assignments')
-          .select('course_id, courses(id, title, sdg_goals)')
+          .select('course_id, courses(id, title, course_code, sdg_goals)')
           .eq('institution_id', user.tenant_id);
 
         // Extract unique courses and their SDGs
         const uniqueCourseIds = new Set<string>();
         const courseSDGCounts: Record<number, number> = {};
+        const coursesWithSDGs: { id: string; title: string; course_code: string; sdg_goals: number[] }[] = [];
         
         courseAssignments?.forEach(ca => {
           if (!uniqueCourseIds.has(ca.course_id)) {
             uniqueCourseIds.add(ca.course_id);
-            const course = ca.courses as { id: string; title: string; sdg_goals: number[] | null } | null;
+            const course = ca.courses as { id: string; title: string; course_code?: string; sdg_goals: number[] | null } | null;
             const goals = course?.sdg_goals;
+            if (course) {
+              coursesWithSDGs.push({
+                id: course.id,
+                title: course.title,
+                course_code: (course as any).course_code || '',
+                sdg_goals: goals || [],
+              });
+            }
             goals?.forEach(g => {
               courseSDGCounts[g] = (courseSDGCounts[g] || 0) + 1;
             });
@@ -94,6 +105,7 @@ export default function ManagementSDGDashboard() {
         setTotalStudents(studentsInSDGProjects);
         setUniqueCourses(uniqueCourseIds.size);
         setCourseSdgCounts(courseSDGCounts);
+        setCoursesList(coursesWithSDGs);
       } catch (error) {
         console.error('Error loading SDG data:', error);
       } finally {
@@ -180,7 +192,7 @@ export default function ManagementSDGDashboard() {
               <BookOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{Object.keys(courseSdgCounts).length > 0 ? Object.values(courseSdgCounts).reduce((a, b) => a + b, 0) : 0}</div>
+              <div className="text-2xl font-bold">{uniqueCourses}</div>
               <p className="text-xs text-muted-foreground">courses with SDG alignment</p>
             </CardContent>
           </Card>
@@ -208,131 +220,196 @@ export default function ManagementSDGDashboard() {
           </Card>
         </div>
 
-        {/* SDG Distribution Chart */}
-        {chartData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>SDG Distribution</CardTitle>
-              <CardDescription>Number of projects and courses per SDG goal</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="name" className="text-xs" />
-                  <YAxis className="text-xs" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '6px'
-                    }}
-                  />
-                  <Bar dataKey="projects" name="Projects & Courses">
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        )}
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="courses">Course SDG Mapping</TabsTrigger>
+            <TabsTrigger value="projects">Projects by SDG</TabsTrigger>
+          </TabsList>
 
-        {/* Active SDG Goals */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Active SDG Goals</CardTitle>
-            <CardDescription>SDGs your institution is contributing to through projects and courses</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {activeSDGs.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No SDG-aligned projects or courses yet</p>
-                <p className="text-sm">Encourage students to create projects aligned with SDGs</p>
-              </div>
-            ) : (
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                {activeSDGs.map(num => {
-                  const sdg = getSDGByNumber(num);
-                  if (!sdg) return null;
-                  
-                  return (
-                    <div 
-                      key={num}
-                      className="flex items-center gap-3 p-3 border rounded-lg"
-                    >
-                      <div 
-                        className="h-12 w-12 rounded-lg flex items-center justify-center text-white font-bold"
-                        style={{ backgroundColor: sdg.color }}
-                      >
-                        {sdg.number}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">{sdg.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {sdgCounts[num]} item{sdgCounts[num] !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+          <TabsContent value="overview" className="space-y-6">
+            {/* SDG Distribution Chart */}
+            {chartData.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>SDG Distribution</CardTitle>
+                  <CardDescription>Number of projects and courses per SDG goal</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="name" className="text-xs" />
+                      <YAxis className="text-xs" />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '6px'
+                        }}
+                      />
+                      <Bar dataKey="projects" name="Projects & Courses">
+                        {chartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
             )}
-          </CardContent>
-        </Card>
 
-        {/* Projects List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Projects by SDG</CardTitle>
-            <CardDescription>All institution projects and their SDG alignment</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {projects.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <FolderKanban className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No projects yet</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {projects.map(project => (
-                  <div key={project.id} className="border rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold">{project.title}</h3>
-                        <p className="text-sm text-muted-foreground">{project.category}</p>
-                      </div>
-                      <Badge className={getStatusColor(project.status)}>
-                        {project.status?.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                    
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                      <span>{project.progress || 0}% complete</span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-1">
-                      {(project.sdg_goals as number[] || []).map(num => {
-                        const sdg = getSDGByNumber(num);
-                        return sdg ? (
-                          <Badge 
-                            key={num}
-                            style={{ backgroundColor: sdg.color, color: '#fff' }}
-                            className="text-xs"
-                          >
-                            SDG {num}: {sdg.title}
-                          </Badge>
-                        ) : null;
-                      })}
-                    </div>
+            {/* Active SDG Goals */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Active SDG Goals</CardTitle>
+                <CardDescription>SDGs your institution is contributing to through projects and courses</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {activeSDGs.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No SDG-aligned projects or courses yet</p>
+                    <p className="text-sm">Encourage students to create projects aligned with SDGs</p>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    {activeSDGs.map(num => {
+                      const sdg = getSDGByNumber(num);
+                      if (!sdg) return null;
+                      
+                      return (
+                        <div 
+                          key={num}
+                          className="flex items-center gap-3 p-3 border rounded-lg"
+                        >
+                          <div 
+                            className="h-12 w-12 rounded-lg flex items-center justify-center text-white font-bold"
+                            style={{ backgroundColor: sdg.color }}
+                          >
+                            {sdg.number}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm">{sdg.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {sdgCounts[num]} item{sdgCounts[num] !== 1 ? 's' : ''}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="courses" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Course SDG Mapping</CardTitle>
+                <CardDescription>All courses assigned to your institution and their SDG alignment</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {coursesList.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No courses assigned to your institution yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {coursesList.map(course => (
+                      <div key={course.id} className="border rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h3 className="font-semibold">{course.title}</h3>
+                            {course.course_code && (
+                              <p className="text-sm text-muted-foreground">{course.course_code}</p>
+                            )}
+                          </div>
+                          <Badge variant={course.sdg_goals.length > 0 ? "default" : "secondary"}>
+                            {course.sdg_goals.length} SDG{course.sdg_goals.length !== 1 ? 's' : ''}
+                          </Badge>
+                        </div>
+
+                        {course.sdg_goals.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {course.sdg_goals.map(num => {
+                              const sdg = getSDGByNumber(num);
+                              return sdg ? (
+                                <Badge 
+                                  key={num}
+                                  style={{ backgroundColor: sdg.color, color: '#fff' }}
+                                  className="text-xs"
+                                >
+                                  SDG {num}: {sdg.title}
+                                </Badge>
+                              ) : null;
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground italic">No SDGs mapped to this course</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="projects" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Projects by SDG</CardTitle>
+                <CardDescription>All institution projects and their SDG alignment</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {projects.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FolderKanban className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No projects yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {projects.map(project => (
+                      <div key={project.id} className="border rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h3 className="font-semibold">{project.title}</h3>
+                            <p className="text-sm text-muted-foreground">{project.category}</p>
+                          </div>
+                          <Badge className={getStatusColor(project.status)}>
+                            {project.status?.replace('_', ' ')}
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                          <span>{project.progress || 0}% complete</span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1">
+                          {(project.sdg_goals as number[] || []).map(num => {
+                            const sdg = getSDGByNumber(num);
+                            return sdg ? (
+                              <Badge 
+                                key={num}
+                                style={{ backgroundColor: sdg.color, color: '#fff' }}
+                                className="text-xs"
+                              >
+                                SDG {num}: {sdg.title}
+                              </Badge>
+                            ) : null;
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
