@@ -98,14 +98,6 @@ const Dashboard = () => {
       color: "text-pink-500", 
       bgColor: "bg-pink-500/10" 
     },
-    { 
-      title: "Assignment Submissions", 
-      value: stats.assignmentSubmissions.toString(), 
-      icon: CheckCircle,
-      description: `Avg: ${stats.avgAssignmentMarks}%`,
-      color: "text-emerald-500", 
-      bgColor: "bg-emerald-500/10" 
-    },
   ];
 
   // Operations metrics
