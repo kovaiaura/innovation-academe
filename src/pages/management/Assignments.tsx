@@ -187,12 +187,8 @@ export default function ManagementAssignments() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Assignments Management</h1>
-            <p className="text-muted-foreground">Create and manage assignments for your institution</p>
+            <p className="text-muted-foreground">View assignments and submissions for your institution</p>
           </div>
-          <Button onClick={() => { setEditingAssignment(null); setFormDialogOpen(true); }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Assignment
-          </Button>
         </div>
 
         {/* Stats */}
@@ -272,12 +268,6 @@ export default function ManagementAssignments() {
               <p className="text-muted-foreground text-center mb-4">
                 {searchQuery ? 'Try adjusting your search' : 'Create your first assignment to get started'}
               </p>
-              {!searchQuery && (
-                <Button onClick={() => { setEditingAssignment(null); setFormDialogOpen(true); }}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Assignment
-                </Button>
-              )}
             </CardContent>
           </Card>
         ) : (
@@ -325,20 +315,6 @@ export default function ManagementAssignments() {
                     >
                       <Eye className="h-4 w-4 mr-1" />
                       Submissions
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEditAssignment(assignment)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteClick(assignment)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
                 </CardContent>
