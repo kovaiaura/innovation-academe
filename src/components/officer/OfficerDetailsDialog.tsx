@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,6 +9,7 @@ import { OfficerDetails } from "@/services/systemadmin.service";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -36,6 +38,24 @@ export function OfficerDetailsDialog({
   onOpenChange,
   viewerRole,
 }: OfficerDetailsDialogProps) {
+  const [institutionNames, setInstitutionNames] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!officer?.assigned_institutions?.length) return;
+    const fetchNames = async () => {
+      const { data } = await supabase
+        .from('institutions')
+        .select('id, name')
+        .in('id', officer.assigned_institutions);
+      if (data) {
+        const map: Record<string, string> = {};
+        data.forEach((i) => { map[i.id] = i.name; });
+        setInstitutionNames(map);
+      }
+    };
+    fetchNames();
+  }, [officer?.assigned_institutions]);
+
   if (!officer) return null;
 
   const getStatusVariant = (status: string) => {
@@ -225,7 +245,7 @@ export function OfficerDetailsDialog({
                   <div className="flex flex-wrap gap-2">
                     {officer.assigned_institutions.map((inst) => (
                       <Badge key={inst} variant="secondary">
-                        {inst}
+                        {institutionNames[inst] || inst}
                       </Badge>
                     ))}
                   </div>
