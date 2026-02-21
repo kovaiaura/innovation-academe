@@ -214,6 +214,7 @@ export default function OfficerDetail() {
       if (officerDetailsData.skills) updatePayload.skills = officerDetailsData.skills;
       if (officerDetailsData.statutory_info) updatePayload.statutory_info = officerDetailsData.statutory_info;
       if (officerDetailsData.salary_structure) updatePayload.salary_structure = officerDetailsData.salary_structure;
+      if (officerDetailsData.employee_id !== undefined) updatePayload.employee_id = officerDetailsData.employee_id;
       
       // Map leave fields to database columns
       if (sick_leave !== undefined) updatePayload.sick_leave_allowance = sick_leave;
