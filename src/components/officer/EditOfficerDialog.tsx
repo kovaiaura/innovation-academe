@@ -50,6 +50,7 @@ export default function EditOfficerDialog({
         emergency_contact_name: officer.emergency_contact_name,
         emergency_contact_phone: officer.emergency_contact_phone,
         employment_type: officer.employment_type,
+        employee_id: officer.employee_id,
         salary: officer.salary,
         department: officer.department,
         status: officer.status,
@@ -237,6 +238,16 @@ export default function EditOfficerDialog({
             <h3 className="font-semibold text-sm text-muted-foreground">Employment Information</h3>
             
             <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="employee_id">Employee ID</Label>
+                <Input
+                  id="employee_id"
+                  value={formData.employee_id || ''}
+                  onChange={(e) => handleChange('employee_id', e.target.value)}
+                  placeholder="EMP-IOF-001"
+                />
+              </div>
+              
               <div>
                 <Label htmlFor="employment_type">Employment Type</Label>
                 <Select
