@@ -1904,6 +1904,8 @@ export type Database = {
           course_id: string
           id: string
           institution_id: string
+          selected_module_ids: string[] | null
+          selected_session_ids: string[] | null
         }
         Insert: {
           assigned_at?: string
@@ -1911,6 +1913,8 @@ export type Database = {
           course_id: string
           id?: string
           institution_id: string
+          selected_module_ids?: string[] | null
+          selected_session_ids?: string[] | null
         }
         Update: {
           assigned_at?: string
@@ -1918,6 +1922,8 @@ export type Database = {
           course_id?: string
           id?: string
           institution_id?: string
+          selected_module_ids?: string[] | null
+          selected_session_ids?: string[] | null
         }
         Relationships: [
           {
