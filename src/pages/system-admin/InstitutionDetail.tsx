@@ -12,6 +12,7 @@ import { AddClassDialog } from '@/components/institution/AddClassDialog';
 import { InstitutionClassesTab } from '@/components/institution/InstitutionClassesTab';
 import { InstitutionOfficersTab } from '@/components/institution/InstitutionOfficersTab';
 import { InstitutionTimetableTab } from '@/components/institution/InstitutionTimetableTab';
+import { InstitutionCoursesTab } from '@/components/institution/InstitutionCoursesTab';
 import { InstituteHolidayCalendar } from '@/components/institution/InstituteHolidayCalendar';
 import { ComprehensiveAnalyticsTab } from '@/components/analytics/ComprehensiveAnalyticsTab';
 import { InstitutionClass } from '@/types/student';
@@ -254,9 +255,10 @@ export default function InstitutionDetail() {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="classes">Classes</TabsTrigger>
+            <TabsTrigger value="courses">Courses</TabsTrigger>
             <TabsTrigger value="officers">Officers</TabsTrigger>
             <TabsTrigger value="holidays">Holidays</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
@@ -463,6 +465,14 @@ export default function InstitutionDetail() {
               onEditClass={(cls) => { setSelectedClassForEdit(cls); setIsEditClassOpen(true); }}
               onDeleteClass={handleDeleteClass}
               onSelectClass={(id) => navigate(`/system-admin/institutions/${institutionId}/classes/${id}`)}
+            />
+          </TabsContent>
+
+          {/* Courses Tab */}
+          <TabsContent value="courses" className="space-y-6">
+            <InstitutionCoursesTab
+              institutionId={institutionId!}
+              institutionName={institution.name}
             />
           </TabsContent>
 
