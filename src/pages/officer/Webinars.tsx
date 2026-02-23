@@ -46,8 +46,8 @@ export default function OfficerWebinars() {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Webinars</h1>
-          <p className="text-muted-foreground">Watch educational webinars and learn from experts</p>
+          <h1 className="text-3xl font-bold">MetaINNOVA™ Events</h1>
+          <p className="text-muted-foreground">Watch webinars, seminars, and guest lectures</p>
         </div>
 
         <Card>
@@ -56,7 +56,7 @@ export default function OfficerWebinars() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search webinars..."
+                  placeholder="Search events..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -82,9 +82,9 @@ export default function OfficerWebinars() {
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Video className="h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Webinars Available</h3>
+                <h3 className="text-lg font-semibold mb-2">No Events Available</h3>
                 <p className="text-muted-foreground">
-                  Check back later for new educational content
+                  Check back later for new events
                 </p>
               </div>
             )}
