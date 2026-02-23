@@ -70,10 +70,10 @@ export default function WebinarManagement() {
     try {
       if (selectedWebinar) {
         await webinarService.updateWebinar(selectedWebinar.id, data);
-        toast.success('Webinar updated successfully');
+        toast.success('Event updated successfully');
       } else {
         await webinarService.createWebinar(data);
-        toast.success('Webinar created successfully');
+        toast.success('Event created successfully');
       }
       loadWebinars();
     } catch (error) {
@@ -87,11 +87,11 @@ export default function WebinarManagement() {
     
     try {
       await webinarService.hardDeleteWebinar(selectedWebinar.id);
-      toast.success('Webinar deleted successfully');
+      toast.success('Event deleted successfully');
       loadWebinars();
     } catch (error) {
-      console.error('Error deleting webinar:', error);
-      toast.error('Failed to delete webinar');
+      console.error('Error deleting event:', error);
+      toast.error('Failed to delete event');
     } finally {
       setDeleteDialogOpen(false);
       setSelectedWebinar(null);
@@ -108,12 +108,12 @@ export default function WebinarManagement() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Webinar Management</h1>
-            <p className="text-muted-foreground">Create and manage webinars for all users</p>
+            <h1 className="text-3xl font-bold">MetaINNOVA™ Events</h1>
+            <p className="text-muted-foreground">Create and manage webinars, seminars, and guest lectures</p>
           </div>
           <Button onClick={handleCreate}>
             <Plus className="mr-2 h-4 w-4" />
-            Add Webinar
+            Add Event
           </Button>
         </div>
 
@@ -123,7 +123,7 @@ export default function WebinarManagement() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search webinars..."
+                  placeholder="Search events..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -152,13 +152,13 @@ export default function WebinarManagement() {
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Video className="h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Webinars Yet</h3>
+                <h3 className="text-lg font-semibold mb-2">No Events Yet</h3>
                 <p className="text-muted-foreground mb-4">
-                  Create your first webinar to share with all users
+                  Create your first MetaINNOVA™ event
                 </p>
                 <Button onClick={handleCreate}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Add Webinar
+                  Add Event
                 </Button>
               </div>
             )}
@@ -182,7 +182,7 @@ export default function WebinarManagement() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Webinar</AlertDialogTitle>
+            <AlertDialogTitle>Delete Event</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete "{selectedWebinar?.title}"? This action cannot be undone.
             </AlertDialogDescription>

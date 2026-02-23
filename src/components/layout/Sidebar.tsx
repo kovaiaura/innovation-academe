@@ -100,7 +100,7 @@ const menuItems: MenuItem[] = [
   // Gamification
   { label: 'Gamification', icon: <Trophy className="h-5 w-5" />, path: '/gamification', roles: ['system_admin'], feature: 'gamification' },
   { label: 'ATS Management', icon: <Briefcase className="h-5 w-5" />, path: '/hr-management', roles: ['system_admin'], feature: 'ats_management', ceoOnly: true },
-  { label: 'Webinar Management', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['system_admin'], feature: 'webinar_management' },
+  { label: 'MetaINNOVA™ Events', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['system_admin'], feature: 'webinar_management' },
   // Reports & Invoice
   { label: 'Reports Management', icon: <FileText className="h-5 w-5" />, path: '/reports-management', roles: ['system_admin'], feature: 'reports_analytics' },
   { label: 'Invoice Management', icon: <FileText className="h-5 w-5" />, path: '/reports', roles: ['system_admin'], feature: 'reports_analytics' },
@@ -135,7 +135,7 @@ const menuItems: MenuItem[] = [
   { label: 'Leave Management', icon: <CalendarCheck className="h-5 w-5" />, path: '/leave-management', roles: ['officer'] },
   { label: 'Events Management', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['officer'] },
   { label: 'Ask Metova', icon: <MessageSquare className="h-5 w-5" />, path: '/ask-metova', roles: ['officer'] },
-  { label: 'Webinar Management', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['officer'] },
+  { label: 'MetaINNOVA™ Events', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['officer'] },
   { label: 'Newsletters', icon: <FileText className="h-5 w-5" />, path: '/newsletters', roles: ['officer'] },
   // { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['officer'] }, // Temporarily hidden
   // Student menu items
@@ -153,7 +153,7 @@ const menuItems: MenuItem[] = [
   { label: 'Resume', icon: <FileText className="h-5 w-5" />, path: '/resume', roles: ['student'] },
   // { label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', roles: ['student'] }, // Temporarily hidden
   { label: 'Ask Metova', icon: <MessageSquare className="h-5 w-5" />, path: '/ask-metova', roles: ['student'] },
-  { label: 'Webinar Management', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['student'] },
+  { label: 'MetaINNOVA™ Events', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['student'] },
   { label: 'Newsletters', icon: <FileText className="h-5 w-5" />, path: '/newsletters', roles: ['student'] },
   { label: 'Feedback/Survey', icon: <MessageCircle className="h-5 w-5" />, path: '/feedback', roles: ['student'] },
   // System Admin - Configuration
@@ -173,7 +173,7 @@ const menuItems: MenuItem[] = [
   { label: 'SDG Dashboard', icon: <Target className="h-5 w-5" />, path: '/sdg-dashboard', roles: ['management'] },
   { label: 'Events Management', icon: <Trophy className="h-5 w-5" />, path: '/events', roles: ['management'] },
   { label: 'Reports', icon: <FileText className="h-5 w-5" />, path: '/reports', roles: ['management'] },
-  { label: 'Webinar Management', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['management'] },
+  { label: 'MetaINNOVA™ Events', icon: <Video className="h-5 w-5" />, path: '/webinars', roles: ['management'] },
   { label: 'Newsletters', icon: <FileText className="h-5 w-5" />, path: '/newsletters', roles: ['management'] },
   { label: 'Timetable', icon: <Calendar className="h-5 w-5" />, path: '/timetable', roles: ['management'] },
   { label: 'Institution Calendar', icon: <CalendarDays className="h-5 w-5" />, path: '/institution-calendar', roles: ['management'] },

@@ -46,7 +46,7 @@ const FEATURE_QUICK_ACTIONS: Record<SystemAdminFeature, { label: string; icon: L
   id_configuration: { label: 'ID Config', icon: Settings, path: '/system-admin/id-configuration' },
   survey_feedback: { label: 'Surveys', icon: ClipboardList, path: '/system-admin/surveys' },
   performance_ratings: { label: 'Ratings', icon: TrendingUp, path: '/system-admin/performance-ratings' },
-  webinar_management: { label: 'Webinars', icon: Video, path: '/system-admin/webinars' },
+  webinar_management: { label: 'MetaINNOVA™ Events', icon: Video, path: '/system-admin/webinars' },
   crm_clients: { label: 'CRM', icon: Phone, path: '/system-admin/crm' },
   news_feeds: { label: 'News Feeds', icon: Newspaper, path: '/system-admin/news-feeds' },
   ask_metova: { label: 'Ask Metova', icon: Bot, path: '/system-admin/ask-metova' },

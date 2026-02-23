@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Webinar, webinarService } from '@/services/webinar.service';
-import { Calendar, User, Play, Edit, Trash2 } from 'lucide-react';
+import { Webinar, webinarService, EVENT_TYPE_LABELS } from '@/services/webinar.service';
+import { Calendar, User, Play, Edit, Trash2, ImageIcon } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface WebinarCardProps {
@@ -14,8 +14,9 @@ interface WebinarCardProps {
 }
 
 export function WebinarCard({ webinar, onView, onEdit, onDelete, showActions = false }: WebinarCardProps) {
-  const videoId = webinarService.getYouTubeVideoId(webinar.youtube_url);
-  const thumbnailUrl = videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : null;
+  const isWebinar = webinar.event_type === 'webinar';
+  const videoId = isWebinar ? webinarService.getYouTubeVideoId(webinar.youtube_url) : null;
+  const thumbnailUrl = webinar.thumbnail_url || (videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : null);
   const isUpcoming = new Date(webinar.webinar_date) > new Date();
 
   return (
@@ -27,7 +28,6 @@ export function WebinarCard({ webinar, onView, onEdit, onDelete, showActions = f
             alt={webinar.title}
             className="w-full h-full object-cover"
             onError={(e) => {
-              // Fallback to medium quality thumbnail
               const target = e.target as HTMLImageElement;
               if (videoId) {
                 target.src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
@@ -36,19 +36,20 @@ export function WebinarCard({ webinar, onView, onEdit, onDelete, showActions = f
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <Play className="h-12 w-12 text-muted-foreground" />
+            {isWebinar ? <Play className="h-12 w-12 text-muted-foreground" /> : <ImageIcon className="h-12 w-12 text-muted-foreground" />}
           </div>
         )}
-        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          <div className="bg-primary rounded-full p-4">
-            <Play className="h-8 w-8 text-primary-foreground" />
+        {isWebinar && (
+          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <div className="bg-primary rounded-full p-4">
+              <Play className="h-8 w-8 text-primary-foreground" />
+            </div>
           </div>
+        )}
+        <div className="absolute top-2 left-2 flex gap-1">
+          {isUpcoming && <Badge variant="secondary">Upcoming</Badge>}
+          <Badge variant="outline" className="bg-background/80">{EVENT_TYPE_LABELS[webinar.event_type] || webinar.event_type}</Badge>
         </div>
-        {isUpcoming && (
-          <Badge className="absolute top-2 left-2" variant="secondary">
-            Upcoming
-          </Badge>
-        )}
       </div>
       
       <CardHeader className="pb-2">
