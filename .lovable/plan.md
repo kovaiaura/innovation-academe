@@ -1,94 +1,49 @@
 
 
-## Add "Awards & Achievements" Sidebar Menu (All Roles)
+# Course Curriculum Generator
 
-### Overview
-Create a new dedicated "Awards & Achievements" page accessible from every role's sidebar. This page displays project achievements/awards from the existing `project_achievements` table, filtered by role:
+A new "Course Curriculum" page for CEO (System Admin) and Innovation Officers to generate, view, and download a formatted PDF curriculum document -- similar to the uploaded sample PDF.
 
-- **Student**: Only achievements from projects the student is a member of
-- **Officer**: Achievements from projects under their assigned institution
-- **Management**: Achievements from projects under their institution
-- **System Admin / CEO**: All achievements across all institutions
+## What It Does
 
-No database changes are needed -- the `project_achievements` table already has all required data (`title`, `type`, `event_name`, `event_date`, `description`, `certificate_url`, `project_id`), and projects have `institution_id`.
+- Adds a new **"Course Curriculum"** menu item in the sidebar for both CEO and Officer roles
+- Provides filter controls to generate curriculum views:
+  - **By Level**: e.g., "Level 10" -- shows all courses and their sessions for that level
+  - **By Course**: e.g., "Robotics" -- shows all levels and sessions for that course
+  - **By Course + Level**: e.g., "Robotics, Level 10" -- shows sessions for that specific combination
+  - **All Courses**: Full curriculum across all levels
+- Displays the filtered curriculum on-screen in a clean, readable format
+- Allows downloading the generated curriculum as a styled PDF (matching the MetaINNOVA Curriculum branding from the uploaded sample)
+- Only shows **Course Title, Level (Module) Name, and Session Titles** -- no content files
 
----
+## Technical Details
 
-### Changes
+### New Files
 
-#### 1. New Sidebar Menu Item (`src/components/layout/Sidebar.tsx`)
+1. **`src/pages/system-admin/CourseCurriculum.tsx`** -- CEO page with filters and curriculum display
+2. **`src/pages/officer/CourseCurriculum.tsx`** -- Officer page (same component, different route wrapper)
+3. **`src/components/curriculum/CurriculumFilters.tsx`** -- Filter bar (course dropdown, level dropdown)
+4. **`src/components/curriculum/CurriculumDisplay.tsx`** -- On-screen curriculum view grouped by level then course
+5. **`src/components/curriculum/pdf/CurriculumPDF.tsx`** -- `@react-pdf/renderer` Document component styled like the uploaded sample (header with "METAINNOVA CURRICULUM", level heading, course titles as section headers, session titles as bullet lists)
+6. **`src/components/curriculum/pdf/CurriculumPDFStyles.ts`** -- PDF stylesheet
 
-Add an "Awards & Achievements" entry with the `Award` icon (already imported) for all relevant roles:
+### Modified Files
 
-| Role | Position in sidebar | Notes |
-|---|---|---|
-| `student` | After "My Projects" | Shows only their own project awards |
-| `officer` | After "Projects" | Shows their institution's project awards |
-| `management` | After "Projects & Awards" | Shows their institution's project awards |
-| `system_admin` | After "Project Management" | Feature-gated: `awards_achievements` |
-| `super_admin` | After "System Logs" | All institutions |
+1. **`src/components/layout/Sidebar.tsx`** -- Add "Course Curriculum" menu item for `system_admin` and `officer` roles
+2. **`src/App.tsx`** -- Add routes for `/system-admin/course-curriculum` and `/tenant/:tenantId/officer/course-curriculum`
 
-Path: `/awards` for all roles.
+### Data Flow
 
-#### 2. New Page: `src/pages/shared/AwardsAchievements.tsx`
+- Fetches from `courses`, `course_modules`, and `course_sessions` tables using Supabase client
+- Groups data hierarchically: Level (module) -> Course -> Sessions
+- Filters applied client-side based on selected course and/or level
+- PDF generated client-side using `@react-pdf/renderer` (already installed) with `pdf()` blob function for download
 
-A single shared page component used by all roles. It will:
-- Detect the current user's role via `useAuth()`
-- Query `project_achievements` joined with `projects` (for project title, institution_id) and `project_members` joined with `students` (for student names)
-- **Filtering logic by role:**
-  - **Student**: Join `project_members` to filter where `students.user_id = currentUser.id`
-  - **Officer / Management**: Filter `projects.institution_id = user.institutionId`
-  - **CEO / Super Admin**: No filter (all institutions)
-- Display a clean card/table layout with:
-  - Achievement title and type badge (Award / Participation / Achievement)
-  - Project name (linked/referenced)
-  - Student members who earned it
-  - Event name and date
-  - Certificate download link (if available)
-  - Institution name (for CEO view)
-- Search/filter by type, project name, or student name
-- Responsive card grid on mobile, table on desktop
+### PDF Layout (matching uploaded sample)
 
-#### 3. New Hook: `src/hooks/useAwardsAchievements.ts`
-
-A React Query hook that:
-- Accepts the user's role and institutionId
-- Builds the appropriate Supabase query with joins:
-  ```
-  project_achievements → projects (title, institution_id) → institutions (name)
-  project_achievements → projects → project_members → students (student_name)
-  ```
-- Returns achievements sorted by `created_at` descending (newest first)
-
-#### 4. Routes in `src/App.tsx`
-
-Add routes for each role's tenant path:
-
-| Route | Role |
-|---|---|
-| `/super-admin/awards` | super_admin |
-| `/system-admin/awards` | system_admin |
-| `/tenant/:tenantId/management/awards` | management |
-| `/tenant/:tenantId/officer/awards` | officer |
-| `/tenant/:tenantId/student/awards` | student |
-
-All pointing to the same shared `AwardsAchievements` component wrapped in `ProtectedRoute`.
-
----
-
-### Technical Details
-
-- **No database migration required** -- uses existing `project_achievements`, `projects`, `project_members`, `students`, and `institutions` tables
-- **RLS**: Existing RLS policies on `project_achievements` and `projects` already enforce access control; the client-side role filtering is an additional UI-level filter
-- **Feature gate**: For `system_admin`, gated behind a new feature key `awards_achievements` in the position's `visible_features` array (CEO gets it automatically since they have all features)
-- **Imports**: Reuse existing `Award` icon from lucide-react, existing UI components (Card, Badge, Table, Input)
-
-### Files Summary
-
-| File | Action |
-|---|---|
-| `src/components/layout/Sidebar.tsx` | Add menu items for all roles |
-| `src/hooks/useAwardsAchievements.ts` | New hook for fetching filtered achievements |
-| `src/pages/shared/AwardsAchievements.tsx` | New shared page component |
-| `src/App.tsx` | Add 5 new routes |
+- Header: "METAINNOVA CURRICULUM" with branding
+- Level heading: "LEVEL {n}" in large bold text
+- Course sections: Course title as bold heading
+- Sessions listed as bullet points: "Session 1: {title}", "Session 2: {title}", etc.
+- Page numbers at bottom
 
