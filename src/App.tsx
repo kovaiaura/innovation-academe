@@ -151,6 +151,8 @@ import OfficerCourseOutcomes from "./pages/officer/CourseOutcomes";
 import ManagementCourseOutcomes from "./pages/management/CourseOutcomes";
 import AdminCourseOutcomes from "./pages/super-admin/CourseOutcomes";
 import AwardsAchievements from "./pages/shared/AwardsAchievements";
+import SystemAdminCourseCurriculum from "./pages/system-admin/CourseCurriculum";
+import OfficerCourseCurriculum from "./pages/officer/CourseCurriculum";
 
 // HR Management imports
 import HRDashboard from "./pages/system-admin/hr/HRDashboard";
@@ -439,6 +441,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="course_management">
                   <SystemAdminCourseManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/system-admin/course-curriculum"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']} requiredFeature="course_management">
+                  <SystemAdminCourseCurriculum />
                 </ProtectedRoute>
               }
             />
@@ -904,6 +914,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['officer']}>
                   <OfficerWebinars />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/officer/course-curriculum"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <OfficerCourseCurriculum />
                 </ProtectedRoute>
               }
             />

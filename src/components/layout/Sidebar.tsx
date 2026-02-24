@@ -71,6 +71,7 @@ const menuItems: MenuItem[] = [
   // System Admin menu items - Business operations
   { label: 'Institution Management', icon: <Building2 className="h-5 w-5" />, path: '/institutions', roles: ['system_admin'], feature: 'institution_management' },
   { label: 'Course Management', icon: <BookOpen className="h-5 w-5" />, path: '/course-management', roles: ['system_admin'], feature: 'course_management' },
+  { label: 'Course Curriculum', icon: <FileText className="h-5 w-5" />, path: '/course-curriculum', roles: ['system_admin'], feature: 'course_management' },
   { label: 'Assessment Management', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['system_admin'], feature: 'assessment_management' },
   { label: 'Course Outcomes', icon: <PieChart className="h-5 w-5" />, path: '/course-outcomes', roles: ['system_admin'], feature: 'course_management' },
   { label: 'Assignment Management', icon: <FileText className="h-5 w-5" />, path: '/assignments', roles: ['system_admin'], feature: 'assignment_management' },
@@ -127,6 +128,7 @@ const menuItems: MenuItem[] = [
   { label: 'Assessments', icon: <FileText className="h-5 w-5" />, path: '/assessments', roles: ['officer'] },
   { label: 'Assignments', icon: <FileText className="h-5 w-5" />, path: '/assignments', roles: ['officer'] },
   { label: 'Course Outcomes', icon: <PieChart className="h-5 w-5" />, path: '/course-outcomes', roles: ['officer'] },
+  { label: 'Course Curriculum', icon: <FileText className="h-5 w-5" />, path: '/course-curriculum', roles: ['officer'] },
   { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['officer'] },
   { label: 'Projects', icon: <Target className="h-5 w-5" />, path: '/projects', roles: ['officer'] },
   { label: 'Awards & Achievements', icon: <Trophy className="h-5 w-5" />, path: '/awards', roles: ['officer'] },
