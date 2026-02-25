@@ -1,49 +1,71 @@
 
 
-# Course Curriculum Generator
+# About IMS Feature
 
-A new "Course Curriculum" page for CEO (System Admin) and Innovation Officers to generate, view, and download a formatted PDF curriculum document -- similar to the uploaded sample PDF.
+A new "About IMS" page accessible from the sidebar for all roles, with 3 tabs showing platform information, assessment weightage formulas, and gamification rules. Plus a settings section in System Config for the CEO to manage the About Us PDF and role visibility.
 
 ## What It Does
 
-- Adds a new **"Course Curriculum"** menu item in the sidebar for both CEO and Officer roles
-- Provides filter controls to generate curriculum views:
-  - **By Level**: e.g., "Level 10" -- shows all courses and their sessions for that level
-  - **By Course**: e.g., "Robotics" -- shows all levels and sessions for that course
-  - **By Course + Level**: e.g., "Robotics, Level 10" -- shows sessions for that specific combination
-  - **All Courses**: Full curriculum across all levels
-- Displays the filtered curriculum on-screen in a clean, readable format
-- Allows downloading the generated curriculum as a styled PDF (matching the MetaINNOVA Curriculum branding from the uploaded sample)
-- Only shows **Course Title, Level (Module) Name, and Session Titles** -- no content files
+### 1. New "About IMS" Sidebar Menu
+- Added for **all roles** (system_admin, management, officer, student, super_admin)
+- Links to `/about-ims` route
+- Uses an Info/BookOpen icon
+
+### 2. Three Tabs
+
+**Tab 1: About IMS**
+- Displays a PDF document uploaded by the CEO
+- Uses `react-pdf` (already installed) to render the PDF inline
+- Falls back to a "No document uploaded yet" message if none exists
+
+**Tab 2: Assessment Weightage**
+- Static informational page showing the weightage formula:
+  - FA1 (Formative Assessment 1): 20%
+  - FA2 (Formative Assessment 2): 20%
+  - Final Assessment: 40%
+  - Internal Assessment: 20%
+- Visual breakdown with a formula explanation: `Total = (FA1% x 0.20) + (FA2% x 0.20) + (Final% x 0.40) + (Internal% x 0.20)`
+- Example calculation for clarity
+- Info about absent students receiving 0 for that category
+
+**Tab 3: Gamification Rules**
+- Displays XP rules fetched from the `xp_rules` database table (activity, points, description)
+- Shows badge thresholds (from the hardcoded BADGE_DEFINITIONS): Projects (1/5/10/15/20), Achievements (1/5/10/20), Assessments (5/10/15/20), Assignments (5/10/15/20)
+- Shows the ranking formula: Assessments 50%, Assignments 20%, Projects 20%, XP 10%
+
+### 3. CEO Settings (System Config)
+- New settings section in the existing Settings page (or System Config for super_admin)
+- **Upload PDF**: File upload to a storage bucket for the About IMS PDF
+- **Role Visibility**: Checkboxes to select which roles can see the About IMS page (e.g., student, officer, management, system_admin)
+- Settings stored in `system_configurations` table with keys like `about_ims_pdf_url` and `about_ims_visible_roles`
 
 ## Technical Details
 
-### New Files
+### Database Changes
+- No new tables needed -- uses existing `system_configurations` table for storing settings
+- Two config entries:
+  - `about_ims_pdf_url` (text) -- URL of the uploaded PDF in storage
+  - `about_ims_visible_roles` (JSON array) -- roles that can see the page, e.g. `["student","officer","management","system_admin"]`
 
-1. **`src/pages/system-admin/CourseCurriculum.tsx`** -- CEO page with filters and curriculum display
-2. **`src/pages/officer/CourseCurriculum.tsx`** -- Officer page (same component, different route wrapper)
-3. **`src/components/curriculum/CurriculumFilters.tsx`** -- Filter bar (course dropdown, level dropdown)
-4. **`src/components/curriculum/CurriculumDisplay.tsx`** -- On-screen curriculum view grouped by level then course
-5. **`src/components/curriculum/pdf/CurriculumPDF.tsx`** -- `@react-pdf/renderer` Document component styled like the uploaded sample (header with "METAINNOVA CURRICULUM", level heading, course titles as section headers, session titles as bullet lists)
-6. **`src/components/curriculum/pdf/CurriculumPDFStyles.ts`** -- PDF stylesheet
+### Storage
+- Use existing `site-assets` bucket (public) for the About IMS PDF upload
+
+### New Files
+1. **`src/pages/AboutIMS.tsx`** -- Main page with 3 tabs, shared across all roles
+2. **`src/components/about-ims/AboutIMSTab.tsx`** -- PDF viewer tab using react-pdf
+3. **`src/components/about-ims/AssessmentWeightageTab.tsx`** -- Static formula display with visual cards
+4. **`src/components/about-ims/GamificationRulesTab.tsx`** -- XP rules table and badge thresholds
+5. **`src/components/about-ims/AboutIMSSettings.tsx`** -- Settings component for CEO (PDF upload + role visibility checkboxes)
 
 ### Modified Files
-
-1. **`src/components/layout/Sidebar.tsx`** -- Add "Course Curriculum" menu item for `system_admin` and `officer` roles
-2. **`src/App.tsx`** -- Add routes for `/system-admin/course-curriculum` and `/tenant/:tenantId/officer/course-curriculum`
+1. **`src/components/layout/Sidebar.tsx`** -- Add "About IMS" menu item for all roles, conditionally shown based on `about_ims_visible_roles` config
+2. **`src/App.tsx`** -- Add `/about-ims` route accessible to all roles
+3. **`src/pages/super-admin/SystemConfig.tsx`** (or CEO Settings page) -- Add "About IMS" settings tab with PDF upload and role visibility controls
 
 ### Data Flow
-
-- Fetches from `courses`, `course_modules`, and `course_sessions` tables using Supabase client
-- Groups data hierarchically: Level (module) -> Course -> Sessions
-- Filters applied client-side based on selected course and/or level
-- PDF generated client-side using `@react-pdf/renderer` (already installed) with `pdf()` blob function for download
-
-### PDF Layout (matching uploaded sample)
-
-- Header: "METAINNOVA CURRICULUM" with branding
-- Level heading: "LEVEL {n}" in large bold text
-- Course sections: Course title as bold heading
-- Sessions listed as bullet points: "Session 1: {title}", "Session 2: {title}", etc.
-- Page numbers at bottom
+- CEO uploads PDF via Settings -> stored in `site-assets` bucket -> URL saved in `system_configurations`
+- CEO selects visible roles -> saved as JSON array in `system_configurations`
+- Sidebar checks the `about_ims_visible_roles` config to conditionally show/hide the menu for each role
+- About IMS page fetches PDF URL from `system_configurations` and renders it with `react-pdf`
+- Gamification tab fetches live XP rules from the `xp_rules` table
 
