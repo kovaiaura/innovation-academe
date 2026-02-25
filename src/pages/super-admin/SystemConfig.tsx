@@ -11,8 +11,9 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Settings, Plug, Database, Shield, HardDrive, RefreshCw, CheckCircle2, AlertTriangle, Clock, Paintbrush } from 'lucide-react';
+import { Settings, Plug, Database, Shield, HardDrive, RefreshCw, CheckCircle2, AlertTriangle, Clock, Paintbrush, Info } from 'lucide-react';
 import { BrandingTab } from '@/components/system-config/BrandingTab';
+import { AboutIMSSettings } from '@/components/about-ims/AboutIMSSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   useStorageStats, 
@@ -112,6 +113,10 @@ export default function SystemConfig() {
             <TabsTrigger value="security">
               <Shield className="mr-2 h-4 w-4" />
               Security
+            </TabsTrigger>
+            <TabsTrigger value="about-ims">
+              <Info className="mr-2 h-4 w-4" />
+              About IMS
             </TabsTrigger>
           </TabsList>
 
@@ -630,6 +635,11 @@ export default function SystemConfig() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* About IMS Tab */}
+          <TabsContent value="about-ims">
+            <AboutIMSSettings />
           </TabsContent>
         </Tabs>
       </div>

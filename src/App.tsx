@@ -153,6 +153,7 @@ import AdminCourseOutcomes from "./pages/super-admin/CourseOutcomes";
 import AwardsAchievements from "./pages/shared/AwardsAchievements";
 import SystemAdminCourseCurriculum from "./pages/system-admin/CourseCurriculum";
 import OfficerCourseCurriculum from "./pages/officer/CourseCurriculum";
+import AboutIMS from "./pages/AboutIMS";
 
 // HR Management imports
 import HRDashboard from "./pages/system-admin/hr/HRDashboard";
@@ -239,6 +240,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['super_admin']}>
                   <AwardsAchievements />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/super-admin/about-ims"
+              element={
+                <ProtectedRoute allowedRoles={['super_admin']}>
+                  <AboutIMS />
                 </ProtectedRoute>
               }
             />
@@ -636,6 +645,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/system-admin/about-ims"
+              element={
+                <ProtectedRoute allowedRoles={['system_admin']}>
+                  <AboutIMS />
+                </ProtectedRoute>
+              }
+            />
             
             {/* HR Management Routes */}
             <Route
@@ -961,6 +978,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/tenant/:tenantId/officer/about-ims"
+              element={
+                <ProtectedRoute allowedRoles={['officer']}>
+                  <AboutIMS />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Management Routes (path-based multi-tenancy) - Merged with institution admin */}
             <Route
@@ -1164,6 +1189,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/tenant/:tenantId/management/about-ims"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <AboutIMS />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Student Routes (path-based multi-tenancy) */}
             <Route
@@ -1341,6 +1374,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['student']}>
                   <Newsletters />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/student/about-ims"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <AboutIMS />
                 </ProtectedRoute>
               }
             />
