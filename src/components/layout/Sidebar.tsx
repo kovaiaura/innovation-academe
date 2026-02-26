@@ -204,6 +204,27 @@ export function Sidebar() {
   const [agmLeaveCount, setAgmLeaveCount] = useState(0);
   const [ceoLeaveCount, setCeoLeaveCount] = useState(0);
   const [isApprover, setIsApprover] = useState(false);
+  const [aboutImsVisibleRoles, setAboutImsVisibleRoles] = useState<string[] | null>(null);
+  
+  // Fetch About IMS visible roles config
+  useEffect(() => {
+    const fetchAboutImsRoles = async () => {
+      const { data } = await supabase
+        .from('system_configurations')
+        .select('value')
+        .eq('key', 'about_ims_visible_roles')
+        .single();
+      if (data?.value) {
+        const roles = Array.isArray(data.value) ? data.value : (data.value as any)?.roles;
+        if (Array.isArray(roles)) setAboutImsVisibleRoles(roles);
+        else setAboutImsVisibleRoles([]);
+      } else {
+        // Default: show to all if no config exists
+        setAboutImsVisibleRoles(['super_admin', 'system_admin', 'management', 'officer', 'student']);
+      }
+    };
+    fetchAboutImsRoles();
+  }, []);
   
   // Fetch notification category counts for sidebar indicators
   const { counts: notificationCounts } = useNotificationCategories(user?.id);
@@ -344,6 +365,12 @@ export function Sidebar() {
   
   const visibleMenuItems = menuItems.filter((item) => {
     if (!user) return false;
+    
+    // About IMS: check dynamic role visibility from system config
+    if (item.path === '/about-ims') {
+      if (!aboutImsVisibleRoles) return false; // Still loading
+      return userRoles.some(r => aboutImsVisibleRoles.includes(r));
+    }
     
     // Check if user has ANY of the item's allowed roles
     const hasMatchingRole = item.roles.some(r => userRoles.includes(r));
