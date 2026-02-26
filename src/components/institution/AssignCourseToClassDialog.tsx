@@ -131,7 +131,14 @@ export function AssignCourseToClassDialog({
   const handleModuleUnlockModeChange = (moduleId: string, mode: UnlockMode) => {
     setModuleConfigs(prev => prev.map(mod => 
       mod.moduleId === moduleId 
-        ? { ...mod, unlockMode: mode, isUnlocked: mode === 'manual' ? mod.isUnlocked : false }
+        ? { 
+            ...mod, 
+            unlockMode: mode, 
+            isUnlocked: mode === 'unlock_all' ? true : (mode === 'manual' ? mod.isUnlocked : false),
+            sessions: mode === 'unlock_all' 
+              ? mod.sessions.map(sess => ({ ...sess, unlockMode: 'unlock_all', isUnlocked: true }))
+              : mod.sessions,
+          }
         : mod
     ));
   };
@@ -173,7 +180,7 @@ export function AssignCourseToClassDialog({
             ...mod,
             sessions: mod.sessions.map(sess =>
               sess.sessionId === sessionId
-                ? { ...sess, unlockMode: mode, isUnlocked: mode === 'manual' ? sess.isUnlocked : false }
+                ? { ...sess, unlockMode: mode, isUnlocked: mode === 'unlock_all' ? true : (mode === 'manual' ? sess.isUnlocked : false) }
                 : sess
             ),
           }
@@ -183,16 +190,29 @@ export function AssignCourseToClassDialog({
 
   const applyGlobalUnlockMode = (mode: UnlockMode) => {
     setGlobalUnlockMode(mode);
-    setModuleConfigs(prev => prev.map((mod, index) => ({
-      ...mod,
-      unlockMode: index === 0 ? 'manual' : mode,
-      isUnlocked: index === 0 ? true : (mode === 'manual' ? mod.isUnlocked : false),
-      sessions: mod.sessions.map((sess, sIndex) => ({
-        ...sess,
-        unlockMode: sIndex === 0 ? 'manual' : mode,
-        isUnlocked: sIndex === 0 ? true : (mode === 'manual' ? sess.isUnlocked : false),
-      })),
-    })));
+    if (mode === 'unlock_all') {
+      setModuleConfigs(prev => prev.map((mod) => ({
+        ...mod,
+        unlockMode: 'unlock_all',
+        isUnlocked: true,
+        sessions: mod.sessions.map((sess) => ({
+          ...sess,
+          unlockMode: 'unlock_all',
+          isUnlocked: true,
+        })),
+      })));
+    } else {
+      setModuleConfigs(prev => prev.map((mod, index) => ({
+        ...mod,
+        unlockMode: index === 0 ? 'manual' : mode,
+        isUnlocked: index === 0 ? true : (mode === 'manual' ? mod.isUnlocked : false),
+        sessions: mod.sessions.map((sess, sIndex) => ({
+          ...sess,
+          unlockMode: sIndex === 0 ? 'manual' : mode,
+          isUnlocked: sIndex === 0 ? true : (mode === 'manual' ? sess.isUnlocked : false),
+        })),
+      })));
+    }
   };
 
   const handleNext = () => {
@@ -361,12 +381,18 @@ export function AssignCourseToClassDialog({
                         <SelectContent>
                           <SelectItem value="manual">Manual Unlock</SelectItem>
                           <SelectItem value="sequential">Auto Sequential</SelectItem>
+                          <SelectItem value="unlock_all">Unlock All</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     {globalUnlockMode === 'sequential' && (
                       <p className="text-xs text-muted-foreground mt-2 pl-7">
                         Next level/session unlocks automatically when previous one is completed
+                      </p>
+                    )}
+                    {globalUnlockMode === 'unlock_all' && (
+                      <p className="text-xs text-muted-foreground mt-2 pl-7">
+                        All selected levels and their sessions will be unlocked immediately
                       </p>
                     )}
                   </CardContent>
@@ -433,7 +459,12 @@ export function AssignCourseToClassDialog({
                             </div>
                             {module.isSelected && (
                               <div className="flex items-center gap-3">
-                                {module.unlockMode === 'sequential' && moduleIndex > 0 ? (
+                                {module.unlockMode === 'unlock_all' ? (
+                                  <Badge variant="outline" className="text-xs gap-1 text-green-600 border-green-600">
+                                    <Unlock className="h-3 w-3" />
+                                    All Unlocked
+                                  </Badge>
+                                ) : module.unlockMode === 'sequential' && moduleIndex > 0 ? (
                                   <Badge variant="outline" className="text-xs gap-1">
                                     <Link2 className="h-3 w-3" />
                                     Auto Unlock
@@ -467,6 +498,7 @@ export function AssignCourseToClassDialog({
                                   <SelectContent>
                                     <SelectItem value="manual">Manual</SelectItem>
                                     <SelectItem value="sequential">Sequential</SelectItem>
+                                    <SelectItem value="unlock_all">Unlock All</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -503,7 +535,12 @@ export function AssignCourseToClassDialog({
                                   </div>
                                   {session.isSelected && (
                                     <div className="flex items-center gap-2">
-                                      {session.unlockMode === 'sequential' && sessionIndex > 0 ? (
+                                      {session.unlockMode === 'unlock_all' ? (
+                                        <Badge variant="outline" className="text-xs gap-1 text-green-600 border-green-600">
+                                          <Unlock className="h-3 w-3" />
+                                          Unlocked
+                                        </Badge>
+                                      ) : session.unlockMode === 'sequential' && sessionIndex > 0 ? (
                                         <Badge variant="outline" className="text-xs gap-1">
                                           <Link2 className="h-3 w-3" />
                                           Auto
@@ -528,8 +565,9 @@ export function AssignCourseToClassDialog({
                                           <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          <SelectItem value="manual">Manual</SelectItem>
+                                       <SelectItem value="manual">Manual</SelectItem>
                                           <SelectItem value="sequential">Sequential</SelectItem>
+                                          <SelectItem value="unlock_all">Unlock All</SelectItem>
                                         </SelectContent>
                                       </Select>
                                     </div>
