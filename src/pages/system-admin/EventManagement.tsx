@@ -24,7 +24,7 @@ export default function EventManagement() {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Events</h1>
+          <h1 className="text-3xl font-bold">External Events</h1>
           <p className="text-muted-foreground mt-1">
             {canManage 
               ? 'Create and manage webinars, hackathons, science expos, competitions and more'
