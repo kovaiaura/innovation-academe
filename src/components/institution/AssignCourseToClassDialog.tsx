@@ -82,6 +82,7 @@ export function AssignCourseToClassDialog({
   // Initialize module configs when course is selected
   useEffect(() => {
     if (selectedCourse?.modules) {
+      const unlockAll = globalUnlockMode === 'unlock_all';
       const configs: ModuleConfig[] = selectedCourse.modules.map((module, index) => {
         const isModuleAssigned = existingAssignmentData.moduleIds.has(module.id);
         return {
@@ -89,23 +90,23 @@ export function AssignCourseToClassDialog({
           title: module.title,
           displayOrder: module.display_order,
           isSelected: true,
-          isUnlocked: index === 0, // First module unlocked by default
-          unlockMode: index === 0 ? 'manual' : globalUnlockMode,
+          isUnlocked: unlockAll || index === 0,
+          unlockMode: (unlockAll || index === 0) ? 'manual' : globalUnlockMode,
           isAlreadyAssigned: isModuleAssigned,
           sessions: (module.sessions || []).map((session, sIndex) => ({
             sessionId: session.id,
             title: session.title,
             displayOrder: session.display_order,
             isSelected: true,
-            isUnlocked: sIndex === 0, // First session unlocked by default
-            unlockMode: sIndex === 0 ? 'manual' : globalUnlockMode,
+            isUnlocked: unlockAll || sIndex === 0,
+            unlockMode: (unlockAll || sIndex === 0) ? 'manual' : globalUnlockMode,
             isAlreadyAssigned: existingAssignmentData.sessionIds.has(session.id),
           })),
         };
       });
       setModuleConfigs(configs);
     }
-  }, [selectedCourse, globalUnlockMode, existingAssignmentData]);
+  }, [selectedCourse, existingAssignmentData]);
 
   const handleCourseSelect = (courseId: string) => {
     setSelectedCourseId(courseId);
