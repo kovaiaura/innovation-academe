@@ -1675,13 +1675,15 @@ async function fetchStudentContext(userId?: string): Promise<{ context: string; 
   const supabase = getSupabaseClient();
   const parts: string[] = [];
   const sources: string[] = [];
+  let institutionId: string | undefined;
+  let classId: string | undefined;
   
   try {
     // ==================== CLASS RANKING & PROFILE ====================
     if (userId) {
       const { data: profile } = await supabase.from('profiles').select('institution_id, class_id').eq('id', userId).single();
-      const institutionId = profile?.institution_id;
-      const classId = profile?.class_id;
+      institutionId = profile?.institution_id;
+      classId = profile?.class_id;
       
       if (classId && institutionId) {
         // Get all students in the same class
@@ -1793,26 +1795,42 @@ async function fetchStudentContext(userId?: string): Promise<{ context: string; 
       }
     }
 
-    // ==================== COURSE CONTENT FOR STEM LEARNING ====================
-    const { data: courses } = await supabase
-      .from('courses')
-      .select(`
-        id, title, description, category, difficulty, prerequisites, learning_outcomes,
-        course_modules (
-          id, title, description, display_order,
-          course_sessions (
-            id, title, description, learning_objectives, duration_minutes, display_order
+    // ==================== COURSE CONTENT FOR STEM LEARNING (SCOPED TO CLASS) ====================
+    // Get only courses assigned to the student's class
+    let assignedCourseIds: string[] = [];
+    if (classId && institutionId) {
+      const { data: classAssignments } = await supabase
+        .from('course_class_assignments')
+        .select('course_id')
+        .eq('class_id', classId)
+        .eq('institution_id', institutionId);
+      assignedCourseIds = (classAssignments || []).map(a => a.course_id);
+    }
+
+    let courses: any[] = [];
+    if (assignedCourseIds.length > 0) {
+      const { data: courseData } = await supabase
+        .from('courses')
+        .select(`
+          id, title, description, category, difficulty, prerequisites, learning_outcomes,
+          course_modules (
+            id, title, description, display_order,
+            course_sessions (
+              id, title, description, learning_objectives, duration_minutes, display_order
+            )
           )
-        )
-      `)
-      .in('status', ['published', 'active'])
-      .order('title')
-      .limit(15);
+        `)
+        .in('id', assignedCourseIds)
+        .in('status', ['published', 'active'])
+        .order('title')
+        .limit(15);
+      courses = courseData || [];
+    }
     
-    parts.push('## 📚 COURSE CONTENT FOR LEARNING');
-    parts.push(`Total Courses Available: ${courses?.length || 0}\n`);
+    parts.push('## 📚 YOUR ASSIGNED COURSES');
+    parts.push(`Courses Assigned to Your Class: ${courses.length}\n`);
     
-    if (courses?.length) {
+    if (courses.length) {
       for (const course of courses) {
         parts.push(`### 🎓 ${course.title} (${course.difficulty || 'Beginner'})`);
         parts.push(`Category: ${course.category || 'STEM'}`);
@@ -1825,14 +1843,14 @@ async function fetchStudentContext(userId?: string): Promise<{ context: string; 
         
         const modules = (course.course_modules as any[]) || [];
         if (modules.length) {
-          modules.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+          modules.sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0));
           for (const mod of modules) {
             parts.push(`\n**Module: ${mod.title}**`);
             if (mod.description) parts.push(`  ${mod.description}`);
             
             const sessions = (mod.course_sessions as any[]) || [];
             if (sessions.length) {
-              sessions.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+              sessions.sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0));
               for (const sess of sessions) {
                 parts.push(`  📖 Session: ${sess.title} (${sess.duration_minutes || '?'} min)`);
                 if (sess.description) parts.push(`     ${sess.description}`);
@@ -1845,6 +1863,8 @@ async function fetchStudentContext(userId?: string): Promise<{ context: string; 
         }
         parts.push('');
       }
+    } else {
+      parts.push('No courses assigned to your class yet.');
     }
     sources.push('courses', 'course_modules', 'course_sessions');
 
@@ -1898,7 +1918,7 @@ async function fetchStudentContext(userId?: string): Promise<{ context: string; 
       sources.push('assessment_history');
     }
 
-    // ==================== CONTENT COMPLETION ====================
+    // ==================== CONTENT COMPLETION (SCOPED TO ASSIGNED COURSES) ====================
     if (userId) {
       parts.push('\n## 📊 YOUR LEARNING PROGRESS');
       
@@ -1907,46 +1927,164 @@ async function fetchStudentContext(userId?: string): Promise<{ context: string; 
         .select('content_id, completed_at')
         .eq('student_id', userId);
       
-      const { data: allContent } = await supabase
-        .from('course_content')
-        .select('id, title, type, course_id')
-        .limit(500);
+      // Only fetch content from assigned courses
+      let assignedContent: any[] = [];
+      if (assignedCourseIds.length > 0) {
+        const { data: contentData } = await supabase
+          .from('course_content')
+          .select('id, title, type, course_id')
+          .in('course_id', assignedCourseIds)
+          .limit(500);
+        assignedContent = contentData || [];
+      }
       
-      if (allContent?.length) {
+      if (assignedContent.length) {
         const completedIds = new Set((completions || []).map(c => c.content_id));
-        const completed = allContent.filter(c => completedIds.has(c.id));
-        const completionRate = ((completed.length / allContent.length) * 100).toFixed(1);
+        const completed = assignedContent.filter(c => completedIds.has(c.id));
+        const completionRate = ((completed.length / assignedContent.length) * 100).toFixed(1);
         
-        parts.push(`Content Completed: ${completed.length}/${allContent.length} (${completionRate}%)`);
+        parts.push(`Content Completed: ${completed.length}/${assignedContent.length} (${completionRate}%)`);
         
-        const remaining = allContent.filter(c => !completedIds.has(c.id));
+        const remaining = assignedContent.filter(c => !completedIds.has(c.id));
         if (remaining.length > 0 && remaining.length <= 20) {
           parts.push('\n**Remaining Content:**');
           for (const c of remaining.slice(0, 10)) parts.push(`- ${c.title} (${c.type})`);
         }
+      } else {
+        parts.push('No course content assigned yet.');
       }
       sources.push('content_completions');
     }
 
-    // ==================== UPCOMING EVENTS ====================
-    parts.push('\n## 🎉 UPCOMING EVENTS');
+    // ==================== YOUR ASSIGNMENTS (SCOPED) ====================
+    if (userId && institutionId) {
+      parts.push('\n## 📋 YOUR ASSIGNMENTS');
+      
+      // Get assignments assigned to student's class
+      const { data: assignmentClassAssignments } = await supabase
+        .from('assignment_class_assignments')
+        .select('assignment_id')
+        .eq('institution_id', institutionId)
+        .eq('class_id', classId);
+      
+      const assignedAssignmentIds = (assignmentClassAssignments || []).map(a => a.assignment_id);
+      
+      if (assignedAssignmentIds.length > 0) {
+        const { data: myAssignments } = await supabase
+          .from('assignments')
+          .select('id, title, status, submission_end_date, total_marks')
+          .in('id', assignedAssignmentIds)
+          .eq('status', 'active');
+        
+        const { data: mySubmissions } = await supabase
+          .from('assignment_submissions')
+          .select('assignment_id, status, marks_obtained, submitted_at, feedback')
+          .eq('student_id', userId);
+        
+        const submittedMap = new Map((mySubmissions || []).map(s => [s.assignment_id, s]));
+        
+        let pending = 0, submitted = 0, graded = 0;
+        const gradedDetails: string[] = [];
+        const pendingDetails: string[] = [];
+        
+        for (const a of (myAssignments || [])) {
+          const sub = submittedMap.get(a.id);
+          if (!sub) {
+            pending++;
+            const dueDate = a.submission_end_date ? new Date(a.submission_end_date).toLocaleDateString() : 'N/A';
+            pendingDetails.push(`- **${a.title}** — Due: ${dueDate} (${a.total_marks || 0} marks)`);
+          } else if (sub.status === 'graded') {
+            graded++;
+            gradedDetails.push(`- **${a.title}**: ${sub.marks_obtained || 0}/${a.total_marks || 0} marks`);
+          } else {
+            submitted++;
+          }
+        }
+        
+        parts.push(`Pending: ${pending} | Submitted: ${submitted} | Graded: ${graded}`);
+        if (pendingDetails.length) { parts.push('\n**Pending Assignments:**'); parts.push(...pendingDetails); }
+        if (gradedDetails.length) { parts.push('\n**Graded Assignments:**'); parts.push(...gradedDetails); }
+      } else {
+        parts.push('No assignments assigned to your class yet.');
+      }
+      sources.push('assignments', 'assignment_submissions');
+    }
+
+    // ==================== YOUR ATTENDANCE ====================
+    if (userId && classId && institutionId) {
+      parts.push('\n## 📅 YOUR ATTENDANCE');
+      
+      const { data: attendanceRecords } = await supabase
+        .from('class_session_attendance')
+        .select('date, subject, period_label, attendance_records')
+        .eq('class_id', classId)
+        .eq('institution_id', institutionId)
+        .order('date', { ascending: false })
+        .limit(30);
+      
+      if (attendanceRecords?.length) {
+        let presentCount = 0, absentCount = 0, lateCount = 0;
+        
+        for (const record of attendanceRecords) {
+          const records = record.attendance_records as any[];
+          if (records && Array.isArray(records)) {
+            const myRecord = records.find((r: any) => r.student_id === userId || r.user_id === userId);
+            if (myRecord) {
+              if (myRecord.status === 'present') presentCount++;
+              else if (myRecord.status === 'absent') absentCount++;
+              else if (myRecord.status === 'late') lateCount++;
+            }
+          }
+        }
+        
+        const total = presentCount + absentCount + lateCount;
+        const attendanceRate = total > 0 ? ((presentCount / total) * 100).toFixed(1) : 'N/A';
+        parts.push(`Sessions Tracked: ${total}`);
+        parts.push(`Present: ${presentCount} | Absent: ${absentCount} | Late: ${lateCount}`);
+        parts.push(`**Attendance Rate: ${attendanceRate}%**`);
+      } else {
+        parts.push('No attendance records found.');
+      }
+      sources.push('attendance');
+    }
+
+    // ==================== UPCOMING EVENTS (SCOPED TO INSTITUTION) ====================
+    parts.push('\n## 🎉 YOUR UPCOMING EVENTS');
     const now = new Date().toISOString();
-    const { data: events } = await supabase
-      .from('events')
-      .select('title, event_type, event_start, description, max_participants, current_participants')
-      .eq('status', 'published')
-      .gte('event_start', now)
-      .order('event_start')
-      .limit(5);
     
-    if (events?.length) {
-      for (const e of events) {
-        const spots = e.max_participants ? `${e.current_participants || 0}/${e.max_participants} spots` : 'Open';
-        parts.push(`- **${e.title}** (${e.event_type}) - ${new Date(e.event_start).toLocaleDateString()} [${spots}]`);
-        if (e.description) parts.push(`  ${e.description.slice(0, 100)}...`);
+    if (institutionId) {
+      // Get event IDs assigned to student's institution
+      const { data: eventAssignments } = await supabase
+        .from('event_class_assignments')
+        .select('event_id')
+        .eq('institution_id', institutionId);
+      
+      const assignedEventIds = [...new Set((eventAssignments || []).map(a => a.event_id))];
+      
+      if (assignedEventIds.length > 0) {
+        const { data: events } = await supabase
+          .from('events')
+          .select('title, event_type, event_start, description, max_participants, current_participants')
+          .in('id', assignedEventIds)
+          .eq('status', 'published')
+          .gte('event_start', now)
+          .order('event_start')
+          .limit(5);
+        
+        if (events?.length) {
+          for (const e of events) {
+            const spots = e.max_participants ? `${e.current_participants || 0}/${e.max_participants} spots` : 'Open';
+            parts.push(`- **${e.title}** (${e.event_type}) - ${new Date(e.event_start).toLocaleDateString()} [${spots}]`);
+            if (e.description) parts.push(`  ${e.description.slice(0, 100)}...`);
+          }
+        } else {
+          parts.push('No upcoming events for your institution.');
+        }
+      } else {
+        parts.push('No events assigned to your institution.');
       }
     } else {
-      parts.push('No upcoming events.');
+      parts.push('No institution found to scope events.');
     }
     sources.push('events');
 
@@ -2037,39 +2175,74 @@ async function fetchStudentContext(userId?: string): Promise<{ context: string; 
       
       const completedContentIds = new Set((completions || []).map(c => c.content_id));
       
-      const { data: allContent } = await supabase
-        .from('course_content')
-        .select('id, title, session_id, course_sessions(title), courses(title)')
-        .limit(200);
+      // Scope SWOT content to assigned courses
+      let swotContent: any[] = [];
+      if (assignedCourseIds.length > 0) {
+        const { data: contentData } = await supabase
+          .from('course_content')
+          .select('id, title, session_id, course_sessions(title), courses(title)')
+          .in('course_id', assignedCourseIds)
+          .limit(200);
+        swotContent = contentData || [];
+      }
       
-      if (allContent?.length) {
-        const incomplete = allContent.filter(c => !completedContentIds.has(c.id));
+      if (swotContent.length) {
+        const incomplete = swotContent.filter(c => !completedContentIds.has(c.id));
         if (incomplete.length > 0) {
           parts.push(`\n### 🔮 OPPORTUNITIES:`);
-          parts.push(`- ${incomplete.length} content items remaining to complete out of ${allContent.length} total`);
-          parts.push(`- Completion rate: ${(((allContent.length - incomplete.length) / allContent.length) * 100).toFixed(1)}%`);
+          parts.push(`- ${incomplete.length} content items remaining to complete out of ${swotContent.length} total`);
+          parts.push(`- Completion rate: ${(((swotContent.length - incomplete.length) / swotContent.length) * 100).toFixed(1)}%`);
         }
       }
       
-      // Threats
+      // Threats - scoped to institution
       const now2 = new Date().toISOString();
       const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
       
-      const { data: upcomingAssessments } = await supabase
-        .from('assessments')
-        .select('title, start_time, end_time')
-        .gte('start_time', now2)
-        .lte('start_time', nextWeek)
-        .eq('status', 'published')
-        .limit(5);
+      // Get institution-scoped assessments
+      let upcomingAssessments: any[] = [];
+      if (institutionId) {
+        const { data: assessClassAssignments } = await supabase
+          .from('assessment_class_assignments')
+          .select('assessment_id')
+          .eq('institution_id', institutionId);
+        const assessIds = (assessClassAssignments || []).map(a => a.assessment_id);
+        
+        if (assessIds.length > 0) {
+          const { data: assessData } = await supabase
+            .from('assessments')
+            .select('title, start_time, end_time')
+            .in('id', assessIds)
+            .gte('start_time', now2)
+            .lte('start_time', nextWeek)
+            .eq('status', 'published')
+            .limit(5);
+          upcomingAssessments = assessData || [];
+        }
+      }
       
-      const { data: upcomingAssignments } = await supabase
-        .from('assignments')
-        .select('title, submission_end_date')
-        .gte('submission_end_date', now2)
-        .lte('submission_end_date', nextWeek)
-        .eq('status', 'active')
-        .limit(5);
+      // Get institution-scoped assignments
+      let upcomingAssignments: any[] = [];
+      if (institutionId && classId) {
+        const { data: assignClassAssignments } = await supabase
+          .from('assignment_class_assignments')
+          .select('assignment_id')
+          .eq('institution_id', institutionId)
+          .eq('class_id', classId);
+        const assignIds = (assignClassAssignments || []).map(a => a.assignment_id);
+        
+        if (assignIds.length > 0) {
+          const { data: assignData } = await supabase
+            .from('assignments')
+            .select('title, submission_end_date')
+            .in('id', assignIds)
+            .gte('submission_end_date', now2)
+            .lte('submission_end_date', nextWeek)
+            .eq('status', 'active')
+            .limit(5);
+          upcomingAssignments = assignData || [];
+        }
+      }
       
       if ((upcomingAssessments?.length || 0) + (upcomingAssignments?.length || 0) > 0) {
         parts.push(`\n### ⏰ THREATS (Upcoming Deadlines This Week):`);
@@ -2212,19 +2385,24 @@ When asked about rank, standing, or performance vs peers:
 - Explain what the weighted formula considers (Assessments 50%, Assignments 20%, Projects 20%, XP 10%)
 - Suggest specific areas to improve their ranking
 
-## 🧭 CAREER GUIDANCE:
+## 🧭 CAREER GUIDANCE (Current Market Context - 2025-2026):
 When asked about career advice, future domains, or "what should I study":
 - Analyze their strongest course categories and SWOT strengths
 - Consider their project types, SDG goals, and achievements/awards
-- Map strengths to career domains:
-  - High Programming/Coding accuracy → Software Engineering, AI/ML, Full-Stack Development
-  - High Electronics/Robotics accuracy → Mechatronics, IoT, Embedded Systems, Automation
-  - High Biology/Environment accuracy → Biotechnology, Environmental Science, Healthcare Tech
-  - High Math/Statistics accuracy → Data Science, Quantitative Finance, Research
-  - Projects with patents/awards → Entrepreneurship, R&D, Innovation Management
-  - SDG-aligned projects → Social Impact careers, Sustainability Engineering, Policy
-- Recommend specific higher education paths, certifications, and industry domains
-- Be encouraging and highlight their unique combination of skills`;
+- **ALWAYS frame career advice based on current 2025-2026 industry trends and real-time market demand**, NOT historical or outdated information
+- Map strengths to current high-demand career domains:
+  - High Programming/Coding accuracy → AI/ML Engineering (massive demand 2025), Full-Stack Development, DevOps/Platform Engineering, Cybersecurity
+  - High Electronics/Robotics accuracy → Mechatronics, IoT & Edge Computing, Embedded AI, Drone Technology, EV & Battery Systems
+  - High Biology/Environment accuracy → Biotechnology, Climate Tech, Green Energy, Healthcare AI, Precision Agriculture
+  - High Math/Statistics accuracy → Data Engineering (top demand), Quantitative Finance, AI Research, Actuarial Science
+  - Projects with patents/awards → Deep Tech Entrepreneurship, R&D roles at FAANG/startups, Innovation Management
+  - SDG-aligned projects → ESG Consulting, Sustainability Engineering, Impact Investing, Policy & Governance
+- Reference current high-demand fields: AI/ML Engineering, Cybersecurity, Cloud Architecture, Data Engineering, Climate Tech, Quantum Computing, Space Technology, Semiconductor Design, AR/VR Development
+- Mention relevant certifications trending in 2025-2026 (AWS/Azure/GCP, Google AI, Certified Ethical Hacker, PMP, etc.)
+- Provide realistic salary expectations and growth trajectories based on current Indian/global market
+- Suggest specific higher education paths (IITs, NITs, international programs) and competitive exam focus areas
+- Be encouraging, specific, and highlight their unique combination of skills as a competitive advantage`;
+
 
 const managementPrompt = `You are Metova, an AI Business Intelligence assistant for Institution Management at Metova Academy.
 
