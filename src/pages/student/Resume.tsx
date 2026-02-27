@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Download, Plus, Trash2, FileText, Loader2 } from 'lucide-react';
+import { Download, Plus, Trash2, FileText, Loader2, Save, Linkedin } from 'lucide-react';
 import { useStudentResume } from '@/hooks/useStudentResume';
+import { useStudentResumeExtras, useUpdateResumeExtras } from '@/hooks/useStudentResumeExtras';
+import { useAuth } from '@/contexts/AuthContext';
 import { ResumePDF } from '@/components/student/pdf/ResumePDF';
 import { pdf } from '@react-pdf/renderer';
 import { format } from 'date-fns';
@@ -23,10 +26,32 @@ const SDG_COLORS: Record<string, string> = {
 };
 
 export default function Resume() {
+  const { user } = useAuth();
   const { data: resumeData, isLoading, error } = useStudentResume();
+  const { data: extras, isLoading: extrasLoading } = useStudentResumeExtras(resumeData?.studentId || null);
+  const updateExtras = useUpdateResumeExtras();
+
   const [customSkills, setCustomSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+
+  // Editable extras state
+  const [aboutMe, setAboutMe] = useState('');
+  const [hobbies, setHobbies] = useState<string[]>([]);
+  const [newHobby, setNewHobby] = useState('');
+  const [sportsAchievements, setSportsAchievements] = useState<string[]>([]);
+  const [newAchievement, setNewAchievement] = useState('');
+  const [linkedinUrl, setLinkedinUrl] = useState('');
+
+  // Sync extras data when loaded
+  useEffect(() => {
+    if (extras) {
+      setAboutMe(extras.about_me || '');
+      setHobbies(extras.hobbies || []);
+      setSportsAchievements(extras.sports_achievements || []);
+      setLinkedinUrl(extras.linkedin_url || '');
+    }
+  }, [extras]);
 
   const handleAddSkill = () => {
     if (newSkill.trim()) {
@@ -39,6 +64,50 @@ export default function Resume() {
     setCustomSkills(customSkills.filter((_, i) => i !== index));
   };
 
+  const handleAddHobby = () => {
+    if (newHobby.trim()) {
+      setHobbies([...hobbies, newHobby.trim()]);
+      setNewHobby('');
+    }
+  };
+
+  const handleRemoveHobby = (index: number) => {
+    setHobbies(hobbies.filter((_, i) => i !== index));
+  };
+
+  const handleAddAchievement = () => {
+    if (newAchievement.trim()) {
+      setSportsAchievements([...sportsAchievements, newAchievement.trim()]);
+      setNewAchievement('');
+    }
+  };
+
+  const handleRemoveAchievement = (index: number) => {
+    setSportsAchievements(sportsAchievements.filter((_, i) => i !== index));
+  };
+
+  const handleSaveExtras = () => {
+    if (!resumeData?.studentId || !user?.id) {
+      toast.error('Student data not available');
+      return;
+    }
+
+    // Basic LinkedIn URL validation
+    if (linkedinUrl && !linkedinUrl.match(/^https?:\/\/(www\.)?linkedin\.com\//i) && !linkedinUrl.match(/^(www\.)?linkedin\.com\//i)) {
+      toast.error('Please enter a valid LinkedIn URL');
+      return;
+    }
+
+    updateExtras.mutate({
+      student_id: resumeData.studentId,
+      user_id: user.id,
+      about_me: aboutMe || null,
+      hobbies,
+      sports_achievements: sportsAchievements,
+      linkedin_url: linkedinUrl || null,
+    });
+  };
+
   const handleExport = async () => {
     if (!resumeData) {
       toast.error('Resume data not available');
@@ -47,7 +116,18 @@ export default function Resume() {
 
     setIsExporting(true);
     try {
-      const blob = await pdf(<ResumePDF data={resumeData} customSkills={customSkills} />).toBlob();
+      const blob = await pdf(
+        <ResumePDF 
+          data={resumeData} 
+          customSkills={customSkills}
+          extras={{
+            about_me: aboutMe || null,
+            hobbies,
+            sports_achievements: sportsAchievements,
+            linkedin_url: linkedinUrl || null,
+          }}
+        />
+      ).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -65,7 +145,7 @@ export default function Resume() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || extrasLoading) {
     return (
       <Layout>
         <div className="space-y-6">
@@ -80,23 +160,15 @@ export default function Resume() {
             <div className="lg:col-span-2 space-y-6">
               {[1, 2, 3, 4].map((i) => (
                 <Card key={i}>
-                  <CardHeader>
-                    <Skeleton className="h-6 w-40" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-24 w-full" />
-                  </CardContent>
+                  <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
+                  <CardContent><Skeleton className="h-24 w-full" /></CardContent>
                 </Card>
               ))}
             </div>
             <div>
               <Card>
-                <CardHeader>
-                  <Skeleton className="h-6 w-32" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-64 w-full" />
-                </CardContent>
+                <CardHeader><Skeleton className="h-6 w-32" /></CardHeader>
+                <CardContent><Skeleton className="h-64 w-full" /></CardContent>
               </Card>
             </div>
           </div>
@@ -127,22 +199,37 @@ export default function Resume() {
             <h1 className="text-3xl font-bold">Resume Builder</h1>
             <p className="text-muted-foreground">Auto-filled from your LMS data</p>
           </div>
-          <Button 
-            onClick={handleExport} 
-            className="bg-meta-dark hover:bg-meta-dark-lighter"
-            disabled={isExporting}
-          >
-            {isExporting ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="mr-2 h-4 w-4" />
-            )}
-            Export as PDF
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleSaveExtras}
+              variant="outline"
+              disabled={updateExtras.isPending}
+            >
+              {updateExtras.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              Save Details
+            </Button>
+            <Button 
+              onClick={handleExport} 
+              className="bg-meta-dark hover:bg-meta-dark-lighter"
+              disabled={isExporting}
+            >
+              {isExporting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              Export as PDF
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
+            {/* Personal Information */}
             <Card>
               <CardHeader>
                 <CardTitle>Personal Information</CardTitle>
@@ -169,9 +256,36 @@ export default function Resume() {
                     <Input value={resumeData.personal.address || 'Not provided'} disabled />
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1">
+                    <Linkedin className="h-4 w-4" /> LinkedIn URL
+                  </Label>
+                  <Input
+                    placeholder="https://linkedin.com/in/your-profile"
+                    value={linkedinUrl}
+                    onChange={(e) => setLinkedinUrl(e.target.value)}
+                  />
+                </div>
               </CardContent>
             </Card>
 
+            {/* About Me */}
+            <Card>
+              <CardHeader>
+                <CardTitle>About Me</CardTitle>
+                <CardDescription>Write a short bio about yourself</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  placeholder="Write a brief description about yourself, your interests, and goals..."
+                  value={aboutMe}
+                  onChange={(e) => setAboutMe(e.target.value)}
+                  rows={4}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Education */}
             <Card>
               <CardHeader>
                 <CardTitle>Education</CardTitle>
@@ -193,6 +307,7 @@ export default function Resume() {
               </CardContent>
             </Card>
 
+            {/* Skills */}
             <Card>
               <CardHeader>
                 <CardTitle>Skills</CardTitle>
@@ -243,6 +358,75 @@ export default function Resume() {
               </CardContent>
             </Card>
 
+            {/* Hobbies */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Hobbies</CardTitle>
+                <CardDescription>Add your hobbies and interests</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2 mb-2">
+                  <Input
+                    placeholder="Add a hobby..."
+                    value={newHobby}
+                    onChange={(e) => setNewHobby(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddHobby()}
+                  />
+                  <Button onClick={handleAddHobby} size="icon">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {hobbies.map((hobby, index) => (
+                    <div key={index} className="flex items-center gap-2 rounded-full bg-meta-accent px-3 py-1 text-sm text-meta-dark">
+                      {hobby}
+                      <button onClick={() => handleRemoveHobby(index)}>
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {hobbies.length === 0 && (
+                    <p className="text-sm text-muted-foreground italic">No hobbies added yet</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Sports Achievements */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Sports Achievements</CardTitle>
+                <CardDescription>Add your sports accomplishments</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2 mb-2">
+                  <Input
+                    placeholder="e.g., District Cricket Champion 2024..."
+                    value={newAchievement}
+                    onChange={(e) => setNewAchievement(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddAchievement()}
+                  />
+                  <Button onClick={handleAddAchievement} size="icon">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {sportsAchievements.map((achievement, index) => (
+                    <div key={index} className="flex items-center justify-between rounded-lg border p-3">
+                      <span className="text-sm">{achievement}</span>
+                      <button onClick={() => handleRemoveAchievement(index)} className="text-muted-foreground hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {sportsAchievements.length === 0 && (
+                    <p className="text-sm text-muted-foreground italic">No achievements added yet</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Projects */}
             <Card>
               <CardHeader>
                 <CardTitle>Projects & SDG Contributions</CardTitle>
@@ -284,6 +468,7 @@ export default function Resume() {
               </CardContent>
             </Card>
 
+            {/* Certificates */}
             <Card>
               <CardHeader>
                 <CardTitle>Certificates</CardTitle>
@@ -313,6 +498,7 @@ export default function Resume() {
             </Card>
           </div>
 
+          {/* Sidebar */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -327,8 +513,17 @@ export default function Resume() {
                     {resumeData.personal.phone && (
                       <p className="text-sm text-gray-600">{resumeData.personal.phone}</p>
                     )}
+                    {linkedinUrl && (
+                      <p className="text-xs text-blue-600 truncate">{linkedinUrl}</p>
+                    )}
                   </div>
                   <div className="space-y-3 text-sm">
+                    {aboutMe && (
+                      <div>
+                        <h3 className="font-bold text-meta-dark mb-1">ABOUT</h3>
+                        <p className="text-xs text-gray-700 line-clamp-3">{aboutMe}</p>
+                      </div>
+                    )}
                     <div>
                       <h3 className="font-bold text-meta-dark mb-1">EDUCATION</h3>
                       <div className="text-xs text-gray-700">
@@ -346,6 +541,23 @@ export default function Resume() {
                         {allSkills.length > 0 ? allSkills.join(', ') : 'No skills added yet'}
                       </div>
                     </div>
+                    {hobbies.length > 0 && (
+                      <div>
+                        <h3 className="font-bold text-meta-dark mb-1">HOBBIES</h3>
+                        <div className="text-xs text-gray-700">{hobbies.join(', ')}</div>
+                      </div>
+                    )}
+                    {sportsAchievements.length > 0 && (
+                      <div>
+                        <h3 className="font-bold text-meta-dark mb-1">SPORTS ACHIEVEMENTS</h3>
+                        {sportsAchievements.slice(0, 2).map((a, i) => (
+                          <div key={i} className="text-xs text-gray-700">• {a}</div>
+                        ))}
+                        {sportsAchievements.length > 2 && (
+                          <div className="text-xs text-gray-500">+{sportsAchievements.length - 2} more</div>
+                        )}
+                      </div>
+                    )}
                     <div>
                       <h3 className="font-bold text-meta-dark mb-1">PROJECTS</h3>
                       {resumeData.projects.length > 0 ? (

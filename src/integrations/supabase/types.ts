@@ -6507,6 +6507,50 @@ export type Database = {
           },
         ]
       }
+      student_resume_extras: {
+        Row: {
+          about_me: string | null
+          created_at: string
+          hobbies: string[] | null
+          id: string
+          linkedin_url: string | null
+          sports_achievements: string[] | null
+          student_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          about_me?: string | null
+          created_at?: string
+          hobbies?: string[] | null
+          id?: string
+          linkedin_url?: string | null
+          sports_achievements?: string[] | null
+          student_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          about_me?: string | null
+          created_at?: string
+          hobbies?: string[] | null
+          id?: string
+          linkedin_url?: string | null
+          sports_achievements?: string[] | null
+          student_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_resume_extras_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: true
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_streaks: {
         Row: {
           created_at: string | null

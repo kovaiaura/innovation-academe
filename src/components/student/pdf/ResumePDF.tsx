@@ -59,6 +59,10 @@ const styles = StyleSheet.create({
     color: '#999999',
     marginHorizontal: 8,
   },
+  linkedinItem: {
+    fontSize: 9,
+    color: '#0077B5',
+  },
   section: {
     marginBottom: 18,
   },
@@ -71,6 +75,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     borderBottom: '1 solid #e5e5e5',
     paddingBottom: 4,
+  },
+  aboutText: {
+    fontSize: 10,
+    color: '#444444',
+    lineHeight: 1.5,
   },
   educationRow: {
     flexDirection: 'row',
@@ -102,6 +111,24 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     fontSize: 9,
     color: '#333333',
+  },
+  hobbiesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  hobbyTag: {
+    backgroundColor: '#e8f4f8',
+    padding: '4 10',
+    borderRadius: 12,
+    fontSize: 9,
+    color: '#2c5f6e',
+  },
+  achievementItem: {
+    fontSize: 10,
+    color: '#444444',
+    marginBottom: 4,
+    paddingLeft: 8,
   },
   projectItem: {
     marginBottom: 12,
@@ -180,12 +207,20 @@ const styles = StyleSheet.create({
   },
 });
 
+interface ResumeExtrasForPDF {
+  about_me: string | null;
+  hobbies: string[];
+  sports_achievements: string[];
+  linkedin_url: string | null;
+}
+
 interface Props {
   data: ResumeData;
   customSkills?: string[];
+  extras?: ResumeExtrasForPDF;
 }
 
-export function ResumePDF({ data, customSkills = [] }: Props) {
+export function ResumePDF({ data, customSkills = [], extras }: Props) {
   const allSkills = [...data.skills, ...customSkills];
   
   const formatSdgGoal = (goal: string): { label: string; color: string } => {
@@ -218,8 +253,22 @@ export function ResumePDF({ data, customSkills = [] }: Props) {
             {data.personal.address && (
               <Text style={styles.contactItem}>{data.personal.address}</Text>
             )}
+            {extras?.linkedin_url && (
+              <>
+                <Text style={styles.contactSeparator}>|</Text>
+                <Text style={styles.linkedinItem}>{extras.linkedin_url}</Text>
+              </>
+            )}
           </View>
         </View>
+
+        {/* About Section */}
+        {extras?.about_me && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>About</Text>
+            <Text style={styles.aboutText}>{extras.about_me}</Text>
+          </View>
+        )}
 
         {/* Education Section */}
         <View style={styles.section}>
@@ -251,6 +300,28 @@ export function ResumePDF({ data, customSkills = [] }: Props) {
             <Text style={styles.emptyState}>Skills will be added as you complete courses</Text>
           )}
         </View>
+
+        {/* Hobbies Section */}
+        {extras?.hobbies && extras.hobbies.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Hobbies & Interests</Text>
+            <View style={styles.hobbiesContainer}>
+              {extras.hobbies.map((hobby, index) => (
+                <Text key={index} style={styles.hobbyTag}>{hobby}</Text>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Sports Achievements Section */}
+        {extras?.sports_achievements && extras.sports_achievements.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Sports Achievements</Text>
+            {extras.sports_achievements.map((achievement, index) => (
+              <Text key={index} style={styles.achievementItem}>• {achievement}</Text>
+            ))}
+          </View>
+        )}
 
         {/* Projects Section */}
         <View style={styles.section}>
