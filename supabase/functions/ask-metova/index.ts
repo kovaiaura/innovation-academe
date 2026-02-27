@@ -1677,6 +1677,122 @@ async function fetchStudentContext(userId?: string): Promise<{ context: string; 
   const sources: string[] = [];
   
   try {
+    // ==================== CLASS RANKING & PROFILE ====================
+    if (userId) {
+      const { data: profile } = await supabase.from('profiles').select('institution_id, class_id').eq('id', userId).single();
+      const institutionId = profile?.institution_id;
+      const classId = profile?.class_id;
+      
+      if (classId && institutionId) {
+        // Get all students in the same class
+        const { data: classmates } = await supabase.from('students').select('id, user_id, student_name').eq('class_id', classId).eq('institution_id', institutionId);
+        const classmateUserIds = (classmates || []).filter(s => s.user_id).map(s => s.user_id!);
+        
+        if (classmateUserIds.length > 1) {
+          // Get assessment scores for all classmates
+          const { data: classAttempts } = await supabase.from('assessment_attempts').select('student_id, percentage').in('student_id', classmateUserIds).in('status', ['submitted', 'auto_submitted']);
+          // Get assignment scores
+          const { data: classSubs } = await supabase.from('assignment_submissions').select('student_id, marks_obtained').eq('status', 'graded').in('student_id', classmateUserIds);
+          // Get assignment total marks for normalization
+          const { data: assignmentsList } = await supabase.from('assignments').select('id, total_marks').eq('institution_id', institutionId);
+          // Get project counts
+          const { data: classProjectMembers } = await supabase.from('project_members').select('student_id').in('student_id', (classmates || []).map(s => s.id));
+          // Get XP
+          const { data: classXP } = await supabase.from('student_xp_transactions').select('student_id, points_earned').in('student_id', classmateUserIds);
+          
+          // Build student name map
+          const nameMap = new Map<string, string>();
+          for (const s of (classmates || [])) { if (s.user_id) nameMap.set(s.user_id, s.student_name || 'Unknown'); }
+          // Student id (from students table) to user_id map
+          const studentIdToUserId = new Map<string, string>();
+          for (const s of (classmates || [])) { if (s.user_id) studentIdToUserId.set(s.id, s.user_id); }
+          
+          // Compute weighted score per classmate
+          const scores: { userId: string; name: string; total: number; assessAvg: number; assignAvg: number; projCount: number; xpTotal: number }[] = [];
+          
+          for (const uid of classmateUserIds) {
+            const myAttempts = (classAttempts || []).filter(a => a.student_id === uid);
+            const assessAvg = myAttempts.length > 0 ? myAttempts.reduce((s, a) => s + (a.percentage || 0), 0) / myAttempts.length : 0;
+            
+            const mySubs = (classSubs || []).filter(s => s.student_id === uid);
+            let assignAvg = 0;
+            if (mySubs.length > 0) {
+              const marksTotal = mySubs.reduce((s, sub) => s + (sub.marks_obtained || 0), 0);
+              assignAvg = (marksTotal / mySubs.length); // raw marks avg, normalize later
+            }
+            
+            const studentTableId = (classmates || []).find(s => s.user_id === uid)?.id;
+            const projCount = studentTableId ? (classProjectMembers || []).filter(p => p.student_id === studentTableId).length : 0;
+            const xpTotal = (classXP || []).filter(x => x.student_id === uid).reduce((s, x) => s + (x.points_earned || 0), 0);
+            
+            const projScore = Math.min(projCount * 20, 100);
+            const xpScore = Math.min(xpTotal / 10, 100);
+            const total = assessAvg * 0.5 + assignAvg * 0.2 + projScore * 0.2 + xpScore * 0.1;
+            
+            scores.push({ userId: uid, name: nameMap.get(uid) || 'Unknown', total, assessAvg, assignAvg, projCount, xpTotal });
+          }
+          
+          scores.sort((a, b) => b.total - a.total);
+          const myRank = scores.findIndex(s => s.userId === userId) + 1;
+          const myScore = scores.find(s => s.userId === userId);
+          
+          parts.push('## 🏅 YOUR CLASS RANKING');
+          parts.push(`**Rank: ${myRank} out of ${scores.length} students**`);
+          if (myScore) {
+            parts.push(`Weighted Score: ${myScore.total.toFixed(1)}`);
+            parts.push(`Assessment Avg: ${myScore.assessAvg.toFixed(1)}% | Assignment Avg: ${myScore.assignAvg.toFixed(1)} | Projects: ${myScore.projCount} | XP: ${myScore.xpTotal}`);
+          }
+          
+          // Show top 5 for context
+          parts.push('\n**Class Top 5:**');
+          for (const s of scores.slice(0, 5)) {
+            const marker = s.userId === userId ? ' ⬅️ (You)' : '';
+            parts.push(`${scores.indexOf(s) + 1}. ${s.name}: ${s.total.toFixed(1)} pts (Assess: ${s.assessAvg.toFixed(0)}%, Projects: ${s.projCount}, XP: ${s.xpTotal})${marker}`);
+          }
+          if (myRank > 5) {
+            parts.push(`...\n${myRank}. ${myScore?.name}: ${myScore?.total.toFixed(1)} pts ⬅️ (You)`);
+          }
+          sources.push('class_ranking');
+        }
+      }
+      
+      // ==================== PROJECT INVOLVEMENT & RECOGNITION ====================
+      const { data: myStudentRecord } = await supabase.from('students').select('id').eq('user_id', userId).single();
+      if (myStudentRecord) {
+        const { data: myMemberships } = await supabase.from('project_members').select('project_id, role').eq('student_id', myStudentRecord.id);
+        
+        if (myMemberships?.length) {
+          const projectIds = myMemberships.map(m => m.project_id);
+          const { data: myProjects } = await supabase.from('projects').select('id, title, status, sdg_goals, category').in('id', projectIds);
+          const { data: myAchievements } = await supabase.from('project_achievements').select('id, title, achievement_type, project_id').in('project_id', projectIds);
+          
+          parts.push('\n## 🚀 YOUR PROJECTS & RECOGNITION');
+          parts.push(`Total Projects: ${myProjects?.length || 0}`);
+          
+          if (myProjects?.length) {
+            for (const p of myProjects) {
+              const sdg = p.sdg_goals && Array.isArray(p.sdg_goals) ? ` [SDG: ${(p.sdg_goals as string[]).join(', ')}]` : '';
+              const cat = p.category ? ` (${p.category})` : '';
+              parts.push(`- **${p.title}** — ${p.status}${cat}${sdg}`);
+              
+              const projAchievements = (myAchievements || []).filter(a => a.project_id === p.id);
+              for (const a of projAchievements) {
+                parts.push(`  🏆 ${a.title} (${a.achievement_type})`);
+              }
+            }
+          }
+          
+          if (myAchievements?.length) {
+            parts.push(`\n**Total Awards/Achievements: ${myAchievements.length}** across ${myProjects?.length || 0} projects`);
+            const byType: Record<string, number> = {};
+            for (const a of myAchievements) byType[a.achievement_type || 'other'] = (byType[a.achievement_type || 'other'] || 0) + 1;
+            for (const [t, c] of Object.entries(byType)) parts.push(`- ${t}: ${c}`);
+          }
+          sources.push('projects', 'project_achievements');
+        }
+      }
+    }
+
     // ==================== COURSE CONTENT FOR STEM LEARNING ====================
     const { data: courses } = await supabase
       .from('courses')
@@ -2088,7 +2204,27 @@ When asked about SWOT, strengths, weaknesses, or improvement areas:
 - For OPPORTUNITIES: mention incomplete courses/content and upcoming learning events
 - For THREATS: warn about upcoming deadlines and assessments at risk
 - Always provide actionable improvement suggestions based on weak course outcomes
-- Recommend specific study focus areas based on upcoming assessments`;
+- Recommend specific study focus areas based on upcoming assessments
+
+## CLASS RANKING:
+When asked about rank, standing, or performance vs peers:
+- Use the class ranking data to show their position
+- Explain what the weighted formula considers (Assessments 50%, Assignments 20%, Projects 20%, XP 10%)
+- Suggest specific areas to improve their ranking
+
+## 🧭 CAREER GUIDANCE:
+When asked about career advice, future domains, or "what should I study":
+- Analyze their strongest course categories and SWOT strengths
+- Consider their project types, SDG goals, and achievements/awards
+- Map strengths to career domains:
+  - High Programming/Coding accuracy → Software Engineering, AI/ML, Full-Stack Development
+  - High Electronics/Robotics accuracy → Mechatronics, IoT, Embedded Systems, Automation
+  - High Biology/Environment accuracy → Biotechnology, Environmental Science, Healthcare Tech
+  - High Math/Statistics accuracy → Data Science, Quantitative Finance, Research
+  - Projects with patents/awards → Entrepreneurship, R&D, Innovation Management
+  - SDG-aligned projects → Social Impact careers, Sustainability Engineering, Policy
+- Recommend specific higher education paths, certifications, and industry domains
+- Be encouraging and highlight their unique combination of skills`;
 
 const managementPrompt = `You are Metova, an AI Business Intelligence assistant for Institution Management at Metova Academy.
 

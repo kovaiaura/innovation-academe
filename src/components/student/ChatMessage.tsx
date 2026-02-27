@@ -5,6 +5,8 @@ import { Copy, Check } from "lucide-react";
 import { useState } from "react";
 import { format } from "date-fns";
 import { ChatMessage as ChatMessageType } from "@/data/mockChatData";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -57,13 +59,21 @@ export function ChatMessage({ message, userName = "You", userAvatar }: ChatMessa
                 : 'bg-muted text-foreground rounded-tl-sm'
             }`}
           >
-            <div className="prose prose-sm max-w-none dark:prose-invert">
-              {message.content.split('\n').map((line, i) => (
-                <p key={i} className="mb-2 last:mb-0 whitespace-pre-wrap">
-                  {line}
-                </p>
-              ))}
-            </div>
+            {isUser ? (
+              <div className="prose prose-sm max-w-none dark:prose-invert">
+                {message.content.split('\n').map((line, i) => (
+                  <p key={i} className="mb-2 last:mb-0 whitespace-pre-wrap">
+                    {line}
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <div className="prose prose-sm max-w-none dark:prose-invert [&_table]:w-full [&_table]:border-collapse [&_table]:my-3 [&_th]:border [&_th]:border-border [&_th]:px-3 [&_th]:py-2 [&_th]:bg-accent [&_th]:text-left [&_th]:text-xs [&_th]:font-semibold [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2 [&_td]:text-xs [&_tr:nth-child(even)]:bg-accent/30 [&_h1]:text-lg [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5 [&_p]:mb-2 [&_p:last-child]:mb-0 [&_code]:bg-accent [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_pre]:bg-accent [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:my-2 [&_pre]:overflow-x-auto [&_blockquote]:border-l-2 [&_blockquote]:border-primary [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:my-2 [&_hr]:my-3 [&_strong]:font-semibold">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {message.content}
+                </ReactMarkdown>
+              </div>
+            )}
           </div>
 
           {!isUser && message.context_used && message.context_used.length > 0 && (
