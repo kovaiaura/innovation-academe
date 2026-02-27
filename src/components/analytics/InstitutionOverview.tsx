@@ -3,12 +3,11 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
   Users, Award, GraduationCap, Zap, Trophy, FolderKanban, 
-  BookOpen, TrendingUp, Target, Star
+  BookOpen, Target, Star
 } from 'lucide-react';
 import { InstitutionPerformance, StudentPerformance } from '@/hooks/useComprehensiveAnalytics';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 
 interface InstitutionOverviewProps {
@@ -17,13 +16,7 @@ interface InstitutionOverviewProps {
 }
 
 export function InstitutionOverview({ data, institutionName }: InstitutionOverviewProps) {
-  const radarData = [
-    { metric: 'FA1 (20%)', value: (data.weighted_assessment?.fa1_score || 0) * 5, fullMark: 100 },
-    { metric: 'FA2 (20%)', value: (data.weighted_assessment?.fa2_score || 0) * 5, fullMark: 100 },
-    { metric: 'Final (40%)', value: (data.weighted_assessment?.final_score || 0) * 2.5, fullMark: 100 },
-    { metric: 'Internal (20%)', value: (data.weighted_assessment?.internal_score || 0) * 5, fullMark: 100 },
-    { metric: 'Course Progress', value: data.course_completion, fullMark: 100 },
-  ];
+
 
   const classComparisonData = data.classPerformance.map(cls => ({
     name: cls.class_name,
@@ -160,39 +153,8 @@ export function InstitutionOverview({ data, institutionName }: InstitutionOvervi
         </Card>
       </div>
 
-      {/* Charts */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Performance Radar */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Performance Overview
-            </CardTitle>
-            <CardDescription>Institution-wide performance metrics</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={radarData}>
-                  <PolarGrid />
-                  <PolarAngleAxis dataKey="metric" className="text-xs" />
-                  <PolarRadiusAxis angle={30} domain={[0, 100]} />
-                  <Radar
-                    name={institutionName}
-                    dataKey="value"
-                    stroke="hsl(var(--primary))"
-                    fill="hsl(var(--primary))"
-                    fillOpacity={0.3}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Class Comparison */}
-        <Card>
+      {/* Class Comparison Bar Chart */}
+      <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <GraduationCap className="h-4 w-4" />
@@ -226,8 +188,7 @@ export function InstitutionOverview({ data, institutionName }: InstitutionOvervi
               )}
             </div>
           </CardContent>
-        </Card>
-      </div>
+      </Card>
 
       {/* Top 10 Institution Toppers */}
       <Card>
