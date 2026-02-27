@@ -17,12 +17,22 @@ interface InstitutionOverviewProps {
 
 export function InstitutionOverview({ data, institutionName }: InstitutionOverviewProps) {
 
-
-  const classComparisonData = data.classPerformance.map(cls => ({
+  const projectsAwardsData = data.classPerformance.map(cls => ({
     name: cls.class_name,
-    'Overall Score': Math.round(cls.overall_score * 10) / 10,
     'Avg Projects': Math.round(cls.avg_projects * 10) / 10,
+    'Avg Badges': Math.round(cls.avg_badges * 10) / 10,
   }));
+
+  const assessmentData = data.classPerformance.map(cls => ({
+    name: cls.class_name,
+    'Assessment Avg': Math.round(cls.assessment_avg * 10) / 10,
+    'Assignment Avg': Math.round(cls.assignment_avg * 10) / 10,
+  }));
+
+  const tooltipStyle = {
+    backgroundColor: 'hsl(var(--background))',
+    border: '1px solid hsl(var(--border))',
+  };
 
   return (
     <div className="space-y-6">
@@ -58,137 +68,112 @@ export function InstitutionOverview({ data, institutionName }: InstitutionOvervi
               <Progress value={(data.weighted_assessment?.internal_score || 0) * 5} className="mt-2 h-1.5" />
             </div>
           </div>
-          <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 flex items-center justify-between">
-            <span className="text-lg font-medium">Total Weighted Assessment</span>
-            <span className="text-3xl font-bold text-primary">{data.weighted_assessment?.total_weighted || 0}%</span>
+          <div className="flex items-center justify-between pt-2 border-t">
+            <span className="text-lg font-semibold">Total Weighted Score</span>
+            <span className="text-2xl font-bold text-primary">{data.weighted_assessment?.total_weighted || 0}%</span>
           </div>
         </CardContent>
       </Card>
 
-      {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+      {/* Summary Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.total_students}</div>
-            <p className="text-xs text-muted-foreground">{data.total_classes} classes</p>
+          <CardContent className="pt-4 pb-4 text-center">
+            <Users className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+            <p className="text-2xl font-bold">{data.total_students}</p>
+            <p className="text-xs text-muted-foreground">Total Students</p>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Weighted Avg</CardTitle>
-            <GraduationCap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.assessment_avg}%</div>
-            <p className="text-xs text-muted-foreground">assessment score</p>
+          <CardContent className="pt-4 pb-4 text-center">
+            <Target className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+            <p className="text-2xl font-bold">{data.assessment_avg}%</p>
+            <p className="text-xs text-muted-foreground">Avg Overall Score</p>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Assignment Avg</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.assignment_avg}%</div>
+          <CardContent className="pt-4 pb-4 text-center">
+            <Zap className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+            <p className="text-2xl font-bold">{data.total_xp.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">Total XP Earned</p>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total XP Earned</CardTitle>
-            <Zap className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.total_xp.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              ~{Math.round(data.total_xp / (data.total_students || 1))} per student
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Course Progress</CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.course_completion}%</div>
-            <Progress value={data.course_completion} className="mt-2 h-2" />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Achievements Row */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Badges Earned</CardTitle>
-            <Award className="h-4 w-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.total_badges}</div>
-            <p className="text-xs text-muted-foreground">
-              ~{(data.total_badges / (data.total_students || 1)).toFixed(1)} per student
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Projects Participated</CardTitle>
-            <FolderKanban className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.total_projects}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="pt-4 pb-4 text-center">
+            <FolderKanban className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+            <p className="text-2xl font-bold">{data.total_projects}</p>
+            <p className="text-xs text-muted-foreground">Total Projects</p>
+            <p className="text-xs text-muted-foreground mt-1">
               ~{(data.total_projects / (data.total_students || 1)).toFixed(1)} per student
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Class Comparison Bar Chart */}
-      <Card>
+      {/* Two Class Comparison Charts */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <GraduationCap className="h-4 w-4" />
-              Class Performance Comparison
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FolderKanban className="h-4 w-4" />
+              Projects & Awards by Class
             </CardTitle>
-            <CardDescription>Overall score and project participation by class</CardDescription>
+            <CardDescription>Average projects and badges per student</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-80">
-              {classComparisonData.length === 0 ? (
+            <div className="h-72">
+              {projectsAwardsData.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-muted-foreground">
                   No class data available
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                   <BarChart data={classComparisonData}>
+                  <BarChart data={projectsAwardsData}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                     <XAxis dataKey="name" type="category" className="text-xs" angle={-45} textAnchor="end" height={60} />
-                     <YAxis type="number" domain={[0, 100]} />
-                     <Tooltip 
-                       contentStyle={{ 
-                         backgroundColor: 'hsl(var(--background))', 
-                         border: '1px solid hsl(var(--border))' 
-                       }} 
-                     />
-                     <Legend />
-                     <Bar dataKey="Overall Score" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                     <Bar dataKey="Avg Projects" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                    <XAxis dataKey="name" className="text-xs" angle={-45} textAnchor="end" height={60} />
+                    <YAxis />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Legend />
+                    <Bar dataKey="Avg Projects" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Avg Badges" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
             </div>
           </CardContent>
-      </Card>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <GraduationCap className="h-4 w-4" />
+              Assessment Performance by Class
+            </CardTitle>
+            <CardDescription>Average assessment and assignment scores</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-72">
+              {assessmentData.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  No class data available
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={assessmentData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="name" className="text-xs" angle={-45} textAnchor="end" height={60} />
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Legend />
+                    <Bar dataKey="Assessment Avg" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Assignment Avg" fill="#f97316" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Top 10 Institution Toppers */}
       <Card>
