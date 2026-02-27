@@ -274,7 +274,7 @@ export default function SystemConfig() {
                           .from('system_configurations')
                           .select('value')
                           .eq('key', 'ask_metova_settings')
-                          .single();
+                          .maybeSingle();
                         
                         const defaultSettings = { enabled: true, custom_api_key: '', model: 'gpt-4o-mini' };
                         const currentSettings = data?.value 

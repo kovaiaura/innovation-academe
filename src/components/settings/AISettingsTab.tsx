@@ -43,7 +43,7 @@ export function AISettingsTab() {
         .from('system_configurations')
         .select('value')
         .eq('key', 'ask_metova_settings')
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching AI settings:', error);

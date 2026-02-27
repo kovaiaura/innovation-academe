@@ -59,7 +59,7 @@ export function useAskMetova(role: Role) {
         .from('system_configurations')
         .select('value')
         .eq('key', 'ask_metova_settings')
-        .single();
+        .maybeSingle();
 
       if (data?.value) {
         const settings = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
