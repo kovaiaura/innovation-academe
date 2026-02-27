@@ -4,7 +4,6 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Save, Bot, Key, AlertTriangle, CheckCircle, Eye, EyeOff, Loader2, Gauge } from 'lucide-react';
@@ -32,7 +31,6 @@ export function AISettingsTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [togglingAI, setTogglingAI] = useState(false);
-  const [apiKeyType, setApiKeyType] = useState<'default' | 'custom'>('default');
   const [showApiKey, setShowApiKey] = useState(false);
 
   useEffect(() => {
@@ -55,7 +53,6 @@ export function AISettingsTab() {
       if (data?.value) {
         const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
         setSettings(parsed);
-        setApiKeyType(parsed.custom_api_key ? 'custom' : 'default');
       }
     } catch (e) {
       console.error('Error parsing AI settings:', e);
@@ -106,16 +103,11 @@ export function AISettingsTab() {
   const saveSettings = async () => {
     setSaving(true);
     try {
-      const settingsToSave = {
-        ...settings,
-        custom_api_key: apiKeyType === 'default' ? '' : settings.custom_api_key
-      };
-
       const { error } = await supabase
         .from('system_configurations')
         .upsert({
           key: 'ask_metova_settings',
-          value: settingsToSave,
+          value: settings as any,
           category: 'features',
           description: 'Ask Metova AI integration settings'
         }, { onConflict: 'key' });
@@ -194,67 +186,44 @@ export function AISettingsTab() {
             API Key Configuration
           </CardTitle>
           <CardDescription>
-            Choose whether to use the default API key or provide your own OpenAI API key
+            Enter your OpenAI API key to power the AI assistant
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <RadioGroup
-            value={apiKeyType}
-            onValueChange={(value: 'default' | 'custom') => setApiKeyType(value)}
-            className="space-y-3"
-          >
-            <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-              <RadioGroupItem value="default" id="default" className="mt-1" />
-              <div className="flex-1">
-                <Label htmlFor="default" className="text-base font-medium cursor-pointer">
-                  Use Default API Key
-                </Label>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Uses the pre-configured OpenAI API key. Recommended for most users.
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-              <RadioGroupItem value="custom" id="custom" className="mt-1" />
-              <div className="flex-1">
-                <Label htmlFor="custom" className="text-base font-medium cursor-pointer">
-                  Use Custom API Key
-                </Label>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Provide your own OpenAI API key for billing and usage control.
-                </p>
-              </div>
-            </div>
-          </RadioGroup>
-
-          {apiKeyType === 'custom' && (
-            <div className="space-y-2 pt-4 border-t">
-              <Label htmlFor="api-key">OpenAI API Key</Label>
-              <div className="relative">
-                <Input
-                  id="api-key"
-                  type={showApiKey ? 'text' : 'password'}
-                  placeholder="sk-..."
-                  value={settings.custom_api_key}
-                  onChange={(e) => setSettings({ ...settings, custom_api_key: e.target.value })}
-                  className="pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                >
-                  {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Your API key is stored securely and used only for AI queries.
-              </p>
+          {!settings.custom_api_key && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>No API key configured. AI assistant won't work until you provide your OpenAI API key.</span>
             </div>
           )}
+          <div className="space-y-2">
+            <Label htmlFor="api-key">OpenAI API Key</Label>
+            <div className="relative">
+              <Input
+                id="api-key"
+                type={showApiKey ? 'text' : 'password'}
+                placeholder="sk-..."
+                value={settings.custom_api_key}
+                onChange={(e) => setSettings({ ...settings, custom_api_key: e.target.value })}
+                className="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                onClick={() => setShowApiKey(!showApiKey)}
+              >
+                {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Your API key is stored securely and used only for AI queries. Get one from{' '}
+              <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline">
+                platform.openai.com
+              </a>
+            </p>
+          </div>
         </CardContent>
       </Card>
 
