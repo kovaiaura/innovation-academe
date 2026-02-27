@@ -1,115 +1,97 @@
 
+# Fix Ask Metova: Remove Default API Key, Add Per-Institution Performance Metrics
 
-# Fix Ask Metova AI Feature - Complete Overhaul
+## Problem Summary
 
-## Problems Identified
+1. **The "Default API Key" (OPENAI_API_KEY) is exhausted** -- it returns a 429 quota error. The user wants to remove the default option entirely and only allow a real custom API key.
+2. **Missing per-institution performance metrics** for CEO -- the context fetcher provides raw counts but lacks computed KPIs like pass rate per institution, attendance rate per institution, course completion rate, etc.
+3. **Officer context is not scoped** to their institution -- fetches all data globally.
 
-1. **AI is disabled in the database** - The `ask_metova_settings` has `enabled: false`, causing a 503 error for all users
-2. **No management role support** - Management users have no Ask Metova page, no route, and no backend context fetcher
-3. **Student context lacks SWOT/improvement analysis** - No personal performance breakdown from course outcomes
-4. **Officer context too basic** - Doesn't include institution-scoped student progress or assessment insights
-5. **The "Default API Key" is valid** - The `OPENAI_API_KEY` secret is already configured and will work when AI is re-enabled
+## Changes
 
-## Plan
+### 1. Remove Default API Key Option, Require Custom API Key
 
-### Step 1: Enable AI in database
-- Update `system_configurations` to set `enabled: true` for `ask_metova_settings`
+**File: `src/components/settings/AISettingsTab.tsx`**
+- Remove the "Use Default API Key" radio option entirely
+- Show only the API key input field (always visible, no radio toggle)
+- Update description to say "Enter your OpenAI API key to power the AI assistant"
+- If no custom key is saved, show a warning that AI won't work until a key is provided
 
-### Step 2: Add Management Role Support
+**File: `supabase/functions/ask-metova/index.ts`**
+- Remove the `defaultOpenAIApiKey` constant (line 5: `Deno.env.get('OPENAI_API_KEY')`)
+- Use only `aiSettings.custom_api_key` -- if empty, return a clear error: "No API key configured. Please add your OpenAI API key in Settings."
+- Remove the fallback logic on line 1918
 
-**New file: `src/pages/management/AskMetova.tsx`**
-- Create a management Ask Metova page (similar pattern to officer/system-admin versions)
-- Quick action chips: "Student Progress", "Assessment Insights", "Project Overview", "Attendance Analysis", "SWOT Summary"
+### 2. Add Per-Institution Performance Metrics for CEO (System Admin)
 
-**Update `src/App.tsx`**
-- Import ManagementAskMetova component
-- Add route `/tenant/:tenantId/management/ask-metova` with `management` role protection
+**File: `supabase/functions/ask-metova/index.ts`**
 
-**Update `src/hooks/useAskMetova.ts`**
-- Add `management` to the Role type union
-- Add storage key for management conversations
+Add a new `fetchPerInstitutionMetrics()` function that computes for each institution:
+- **Assessment Pass Rate**: from `assessment_attempts` grouped by `institution_id`
+- **Average Assessment Score**: average percentage per institution
+- **Attendance Rate**: from `class_session_attendance` grouped by `institution_id`
+- **Student Count**: active students per institution
+- **Project Status**: in-progress vs completed per institution
+- **XP Engagement**: total XP earned per institution
 
-### Step 3: Add Management Context Fetcher in Edge Function
+Add a new `fetchTrainerPerformance()` function:
+- Join officers with their assigned institutions
+- For each officer, compute: their students' avg assessment score, pass rate
+- Identify top/bottom performing trainers
 
-**Update `supabase/functions/ask-metova/index.ts`**
-- Add `fetchManagementContext()` function that fetches institution-scoped data:
-  - Students in their institution with performance metrics
-  - Assessment attempts and pass/fail rates for their institution
-  - Assignment submissions and grading stats
-  - Project progress for their institution
-  - Attendance patterns
-  - Course completion progress
-- Add `managementPrompt` system prompt focused on:
-  - Student progress monitoring
-  - Assessment insights and class-wise comparisons
-  - Identifying at-risk students
-  - Project status and patentability insights
-- Wire management role into the main handler (alongside student/officer/system_admin)
+Add **"At-Risk Institutions"** section:
+- Institutions with pass rate below 50% or attendance rate below 70%
 
-### Step 4: Enhance Student Context with SWOT Analysis
+Wire these into `fetchSystemAdminContext()` alongside existing fetchers.
 
-**Update `supabase/functions/ask-metova/index.ts`** (student context section)
-- Fetch the student's course outcome mappings (from `assessment_questions` linked to course outcomes)
-- Analyze assessment attempt answers to identify:
-  - **Strengths**: Topics/course outcomes where score is above 75%
-  - **Weaknesses**: Topics/course outcomes where score is below 50%
-  - **Opportunities**: Available courses/sessions not yet completed
-  - **Threats**: Upcoming deadlines, assessments at risk of failing
-- Fetch content completion progress per module/session
-- Add this SWOT data section to the student context
+### 3. Scope Officer Context to Their Institution
 
-### Step 5: Enhance Student System Prompt
+**File: `supabase/functions/ask-metova/index.ts`**
 
-**Update student prompt** to include instructions for:
-- Providing personalized SWOT analysis when asked
-- Suggesting specific improvement areas based on weak course outcomes
-- Recommending study focus areas based on upcoming assessments
+Update `fetchOfficerContext()` to accept `institutionId` parameter:
+- Filter classes, assessment attempts, attendance, projects, and assignments by `institution_id`
+- Add student names to performance summaries (join with `students` table)
 
-### Step 6: Enhance Officer Context
+Update the main handler (around line 1936-1940) to resolve the officer's `institution_id` from their profile before calling `fetchOfficerContext(institutionId)`.
 
-**Update officer context fetcher** to include:
-- Per-class assessment pass rates
-- Student-wise performance summaries (aggregated)
-- Assignment submission rates
+### 4. Enhance Management Context with Content Completion
+
+**File: `supabase/functions/ask-metova/index.ts`**
+
+In `fetchManagementContext()`:
+- Add content completion rate: query `student_content_completions` count vs total `course_content` count
+- Add student-wise performance with names (join `students` table for `student_name`)
+
+### 5. Update System Prompts
+
+Update `systemAdminPrompt` to mention:
+- Per-institution performance comparison
+- Trainer performance analysis
+- At-risk institution identification
+
+Update `officerPrompt` to mention institution-scoped data and student names.
 
 ## Technical Details
 
-### Management Context Fetcher Structure
+### Per-Institution Metrics (New Function)
 ```text
-fetchManagementContext(institutionId)
-  -> Students in institution (count, active/inactive)
-  -> Assessment attempts for institution students (pass rates, avg scores)
-  -> Assignment submissions (completion rates, avg marks)
-  -> Projects (status breakdown, achievements)
-  -> Attendance (institution-level rates)
-  -> Course progress (completion percentages)
+fetchPerInstitutionMetrics():
+  assessment_attempts GROUP BY institution_id -> pass rate, avg score
+  class_session_attendance GROUP BY institution_id -> attendance rate
+  students GROUP BY institution_id -> active count
+  projects GROUP BY institution_id -> status breakdown
+  student_xp_transactions GROUP BY institution_id -> total XP
 ```
 
-### Student SWOT Data Structure
+### Trainer Performance (New Function)
 ```text
-fetchStudentContext(userId)
-  -> Existing data (courses, assessments, etc.)
-  -> NEW: Assessment question-level performance
-    - Group by course outcome / topic
-    - Calculate per-topic accuracy
-  -> NEW: Content completion progress
-    - Modules started vs completed
-    - Sessions remaining
-  -> NEW: SWOT summary section in context
+fetchTrainerPerformance():
+  officers JOIN officer_assignments -> get institution per officer
+  assessment_attempts WHERE institution_id = officer's institution -> avg score, pass rate
 ```
 
-### Files to Create
-| File | Description |
-|------|-------------|
-| `src/pages/management/AskMetova.tsx` | Management Ask Metova page |
-
-### Files to Modify
+### Files Modified
 | File | Change |
 |------|--------|
-| `supabase/functions/ask-metova/index.ts` | Add management context, enhance student SWOT, enhance officer context |
-| `src/hooks/useAskMetova.ts` | Add management role |
-| `src/App.tsx` | Add management route |
-
-### Database Change
-- Update `ask_metova_settings` to `enabled: true`
-
+| `supabase/functions/ask-metova/index.ts` | Remove default API key, add per-institution metrics, scope officer context, enhance management context |
+| `src/components/settings/AISettingsTab.tsx` | Remove "Default API Key" option, require custom key input |
