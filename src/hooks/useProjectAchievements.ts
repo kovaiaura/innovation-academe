@@ -39,10 +39,10 @@ async function awardProjectAwardXPToMembers(projectId: string, achievementTitle:
       return;
     }
     
-    // Get all project members
+    // Get all project members with their auth user_id
     const { data: members } = await supabase
       .from('project_members')
-      .select('student_id')
+      .select('student_id, students:student_id(user_id)')
       .eq('project_id', projectId);
     
     if (!members || members.length === 0) {
@@ -50,10 +50,13 @@ async function awardProjectAwardXPToMembers(projectId: string, achievementTitle:
       return;
     }
     
-    // Award XP to each member
+    // Award XP to each member using auth user_id
     for (const member of members) {
+      const authUserId = (member.students as any)?.user_id;
+      if (!authUserId) continue;
+      
       await gamificationDbService.awardProjectAwardXP(
-        member.student_id,
+        authUserId,
         project.institution_id,
         projectId,
         achievementTitle
