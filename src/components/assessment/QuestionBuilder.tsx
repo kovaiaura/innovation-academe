@@ -15,9 +15,11 @@ interface QuestionBuilderProps {
   questionNumber: number;
   onSave: (question: Partial<AssessmentQuestion>) => void;
   onCancel: () => void;
+  institutionId?: string;
+  classId?: string;
 }
 
-export const QuestionBuilder = ({ question, questionNumber, onSave, onCancel }: QuestionBuilderProps) => {
+export const QuestionBuilder = ({ question, questionNumber, onSave, onCancel, institutionId, classId }: QuestionBuilderProps) => {
   const [questionText, setQuestionText] = useState(question?.question_text || '');
   const [options, setOptions] = useState<MCQOption[]>(
     question?.options || [
@@ -248,6 +250,8 @@ export const QuestionBuilder = ({ question, questionNumber, onSave, onCancel }: 
           onCourseChange={setCourseId}
           onModuleChange={setModuleId}
           onSessionChange={setSessionId}
+          institutionId={institutionId}
+          classId={classId}
         />
 
         {/* Actions */}

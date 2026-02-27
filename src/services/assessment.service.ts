@@ -990,5 +990,88 @@ export const assessmentService = {
     }
 
     return true;
+  },
+
+  // ============================================
+  // Auto-Mark Absent Students
+  // ============================================
+
+  async markAbsentStudents(assessmentId: string): Promise<number> {
+    try {
+      // 1. Get assessment details
+      const { data: assessment } = await supabase
+        .from('assessments')
+        .select('id, end_time, total_points, status')
+        .eq('id', assessmentId)
+        .single();
+
+      if (!assessment) return 0;
+
+      // Only mark absent if assessment end_time has passed
+      const endTime = new Date(assessment.end_time);
+      if (endTime > new Date()) return 0;
+
+      // 2. Get all class assignments for this assessment
+      const { data: classAssignments } = await supabase
+        .from('assessment_class_assignments')
+        .select('class_id, institution_id')
+        .eq('assessment_id', assessmentId);
+
+      if (!classAssignments || classAssignments.length === 0) return 0;
+
+      // 3. Get all students in those classes
+      const classIds = classAssignments.map(ca => ca.class_id);
+      const { data: students } = await supabase
+        .from('students')
+        .select('user_id, class_id, institution_id')
+        .in('class_id', classIds)
+        .not('user_id', 'is', null);
+
+      if (!students || students.length === 0) return 0;
+
+      // 4. Get existing attempts for this assessment
+      const studentUserIds = students.map(s => s.user_id).filter(Boolean) as string[];
+      const { data: existingAttempts } = await supabase
+        .from('assessment_attempts')
+        .select('student_id')
+        .eq('assessment_id', assessmentId)
+        .in('student_id', studentUserIds);
+
+      const attemptedStudentIds = new Set((existingAttempts || []).map(a => a.student_id));
+
+      // 5. Insert absent records for students without attempts
+      const absentRecords = students
+        .filter(s => s.user_id && !attemptedStudentIds.has(s.user_id))
+        .map(s => ({
+          assessment_id: assessmentId,
+          student_id: s.user_id!,
+          class_id: s.class_id,
+          institution_id: s.institution_id,
+          score: 0,
+          total_points: assessment.total_points,
+          percentage: 0,
+          passed: false,
+          status: 'absent',
+          is_manual: false,
+          started_at: assessment.end_time,
+          submitted_at: assessment.end_time
+        }));
+
+      if (absentRecords.length === 0) return 0;
+
+      const { error } = await supabase
+        .from('assessment_attempts')
+        .insert(absentRecords);
+
+      if (error) {
+        console.error('Error marking absent students:', error);
+        return 0;
+      }
+
+      return absentRecords.length;
+    } catch (error) {
+      console.error('Error in markAbsentStudents:', error);
+      return 0;
+    }
   }
 };

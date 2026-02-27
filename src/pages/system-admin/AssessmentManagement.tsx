@@ -500,12 +500,21 @@ export default function AssessmentManagement() {
             
             {/* Step Indicator */}
             <div className="flex items-center justify-between mb-8">
-              {[1, 2, 3, 4, 5].map((s) => (
-                <div key={s} className="flex items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= s ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                    {s}
+              {[
+                { num: 1, label: 'Basic Info' },
+                { num: 2, label: 'Settings' },
+                { num: 3, label: 'Publishing' },
+                { num: 4, label: 'Questions' },
+                { num: 5, label: 'Review' }
+              ].map((s, idx, arr) => (
+                <div key={s.num} className="flex items-center">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= s.num ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      {s.num}
+                    </div>
+                    <span className="text-xs text-muted-foreground mt-1">{s.label}</span>
                   </div>
-                  {s < 5 && <div className={`w-20 h-1 ${step > s ? 'bg-primary' : 'bg-muted'}`} />}
+                  {idx < arr.length - 1 && <div className={`w-20 h-1 mb-5 ${step > s.num ? 'bg-primary' : 'bg-muted'}`} />}
                 </div>
               ))}
             </div>
@@ -588,60 +597,23 @@ export default function AssessmentManagement() {
               </Card>
             )}
 
-            {/* Step 3: Questions */}
+            {/* Step 3: Publishing (moved before Questions so course mapping can use class context) */}
             {step === 3 && (
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle>Add Questions ({questions.length} added)</CardTitle>
-                      <Button onClick={() => { setEditingQuestion(null); setShowQuestionBuilder(true); }}>
-                        <Plus className="h-4 w-4 mr-2" /> Add Question
-                      </Button>
-                    </div>
-                  </CardHeader>
-                </Card>
-
-                {showQuestionBuilder && (
-                  <QuestionBuilder
-                    question={editingQuestion || undefined}
-                    questionNumber={editingQuestion ? editingQuestion.question_number! : questions.length + 1}
-                    onSave={handleAddQuestion}
-                    onCancel={() => { setShowQuestionBuilder(false); setEditingQuestion(null); }}
-                  />
-                )}
-
-                {!showQuestionBuilder && (
-                  <QuestionList
-                    questions={questions as AssessmentQuestion[]}
-                    onEdit={(q) => { setEditingQuestion(q); setShowQuestionBuilder(true); }}
-                    onDelete={handleDeleteQuestion}
-                  />
-                )}
-
-                {!showQuestionBuilder && (
-                  <div className="flex gap-3">
-                    <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
-                    <Button onClick={() => setStep(4)} disabled={questions.length === 0}>Next</Button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Step 4: Publishing */}
-            {step === 4 && (
               <Card>
-                <CardHeader><CardTitle>Publishing</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Publishing - Select Institutions & Classes</CardTitle></CardHeader>
                 <CardContent className="space-y-6">
+                  <p className="text-sm text-muted-foreground">
+                    Select the institutions and classes first. This will filter course mapping options when adding questions.
+                  </p>
                   <PublishingSelector value={publishing} onChange={setPublishing} />
                   <div className="flex gap-3">
-                    <Button variant="outline" onClick={() => setStep(3)}>Back</Button>
+                    <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div>
                             <Button 
-                              onClick={() => setStep(5)} 
+                              onClick={() => setStep(4)} 
                               disabled={publishing.length === 0}
                               className="gap-2"
                             >
@@ -663,6 +635,48 @@ export default function AssessmentManagement() {
                   </div>
                 </CardContent>
               </Card>
+            )}
+
+            {/* Step 4: Questions (now after publishing so we have class context) */}
+            {step === 4 && (
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Add Questions ({questions.length} added)</CardTitle>
+                      <Button onClick={() => { setEditingQuestion(null); setShowQuestionBuilder(true); }}>
+                        <Plus className="h-4 w-4 mr-2" /> Add Question
+                      </Button>
+                    </div>
+                  </CardHeader>
+                </Card>
+
+                {showQuestionBuilder && (
+                  <QuestionBuilder
+                    question={editingQuestion || undefined}
+                    questionNumber={editingQuestion ? editingQuestion.question_number! : questions.length + 1}
+                    onSave={handleAddQuestion}
+                    onCancel={() => { setShowQuestionBuilder(false); setEditingQuestion(null); }}
+                    institutionId={publishing.length > 0 ? publishing[0].institution_id : undefined}
+                    classId={publishing.length > 0 && publishing[0].class_ids.length > 0 ? publishing[0].class_ids[0] : undefined}
+                  />
+                )}
+
+                {!showQuestionBuilder && (
+                  <QuestionList
+                    questions={questions as AssessmentQuestion[]}
+                    onEdit={(q) => { setEditingQuestion(q); setShowQuestionBuilder(true); }}
+                    onDelete={handleDeleteQuestion}
+                  />
+                )}
+
+                {!showQuestionBuilder && (
+                  <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => setStep(3)}>Back</Button>
+                    <Button onClick={() => setStep(5)} disabled={questions.length === 0}>Next</Button>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Step 5: Review */}

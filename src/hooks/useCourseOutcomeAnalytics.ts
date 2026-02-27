@@ -65,14 +65,16 @@ export function useCourseOutcomeAnalytics(filters: Filters) {
 
       // If filtering by student/institution/class, we need attempt info
       if (filters.studentId || filters.institutionId || filters.classId) {
-        const { data: attempts } = await supabase
+        let attemptQuery = supabase
           .from('assessment_attempts')
           .select('id')
-          .match({
-            ...(filters.studentId && { student_id: filters.studentId }),
-            ...(filters.institutionId && { institution_id: filters.institutionId }),
-            ...(filters.classId && { class_id: filters.classId }),
-          });
+          .in('status', ['submitted', 'auto_submitted', 'evaluated']);
+
+        if (filters.studentId) attemptQuery = attemptQuery.eq('student_id', filters.studentId);
+        if (filters.institutionId) attemptQuery = attemptQuery.eq('institution_id', filters.institutionId);
+        if (filters.classId) attemptQuery = attemptQuery.eq('class_id', filters.classId);
+
+        const { data: attempts } = await attemptQuery;
 
         if (!attempts || attempts.length === 0) {
           return { courseAccuracies: [], moduleAccuracies: [], sessionAccuracies: [], strengths: [], weaknesses: [] };
@@ -176,6 +178,6 @@ export function useCourseOutcomeAnalytics(filters: Filters) {
 
       return { courseAccuracies, moduleAccuracies, sessionAccuracies, strengths, weaknesses };
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Always refetch for immediate results
   });
 }

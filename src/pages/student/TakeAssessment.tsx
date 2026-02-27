@@ -14,11 +14,13 @@ import { formatTimeRemaining } from '@/utils/assessmentHelpers';
 import { Clock, AlertTriangle, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function TakeAssessment() {
   const { assessmentId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [questions, setQuestions] = useState<AssessmentQuestion[]>([]);
@@ -302,6 +304,8 @@ export default function TakeAssessment() {
       const success = await assessmentService.submitAttempt(attempt.id, isAutoSubmit);
       
       if (success) {
+        // Invalidate course outcome cache so results show immediately
+        queryClient.invalidateQueries({ queryKey: ['course-outcome-analytics'] });
         toast.success('Assessment submitted successfully!');
         navigate(`${getTenantPath()}/student/assessments`);
       } else {

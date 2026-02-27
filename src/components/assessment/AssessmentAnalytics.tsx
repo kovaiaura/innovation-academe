@@ -31,6 +31,16 @@ export function AssessmentAnalytics({ assessment, institutionId, onClose }: Asse
 
   const loadData = async () => {
     setIsLoading(true);
+    
+    // Auto-mark absent students if assessment end_time has passed
+    const endTime = new Date(assessment.end_time);
+    if (endTime < new Date() && assessment.status === 'published') {
+      const absentCount = await assessmentService.markAbsentStudents(assessment.id);
+      if (absentCount > 0) {
+        toast.info(`${absentCount} student(s) marked as absent`);
+      }
+    }
+    
     const [attemptsData, questionsData] = await Promise.all([
       assessmentService.getAssessmentAttempts(assessment.id, { institution_id: institutionId }),
       assessmentService.getQuestions(assessment.id)
@@ -258,6 +268,10 @@ export function AssessmentAnalytics({ assessment, institutionId, onClose }: Asse
                     <TableCell>
                       {attempt.status === 'in_progress' ? (
                         <Badge variant="outline">In Progress</Badge>
+                      ) : attempt.status === 'absent' ? (
+                        <Badge variant="secondary" className="bg-orange-500/10 text-orange-600 border-orange-500/20">
+                          Absent
+                        </Badge>
                       ) : attempt.passed ? (
                         <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
                           <CheckCircle className="h-3 w-3 mr-1" />
