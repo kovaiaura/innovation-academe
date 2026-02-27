@@ -1,97 +1,111 @@
 
-# Fix Ask Metova: Remove Default API Key, Add Per-Institution Performance Metrics
 
-## Problem Summary
+# Professional AI Response Rendering + Enhanced Student Analytics Context
 
-1. **The "Default API Key" (OPENAI_API_KEY) is exhausted** -- it returns a 429 quota error. The user wants to remove the default option entirely and only allow a real custom API key.
-2. **Missing per-institution performance metrics** for CEO -- the context fetcher provides raw counts but lacks computed KPIs like pass rate per institution, attendance rate per institution, course completion rate, etc.
-3. **Officer context is not scoped** to their institution -- fetches all data globally.
+## Problem 1: AI responses render as plain text
+The `ChatMessage.tsx` component splits content by newlines and wraps each in a `<p>` tag. This means markdown tables, headers, bold text, lists, and code blocks all appear as raw text -- not rendered professionally.
+
+## Problem 2: Student context missing key analytics
+The student context fetcher lacks:
+- Class ranking position (where they stand among peers)
+- Course outcome accuracy breakdown
+- Project involvement details (type, SDG goals, achievements/recognition)
+- Average assessment score summary
+- Career domain recommendation capability
+
+---
 
 ## Changes
 
-### 1. Remove Default API Key Option, Require Custom API Key
+### 1. Add `react-markdown` and render AI responses professionally
 
-**File: `src/components/settings/AISettingsTab.tsx`**
-- Remove the "Use Default API Key" radio option entirely
-- Show only the API key input field (always visible, no radio toggle)
-- Update description to say "Enter your OpenAI API key to power the AI assistant"
-- If no custom key is saved, show a warning that AI won't work until a key is provided
+**Install**: `react-markdown` and `remark-gfm` (for GitHub-flavored markdown with table support)
 
-**File: `supabase/functions/ask-metova/index.ts`**
-- Remove the `defaultOpenAIApiKey` constant (line 5: `Deno.env.get('OPENAI_API_KEY')`)
-- Use only `aiSettings.custom_api_key` -- if empty, return a clear error: "No API key configured. Please add your OpenAI API key in Settings."
-- Remove the fallback logic on line 1918
+**Update `src/components/student/ChatMessage.tsx`**:
+- Replace the naive `split('\n').map(line => <p>)` rendering with `<ReactMarkdown>` component
+- Add `remark-gfm` plugin for table support
+- Style tables, headers, lists, and code blocks using Tailwind prose classes
+- Ensure proper dark mode support with `dark:prose-invert`
 
-### 2. Add Per-Institution Performance Metrics for CEO (System Admin)
+### 2. Enhance Student Context in Edge Function
 
-**File: `supabase/functions/ask-metova/index.ts`**
+**Update `supabase/functions/ask-metova/index.ts`** - Add to `fetchStudentContext()`:
 
-Add a new `fetchPerInstitutionMetrics()` function that computes for each institution:
-- **Assessment Pass Rate**: from `assessment_attempts` grouped by `institution_id`
-- **Average Assessment Score**: average percentage per institution
-- **Attendance Rate**: from `class_session_attendance` grouped by `institution_id`
-- **Student Count**: active students per institution
-- **Project Status**: in-progress vs completed per institution
-- **XP Engagement**: total XP earned per institution
+**A. Class Ranking Position**
+- Fetch the student's `class_id` and `institution_id` from their profile
+- Query all students in the same class with their assessment scores, assignment marks, project count, and XP
+- Apply the existing ranking formula (Assessments 50%, Assignments 20%, Projects 20%, XP 10%)
+- Show the student's rank out of total classmates
 
-Add a new `fetchTrainerPerformance()` function:
-- Join officers with their assigned institutions
-- For each officer, compute: their students' avg assessment score, pass rate
-- Identify top/bottom performing trainers
+**B. Course Outcome Performance**
+- Already partially done via SWOT, but add a dedicated summary section showing per-course accuracy percentage
 
-Add **"At-Risk Institutions"** section:
-- Institutions with pass rate below 50% or attendance rate below 70%
+**C. Project Details with Type and Recognition**
+- Fetch `projects` the student is a member of (via `project_members`)
+- Include project title, status, SDG goals, category/type
+- Fetch `project_achievements` for those projects (awards, competition wins, patents)
+- Summarize recognition: "You have X awards across Y projects"
 
-Wire these into `fetchSystemAdminContext()` alongside existing fetchers.
+**D. Career Domain Advice Context**
+- Based on strengths (high-accuracy topics), project types, and course categories
+- Add a section to the student context summarizing their strongest domains
+- Update `studentPrompt` to include career guidance instructions:
+  - Map STEM strengths to career domains (e.g., high robotics scores -> Mechatronics/Automation)
+  - Consider project types and achievements for recommendations
+  - Suggest relevant higher education paths and industry domains
 
-### 3. Scope Officer Context to Their Institution
+### 3. Update Student System Prompt
 
-**File: `supabase/functions/ask-metova/index.ts`**
+**Update `studentPrompt`** to add career advice capability:
+- When asked about career advice, future domains, or "what should I study":
+  - Analyze their strongest course categories and topics
+  - Consider their project types and any awards/recognition
+  - Suggest relevant career domains (e.g., AI/ML, Robotics, Biotech, Data Science)
+  - Recommend focus areas for competitive exams or higher studies
 
-Update `fetchOfficerContext()` to accept `institutionId` parameter:
-- Filter classes, assessment attempts, attendance, projects, and assignments by `institution_id`
-- Add student names to performance summaries (join with `students` table)
-
-Update the main handler (around line 1936-1940) to resolve the officer's `institution_id` from their profile before calling `fetchOfficerContext(institutionId)`.
-
-### 4. Enhance Management Context with Content Completion
-
-**File: `supabase/functions/ask-metova/index.ts`**
-
-In `fetchManagementContext()`:
-- Add content completion rate: query `student_content_completions` count vs total `course_content` count
-- Add student-wise performance with names (join `students` table for `student_name`)
-
-### 5. Update System Prompts
-
-Update `systemAdminPrompt` to mention:
-- Per-institution performance comparison
-- Trainer performance analysis
-- At-risk institution identification
-
-Update `officerPrompt` to mention institution-scoped data and student names.
+---
 
 ## Technical Details
 
-### Per-Institution Metrics (New Function)
+### Markdown Rendering (ChatMessage.tsx)
 ```text
-fetchPerInstitutionMetrics():
-  assessment_attempts GROUP BY institution_id -> pass rate, avg score
-  class_session_attendance GROUP BY institution_id -> attendance rate
-  students GROUP BY institution_id -> active count
-  projects GROUP BY institution_id -> status breakdown
-  student_xp_transactions GROUP BY institution_id -> total XP
+Before: message.content.split('\n').map(line => <p>{line}</p>)
+After:  <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
 ```
 
-### Trainer Performance (New Function)
+Custom component overrides will be added for:
+- `table`: styled with borders, striped rows
+- `th/td`: proper padding and alignment
+- `h1-h3`: appropriate sizing within chat bubbles
+- `code`: inline and block code styling
+
+### Student Ranking Calculation (Edge Function)
 ```text
-fetchTrainerPerformance():
-  officers JOIN officer_assignments -> get institution per officer
-  assessment_attempts WHERE institution_id = officer's institution -> avg score, pass rate
+For each classmate:
+  assessmentScore = avg(assessment_attempts.percentage) -> weight 50%
+  assignmentScore = avg(assignment_submissions.marks_obtained / total_marks * 100) -> weight 20%
+  projectScore = min(project_count * 20, 100) -> weight 20% (capped)
+  xpScore = min(total_xp / 10, 100) -> weight 10% (capped)
+  
+  totalScore = assessment*0.5 + assignment*0.2 + project*0.2 + xp*0.1
+  
+Sort by totalScore descending -> find student's rank
 ```
 
-### Files Modified
+### Career Domain Mapping (in studentPrompt)
+```text
+High accuracy in Programming/Coding -> Software Engineering, AI/ML, Web Dev
+High accuracy in Electronics/Robotics -> Mechatronics, IoT, Embedded Systems  
+High accuracy in Biology/Environment -> Biotech, Environmental Science
+High accuracy in Math/Statistics -> Data Science, Finance, Research
+Projects with patents/awards -> Entrepreneurship, R&D
+```
+
+### Files to Create/Modify
+
 | File | Change |
 |------|--------|
-| `supabase/functions/ask-metova/index.ts` | Remove default API key, add per-institution metrics, scope officer context, enhance management context |
-| `src/components/settings/AISettingsTab.tsx` | Remove "Default API Key" option, require custom key input |
+| `src/components/student/ChatMessage.tsx` | Replace plain text rendering with ReactMarkdown + remark-gfm |
+| `supabase/functions/ask-metova/index.ts` | Add class ranking, project details, career context to student fetcher; update studentPrompt |
+| `package.json` | Add `react-markdown` and `remark-gfm` dependencies |
+
