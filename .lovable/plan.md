@@ -1,25 +1,21 @@
 
 
-# Fix 406 and 400 Errors in Ask Metova
+# Replace Dual Charts with Single Class Comparison Bar Chart
 
-## Root Cause
+## Problem
+The analytics "Institution Overview" section shows two graphs side-by-side:
+1. A **Radar chart** ("Performance Overview") -- hard to read and not adding much value beyond the KPI cards above it
+2. A **horizontal Bar chart** ("Class Performance Comparison") -- useful but cramped in half-width
 
-The `ask_metova_settings` row does not exist in the `system_configurations` table. All queries use `.single()`, which returns a **406 error** when zero rows are found. This cascading failure causes the edge function to return a **400 error** on the second prompt.
+The user wants these replaced with a single, full-width bar chart for class comparisons.
 
-## Fix
+## Change
 
-Replace `.single()` with `.maybeSingle()` in all places that query `ask_metova_settings`. This returns `null` instead of throwing an error when no row exists.
+**File: `src/components/analytics/InstitutionOverview.tsx`**
 
-### Files to Modify
+- Remove the Radar chart and its data (`radarData` array, `RadarChart` imports)
+- Make the Class Performance Comparison bar chart **full-width** (remove the `grid md:grid-cols-2` wrapper)
+- Keep the bar chart showing "Avg Score" and "Pass Rate" per class with vertical layout
+- Clean up unused imports (`RadarChart`, `PolarGrid`, `PolarAngleAxis`, `PolarRadiusAxis`, `Radar`, `TrendingUp`)
 
-| File | Lines | Change |
-|------|-------|--------|
-| `supabase/functions/ask-metova/index.ts` | ~34 | `.single()` to `.maybeSingle()` |
-| `src/hooks/useAskMetova.ts` | ~62 | `.single()` to `.maybeSingle()` |
-| `src/components/settings/AISettingsTab.tsx` | ~46 | `.single()` to `.maybeSingle()` |
-| `src/pages/super-admin/SystemConfig.tsx` | ~277 | `.single()` to `.maybeSingle()` |
-
-### Technical Detail
-
-All four locations follow the same pattern -- they already handle the `null` case gracefully (falling back to defaults or skipping), so the only change needed is swapping `.single()` for `.maybeSingle()` to prevent the 406 HTTP error from being thrown in the first place.
-
+This is a single-file change affecting the shared `InstitutionOverview` component, which automatically fixes it for CEO (via `ComprehensiveAnalyticsTab`), Management, and Officer analytics pages.
