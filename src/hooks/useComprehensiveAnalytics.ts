@@ -282,8 +282,8 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
         // Use weighted assessment total as the assessment average
         const assessmentAvg = weightedAssessment.total_weighted;
         
-        // Pass rate based on weighted score (>= 40% is pass)
-        const assessmentPassRate = assessmentAvg >= 40 ? 100 : 0;
+        // Pass rate based on weighted score (>= 33% is pass)
+        const assessmentPassRate = assessmentAvg >= 33 ? 100 : 0;
 
         // Calculate assignment avg
         let assignmentAvg = 0;
