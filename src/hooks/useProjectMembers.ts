@@ -16,8 +16,17 @@ export interface UpdateMemberInput {
 }
 
 // Helper function to award project membership XP
-async function awardProjectXP(projectId: string, studentId: string) {
+async function awardProjectXP(projectId: string, studentRecordId: string) {
   try {
+    // Resolve auth user_id from students table record ID
+    const { data: student } = await supabase
+      .from('students')
+      .select('user_id')
+      .eq('id', studentRecordId)
+      .single();
+    
+    if (!student?.user_id) return;
+
     // Get project's institution_id
     const { data: project } = await supabase
       .from('projects')
@@ -27,7 +36,7 @@ async function awardProjectXP(projectId: string, studentId: string) {
     
     if (project?.institution_id) {
       await gamificationDbService.awardProjectMembershipXP(
-        studentId,
+        student.user_id,
         project.institution_id,
         projectId
       );
