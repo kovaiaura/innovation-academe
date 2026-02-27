@@ -20,8 +20,8 @@ export function InstitutionOverview({ data, institutionName }: InstitutionOvervi
 
   const classComparisonData = data.classPerformance.map(cls => ({
     name: cls.class_name,
-    'Avg Score': cls.weighted_assessment?.total_weighted || 0,
-    'Pass Rate': cls.assessment_pass_rate,
+    'Overall Score': Math.round(cls.overall_score * 10) / 10,
+    'Avg Projects': Math.round(cls.avg_projects * 10) / 10,
   }));
 
   return (
@@ -160,7 +160,7 @@ export function InstitutionOverview({ data, institutionName }: InstitutionOvervi
               <GraduationCap className="h-4 w-4" />
               Class Performance Comparison
             </CardTitle>
-            <CardDescription>Weighted assessment scores by class</CardDescription>
+            <CardDescription>Overall score and project participation by class</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-80">
@@ -181,8 +181,8 @@ export function InstitutionOverview({ data, institutionName }: InstitutionOvervi
                        }} 
                      />
                      <Legend />
-                     <Bar dataKey="Avg Score" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                     <Bar dataKey="Pass Rate" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                     <Bar dataKey="Overall Score" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                     <Bar dataKey="Avg Projects" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
