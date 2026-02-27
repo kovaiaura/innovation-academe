@@ -1,38 +1,92 @@
 
 
-# Fix: "Unlock All" State Lost in Review Step
+# Fix XP and Badge Allocation on Real-Time Events
 
-## Problem
-When selecting "Unlock All" mode in Step 2 of course assignment, the review step (Step 3) shows all levels and sessions as "Locked" instead of "Unlocked."
+## Root Cause: Student ID Mismatch
 
-## Root Cause
-In `AssignCourseToClassDialog.tsx`, the `useEffect` that initializes module configs (lines 83-108) includes `globalUnlockMode` in its dependency array. When the user picks "Unlock All":
+The **recalculate** function correctly uses `student.user_id` (the auth UUID from `profiles`/`auth.users`) for all XP and badge operations. However, the **real-time callers** (when a student joins a project, gets an award, etc.) pass the **wrong ID type**:
 
-1. `applyGlobalUnlockMode('unlock_all')` correctly sets all modules/sessions to `isUnlocked: true`
-2. But the `useEffect` re-runs because `globalUnlockMode` changed in its dependency array
-3. It **reinitializes** all configs with default logic: only first module/session unlocked, wiping out the unlock state
+| Caller | ID Passed | Correct ID |
+|--------|-----------|------------|
+| `useProjectMembers.ts` (line 60) | `input.student_id` = students table record ID | Should be `students.user_id` (auth UUID) |
+| `useProjectMembers.ts` (line 99) | Same issue for bulk add | Same fix needed |
+| `useProjectAchievements.ts` (line 56) | `member.student_id` from `project_members` = students table record ID | Should be `students.user_id` (auth UUID) |
+| `assessment.service.ts` (line 744) | `attemptData.student_id` from `assessment_attempts` | Already correct (stores auth UUID) |
+| `assignment.service.ts` (line 348) | `data.student_id` from `assignment_submissions` | Already correct (stores auth UUID) |
 
-## Fix
+### Why This Breaks Everything
 
-**File:** `src/components/institution/AssignCourseToClassDialog.tsx`
+1. **XP stored under wrong ID**: XP transactions are created with the students table record ID instead of auth UUID, so they don't show up for the student
+2. **Badge check fails**: `checkAndAwardBadges` calls `getStudentActivityCounts`, which does `.eq('user_id', studentId)` on the `students` table. When `studentId` is already the students table ID (not auth UUID), this query returns nothing, so all activity counts are 0, and no badges are awarded
 
-1. **Remove `globalUnlockMode` from the `useEffect` dependency array** (line 108) so changing the unlock mode doesn't reinitialize all configs.
+## Fix Plan
 
-2. **Apply the global unlock mode during initialization** -- inside the `useEffect`, use the current `globalUnlockMode` value to set the initial unlock state:
-   - If `globalUnlockMode === 'unlock_all'`, set all modules and sessions to `isUnlocked: true`
-   - Otherwise, keep the existing default (first item unlocked)
+### 1. Fix `useProjectMembers.ts` - Resolve auth user_id before awarding XP
 
-This is a single-line dependency array fix plus a small conditional inside the existing initialization logic. No new files needed.
+Update the `awardProjectXP` helper function to look up the student's `user_id` from the `students` table before calling `awardProjectMembershipXP`:
 
-## Technical Detail
-
-```text
-Before (line 108):
-  }, [selectedCourse, globalUnlockMode, existingAssignmentData]);
-
-After:
-  }, [selectedCourse, existingAssignmentData]);
+```typescript
+async function awardProjectXP(projectId: string, studentRecordId: string) {
+  // Look up student's auth user_id
+  const { data: student } = await supabase
+    .from('students')
+    .select('user_id')
+    .eq('id', studentRecordId)
+    .single();
+  
+  if (!student?.user_id) return;
+  
+  // Get project's institution_id
+  const { data: project } = await supabase
+    .from('projects')
+    .select('institution_id')
+    .eq('id', projectId)
+    .single();
+  
+  if (project?.institution_id) {
+    await gamificationDbService.awardProjectMembershipXP(
+      student.user_id,  // auth UUID, not students table ID
+      project.institution_id,
+      projectId
+    );
+  }
+}
 ```
 
-The `applyGlobalUnlockMode` function already handles updating all module configs when the mode changes -- the `useEffect` should only run when the course selection changes, not when the unlock mode changes.
+### 2. Fix `useProjectAchievements.ts` - Resolve auth user_id for each member
 
+Update `awardProjectAwardXPToMembers` to look up each member's `user_id`:
+
+```typescript
+// For each member, join to get user_id
+const { data: members } = await supabase
+  .from('project_members')
+  .select('student_id, students:student_id(user_id)')
+  .eq('project_id', projectId);
+
+for (const member of members) {
+  const authUserId = member.students?.user_id;
+  if (!authUserId) continue;
+  
+  await gamificationDbService.awardProjectAwardXP(
+    authUserId,  // auth UUID
+    project.institution_id,
+    projectId,
+    achievementTitle
+  );
+}
+```
+
+### 3. Verify assessment and assignment callers (already correct)
+
+- `assessment.service.ts`: Uses `assessment_attempts.student_id` which stores auth UUID -- no change needed
+- `assignment.service.ts`: Uses `assignment_submissions.student_id` which stores auth UUID -- no change needed
+
+### Summary of Files to Edit
+
+| File | Change |
+|------|--------|
+| `src/hooks/useProjectMembers.ts` | Look up `students.user_id` before awarding XP |
+| `src/hooks/useProjectAchievements.ts` | Look up `students.user_id` for each member before awarding XP |
+
+These two fixes align the real-time XP/badge awarding with the same ID convention used by the recalculate function, ensuring consistent behavior.
