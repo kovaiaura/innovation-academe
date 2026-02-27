@@ -127,6 +127,7 @@ import OfficerTimetable from "./pages/officer/Timetable";
 import IdConfiguration from "./pages/system-admin/IdConfiguration";
 import SDGManagement from "./pages/system-admin/SDGManagement";
 import SystemAdminAskMetova from "./pages/system-admin/AskMetova";
+import ManagementAskMetova from "./pages/management/AskMetova";
 import SystemAdminCRM from "./pages/system-admin/CRM";
 import SurveyFeedbackManagement from "./pages/system-admin/SurveyFeedbackManagement";
 import PerformanceRatings from "./pages/system-admin/PerformanceRatings";
@@ -1102,6 +1103,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['management']}>
                   <ManagementProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tenant/:tenantId/management/ask-metova"
+              element={
+                <ProtectedRoute allowedRoles={['management']}>
+                  <ManagementAskMetova />
                 </ProtectedRoute>
               }
             />
