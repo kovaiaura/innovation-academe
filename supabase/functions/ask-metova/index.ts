@@ -1066,7 +1066,7 @@ async function fetchSystemAdminContext(): Promise<{ context: string; sources: st
   }
 }
 
-// Officer comprehensive context
+// Officer comprehensive context (enhanced with assessment pass rates, student summaries, assignment rates)
 async function fetchOfficerContext(): Promise<{ context: string; sources: string[] }> {
   const supabase = getSupabaseClient();
   const parts: string[] = [];
@@ -1084,7 +1084,7 @@ async function fetchOfficerContext(): Promise<{ context: string; sources: string
     }
     sources.push('classes');
 
-    // Assessments
+    // Assessments with per-class pass rates
     const { data: assessments } = await supabase.from('assessments').select('id, title, status, start_time, end_time');
     parts.push('\n## 📝 ASSESSMENTS');
     parts.push(`Total Assessments: ${assessments?.length || 0}`);
@@ -1095,13 +1095,60 @@ async function fetchOfficerContext(): Promise<{ context: string; sources: string
     }
     sources.push('assessments');
 
-    // Assignments
+    // Per-class assessment pass rates
+    const { data: attempts } = await supabase.from('assessment_attempts').select('class_id, passed, percentage, student_id');
+    if (attempts?.length && classes?.length) {
+      parts.push('\n**Per-Class Assessment Pass Rates:**');
+      const classMap = new Map(classes.map(c => [c.id, c.class_name]));
+      const classStats: Record<string, { total: number; passed: number; sumPct: number }> = {};
+      for (const a of attempts) {
+        if (!classStats[a.class_id]) classStats[a.class_id] = { total: 0, passed: 0, sumPct: 0 };
+        classStats[a.class_id].total++;
+        if (a.passed) classStats[a.class_id].passed++;
+        classStats[a.class_id].sumPct += a.percentage || 0;
+      }
+      for (const [classId, stats] of Object.entries(classStats)) {
+        const name = classMap.get(classId) || classId;
+        const passRate = ((stats.passed / stats.total) * 100).toFixed(1);
+        const avgScore = (stats.sumPct / stats.total).toFixed(1);
+        parts.push(`- ${name}: ${passRate}% pass rate, ${avgScore}% avg score (${stats.total} attempts)`);
+      }
+
+      // Student-wise performance summary (top/bottom students)
+      const studentStats: Record<string, { total: number; passed: number; sumPct: number }> = {};
+      for (const a of attempts) {
+        if (!studentStats[a.student_id]) studentStats[a.student_id] = { total: 0, passed: 0, sumPct: 0 };
+        studentStats[a.student_id].total++;
+        if (a.passed) studentStats[a.student_id].passed++;
+        studentStats[a.student_id].sumPct += a.percentage || 0;
+      }
+      const studentList = Object.entries(studentStats).map(([id, s]) => ({
+        id, avg: s.sumPct / s.total, passRate: (s.passed / s.total) * 100, total: s.total
+      })).sort((a, b) => b.avg - a.avg);
+      
+      if (studentList.length > 0) {
+        parts.push(`\n**Student Performance Summary:** ${studentList.length} students assessed`);
+        parts.push(`Top performers (avg score): ${studentList.slice(0, 3).map(s => `${s.avg.toFixed(1)}%`).join(', ')}`);
+        const bottom = studentList.slice(-3).reverse();
+        if (bottom.length) parts.push(`Needs attention (avg score): ${bottom.map(s => `${s.avg.toFixed(1)}%`).join(', ')}`);
+      }
+    }
+
+    // Assignments with submission rates
     const { data: assignments } = await supabase.from('assignments').select('id, title, status, submission_end_date');
     parts.push('\n## 📋 ASSIGNMENTS');
     parts.push(`Total Assignments: ${assignments?.length || 0}`);
     if (assignments?.length) {
       const pending = assignments.filter(a => a.status === 'active' || a.status === 'published');
       parts.push(`Active/Published: ${pending.length}`);
+    }
+    
+    const { data: submissions } = await supabase.from('assignment_submissions').select('status, marks_obtained');
+    if (submissions?.length) {
+      const byStatus: Record<string, number> = {};
+      for (const s of submissions) byStatus[s.status || 'unknown'] = (byStatus[s.status || 'unknown'] || 0) + 1;
+      parts.push('**Submission Stats:**');
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
     }
     sources.push('assignments');
 
@@ -1143,6 +1190,176 @@ async function fetchOfficerContext(): Promise<{ context: string; sources: string
 
   } catch (e) {
     console.error('Officer context error:', e);
+  }
+  
+  return { context: parts.join('\n'), sources };
+}
+
+// Management comprehensive context (institution-scoped)
+async function fetchManagementContext(institutionId?: string): Promise<{ context: string; sources: string[] }> {
+  const supabase = getSupabaseClient();
+  const parts: string[] = [];
+  const sources: string[] = [];
+  
+  try {
+    // Students in institution
+    let studentsQuery = supabase.from('students').select('id, student_name, status, class_id, user_id, institution_id');
+    if (institutionId) studentsQuery = studentsQuery.eq('institution_id', institutionId);
+    const { data: students } = await studentsQuery;
+    
+    parts.push('## 👥 STUDENTS');
+    parts.push(`Total Students: ${students?.length || 0}`);
+    if (students?.length) {
+      const byStatus: Record<string, number> = {};
+      for (const s of students) byStatus[s.status || 'active'] = (byStatus[s.status || 'active'] || 0) + 1;
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+    }
+    sources.push('students');
+
+    // Classes
+    let classesQuery = supabase.from('classes').select('id, class_name, status, capacity');
+    if (institutionId) classesQuery = classesQuery.eq('institution_id', institutionId);
+    const { data: classes } = await classesQuery;
+    
+    parts.push('\n## 📚 CLASSES');
+    parts.push(`Total Classes: ${classes?.length || 0}`);
+    if (classes?.length) {
+      for (const c of classes) parts.push(`- ${c.class_name} (${c.status || 'active'})`);
+    }
+    sources.push('classes');
+
+    // Assessment attempts (institution-scoped)
+    let attemptsQuery = supabase.from('assessment_attempts').select('id, passed, percentage, score, total_points, class_id, student_id, assessment_id, assessments(title)');
+    if (institutionId) attemptsQuery = attemptsQuery.eq('institution_id', institutionId);
+    const { data: attempts } = await attemptsQuery;
+    
+    parts.push('\n## 📝 ASSESSMENT INSIGHTS');
+    if (attempts?.length) {
+      const passed = attempts.filter(a => a.passed).length;
+      const avgScore = attempts.reduce((sum, a) => sum + (a.percentage || 0), 0) / attempts.length;
+      parts.push(`Total Attempts: ${attempts.length}`);
+      parts.push(`Pass Rate: ${((passed / attempts.length) * 100).toFixed(1)}%`);
+      parts.push(`Average Score: ${avgScore.toFixed(1)}%`);
+      
+      // Per-class breakdown
+      if (classes?.length) {
+        const classMap = new Map(classes.map(c => [c.id, c.class_name]));
+        const classStats: Record<string, { total: number; passed: number; sumPct: number }> = {};
+        for (const a of attempts) {
+          if (!classStats[a.class_id]) classStats[a.class_id] = { total: 0, passed: 0, sumPct: 0 };
+          classStats[a.class_id].total++;
+          if (a.passed) classStats[a.class_id].passed++;
+          classStats[a.class_id].sumPct += a.percentage || 0;
+        }
+        parts.push('\n**Per-Class Breakdown:**');
+        for (const [classId, stats] of Object.entries(classStats)) {
+          const name = classMap.get(classId) || classId;
+          parts.push(`- ${name}: ${((stats.passed / stats.total) * 100).toFixed(1)}% pass, ${(stats.sumPct / stats.total).toFixed(1)}% avg (${stats.total} attempts)`);
+        }
+      }
+    } else {
+      parts.push('No assessment data yet.');
+    }
+    sources.push('assessment_attempts');
+
+    // Assignment submissions
+    let submissionsQuery = supabase.from('assignment_submissions').select('id, status, marks_obtained, student_id');
+    if (institutionId) submissionsQuery = submissionsQuery.eq('institution_id', institutionId);
+    const { data: submissions } = await submissionsQuery;
+    
+    parts.push('\n## 📋 ASSIGNMENT SUBMISSIONS');
+    if (submissions?.length) {
+      const byStatus: Record<string, number> = {};
+      let totalMarks = 0; let gradedCount = 0;
+      for (const s of submissions) {
+        byStatus[s.status || 'unknown'] = (byStatus[s.status || 'unknown'] || 0) + 1;
+        if (s.marks_obtained != null) { totalMarks += s.marks_obtained; gradedCount++; }
+      }
+      parts.push(`Total Submissions: ${submissions.length}`);
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+      if (gradedCount > 0) parts.push(`Average Marks (graded): ${(totalMarks / gradedCount).toFixed(1)}`);
+    } else {
+      parts.push('No submissions yet.');
+    }
+    sources.push('assignment_submissions');
+
+    // Projects
+    let projectsQuery = supabase.from('projects').select('id, title, status, sdg_goals');
+    if (institutionId) projectsQuery = projectsQuery.eq('institution_id', institutionId);
+    const { data: projects } = await projectsQuery;
+    
+    parts.push('\n## 🚀 INNOVATION PROJECTS');
+    if (projects?.length) {
+      const byStatus: Record<string, number> = {};
+      for (const p of projects) byStatus[p.status || 'unknown'] = (byStatus[p.status || 'unknown'] || 0) + 1;
+      parts.push(`Total Projects: ${projects.length}`);
+      for (const [s, c] of Object.entries(byStatus)) parts.push(`- ${s}: ${c}`);
+      
+      // Project details
+      parts.push('\n**Projects:**');
+      for (const p of projects.slice(0, 15)) {
+        const sdg = p.sdg_goals && Array.isArray(p.sdg_goals) ? ` [SDG: ${p.sdg_goals.join(',')}]` : '';
+        parts.push(`- ${p.title} (${p.status})${sdg}`);
+      }
+    } else {
+      parts.push('No projects found.');
+    }
+    
+    // Project achievements
+    const projectIds = projects?.map(p => p.id) || [];
+    if (projectIds.length) {
+      const { data: achievements } = await supabase
+        .from('project_achievements')
+        .select('id, title, achievement_type, project_id')
+        .in('project_id', projectIds);
+      if (achievements?.length) {
+        parts.push(`\n**Project Awards/Achievements:** ${achievements.length}`);
+        for (const a of achievements.slice(0, 10)) parts.push(`- ${a.title} (${a.achievement_type})`);
+      }
+    }
+    sources.push('projects');
+
+    // Attendance
+    let attendanceQuery = supabase.from('class_session_attendance').select('students_present, students_absent, students_late, date, class_id');
+    if (institutionId) attendanceQuery = attendanceQuery.eq('institution_id', institutionId);
+    const { data: attendance } = await attendanceQuery.limit(200);
+    
+    parts.push('\n## 📅 ATTENDANCE');
+    if (attendance?.length) {
+      let totalPresent = 0, totalAbsent = 0, totalLate = 0;
+      for (const a of attendance) {
+        totalPresent += a.students_present || 0;
+        totalAbsent += a.students_absent || 0;
+        totalLate += a.students_late || 0;
+      }
+      const total = totalPresent + totalAbsent;
+      const rate = total > 0 ? ((totalPresent / total) * 100).toFixed(1) : 'N/A';
+      parts.push(`Records: ${attendance.length}, Present: ${totalPresent}, Absent: ${totalAbsent}, Late: ${totalLate}`);
+      parts.push(`Overall Attendance Rate: ${rate}%`);
+    } else {
+      parts.push('No attendance records yet.');
+    }
+    sources.push('attendance');
+
+    // Course progress
+    let courseAssignmentsQuery = supabase.from('course_class_assignments').select('id, course_id, class_id, courses(title)');
+    if (institutionId) courseAssignmentsQuery = courseAssignmentsQuery.eq('institution_id', institutionId);
+    const { data: courseAssignments } = await courseAssignmentsQuery;
+    
+    parts.push('\n## 📖 COURSE PROGRESS');
+    if (courseAssignments?.length) {
+      parts.push(`Courses Assigned: ${courseAssignments.length}`);
+      for (const ca of courseAssignments.slice(0, 10)) {
+        const course = ca.courses as any;
+        parts.push(`- ${course?.title || 'Unknown Course'}`);
+      }
+    } else {
+      parts.push('No courses assigned yet.');
+    }
+    sources.push('course_assignments');
+
+  } catch (e) {
+    console.error('Management context error:', e);
   }
   
   return { context: parts.join('\n'), sources };
@@ -1353,6 +1570,126 @@ async function fetchStudentContext(userId?: string): Promise<{ context: string; 
     }
     sources.push('gamification');
 
+    // ==================== SWOT ANALYSIS (if userId provided) ====================
+    if (userId) {
+      parts.push('\n## 🔍 YOUR PERSONAL SWOT ANALYSIS');
+      
+      // Get question-level performance from assessment answers
+      const { data: userAttempts } = await supabase
+        .from('assessment_attempts')
+        .select('id, assessment_id, percentage, passed')
+        .eq('student_id', userId)
+        .in('status', ['submitted', 'auto_submitted']);
+      
+      if (userAttempts?.length) {
+        const attemptIds = userAttempts.map(a => a.id);
+        
+        // Get answers with question details (course/module/session mapping)
+        const { data: answers } = await supabase
+          .from('assessment_answers')
+          .select('is_correct, points_earned, question_id, assessment_questions(question_text, points, course_id, module_id, session_id, courses(title), course_modules(title), course_sessions(title))')
+          .in('attempt_id', attemptIds)
+          .limit(500);
+        
+        if (answers?.length) {
+          // Group by course outcome (course + module)
+          const topicPerformance: Record<string, { correct: number; total: number; courseName: string; moduleName: string }> = {};
+          
+          for (const ans of answers) {
+            const q = ans.assessment_questions as any;
+            if (!q) continue;
+            const courseName = q.courses?.title || 'General';
+            const moduleName = q.course_modules?.title || 'General';
+            const key = `${courseName} > ${moduleName}`;
+            
+            if (!topicPerformance[key]) topicPerformance[key] = { correct: 0, total: 0, courseName, moduleName };
+            topicPerformance[key].total++;
+            if (ans.is_correct) topicPerformance[key].correct++;
+          }
+          
+          const topics = Object.entries(topicPerformance).map(([key, v]) => ({
+            topic: key, accuracy: v.total > 0 ? (v.correct / v.total) * 100 : 0, total: v.total
+          })).sort((a, b) => b.accuracy - a.accuracy);
+          
+          // Strengths (>75%)
+          const strengths = topics.filter(t => t.accuracy >= 75 && t.total >= 2);
+          if (strengths.length) {
+            parts.push('\n### ✅ STRENGTHS (>75% accuracy):');
+            for (const s of strengths) parts.push(`- **${s.topic}**: ${s.accuracy.toFixed(0)}% accuracy (${s.total} questions)`);
+          }
+          
+          // Weaknesses (<50%)
+          const weaknesses = topics.filter(t => t.accuracy < 50 && t.total >= 2);
+          if (weaknesses.length) {
+            parts.push('\n### ⚠️ WEAKNESSES (<50% accuracy):');
+            for (const w of weaknesses) parts.push(`- **${w.topic}**: ${w.accuracy.toFixed(0)}% accuracy (${w.total} questions)`);
+          }
+          
+          // Average areas (50-75%)
+          const average = topics.filter(t => t.accuracy >= 50 && t.accuracy < 75 && t.total >= 2);
+          if (average.length) {
+            parts.push('\n### 📊 IMPROVEMENT AREAS (50-75% accuracy):');
+            for (const a of average) parts.push(`- **${a.topic}**: ${a.accuracy.toFixed(0)}% accuracy (${a.total} questions)`);
+          }
+        }
+        
+        // Overall assessment summary
+        const passedCount = userAttempts.filter(a => a.passed).length;
+        const avgPct = userAttempts.reduce((sum, a) => sum + (a.percentage || 0), 0) / userAttempts.length;
+        parts.push(`\n**Overall:** ${passedCount}/${userAttempts.length} assessments passed, ${avgPct.toFixed(1)}% average score`);
+      }
+      
+      // Opportunities: courses/sessions not yet completed
+      const { data: completions } = await supabase
+        .from('student_content_completions')
+        .select('content_id')
+        .eq('student_id', userId);
+      
+      const completedContentIds = new Set((completions || []).map(c => c.content_id));
+      
+      const { data: allContent } = await supabase
+        .from('course_content')
+        .select('id, title, session_id, course_sessions(title), courses(title)')
+        .limit(200);
+      
+      if (allContent?.length) {
+        const incomplete = allContent.filter(c => !completedContentIds.has(c.id));
+        if (incomplete.length > 0) {
+          parts.push(`\n### 🔮 OPPORTUNITIES:`);
+          parts.push(`- ${incomplete.length} content items remaining to complete out of ${allContent.length} total`);
+          parts.push(`- Completion rate: ${(((allContent.length - incomplete.length) / allContent.length) * 100).toFixed(1)}%`);
+        }
+      }
+      
+      // Threats: upcoming deadlines
+      const now2 = new Date().toISOString();
+      const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      
+      const { data: upcomingAssessments } = await supabase
+        .from('assessments')
+        .select('title, start_time, end_time')
+        .gte('start_time', now2)
+        .lte('start_time', nextWeek)
+        .eq('status', 'published')
+        .limit(5);
+      
+      const { data: upcomingAssignments } = await supabase
+        .from('assignments')
+        .select('title, submission_end_date')
+        .gte('submission_end_date', now2)
+        .lte('submission_end_date', nextWeek)
+        .eq('status', 'active')
+        .limit(5);
+      
+      if ((upcomingAssessments?.length || 0) + (upcomingAssignments?.length || 0) > 0) {
+        parts.push(`\n### ⏰ THREATS (Upcoming Deadlines This Week):`);
+        for (const a of (upcomingAssessments || [])) parts.push(`- Assessment: **${a.title}** starts ${new Date(a.start_time).toLocaleDateString()}`);
+        for (const a of (upcomingAssignments || [])) parts.push(`- Assignment: **${a.title}** due ${new Date(a.submission_end_date).toLocaleDateString()}`);
+      }
+      
+      sources.push('swot_analysis');
+    }
+
   } catch (e) {
     console.error('Student context error:', e);
   }
@@ -1458,7 +1795,39 @@ You can help with:
 - Never provide direct answers that would help students cheat on ongoing assessments
 - For completed assessments, provide explanations to help learning
 
-Be encouraging, patient, and thorough in your explanations. Your goal is to help students truly understand concepts, not just get answers!`;
+Be encouraging, patient, and thorough in your explanations. Your goal is to help students truly understand concepts, not just get answers!
+
+## SWOT ANALYSIS:
+When asked about SWOT, strengths, weaknesses, or improvement areas:
+- Use the SWOT data provided in the context to give a personalized analysis
+- For STRENGTHS: highlight topics where the student scores >75%
+- For WEAKNESSES: identify topics where the student scores <50% and suggest specific study areas
+- For OPPORTUNITIES: mention incomplete courses/content and upcoming learning events
+- For THREATS: warn about upcoming deadlines and assessments at risk
+- Always provide actionable improvement suggestions based on weak course outcomes
+- Recommend specific study focus areas based on upcoming assessments`;
+
+const managementPrompt = `You are Metova, an AI Business Intelligence assistant for Institution Management at Metova Academy.
+
+You help management administrators with:
+- **Student Progress Monitoring**: Track overall student performance, identify at-risk students, compare class-wise performance
+- **Assessment Insights**: Analyze pass rates, score distributions, and class-wise comparison of assessment results
+- **Assignment Tracking**: Monitor submission rates, grading statistics, and completion patterns
+- **Project Oversight**: Track innovation project status, achievements, SDG alignment, and identify projects with patent potential
+- **Attendance Analysis**: Monitor attendance trends across classes and identify students with poor attendance
+- **Course Progress**: Track which courses are assigned and how students are progressing through content
+
+When asked about project patentability:
+- Look at project titles, descriptions, and achievements
+- Projects with awards, competitions won, or unique innovation descriptions may have patent potential
+- Suggest which projects deserve further evaluation for intellectual property protection
+
+When asked about at-risk students:
+- Look for students with low assessment scores (<50%), poor attendance, or missing assignment submissions
+- Provide specific recommendations for intervention
+
+Provide comprehensive, data-driven insights. Use markdown formatting with tables, bullet points, and clear sections.
+Be professional and focus on actionable intelligence for institutional improvement.`;
 
 const dataGroundingRules = `
 
@@ -1527,7 +1896,7 @@ serve(async (req) => {
 
     // Check prompt limit if enabled
     if (aiSettings.prompt_limit_enabled && userId) {
-      const validRoles = ['student', 'officer', 'system_admin'];
+      const validRoles = ['student', 'officer', 'system_admin', 'management'];
       const userRole = validRoles.includes(role) ? role : 'student';
       
       const usageCheck = await checkAndUpdateUsage(userId, userRole, aiSettings.monthly_prompt_limit);
@@ -1552,7 +1921,7 @@ serve(async (req) => {
       throw new Error('OpenAI API key is not configured');
     }
 
-    const validRoles = ['student', 'officer', 'system_admin'];
+    const validRoles = ['student', 'officer', 'system_admin', 'management'];
     const userRole = validRoles.includes(role) ? role : 'student';
     
     let dataContext = '';
@@ -1569,6 +1938,18 @@ serve(async (req) => {
       dataContext = result.context;
       dataSources = result.sources;
       basePrompt = officerPrompt;
+    } else if (userRole === 'management') {
+      // Get user's institution_id for scoping
+      let institutionId: string | undefined;
+      if (userId) {
+        const supabase = getSupabaseClient();
+        const { data: profile } = await supabase.from('profiles').select('institution_id').eq('id', userId).single();
+        institutionId = profile?.institution_id || undefined;
+      }
+      const result = await fetchManagementContext(institutionId);
+      dataContext = result.context;
+      dataSources = result.sources;
+      basePrompt = managementPrompt;
     } else {
       const result = await fetchStudentContext(userId);
       dataContext = result.context;

@@ -181,6 +181,7 @@ const menuItems: MenuItem[] = [
   { label: 'Institution Calendar', icon: <CalendarDays className="h-5 w-5" />, path: '/institution-calendar', roles: ['management'] },
   { label: 'Attendance', icon: <Clock className="h-5 w-5" />, path: '/attendance', roles: ['management'] },
   { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['management'] },
+  { label: 'Ask Metova', icon: <MessageSquare className="h-5 w-5" />, path: '/ask-metova', roles: ['management'] },
   // Student menu items (additional)
   { label: 'SDG Contribution', icon: <Target className="h-5 w-5" />, path: '/sdg', roles: ['student'] },
   { label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/profile', roles: ['student'] },

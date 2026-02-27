@@ -25,12 +25,13 @@ export interface PromptUsage {
   limit_enabled: boolean;
 }
 
-type Role = 'student' | 'officer' | 'system_admin';
+type Role = 'student' | 'officer' | 'system_admin' | 'management';
 
 const STORAGE_KEYS: Record<Role, string> = {
   student: 'metova_conversations',
   officer: 'officer_metova_conversations',
-  system_admin: 'system_admin_metova_conversations'
+  system_admin: 'system_admin_metova_conversations',
+  management: 'management_metova_conversations'
 };
 
 export function useAskMetova(role: Role) {
