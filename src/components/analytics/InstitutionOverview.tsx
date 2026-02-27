@@ -170,19 +170,19 @@ export function InstitutionOverview({ data, institutionName }: InstitutionOvervi
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={classComparisonData} layout="vertical">
+                   <BarChart data={classComparisonData}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis type="number" domain={[0, 100]} />
-                    <YAxis dataKey="name" type="category" width={80} className="text-xs" />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))', 
-                        border: '1px solid hsl(var(--border))' 
-                      }} 
-                    />
-                    <Legend />
-                    <Bar dataKey="Avg Score" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-                    <Bar dataKey="Pass Rate" fill="#22c55e" radius={[0, 4, 4, 0]} />
+                     <XAxis dataKey="name" type="category" className="text-xs" angle={-45} textAnchor="end" height={60} />
+                     <YAxis type="number" domain={[0, 100]} />
+                     <Tooltip 
+                       contentStyle={{ 
+                         backgroundColor: 'hsl(var(--background))', 
+                         border: '1px solid hsl(var(--border))' 
+                       }} 
+                     />
+                     <Legend />
+                     <Bar dataKey="Avg Score" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                     <Bar dataKey="Pass Rate" fill="#22c55e" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
