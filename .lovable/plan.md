@@ -1,92 +1,115 @@
 
 
-# Fix XP and Badge Allocation on Real-Time Events
+# Fix Ask Metova AI Feature - Complete Overhaul
 
-## Root Cause: Student ID Mismatch
+## Problems Identified
 
-The **recalculate** function correctly uses `student.user_id` (the auth UUID from `profiles`/`auth.users`) for all XP and badge operations. However, the **real-time callers** (when a student joins a project, gets an award, etc.) pass the **wrong ID type**:
+1. **AI is disabled in the database** - The `ask_metova_settings` has `enabled: false`, causing a 503 error for all users
+2. **No management role support** - Management users have no Ask Metova page, no route, and no backend context fetcher
+3. **Student context lacks SWOT/improvement analysis** - No personal performance breakdown from course outcomes
+4. **Officer context too basic** - Doesn't include institution-scoped student progress or assessment insights
+5. **The "Default API Key" is valid** - The `OPENAI_API_KEY` secret is already configured and will work when AI is re-enabled
 
-| Caller | ID Passed | Correct ID |
-|--------|-----------|------------|
-| `useProjectMembers.ts` (line 60) | `input.student_id` = students table record ID | Should be `students.user_id` (auth UUID) |
-| `useProjectMembers.ts` (line 99) | Same issue for bulk add | Same fix needed |
-| `useProjectAchievements.ts` (line 56) | `member.student_id` from `project_members` = students table record ID | Should be `students.user_id` (auth UUID) |
-| `assessment.service.ts` (line 744) | `attemptData.student_id` from `assessment_attempts` | Already correct (stores auth UUID) |
-| `assignment.service.ts` (line 348) | `data.student_id` from `assignment_submissions` | Already correct (stores auth UUID) |
+## Plan
 
-### Why This Breaks Everything
+### Step 1: Enable AI in database
+- Update `system_configurations` to set `enabled: true` for `ask_metova_settings`
 
-1. **XP stored under wrong ID**: XP transactions are created with the students table record ID instead of auth UUID, so they don't show up for the student
-2. **Badge check fails**: `checkAndAwardBadges` calls `getStudentActivityCounts`, which does `.eq('user_id', studentId)` on the `students` table. When `studentId` is already the students table ID (not auth UUID), this query returns nothing, so all activity counts are 0, and no badges are awarded
+### Step 2: Add Management Role Support
 
-## Fix Plan
+**New file: `src/pages/management/AskMetova.tsx`**
+- Create a management Ask Metova page (similar pattern to officer/system-admin versions)
+- Quick action chips: "Student Progress", "Assessment Insights", "Project Overview", "Attendance Analysis", "SWOT Summary"
 
-### 1. Fix `useProjectMembers.ts` - Resolve auth user_id before awarding XP
+**Update `src/App.tsx`**
+- Import ManagementAskMetova component
+- Add route `/tenant/:tenantId/management/ask-metova` with `management` role protection
 
-Update the `awardProjectXP` helper function to look up the student's `user_id` from the `students` table before calling `awardProjectMembershipXP`:
+**Update `src/hooks/useAskMetova.ts`**
+- Add `management` to the Role type union
+- Add storage key for management conversations
 
-```typescript
-async function awardProjectXP(projectId: string, studentRecordId: string) {
-  // Look up student's auth user_id
-  const { data: student } = await supabase
-    .from('students')
-    .select('user_id')
-    .eq('id', studentRecordId)
-    .single();
-  
-  if (!student?.user_id) return;
-  
-  // Get project's institution_id
-  const { data: project } = await supabase
-    .from('projects')
-    .select('institution_id')
-    .eq('id', projectId)
-    .single();
-  
-  if (project?.institution_id) {
-    await gamificationDbService.awardProjectMembershipXP(
-      student.user_id,  // auth UUID, not students table ID
-      project.institution_id,
-      projectId
-    );
-  }
-}
+### Step 3: Add Management Context Fetcher in Edge Function
+
+**Update `supabase/functions/ask-metova/index.ts`**
+- Add `fetchManagementContext()` function that fetches institution-scoped data:
+  - Students in their institution with performance metrics
+  - Assessment attempts and pass/fail rates for their institution
+  - Assignment submissions and grading stats
+  - Project progress for their institution
+  - Attendance patterns
+  - Course completion progress
+- Add `managementPrompt` system prompt focused on:
+  - Student progress monitoring
+  - Assessment insights and class-wise comparisons
+  - Identifying at-risk students
+  - Project status and patentability insights
+- Wire management role into the main handler (alongside student/officer/system_admin)
+
+### Step 4: Enhance Student Context with SWOT Analysis
+
+**Update `supabase/functions/ask-metova/index.ts`** (student context section)
+- Fetch the student's course outcome mappings (from `assessment_questions` linked to course outcomes)
+- Analyze assessment attempt answers to identify:
+  - **Strengths**: Topics/course outcomes where score is above 75%
+  - **Weaknesses**: Topics/course outcomes where score is below 50%
+  - **Opportunities**: Available courses/sessions not yet completed
+  - **Threats**: Upcoming deadlines, assessments at risk of failing
+- Fetch content completion progress per module/session
+- Add this SWOT data section to the student context
+
+### Step 5: Enhance Student System Prompt
+
+**Update student prompt** to include instructions for:
+- Providing personalized SWOT analysis when asked
+- Suggesting specific improvement areas based on weak course outcomes
+- Recommending study focus areas based on upcoming assessments
+
+### Step 6: Enhance Officer Context
+
+**Update officer context fetcher** to include:
+- Per-class assessment pass rates
+- Student-wise performance summaries (aggregated)
+- Assignment submission rates
+
+## Technical Details
+
+### Management Context Fetcher Structure
+```text
+fetchManagementContext(institutionId)
+  -> Students in institution (count, active/inactive)
+  -> Assessment attempts for institution students (pass rates, avg scores)
+  -> Assignment submissions (completion rates, avg marks)
+  -> Projects (status breakdown, achievements)
+  -> Attendance (institution-level rates)
+  -> Course progress (completion percentages)
 ```
 
-### 2. Fix `useProjectAchievements.ts` - Resolve auth user_id for each member
-
-Update `awardProjectAwardXPToMembers` to look up each member's `user_id`:
-
-```typescript
-// For each member, join to get user_id
-const { data: members } = await supabase
-  .from('project_members')
-  .select('student_id, students:student_id(user_id)')
-  .eq('project_id', projectId);
-
-for (const member of members) {
-  const authUserId = member.students?.user_id;
-  if (!authUserId) continue;
-  
-  await gamificationDbService.awardProjectAwardXP(
-    authUserId,  // auth UUID
-    project.institution_id,
-    projectId,
-    achievementTitle
-  );
-}
+### Student SWOT Data Structure
+```text
+fetchStudentContext(userId)
+  -> Existing data (courses, assessments, etc.)
+  -> NEW: Assessment question-level performance
+    - Group by course outcome / topic
+    - Calculate per-topic accuracy
+  -> NEW: Content completion progress
+    - Modules started vs completed
+    - Sessions remaining
+  -> NEW: SWOT summary section in context
 ```
 
-### 3. Verify assessment and assignment callers (already correct)
+### Files to Create
+| File | Description |
+|------|-------------|
+| `src/pages/management/AskMetova.tsx` | Management Ask Metova page |
 
-- `assessment.service.ts`: Uses `assessment_attempts.student_id` which stores auth UUID -- no change needed
-- `assignment.service.ts`: Uses `assignment_submissions.student_id` which stores auth UUID -- no change needed
-
-### Summary of Files to Edit
-
+### Files to Modify
 | File | Change |
 |------|--------|
-| `src/hooks/useProjectMembers.ts` | Look up `students.user_id` before awarding XP |
-| `src/hooks/useProjectAchievements.ts` | Look up `students.user_id` for each member before awarding XP |
+| `supabase/functions/ask-metova/index.ts` | Add management context, enhance student SWOT, enhance officer context |
+| `src/hooks/useAskMetova.ts` | Add management role |
+| `src/App.tsx` | Add management route |
 
-These two fixes align the real-time XP/badge awarding with the same ID convention used by the recalculate function, ensuring consistent behavior.
+### Database Change
+- Update `ask_metova_settings` to `enabled: true`
+
