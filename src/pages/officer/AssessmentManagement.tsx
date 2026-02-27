@@ -579,12 +579,21 @@ export default function OfficerAssessmentManagement() {
 
             {/* Step Indicator */}
             <div className="flex items-center justify-between mb-8">
-              {[1, 2, 3, 4, 5].map((s) => (
-                <div key={s} className="flex items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= s ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                    {s}
+              {[
+                { num: 1, label: 'Basic Info' },
+                { num: 2, label: 'Settings' },
+                { num: 3, label: 'Publishing' },
+                { num: 4, label: 'Questions' },
+                { num: 5, label: 'Review' }
+              ].map((s, idx, arr) => (
+                <div key={s.num} className="flex items-center">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= s.num ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      {s.num}
+                    </div>
+                    <span className="text-xs text-muted-foreground mt-1">{s.label}</span>
                   </div>
-                  {s < 5 && <div className={`w-20 h-1 ${step > s ? 'bg-primary' : 'bg-muted'}`} />}
+                  {idx < arr.length - 1 && <div className={`w-20 h-1 mb-5 ${step > s.num ? 'bg-primary' : 'bg-muted'}`} />}
                 </div>
               ))}
             </div>
@@ -654,8 +663,34 @@ export default function OfficerAssessmentManagement() {
               </Card>
             )}
 
-            {/* Step 3: Questions */}
+            {/* Step 3: Publishing (select classes first for course mapping context) */}
             {step === 3 && (
+              <Card>
+                <CardHeader><CardTitle>Publishing - Select Classes</CardTitle></CardHeader>
+                <CardContent className="space-y-6">
+                  <p className="text-sm text-muted-foreground">
+                    Select the classes first. This will filter course mapping options when adding questions.
+                  </p>
+                  <PublishingSelector 
+                    value={publishing} 
+                    onChange={setPublishing}
+                    restrictToInstitution={officerInstitutionId}
+                  />
+                  <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
+                    <Button 
+                      onClick={() => setStep(4)} 
+                      disabled={publishing.length === 0}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Step 4: Questions (after publishing so we have class context) */}
+            {step === 4 && (
               <div className="space-y-4">
                 <Card>
                   <CardHeader>
@@ -689,34 +724,11 @@ export default function OfficerAssessmentManagement() {
 
                 {!showQuestionBuilder && (
                   <div className="flex gap-3">
-                    <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
-                    <Button onClick={() => setStep(4)} disabled={questions.length === 0}>Next</Button>
+                    <Button variant="outline" onClick={() => setStep(3)}>Back</Button>
+                    <Button onClick={() => setStep(5)} disabled={questions.length === 0}>Next</Button>
                   </div>
                 )}
               </div>
-            )}
-
-            {/* Step 4: Publishing */}
-            {step === 4 && (
-              <Card>
-                <CardHeader><CardTitle>Publishing</CardTitle></CardHeader>
-                <CardContent className="space-y-6">
-                  <PublishingSelector 
-                    value={publishing} 
-                    onChange={setPublishing}
-                    restrictToInstitution={officerInstitutionId}
-                  />
-                  <div className="flex gap-3">
-                    <Button variant="outline" onClick={() => setStep(3)}>Back</Button>
-                    <Button 
-                      onClick={() => setStep(5)} 
-                      disabled={publishing.length === 0}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
             )}
 
             {/* Step 5: Review */}
