@@ -674,6 +674,8 @@ export default function OfficerAssessmentManagement() {
                     questionNumber={editingQuestion ? editingQuestion.question_number! : questions.length + 1}
                     onSave={handleAddQuestion}
                     onCancel={() => { setShowQuestionBuilder(false); setEditingQuestion(null); }}
+                    institutionId={officerInstitutionId}
+                    classId={publishing.length > 0 && publishing[0].class_ids.length > 0 ? publishing[0].class_ids[0] : undefined}
                   />
                 )}
 
