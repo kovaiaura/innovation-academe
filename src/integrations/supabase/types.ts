@@ -3591,6 +3591,93 @@ export type Database = {
         }
         Relationships: []
       }
+      invoice_parties: {
+        Row: {
+          address: string | null
+          city: string | null
+          contact_person: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          gstin: string | null
+          id: string
+          pan: string | null
+          party_name: string
+          phone: string | null
+          pincode: string | null
+          state: string | null
+          state_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          pan?: string | null
+          party_name: string
+          phone?: string | null
+          pincode?: string | null
+          state?: string | null
+          state_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          pan?: string | null
+          party_name?: string
+          phone?: string | null
+          pincode?: string | null
+          state?: string | null
+          state_code?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      invoice_settings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          current_number: number
+          id: string
+          number_padding: number
+          prefix: string | null
+          suffix: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          current_number?: number
+          id?: string
+          number_padding?: number
+          prefix?: string | null
+          suffix?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          current_number?: number
+          id?: string
+          number_padding?: number
+          prefix?: string | null
+          suffix?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           ack_date: string | null
@@ -7422,6 +7509,7 @@ export type Database = {
         Args: { p_entity_type: string; p_institution_id: string }
         Returns: number
       }
+      get_next_invoice_number_v2: { Args: never; Returns: string }
       get_project_institution_id: {
         Args: { _project_id: string }
         Returns: string

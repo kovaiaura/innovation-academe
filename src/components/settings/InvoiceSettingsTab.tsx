@@ -4,11 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Save, Upload, Trash2, Loader2 } from 'lucide-react';
+import { Save, Upload, Trash2, Loader2, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { BankDetails } from '@/types/invoice';
 import type { Json } from '@/integrations/supabase/types';
+import { useInvoiceSettings } from '@/hooks/useInvoiceSettings';
 
 interface CompanyProfileData {
   id: string;
@@ -44,6 +45,75 @@ const defaultBankDetails: BankDetails = {
   ifsc_code: '',
   bank_address: '',
 };
+
+function InvoiceNumberingCard() {
+  const { settings, isLoading, saveSettings, getNextNumber } = useInvoiceSettings();
+  const [prefix, setPrefix] = useState('');
+  const [suffix, setSuffix] = useState('');
+  const [currentNumber, setCurrentNumber] = useState(0);
+  const [padding, setPadding] = useState(3);
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (settings && !initialized) {
+      setPrefix(settings.prefix || '');
+      setSuffix(settings.suffix || '');
+      setCurrentNumber(settings.current_number);
+      setPadding(settings.number_padding);
+      setInitialized(true);
+    }
+  }, [settings, initialized]);
+
+  const preview = `${prefix}${String(currentNumber + 1).padStart(padding, '0')}${suffix}`;
+
+  const handleSave = () => {
+    saveSettings.mutate({ prefix, suffix, current_number: currentNumber, number_padding: padding });
+  };
+
+  if (isLoading) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Invoice Numbering</CardTitle>
+        <CardDescription>Configure auto-incrementing invoice numbers with optional prefix/suffix</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-4">
+          <div className="space-y-2">
+            <Label>Prefix (optional)</Label>
+            <Input value={prefix} onChange={(e) => setPrefix(e.target.value)} placeholder="e.g. INV/" />
+          </div>
+          <div className="space-y-2">
+            <Label>Current Number</Label>
+            <Input type="number" min="0" value={currentNumber} onChange={(e) => setCurrentNumber(parseInt(e.target.value) || 0)} placeholder="e.g. 37" />
+            <p className="text-xs text-muted-foreground">Last used number. Next will be {currentNumber + 1}.</p>
+          </div>
+          <div className="space-y-2">
+            <Label>Zero Padding</Label>
+            <Input type="number" min="1" max="10" value={padding} onChange={(e) => setPadding(parseInt(e.target.value) || 3)} />
+            <p className="text-xs text-muted-foreground">e.g. 3 → 001</p>
+          </div>
+          <div className="space-y-2">
+            <Label>Suffix (optional)</Label>
+            <Input value={suffix} onChange={(e) => setSuffix(e.target.value)} placeholder="e.g. /24-25" />
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-muted/50 px-4 py-2 rounded-lg">
+            <Eye className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Next invoice:</span>
+            <span className="font-mono font-semibold">{preview}</span>
+          </div>
+          <Button size="sm" onClick={handleSave} disabled={saveSettings.isPending}>
+            {saveSettings.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+            Save Numbering
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function InvoiceSettingsTab() {
   const [loading, setLoading] = useState(true);
@@ -225,6 +295,9 @@ export function InvoiceSettingsTab() {
 
   return (
     <div className="space-y-6">
+      {/* Invoice Numbering */}
+      <InvoiceNumberingCard />
+
       {/* GST Configuration */}
       <Card>
         <CardHeader>
