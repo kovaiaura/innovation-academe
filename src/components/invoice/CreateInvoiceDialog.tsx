@@ -18,24 +18,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { InvoiceLineItemsEditor } from './InvoiceLineItemsEditor';
 import { createInvoice, fetchDefaultCompanyProfile, calculateInvoiceTotals, calculateLineItemTaxes, checkInvoiceNumberExists, GSTRates } from '@/services/invoice.service';
-import type { InvoiceType, InvoiceLineItem, CompanyProfile, CreateInvoiceInput } from '@/types/invoice';
+import type { InvoiceLineItem, CompanyProfile, CreateInvoiceInput } from '@/types/invoice';
 import { toast } from 'sonner';
-import { Check, AlertCircle, Loader2, ChevronDown, Settings } from 'lucide-react';
+import { Check, AlertCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useInvoiceParties, type InvoiceParty } from '@/hooks/useInvoiceParties';
+import { useInvoiceSettings } from '@/hooks/useInvoiceSettings';
 
 interface CreateInvoiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  invoiceType: InvoiceType;
   onSuccess: () => void;
-  institutions?: { id: string; name: string }[];
 }
 
 const indianStates = [
@@ -51,24 +46,40 @@ const indianStates = [
   { code: '19', name: 'West Bengal' },
 ];
 
+type GSTPreset = 'gst5' | 'gst12' | 'gst18' | 'gst28' | 'igst5' | 'igst12' | 'igst18' | 'igst28' | 'custom';
+
+const gstPresetMap: Record<Exclude<GSTPreset, 'custom'>, GSTRates> = {
+  gst5: { cgst_rate: 2.5, sgst_rate: 2.5, igst_rate: 0 },
+  gst12: { cgst_rate: 6, sgst_rate: 6, igst_rate: 0 },
+  gst18: { cgst_rate: 9, sgst_rate: 9, igst_rate: 0 },
+  gst28: { cgst_rate: 14, sgst_rate: 14, igst_rate: 0 },
+  igst5: { cgst_rate: 0, sgst_rate: 0, igst_rate: 5 },
+  igst12: { cgst_rate: 0, sgst_rate: 0, igst_rate: 12 },
+  igst18: { cgst_rate: 0, sgst_rate: 0, igst_rate: 18 },
+  igst28: { cgst_rate: 0, sgst_rate: 0, igst_rate: 28 },
+};
+
 export function CreateInvoiceDialog({
   open,
   onOpenChange,
-  invoiceType,
   onSuccess,
-  institutions = [],
 }: CreateInvoiceDialogProps) {
   const [loading, setLoading] = useState(false);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
-  const [gstRates, setGstRates] = useState<GSTRates>({ cgst_rate: 9, sgst_rate: 9, igst_rate: 18 });
+  const [gstPreset, setGstPreset] = useState<GSTPreset>('igst18');
+  const [gstRates, setGstRates] = useState<GSTRates>({ cgst_rate: 0, sgst_rate: 0, igst_rate: 18 });
   
-  // Invoice number state
+  const { parties } = useInvoiceParties();
+  const { getNextNumber, incrementAndGetNumber } = useInvoiceSettings();
+  
+  // Invoice number
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [invoiceNumberError, setInvoiceNumberError] = useState('');
   const [isCheckingNumber, setIsCheckingNumber] = useState(false);
   const [invoiceNumberValid, setInvoiceNumberValid] = useState(false);
+  const [useAutoNumber, setUseAutoNumber] = useState(true);
   
-  // Form state
+  // Bill To
   const [toCompanyName, setToCompanyName] = useState('');
   const [toCompanyAddress, setToCompanyAddress] = useState('');
   const [toCompanyCity, setToCompanyCity] = useState('');
@@ -83,9 +94,7 @@ export function CreateInvoiceDialog({
   const [dueDate, setDueDate] = useState('');
   const [terms, setTerms] = useState('Custom');
   const [placeOfSupply, setPlaceOfSupply] = useState('Tamil Nadu (33)');
-  const [notes, setNotes] = useState('Thank you for partnering with Metasage Alliance Consulting Expert LLP.');
-  
-  const [selectedInstitutionId, setSelectedInstitutionId] = useState('');
+  const [notes, setNotes] = useState('');
   
   const [lineItems, setLineItems] = useState<Omit<InvoiceLineItem, 'id' | 'invoice_id'>[]>([
     { description: '', hsn_sac_code: '998311', quantity: 1, unit: 'Nos', rate: 0, amount: 0 },
@@ -94,6 +103,11 @@ export function CreateInvoiceDialog({
   useEffect(() => {
     if (open) {
       loadCompanyProfile();
+      const nextNum = getNextNumber();
+      setInvoiceNumber(nextNum);
+      setUseAutoNumber(true);
+      setInvoiceNumberValid(false);
+      setInvoiceNumberError('');
     }
   }, [open]);
 
@@ -101,15 +115,33 @@ export function CreateInvoiceDialog({
     try {
       const profile = await fetchDefaultCompanyProfile();
       setCompanyProfile(profile);
-      if (profile) {
-        setGstRates({
-          cgst_rate: profile.default_cgst_rate ?? 9,
-          sgst_rate: profile.default_sgst_rate ?? 9,
-          igst_rate: profile.default_igst_rate ?? 18,
-        });
-      }
+      if (profile?.default_notes) setNotes(profile.default_notes);
     } catch (error) {
       console.error('Error loading company profile:', error);
+    }
+  };
+
+  const handlePartySelect = (partyId: string) => {
+    const party = parties.find(p => p.id === partyId);
+    if (!party) return;
+    setToCompanyName(party.party_name);
+    setToCompanyAddress(party.address || '');
+    setToCompanyCity(party.city || '');
+    setToCompanyState(party.state || '');
+    setToCompanyStateCode(party.state_code || '');
+    setToCompanyPincode(party.pincode || '');
+    setToCompanyGstin(party.gstin || '');
+    setToCompanyContactPerson(party.contact_person || '');
+    setToCompanyPhone(party.phone || '');
+    if (party.state) {
+      setPlaceOfSupply(`${party.state} (${party.state_code || ''})`);
+    }
+  };
+
+  const handleGstPresetChange = (value: GSTPreset) => {
+    setGstPreset(value);
+    if (value !== 'custom') {
+      setGstRates(gstPresetMap[value]);
     }
   };
 
@@ -122,9 +154,8 @@ export function CreateInvoiceDialog({
     }
   };
 
-  const isInterState = companyProfile?.state_code !== toCompanyStateCode;
+  const isInterState = gstRates.igst_rate > 0;
 
-  // Calculate totals with configurable GST rates
   const calculatedItems = lineItems.map((item) => calculateLineItemTaxes(item, isInterState, gstRates));
   const totals = calculateInvoiceTotals(calculatedItems, isInterState, 0, gstRates);
 
@@ -134,7 +165,6 @@ export function CreateInvoiceDialog({
       setInvoiceNumberValid(false);
       return;
     }
-    
     try {
       setIsCheckingNumber(true);
       setInvoiceNumberError('');
@@ -145,8 +175,7 @@ export function CreateInvoiceDialog({
       } else {
         setInvoiceNumberValid(true);
       }
-    } catch (error) {
-      console.error('Error checking invoice number:', error);
+    } catch {
       setInvoiceNumberError('Error validating invoice number');
       setInvoiceNumberValid(false);
     } finally {
@@ -155,38 +184,28 @@ export function CreateInvoiceDialog({
   };
 
   const handleSubmit = async () => {
-    if (!invoiceNumber.trim()) {
-      toast.error('Please enter invoice number');
-      return;
-    }
-    if (invoiceNumberError) {
-      toast.error('Please fix the invoice number error');
-      return;
-    }
-    if (!toCompanyName) {
-      toast.error('Please enter customer name');
-      return;
-    }
+    if (!toCompanyName) { toast.error('Please enter customer name'); return; }
     if (lineItems.some((item) => !item.description || item.rate <= 0)) {
-      toast.error('Please fill in all line items with valid amounts');
-      return;
-    }
-
-    // Final check for duplicate before creating
-    const exists = await checkInvoiceNumberExists(invoiceNumber.trim());
-    if (exists) {
-      setInvoiceNumberError('This invoice number is already in use');
-      toast.error('Invoice number is already in use');
-      return;
+      toast.error('Please fill in all line items with valid amounts'); return;
     }
 
     try {
       setLoading(true);
-      
+
+      // Get final invoice number
+      let finalInvoiceNumber = invoiceNumber.trim();
+      if (useAutoNumber) {
+        finalInvoiceNumber = await incrementAndGetNumber();
+      } else {
+        if (!finalInvoiceNumber) { toast.error('Please enter invoice number'); return; }
+        const exists = await checkInvoiceNumberExists(finalInvoiceNumber);
+        if (exists) { setInvoiceNumberError('Invoice number already in use'); toast.error('Invoice number already in use'); return; }
+      }
+
       const input: CreateInvoiceInput = {
-        invoice_number: invoiceNumber.trim(),
-        invoice_type: invoiceType,
-        from_company_name: companyProfile?.company_name || 'Metasage Alliance Consulting Expert LLP',
+        invoice_number: finalInvoiceNumber,
+        invoice_type: 'sales',
+        from_company_name: companyProfile?.company_name || '',
         from_company_address: companyProfile?.address,
         from_company_city: companyProfile?.city,
         from_company_state: companyProfile?.state,
@@ -212,7 +231,6 @@ export function CreateInvoiceDialog({
         notes,
         terms_and_conditions: companyProfile?.terms_and_conditions,
         bank_details: companyProfile?.bank_details,
-        institution_id: selectedInstitutionId || undefined,
         line_items: lineItems,
       };
 
@@ -233,6 +251,7 @@ export function CreateInvoiceDialog({
     setInvoiceNumber('');
     setInvoiceNumberError('');
     setInvoiceNumberValid(false);
+    setUseAutoNumber(true);
     setToCompanyName('');
     setToCompanyAddress('');
     setToCompanyCity('');
@@ -245,31 +264,21 @@ export function CreateInvoiceDialog({
     setInvoiceDate(format(new Date(), 'yyyy-MM-dd'));
     setDueDate('');
     setTerms('Custom');
-    setSelectedInstitutionId('');
+    setGstPreset('igst18');
+    setGstRates({ cgst_rate: 0, sgst_rate: 0, igst_rate: 18 });
     setLineItems([{ description: '', hsn_sac_code: '998311', quantity: 1, unit: 'Nos', rate: 0, amount: 0 }]);
-  };
-
-  const getTitle = () => {
-    switch (invoiceType) {
-      case 'institution':
-        return 'Create Institution Invoice';
-      case 'sales':
-        return 'Create Sales Invoice';
-      case 'purchase':
-        return 'Create Purchase Invoice';
-    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle>{getTitle()}</DialogTitle>
+          <DialogTitle>Create Invoice</DialogTitle>
         </DialogHeader>
         
         <ScrollArea className="max-h-[calc(90vh-120px)] pr-4">
           <div className="space-y-6 py-4">
-            {/* Bill From (Read-only) */}
+            {/* Bill From */}
             <div className="bg-muted/50 p-4 rounded-lg">
               <h3 className="font-semibold mb-2">Bill From</h3>
               <div className="text-sm space-y-1">
@@ -280,100 +289,62 @@ export function CreateInvoiceDialog({
               </div>
             </div>
 
-            {/* Institution Selection (for institution type) */}
-            {invoiceType === 'institution' && institutions.length > 0 && (
-              <div className="space-y-2">
-                <Label>Select Institution</Label>
-                <Select value={selectedInstitutionId} onValueChange={setSelectedInstitutionId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select institution" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {institutions.map((inst) => (
-                      <SelectItem key={inst.id} value={inst.id}>
-                        {inst.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Bill To */}
+            {/* Bill To with Party Selector */}
             <div className="space-y-4">
-              <h3 className="font-semibold">Bill To</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Bill To</h3>
+                {parties.length > 0 && (
+                  <Select onValueChange={handlePartySelect}>
+                    <SelectTrigger className="w-64">
+                      <SelectValue placeholder="Select saved party..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {parties.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.party_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2 space-y-2">
                   <Label>Company Name *</Label>
-                  <Input
-                    value={toCompanyName}
-                    onChange={(e) => setToCompanyName(e.target.value)}
-                    placeholder="Customer company name"
-                  />
+                  <Input value={toCompanyName} onChange={(e) => setToCompanyName(e.target.value)} placeholder="Customer company name" />
                 </div>
                 <div className="col-span-2 space-y-2">
                   <Label>Address</Label>
-                  <Textarea
-                    value={toCompanyAddress}
-                    onChange={(e) => setToCompanyAddress(e.target.value)}
-                    placeholder="Street address"
-                    rows={2}
-                  />
+                  <Textarea value={toCompanyAddress} onChange={(e) => setToCompanyAddress(e.target.value)} placeholder="Street address" rows={2} />
                 </div>
                 <div className="space-y-2">
                   <Label>City</Label>
-                  <Input
-                    value={toCompanyCity}
-                    onChange={(e) => setToCompanyCity(e.target.value)}
-                    placeholder="City"
-                  />
+                  <Input value={toCompanyCity} onChange={(e) => setToCompanyCity(e.target.value)} placeholder="City" />
                 </div>
                 <div className="space-y-2">
                   <Label>State</Label>
                   <Select value={toCompanyStateCode} onValueChange={handleStateChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select state" />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
                     <SelectContent>
                       {indianStates.map((state) => (
-                        <SelectItem key={state.code} value={state.code}>
-                          {state.name} ({state.code})
-                        </SelectItem>
+                        <SelectItem key={state.code} value={state.code}>{state.name} ({state.code})</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Pincode</Label>
-                  <Input
-                    value={toCompanyPincode}
-                    onChange={(e) => setToCompanyPincode(e.target.value)}
-                    placeholder="Pincode"
-                  />
+                  <Input value={toCompanyPincode} onChange={(e) => setToCompanyPincode(e.target.value)} placeholder="Pincode" />
                 </div>
                 <div className="space-y-2">
                   <Label>GSTIN</Label>
-                  <Input
-                    value={toCompanyGstin}
-                    onChange={(e) => setToCompanyGstin(e.target.value)}
-                    placeholder="GSTIN"
-                  />
+                  <Input value={toCompanyGstin} onChange={(e) => setToCompanyGstin(e.target.value)} placeholder="GSTIN" />
                 </div>
                 <div className="space-y-2">
                   <Label>Contact Person</Label>
-                  <Input
-                    value={toCompanyContactPerson}
-                    onChange={(e) => setToCompanyContactPerson(e.target.value)}
-                    placeholder="Contact person name"
-                  />
+                  <Input value={toCompanyContactPerson} onChange={(e) => setToCompanyContactPerson(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Phone</Label>
-                  <Input
-                    value={toCompanyPhone}
-                    onChange={(e) => setToCompanyPhone(e.target.value)}
-                    placeholder="Phone number"
-                  />
+                  <Input value={toCompanyPhone} onChange={(e) => setToCompanyPhone(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -385,165 +356,126 @@ export function CreateInvoiceDialog({
               <h3 className="font-semibold">Invoice Details</h3>
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-3 space-y-2">
-                  <Label htmlFor="invoiceNumber">Invoice Number *</Label>
-                  <div className="relative">
-                    <Input
-                      id="invoiceNumber"
-                      value={invoiceNumber}
-                      onChange={(e) => {
-                        setInvoiceNumber(e.target.value);
-                        setInvoiceNumberError('');
-                        setInvoiceNumberValid(false);
-                      }}
-                      onBlur={handleValidateInvoiceNumber}
-                      placeholder="e.g., MSA/MSD/004"
-                      className={invoiceNumberError ? 'border-destructive pr-10' : invoiceNumberValid ? 'border-green-500 pr-10' : 'pr-10'}
-                    />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      {isCheckingNumber && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                      {!isCheckingNumber && invoiceNumberValid && <Check className="h-4 w-4 text-green-500" />}
-                      {!isCheckingNumber && invoiceNumberError && <AlertCircle className="h-4 w-4 text-destructive" />}
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <Label>Invoice Number</Label>
+                    <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => { setUseAutoNumber(!useAutoNumber); setInvoiceNumberError(''); }}>
+                      {useAutoNumber ? 'Enter manually' : 'Use auto-number'}
+                    </Button>
                   </div>
-                  {invoiceNumberError && (
-                    <p className="text-sm text-destructive">{invoiceNumberError}</p>
+                  {useAutoNumber ? (
+                    <div className="flex items-center gap-2 bg-muted/50 px-3 py-2 rounded-md">
+                      <span className="font-mono text-sm">{invoiceNumber}</span>
+                      <span className="text-xs text-muted-foreground">(auto-generated on save)</span>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Input
+                        value={invoiceNumber}
+                        onChange={(e) => { setInvoiceNumber(e.target.value); setInvoiceNumberError(''); setInvoiceNumberValid(false); }}
+                        onBlur={handleValidateInvoiceNumber}
+                        placeholder="e.g., INV/001"
+                        className={invoiceNumberError ? 'border-destructive pr-10' : invoiceNumberValid ? 'border-green-500 pr-10' : 'pr-10'}
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {isCheckingNumber && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                        {!isCheckingNumber && invoiceNumberValid && <Check className="h-4 w-4 text-green-500" />}
+                        {!isCheckingNumber && invoiceNumberError && <AlertCircle className="h-4 w-4 text-destructive" />}
+                      </div>
+                      {invoiceNumberError && <p className="text-sm text-destructive mt-1">{invoiceNumberError}</p>}
+                    </div>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label>Invoice Date *</Label>
-                  <Input
-                    type="date"
-                    value={invoiceDate}
-                    onChange={(e) => setInvoiceDate(e.target.value)}
-                  />
+                  <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Due Date</Label>
-                  <Input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                  />
+                  <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Terms</Label>
-                  <Input
-                    value={terms}
-                    onChange={(e) => setTerms(e.target.value)}
-                    placeholder="e.g., Net 30"
-                  />
+                  <Input value={terms} onChange={(e) => setTerms(e.target.value)} placeholder="e.g., Net 30" />
                 </div>
               </div>
             </div>
 
             <Separator />
 
-            {/* GST Configuration - Collapsible - Only IGST with dropdown */}
-            <Collapsible defaultOpen={false}>
-              <CollapsibleTrigger asChild>
-                <Button variant="outline" className="w-full justify-between">
-                  <span className="flex items-center gap-2">
-                    <Settings className="h-4 w-4" />
-                    GST Configuration
-                    <span className="text-xs text-muted-foreground ml-2">
-                      (Inter-State)
-                    </span>
-                  </span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-4">
-                <div className="bg-muted/50 p-4 rounded-lg space-y-4">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-muted-foreground">Transaction Type:</span>
-                    <span className="font-medium text-orange-600">Inter-State (IGST)</span>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>IGST Rate</Label>
-                    <Select 
-                      value={gstRates.igst_rate.toString()} 
-                      onValueChange={(value) => {
-                        if (value === 'custom') {
-                          // Keep current value for custom input
-                          return;
-                        }
-                        const rate = parseFloat(value) || 0;
-                        setGstRates(prev => ({
-                          ...prev,
-                          igst_rate: rate,
-                          cgst_rate: 0,
-                          sgst_rate: 0,
-                        }));
-                      }}
-                    >
-                      <SelectTrigger className="w-48">
-                        <SelectValue placeholder="Select IGST rate" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5">5%</SelectItem>
-                        <SelectItem value="18">18%</SelectItem>
-                        <SelectItem value="custom">Custom</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    
-                    {/* Show custom input when rate is not 5 or 18 */}
-                    {gstRates.igst_rate !== 5 && gstRates.igst_rate !== 18 && (
-                      <div className="flex items-center gap-2 mt-2">
-                        <Label className="text-sm">Custom Rate (%):</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          max="50"
-                          step="0.5"
-                          value={gstRates.igst_rate}
-                          onChange={(e) => {
-                            const rate = parseFloat(e.target.value) || 0;
-                            setGstRates(prev => ({
-                              ...prev,
-                              igst_rate: rate,
-                              cgst_rate: 0,
-                              sgst_rate: 0,
-                            }));
-                          }}
-                          className="w-24"
-                        />
-                      </div>
-                    )}
-                  </div>
-                  
-                  <p className="text-xs text-muted-foreground">
-                    Select IGST rate for this invoice. CGST/SGST will be set to 0 for inter-state transactions.
-                  </p>
+            {/* GST Configuration */}
+            <div className="space-y-3">
+              <h3 className="font-semibold">GST Configuration</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>GST Preset</Label>
+                  <Select value={gstPreset} onValueChange={(v) => handleGstPresetChange(v as GSTPreset)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gst5">GST 5% (CGST 2.5% + SGST 2.5%)</SelectItem>
+                      <SelectItem value="gst12">GST 12% (CGST 6% + SGST 6%)</SelectItem>
+                      <SelectItem value="gst18">GST 18% (CGST 9% + SGST 9%)</SelectItem>
+                      <SelectItem value="gst28">GST 28% (CGST 14% + SGST 14%)</SelectItem>
+                      <SelectItem value="igst5">IGST 5%</SelectItem>
+                      <SelectItem value="igst12">IGST 12%</SelectItem>
+                      <SelectItem value="igst18">IGST 18%</SelectItem>
+                      <SelectItem value="igst28">IGST 28%</SelectItem>
+                      <SelectItem value="custom">Custom</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              </CollapsibleContent>
-            </Collapsible>
+                {gstPreset === 'custom' && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">CGST %</Label>
+                      <Input type="number" min="0" step="0.5" value={gstRates.cgst_rate} onChange={(e) => setGstRates(prev => ({ ...prev, cgst_rate: parseFloat(e.target.value) || 0 }))} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">SGST %</Label>
+                      <Input type="number" min="0" step="0.5" value={gstRates.sgst_rate} onChange={(e) => setGstRates(prev => ({ ...prev, sgst_rate: parseFloat(e.target.value) || 0 }))} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">IGST %</Label>
+                      <Input type="number" min="0" step="0.5" value={gstRates.igst_rate} onChange={(e) => setGstRates(prev => ({ ...prev, igst_rate: parseFloat(e.target.value) || 0 }))} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
 
             <Separator />
 
             {/* Line Items */}
             <div className="space-y-4">
               <h3 className="font-semibold">Line Items</h3>
-              <InvoiceLineItemsEditor
-                items={lineItems}
-                onChange={setLineItems}
-                showTaxColumns={invoiceType === 'sales'}
-              />
+              <InvoiceLineItemsEditor items={lineItems} onChange={setLineItems} showTaxColumns={false} />
             </div>
 
             <Separator />
 
-            {/* Totals - Only show IGST */}
+            {/* Totals */}
             <div className="flex justify-end">
               <div className="w-80 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Sub Total:</span>
                   <span>₹{totals.sub_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">IGST ({gstRates.igst_rate}%):</span>
-                  <span>₹{totals.igst_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                </div>
+                {isInterState ? (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">IGST ({gstRates.igst_rate}%):</span>
+                    <span>₹{totals.igst_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">CGST ({gstRates.cgst_rate}%):</span>
+                      <span>₹{totals.cgst_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">SGST ({gstRates.sgst_rate}%):</span>
+                      <span>₹{totals.sgst_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </>
+                )}
                 <Separator />
                 <div className="flex justify-between font-semibold text-base">
                   <span>Total:</span>
@@ -555,20 +487,13 @@ export function CreateInvoiceDialog({
             {/* Notes */}
             <div className="space-y-2">
               <Label>Notes</Label>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Additional notes..."
-                rows={2}
-              />
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Additional notes..." rows={2} />
             </div>
           </div>
         </ScrollArea>
 
         <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={loading}>
             {loading ? 'Creating...' : 'Create Invoice'}
           </Button>
