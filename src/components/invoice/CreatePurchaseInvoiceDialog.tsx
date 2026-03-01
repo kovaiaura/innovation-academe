@@ -68,6 +68,11 @@ export function CreatePurchaseInvoiceDialog({
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
   
+  // New purchase fields
+  const [handledBy, setHandledBy] = useState('');
+  const [remark, setRemark] = useState('');
+  const [tdsDeducted, setTdsDeducted] = useState(false);
+  
   // Notes
   const [notes, setNotes] = useState('');
 
@@ -247,6 +252,9 @@ export function CreatePurchaseInvoiceDialog({
         vendor_pan: vendorPan || undefined,
         bill_receipt_date: billReceiptDate || undefined,
         expense_category: expenseCategory || undefined,
+        handled_by: handledBy || undefined,
+        remark: remark || undefined,
+        tds_deducted: tdsDeducted,
         line_items: [{
           description: `Purchase from ${vendorName}`,
           quantity: 1,
@@ -285,6 +293,9 @@ export function CreatePurchaseInvoiceDialog({
     setExpenseCategory('');
     setAttachmentFile(null);
     setAttachmentPreview(null);
+    setHandledBy('');
+    setRemark('');
+    setTdsDeducted(false);
     setNotes('');
   };
 
@@ -543,6 +554,43 @@ export function CreatePurchaseInvoiceDialog({
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Additional Purchase Details */}
+            <div className="space-y-4">
+              <h3 className="font-semibold">Additional Details</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Handled By</Label>
+                  <Input
+                    value={handledBy}
+                    onChange={(e) => setHandledBy(e.target.value)}
+                    placeholder="Person who handled this purchase"
+                  />
+                </div>
+                <div className="flex items-center gap-3 pt-6">
+                  <Label htmlFor="tds-toggle" className="cursor-pointer">TDS Deducted?</Label>
+                  <input
+                    id="tds-toggle"
+                    type="checkbox"
+                    checked={tdsDeducted}
+                    onChange={(e) => setTdsDeducted(e.target.checked)}
+                    className="h-4 w-4 rounded border-border"
+                  />
+                  <Badge variant={tdsDeducted ? 'default' : 'secondary'}>
+                    {tdsDeducted ? 'Yes' : 'No'}
+                  </Badge>
+                </div>
+                <div className="col-span-2 space-y-2">
+                  <Label>Remark</Label>
+                  <Textarea
+                    value={remark}
+                    onChange={(e) => setRemark(e.target.value)}
+                    placeholder="Any remark about this purchase..."
+                    rows={2}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Notes */}

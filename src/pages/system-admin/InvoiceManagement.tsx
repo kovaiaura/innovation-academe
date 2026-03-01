@@ -2,10 +2,13 @@ import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Download, Users } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InvoiceList } from '@/components/invoice/InvoiceList';
 import { GlobalSummaryCards } from '@/components/invoice/GlobalSummaryCards';
+import { PurchasesTab } from '@/components/invoice/PurchasesTab';
 import { InvoiceDateFilter, type DateRange } from '@/components/invoice/InvoiceDateFilter';
 import { CreateInvoiceDialog } from '@/components/invoice/CreateInvoiceDialog';
+import { CreatePurchaseInvoiceDialog } from '@/components/invoice/CreatePurchaseInvoiceDialog';
 import { ViewInvoiceDialog } from '@/components/invoice/ViewInvoiceDialog';
 import { RecordPaymentDialog } from '@/components/invoice/RecordPaymentDialog';
 import { PaymentHistoryDialog } from '@/components/invoice/PaymentHistoryDialog';
@@ -20,8 +23,10 @@ import { toast } from 'sonner';
 
 export default function InvoiceManagement() {
   const [dateRange, setDateRange] = useState<DateRange>({ from: null, to: null });
+  const [activeTab, setActiveTab] = useState('sales');
   
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [recordPaymentDialogOpen, setRecordPaymentDialogOpen] = useState(false);
   const [paymentHistoryDialogOpen, setPaymentHistoryDialogOpen] = useState(false);
@@ -34,7 +39,7 @@ export default function InvoiceManagement() {
   const { allInvoices = [], allPayments = [], loading, refetch } = useGlobalInvoiceSummary();
   const { addPayment } = usePaymentsForInvoice(selectedInvoice?.id || null);
 
-  // Filter invoices by type and date range
+  // Filter sales invoices by date range
   const filteredInvoices = useMemo(() => {
     let invoices = allInvoices.filter(inv => 
       inv.invoice_type === 'sales' || inv.invoice_type === 'institution'
@@ -50,7 +55,21 @@ export default function InvoiceManagement() {
     return invoices;
   }, [allInvoices, dateRange]);
 
-  // Filter payments by date range too
+  // Filter purchase invoices by date range
+  const filteredPurchases = useMemo(() => {
+    let purchases = allInvoices.filter(inv => inv.invoice_type === 'purchase');
+    
+    if (dateRange.from) {
+      purchases = purchases.filter(inv => new Date(inv.invoice_date) >= dateRange.from!);
+    }
+    if (dateRange.to) {
+      purchases = purchases.filter(inv => new Date(inv.invoice_date) <= dateRange.to!);
+    }
+    
+    return purchases;
+  }, [allInvoices, dateRange]);
+
+  // Filter payments by date range
   const filteredPayments = useMemo(() => {
     let payments = allPayments || [];
     if (dateRange.from) {
@@ -125,7 +144,7 @@ export default function InvoiceManagement() {
         <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
           <div>
             <h1 className="text-3xl font-bold">Invoice Management</h1>
-            <p className="text-muted-foreground">Create, manage and track invoices</p>
+            <p className="text-muted-foreground">Create, manage and track invoices & purchases</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setPartiesDialogOpen(true)}>
@@ -134,36 +153,68 @@ export default function InvoiceManagement() {
             <Button variant="outline" onClick={() => setExportDialogOpen(true)}>
               <Download className="h-4 w-4 mr-2" /> Export
             </Button>
-            <Button onClick={() => { setEditingInvoice(null); setCreateDialogOpen(true); }}>
-              <Plus className="h-4 w-4 mr-2" /> Create Invoice
-            </Button>
+            {activeTab === 'sales' ? (
+              <Button onClick={() => { setEditingInvoice(null); setCreateDialogOpen(true); }}>
+                <Plus className="h-4 w-4 mr-2" /> Create Invoice
+              </Button>
+            ) : (
+              <Button onClick={() => setPurchaseDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" /> Add Purchase
+              </Button>
+            )}
           </div>
         </div>
 
-        <GlobalSummaryCards invoices={filteredInvoices} payments={filteredPayments} loading={loading} />
-
         <div className="flex items-center justify-between flex-wrap gap-4">
           <InvoiceDateFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
-          <p className="text-sm text-muted-foreground">{filteredInvoices.length} invoices</p>
         </div>
 
-        <InvoiceList
-          invoices={filteredInvoices}
-          loading={loading}
-          onView={handleView}
-          onDownload={handleDownload}
-          onStatusChange={handleStatusChange}
-          onDelete={handleDelete}
-          onRecordPayment={handleRecordPayment}
-          onViewPayments={handleViewPayments}
-          onEdit={handleEdit}
-        />
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList>
+            <TabsTrigger value="sales">Sales</TabsTrigger>
+            <TabsTrigger value="purchases">Purchases</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="sales" className="space-y-6">
+            <GlobalSummaryCards invoices={filteredInvoices} payments={filteredPayments} loading={loading} />
+            
+            <div className="flex items-center justify-end">
+              <p className="text-sm text-muted-foreground">{filteredInvoices.length} invoices</p>
+            </div>
+
+            <InvoiceList
+              invoices={filteredInvoices}
+              loading={loading}
+              onView={handleView}
+              onDownload={handleDownload}
+              onStatusChange={handleStatusChange}
+              onDelete={handleDelete}
+              onRecordPayment={handleRecordPayment}
+              onViewPayments={handleViewPayments}
+              onEdit={handleEdit}
+            />
+          </TabsContent>
+
+          <TabsContent value="purchases" className="space-y-6">
+            <PurchasesTab
+              purchases={filteredPurchases}
+              loading={loading}
+              onDelete={handleDelete}
+            />
+          </TabsContent>
+        </Tabs>
 
         <CreateInvoiceDialog
           open={createDialogOpen}
           onOpenChange={handleCreateDialogClose}
           onSuccess={refetch}
           editInvoice={editingInvoice}
+        />
+
+        <CreatePurchaseInvoiceDialog
+          open={purchaseDialogOpen}
+          onOpenChange={setPurchaseDialogOpen}
+          onSuccess={refetch}
         />
 
         <ViewInvoiceDialog

@@ -158,6 +158,9 @@ export interface Invoice {
   vendor_pan?: string;
   bill_receipt_date?: string;
   expense_category?: string;
+  handled_by?: string;
+  remark?: string;
+  tds_deducted?: boolean;
   
   // E-Invoicing
   irn?: string;
@@ -224,6 +227,9 @@ export interface CreateInvoiceInput {
   vendor_pan?: string;
   bill_receipt_date?: string;
   expense_category?: string;
+  handled_by?: string;
+  remark?: string;
+  tds_deducted?: boolean;
   line_items: Omit<InvoiceLineItem, 'id' | 'invoice_id'>[];
   // GST rates explicitly selected by user
   cgst_rate?: number;
