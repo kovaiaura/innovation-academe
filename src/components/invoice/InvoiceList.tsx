@@ -73,11 +73,11 @@ export function InvoiceList({
 
   function getSimplifiedStatus(invoice: Invoice): string {
     if (invoice.status === 'draft') return 'draft';
-    if (invoice.status === 'sent') return 'sent';
     if (invoice.status === 'cancelled') return 'cancelled';
-    const balance = (invoice.total_amount || 0) - (invoice.amount_paid || 0);
-    if (balance <= 0 || invoice.status === 'paid') return 'fully_paid';
-    if ((invoice.amount_paid || 0) > 0) return 'partially_paid';
+    const totalReceived = (invoice.amount_paid || 0) + (invoice.tds_amount || 0);
+    if (totalReceived >= (invoice.total_amount || 0) || invoice.status === 'paid') return 'fully_paid';
+    if (totalReceived > 0) return 'partially_paid';
+    if (invoice.status === 'sent') return 'sent';
     return 'sent';
   }
 
@@ -149,8 +149,8 @@ export function InvoiceList({
               </TableHeader>
               <TableBody>
                 {filteredInvoices.map((invoice) => {
-                  const balance = (invoice.total_amount || 0) - (invoice.amount_paid || 0);
-                  const tdsAmount = invoice.tds_deducted_by === 'client' ? (invoice.tds_amount || 0) : 0;
+                  const tdsAmount = invoice.tds_amount || 0;
+                  const balance = (invoice.total_amount || 0) - (invoice.amount_paid || 0) - tdsAmount;
                   const daysOverdue = invoice.due_date && invoice.status !== 'paid' && invoice.status !== 'cancelled'
                     ? Math.max(0, differenceInDays(new Date(), new Date(invoice.due_date)))
                     : 0;
@@ -188,7 +188,7 @@ export function InvoiceList({
                               <Download className="h-4 w-4 mr-2" /> Download PDF
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            {invoice.status !== 'cancelled' && invoice.status !== 'paid' && balance > 0 && onRecordPayment && (
+                            {invoice.status !== 'cancelled' && getSimplifiedStatus(invoice) !== 'fully_paid' && onRecordPayment && (
                               <DropdownMenuItem onClick={() => onRecordPayment(invoice)}>
                                 <CreditCard className="h-4 w-4 mr-2" /> Record Payment
                               </DropdownMenuItem>

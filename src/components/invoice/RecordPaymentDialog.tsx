@@ -17,8 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { PAYMENT_MODES, TDS_QUARTERS, type PaymentMode, type CreatePaymentInput } from '@/types/payment';
+import { Separator } from '@/components/ui/separator';
+import { PAYMENT_MODES, type PaymentMode, type CreatePaymentInput } from '@/types/payment';
 import type { Invoice } from '@/types/invoice';
 import { format } from 'date-fns';
 
@@ -41,19 +41,14 @@ export function RecordPaymentDialog({
     amount: '',
     payment_mode: '' as PaymentMode,
     reference_number: '',
-    bank_name: '',
-    cheque_number: '',
-    cheque_date: '',
-    tds_deducted: false,
     tds_amount: '',
-    tds_certificate_number: '',
-    tds_quarter: '',
     notes: '',
   });
 
-  const balanceDue = invoice 
-    ? (invoice.total_amount || 0) - (invoice.amount_paid || 0)
-    : 0;
+  const totalAmount = invoice?.total_amount || 0;
+  const alreadyPaid = invoice?.amount_paid || 0;
+  const alreadyTds = invoice?.tds_amount || 0;
+  const balanceDue = totalAmount - alreadyPaid - alreadyTds;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,29 +62,17 @@ export function RecordPaymentDialog({
         amount: parseFloat(formData.amount) || 0,
         payment_mode: formData.payment_mode,
         reference_number: formData.reference_number || undefined,
-        bank_name: formData.bank_name || undefined,
-        cheque_number: formData.cheque_number || undefined,
-        cheque_date: formData.cheque_date || undefined,
-        tds_deducted: formData.tds_deducted,
-        tds_amount: formData.tds_deducted ? parseFloat(formData.tds_amount) || 0 : 0,
-        tds_certificate_number: formData.tds_certificate_number || undefined,
-        tds_quarter: formData.tds_quarter || undefined,
+        tds_deducted: parseFloat(formData.tds_amount) > 0,
+        tds_amount: parseFloat(formData.tds_amount) || 0,
         notes: formData.notes || undefined,
       });
       onOpenChange(false);
-      // Reset form
       setFormData({
         payment_date: format(new Date(), 'yyyy-MM-dd'),
         amount: '',
         payment_mode: '' as PaymentMode,
         reference_number: '',
-        bank_name: '',
-        cheque_number: '',
-        cheque_date: '',
-        tds_deducted: false,
         tds_amount: '',
-        tds_certificate_number: '',
-        tds_quarter: '',
         notes: '',
       });
     } finally {
@@ -97,28 +80,41 @@ export function RecordPaymentDialog({
     }
   };
 
-  const showChequeFields = formData.payment_mode === 'cheque';
+  const enteredAmount = parseFloat(formData.amount) || 0;
+  const enteredTds = parseFloat(formData.tds_amount) || 0;
+  const newBalance = balanceDue - enteredAmount - enteredTds;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Record Payment</DialogTitle>
         </DialogHeader>
 
         {invoice && (
-          <div className="bg-muted/50 p-3 rounded-lg space-y-1">
-            <p className="text-sm font-medium">{invoice.invoice_number}</p>
-            <p className="text-sm text-muted-foreground">{invoice.to_company_name}</p>
-            <div className="flex justify-between text-sm">
+          <div className="bg-muted/50 p-3 rounded-lg space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span className="font-medium">{invoice.invoice_number}</span>
+              <span className="text-muted-foreground">{invoice.to_company_name}</span>
+            </div>
+            <Separator className="my-2" />
+            <div className="flex justify-between">
               <span>Invoice Total:</span>
-              <span className="font-medium">₹{invoice.total_amount.toLocaleString('en-IN')}</span>
+              <span className="font-medium">₹{totalAmount.toLocaleString('en-IN')}</span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span>Already Paid:</span>
-              <span>₹{(invoice.amount_paid || 0).toLocaleString('en-IN')}</span>
-            </div>
-            <div className="flex justify-between text-sm font-medium text-primary">
+            {alreadyPaid > 0 && (
+              <div className="flex justify-between">
+                <span>Already Paid:</span>
+                <span>₹{alreadyPaid.toLocaleString('en-IN')}</span>
+              </div>
+            )}
+            {alreadyTds > 0 && (
+              <div className="flex justify-between">
+                <span>TDS Already Deducted:</span>
+                <span>₹{alreadyTds.toLocaleString('en-IN')}</span>
+              </div>
+            )}
+            <div className="flex justify-between font-medium text-primary">
               <span>Balance Due:</span>
               <span>₹{balanceDue.toLocaleString('en-IN')}</span>
             </div>
@@ -126,18 +122,10 @@ export function RecordPaymentDialog({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Payment Date *</Label>
-              <Input
-                type="date"
-                value={formData.payment_date}
-                onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Amount *</Label>
+          {/* Primary: Amount Received & TDS */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Amount Received *</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -147,29 +135,60 @@ export function RecordPaymentDialog({
                 required
               />
             </div>
+            <div className="space-y-1.5">
+              <Label>TDS Deducted</Label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={formData.tds_amount}
+                onChange={(e) => setFormData({ ...formData, tds_amount: e.target.value })}
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Payment Mode *</Label>
-            <Select
-              value={formData.payment_mode}
-              onValueChange={(v) => setFormData({ ...formData, payment_mode: v as PaymentMode })}
-              required
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select payment mode" />
-              </SelectTrigger>
-              <SelectContent>
-                {PAYMENT_MODES.map((mode) => (
-                  <SelectItem key={mode.value} value={mode.value}>
-                    {mode.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Live balance preview */}
+          {(enteredAmount > 0 || enteredTds > 0) && (
+            <div className="bg-muted/30 p-2 rounded text-sm flex justify-between">
+              <span>Remaining after this payment:</span>
+              <span className={newBalance <= 0 ? 'text-green-600 font-medium' : 'text-destructive font-medium'}>
+                {newBalance <= 0 ? 'Fully Paid ✓' : `₹${newBalance.toLocaleString('en-IN')}`}
+              </span>
+            </div>
+          )}
+
+          {/* Secondary fields */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Payment Date *</Label>
+              <Input
+                type="date"
+                value={formData.payment_date}
+                onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Payment Mode *</Label>
+              <Select
+                value={formData.payment_mode}
+                onValueChange={(v) => setFormData({ ...formData, payment_mode: v as PaymentMode })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_MODES.map((mode) => (
+                    <SelectItem key={mode.value} value={mode.value}>
+                      {mode.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label>Reference / Transaction Number</Label>
             <Input
               placeholder="Enter reference number"
@@ -178,92 +197,7 @@ export function RecordPaymentDialog({
             />
           </div>
 
-          {showChequeFields && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Cheque Number</Label>
-                <Input
-                  placeholder="Cheque number"
-                  value={formData.cheque_number}
-                  onChange={(e) => setFormData({ ...formData, cheque_number: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Cheque Date</Label>
-                <Input
-                  type="date"
-                  value={formData.cheque_date}
-                  onChange={(e) => setFormData({ ...formData, cheque_date: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2 col-span-2">
-                <Label>Bank Name</Label>
-                <Input
-                  placeholder="Bank name"
-                  value={formData.bank_name}
-                  onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="border rounded-lg p-4 space-y-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="tds_deducted"
-                checked={formData.tds_deducted}
-                onCheckedChange={(checked) => 
-                  setFormData({ ...formData, tds_deducted: checked as boolean })
-                }
-              />
-              <Label htmlFor="tds_deducted" className="font-normal cursor-pointer">
-                TDS Deducted by Client
-              </Label>
-            </div>
-
-            {formData.tds_deducted && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>TDS Amount</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={formData.tds_amount}
-                    onChange={(e) => setFormData({ ...formData, tds_amount: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Quarter</Label>
-                  <Select
-                    value={formData.tds_quarter}
-                    onValueChange={(v) => setFormData({ ...formData, tds_quarter: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select quarter" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TDS_QUARTERS.map((q) => (
-                        <SelectItem key={q.value} value={q.value}>
-                          {q.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2 col-span-2">
-                  <Label>TDS Certificate Number</Label>
-                  <Input
-                    placeholder="Certificate number (if available)"
-                    value={formData.tds_certificate_number}
-                    onChange={(e) => setFormData({ ...formData, tds_certificate_number: e.target.value })}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label>Notes</Label>
             <Textarea
               placeholder="Any additional notes..."
