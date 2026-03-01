@@ -3699,6 +3699,63 @@ export type Database = {
         }
         Relationships: []
       }
+      invoice_vendors: {
+        Row: {
+          address: string | null
+          city: string | null
+          contact_person: string | null
+          country: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          gstin: string | null
+          id: string
+          pan: string | null
+          phone: string | null
+          pincode: string | null
+          state: string | null
+          state_code: string | null
+          updated_at: string
+          vendor_name: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          contact_person?: string | null
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          pan?: string | null
+          phone?: string | null
+          pincode?: string | null
+          state?: string | null
+          state_code?: string | null
+          updated_at?: string
+          vendor_name: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          contact_person?: string | null
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          pan?: string | null
+          phone?: string | null
+          pincode?: string | null
+          state?: string | null
+          state_code?: string | null
+          updated_at?: string
+          vendor_name?: string
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           ack_date: string | null
@@ -3764,6 +3821,7 @@ export type Database = {
           sub_total: number
           tds_amount: number | null
           tds_certificate_number: string | null
+          tds_deducted: boolean | null
           tds_deducted_by: string | null
           tds_quarter: string | null
           tds_rate: number | null
@@ -3847,6 +3905,7 @@ export type Database = {
           sub_total?: number
           tds_amount?: number | null
           tds_certificate_number?: string | null
+          tds_deducted?: boolean | null
           tds_deducted_by?: string | null
           tds_quarter?: string | null
           tds_rate?: number | null
@@ -3930,6 +3989,7 @@ export type Database = {
           sub_total?: number
           tds_amount?: number | null
           tds_certificate_number?: string | null
+          tds_deducted?: boolean | null
           tds_deducted_by?: string | null
           tds_quarter?: string | null
           tds_rate?: number | null

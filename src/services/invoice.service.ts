@@ -513,7 +513,14 @@ export async function createPurchaseInvoice(input: CreateInvoiceInput): Promise<
   // Fetch company profile to get signature
   const companyProfile = await fetchDefaultCompanyProfile();
   
-  const totalAmount = input.total_amount || input.line_items.reduce((sum, item) => sum + item.amount, 0);
+  const baseAmount = input.total_amount || input.line_items.reduce((sum, item) => sum + item.amount, 0);
+  const subtotal = input.line_items[0]?.rate || baseAmount;
+  
+  // Calculate GST amounts from rates
+  const cgstAmt = (subtotal * (input.cgst_rate || 0)) / 100;
+  const sgstAmt = (subtotal * (input.sgst_rate || 0)) / 100;
+  const igstAmt = (subtotal * (input.igst_rate || 0)) / 100;
+  const totalAmount = input.total_amount || (subtotal + cgstAmt + sgstAmt + igstAmt);
   
   // Create invoice with attachment details
   const { data: invoice, error: invoiceError } = await supabase
@@ -536,10 +543,10 @@ export async function createPurchaseInvoice(input: CreateInvoiceInput): Promise<
       due_date: input.due_date,
       reference_number: input.reference_number,
       notes: input.notes,
-      sub_total: totalAmount,
+      sub_total: subtotal,
       total_amount: totalAmount,
       balance_due: totalAmount,
-      status: 'issued', // Purchase invoices start as issued (we received the bill)
+      status: 'issued',
       signature_url: companyProfile?.signature_url,
       created_by: userData?.user?.id,
       attachment_url: input.attachment_url,
@@ -551,6 +558,14 @@ export async function createPurchaseInvoice(input: CreateInvoiceInput): Promise<
       expense_category: input.expense_category,
       handled_by: input.handled_by,
       remark: input.remark,
+      tds_deducted: input.tds_deducted || false,
+      tds_amount: input.tds_amount || 0,
+      cgst_rate: input.cgst_rate || 0,
+      cgst_amount: cgstAmt,
+      sgst_rate: input.sgst_rate || 0,
+      sgst_amount: sgstAmt,
+      igst_rate: input.igst_rate || 0,
+      igst_amount: igstAmt,
     }])
     .select()
     .single();
