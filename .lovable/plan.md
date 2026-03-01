@@ -1,82 +1,72 @@
 
-Goal: Fix two issues together:
-1) GST selection (e.g., GST 18% as CGST+SGST) is not being saved reliably.
-2) Invoice PDF header should match your desired layout: logo on left top, TAX INVOICE on right top, and the invoice-detail border box lighter + properly aligned in the same header line.
 
-What I found
-- Root cause of GST issue is in `src/services/invoice.service.ts` (`createInvoice` and `updateInvoice`):
-  - Current code still forces inter-state tax when state codes differ:
-    - `isInterState = ... || (from_company_state_code !== to_company_state_code)`
-  - Because of that, even if user selects GST preset with CGST+SGST, code can override and compute as inter-state path (or zero-tax combinations in edge cases), so saved GST doesn’t match user selection.
-- PDF header layout issue is in:
-  - `src/components/invoice/pdf/InvoicePDFHeader.tsx`
-  - `src/components/invoice/pdf/InvoicePDFStyles.ts`
-  - Title is currently centered; logo is inside company block below title; details box border is dark and alignment is not in single top-row style you requested.
+# Simplify Summary Cards, Add Unified Date Filter, Fix Invoice Number Reuse
 
-Implementation approach
+## Overview
+Three changes: (1) Replace 6 summary cards with 3 minimal ones, (2) add a unified date-range filter for both cards and invoice list, (3) make deleted invoice numbers reusable.
 
-1) Make GST persistence follow user-selected preset exactly
-- File: `src/services/invoice.service.ts`
-- Update both `createInvoice` and `updateInvoice` to derive tax mode from selected rates, not state mismatch.
-- New rule:
-  - If `igst_rate > 0` and CGST/SGST are 0 → inter-state (IGST path)
-  - Otherwise → intra-state (CGST+SGST path)
-- Keep fallback defaults only when rates are truly missing, but do not override explicit UI selection via state-code comparison.
-- Remove state-comparison coupling from `isInterState` for invoice save calculations.
+---
 
-Why this fixes it:
-- Your dropdown selection (GST 18% or IGST 18%) becomes the source of truth.
-- Saved `cgst_rate/sgst_rate/igst_rate`, amounts, and totals remain consistent with what you selected in edit/create dialog.
+## 1. Replace Summary Cards with 3 Minimal Cards
 
-2) Keep view rendering consistent with stored GST values
-- File: `src/components/invoice/ViewInvoiceDialog.tsx`
-- Replace current view-time `isInterState` based on state code comparison with stored GST-rate/amount presence logic (same strategy already used in PDF totals).
-- This prevents UI confusion where invoice appears to show wrong tax split even when data is saved correctly.
+**File: `src/components/invoice/GlobalSummaryCards.tsx`** -- Rewrite
 
-3) Redesign PDF header to your required top-line alignment
-- Files:
-  - `src/components/invoice/pdf/InvoicePDFHeader.tsx`
-  - `src/components/invoice/pdf/InvoicePDFStyles.ts`
-- Layout changes:
-  - Create a top header row:
-    - Left: logo (if available)
-    - Right: “TAX INVOICE” (with copy subtitle under/near it)
-  - Below that, second row in same header section:
-    - Left: company details block
-    - Right: invoice meta border box (Invoice Number, Date, Terms, Due Date, Place of Supply)
-- Styling updates:
-  - Light border for invoice meta box (soft gray, thinner appearance)
-  - Better padding and label/value alignment (fixed label width + flexible value)
-  - Tight, professional spacing so all header elements appear cleanly aligned in one structured header area.
+Replace the current 6-card grid with just 3 clean, minimal cards:
+- **Total Sales** -- sum of all sales/institution invoice amounts (in filtered range)
+- **Received** -- sum of payments received (in filtered range)
+- **Overdue** -- sum of balance on unpaid invoices past due date (in filtered range)
 
-4) Preserve existing behavior and data safety
-- No database migration needed.
-- No change to invoice numbering logic, line-item editor, or payment logic.
-- Logo fallback behavior remains (already using `logo_url || report_logo_url`).
+The component will accept the filtered invoices and payments arrays (not the summary object) so it can compute values based on the active date filter.
 
-Files to modify
-- `src/services/invoice.service.ts`
-- `src/components/invoice/ViewInvoiceDialog.tsx`
-- `src/components/invoice/pdf/InvoicePDFHeader.tsx`
-- `src/components/invoice/pdf/InvoicePDFStyles.ts`
+---
 
-Validation checklist after implementation
-1) Edit invoice with GST 18% (CGST+SGST), save, reopen:
-- GST preset still shows GST 18%
-- Totals show CGST+SGST correctly
-- Downloaded PDF also shows CGST+SGST lines.
+## 2. Unified Date Range Filter (replaces InvoiceMonthFilter)
 
-2) Edit invoice with IGST 18%, save, reopen:
-- IGST remains selected and amounts are correct in both screen preview and PDF.
+**New file: `src/components/invoice/InvoiceDateFilter.tsx`**
 
-3) Header visual check in PDF:
-- Logo appears on left top.
-- TAX INVOICE appears on right top.
-- Invoice details box has light border and aligned rows.
-- Header appears as one cohesive aligned line/section as requested.
+A compact filter bar with preset options:
+- **All Time** (default) -- no date filtering
+- **This Month** / **This Quarter** / **This Year**
+- **Custom Range** -- shows two date pickers (from/to)
 
-Potential edge cases I will handle
-- Existing invoices with mixed/legacy rate combinations:
-  - If both IGST and CGST/SGST are non-zero from old data, rendering will prioritize explicit stored values consistently (no state-code override).
-- Missing logo:
-  - Header still aligns correctly with empty logo slot fallback spacing.
+Returns a `{ from: Date | null, to: Date | null }` range that applies to both the summary cards and the invoice listing.
+
+**File: `src/pages/system-admin/InvoiceManagement.tsx`** -- Update
+
+- Remove `InvoiceMonthFilter` usage and `selectedMonth` state
+- Add `dateRange` state (`{ from: Date | null, to: Date | null }`)
+- Use `InvoiceDateFilter` component
+- Filter `allInvoices` by `invoice_date` within the date range
+- Pass filtered invoices to both `GlobalSummaryCards` and `InvoiceList`
+- Pass filtered payments to `GlobalSummaryCards` for "Received" calculation
+
+---
+
+## 3. Fix Invoice Number Reuse After Deletion
+
+**Database migration**: Modify the `get_next_invoice_number_v2` function.
+
+Current behavior: Always increments `current_number` in `invoice_settings`, so if invoice 039 is deleted, the next one becomes 040.
+
+New behavior: After incrementing the counter, check if any invoice with that number already exists. If not, use it. But more importantly, when an invoice is deleted, decrement the counter back so the number gets reused.
+
+Simpler approach: Instead of modifying the RPC, update the `deleteInvoice` service to decrement `current_number` in `invoice_settings` when the deleted invoice's number matches the highest counter. This way, if 039 is deleted and it was the latest, the counter goes back to 38, so the next call produces 039 again.
+
+**File: `src/services/invoice.service.ts`** -- Update `deleteInvoice`
+
+After successfully deleting an invoice, check if its number was the highest (matches current counter). If so, decrement `invoice_settings.current_number` by 1. This handles the exact scenario: delete 039 -> next new invoice is 039.
+
+---
+
+## File Summary
+
+| Action | File |
+|--------|------|
+| Rewrite | `src/components/invoice/GlobalSummaryCards.tsx` -- 3 minimal cards |
+| Create | `src/components/invoice/InvoiceDateFilter.tsx` -- unified date filter |
+| Modify | `src/pages/system-admin/InvoiceManagement.tsx` -- wire new filter + simplified cards |
+| Modify | `src/services/invoice.service.ts` -- decrement counter on delete |
+| Delete (unused) | `src/components/invoice/InvoiceMonthFilter.tsx` -- replaced by InvoiceDateFilter |
+| Modify | `src/hooks/useGlobalInvoiceSummary.ts` -- minor: export type only (summary interface simplified) |
+| DB Migration | Update `get_next_invoice_number_v2` or handle in service layer |
+
