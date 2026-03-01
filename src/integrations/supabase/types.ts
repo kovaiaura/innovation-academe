@@ -3596,6 +3596,7 @@ export type Database = {
           address: string | null
           city: string | null
           contact_person: string | null
+          country: string | null
           created_at: string
           created_by: string | null
           email: string | null
@@ -3605,6 +3606,12 @@ export type Database = {
           party_name: string
           phone: string | null
           pincode: string | null
+          shipping_address: string | null
+          shipping_city: string | null
+          shipping_pincode: string | null
+          shipping_same_as_billing: boolean | null
+          shipping_state: string | null
+          shipping_state_code: string | null
           state: string | null
           state_code: string | null
           updated_at: string
@@ -3613,6 +3620,7 @@ export type Database = {
           address?: string | null
           city?: string | null
           contact_person?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
@@ -3622,6 +3630,12 @@ export type Database = {
           party_name: string
           phone?: string | null
           pincode?: string | null
+          shipping_address?: string | null
+          shipping_city?: string | null
+          shipping_pincode?: string | null
+          shipping_same_as_billing?: boolean | null
+          shipping_state?: string | null
+          shipping_state_code?: string | null
           state?: string | null
           state_code?: string | null
           updated_at?: string
@@ -3630,6 +3644,7 @@ export type Database = {
           address?: string | null
           city?: string | null
           contact_person?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
@@ -3639,6 +3654,12 @@ export type Database = {
           party_name?: string
           phone?: string | null
           pincode?: string | null
+          shipping_address?: string | null
+          shipping_city?: string | null
+          shipping_pincode?: string | null
+          shipping_same_as_billing?: boolean | null
+          shipping_state?: string | null
+          shipping_state_code?: string | null
           state?: string | null
           state_code?: string | null
           updated_at?: string

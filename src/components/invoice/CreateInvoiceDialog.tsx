@@ -26,25 +26,13 @@ import { Check, AlertCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useInvoiceParties, type InvoiceParty } from '@/hooks/useInvoiceParties';
 import { useInvoiceSettings } from '@/hooks/useInvoiceSettings';
+import { INDIAN_STATES } from '@/constants/indianStates';
 
 interface CreateInvoiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }
-
-const indianStates = [
-  { code: '33', name: 'Tamil Nadu' },
-  { code: '29', name: 'Karnataka' },
-  { code: '27', name: 'Maharashtra' },
-  { code: '36', name: 'Telangana' },
-  { code: '32', name: 'Kerala' },
-  { code: '07', name: 'Delhi' },
-  { code: '06', name: 'Haryana' },
-  { code: '09', name: 'Uttar Pradesh' },
-  { code: '24', name: 'Gujarat' },
-  { code: '19', name: 'West Bengal' },
-];
 
 type GSTPreset = 'gst5' | 'gst12' | 'gst18' | 'gst28' | 'igst5' | 'igst12' | 'igst18' | 'igst28' | 'custom';
 
@@ -79,7 +67,7 @@ export function CreateInvoiceDialog({
   const [invoiceNumberValid, setInvoiceNumberValid] = useState(false);
   const [useAutoNumber, setUseAutoNumber] = useState(true);
   
-  // Bill To
+  // Bill To (billing address from party)
   const [toCompanyName, setToCompanyName] = useState('');
   const [toCompanyAddress, setToCompanyAddress] = useState('');
   const [toCompanyCity, setToCompanyCity] = useState('');
@@ -124,6 +112,7 @@ export function CreateInvoiceDialog({
   const handlePartySelect = (partyId: string) => {
     const party = parties.find(p => p.id === partyId);
     if (!party) return;
+    // Use billing address fields
     setToCompanyName(party.party_name);
     setToCompanyAddress(party.address || '');
     setToCompanyCity(party.city || '');
@@ -146,7 +135,7 @@ export function CreateInvoiceDialog({
   };
 
   const handleStateChange = (stateCode: string) => {
-    const state = indianStates.find((s) => s.code === stateCode);
+    const state = INDIAN_STATES.find((s) => s.code === stateCode);
     if (state) {
       setToCompanyState(state.name);
       setToCompanyStateCode(state.code);
@@ -192,7 +181,6 @@ export function CreateInvoiceDialog({
     try {
       setLoading(true);
 
-      // Get final invoice number
       let finalInvoiceNumber = invoiceNumber.trim();
       if (useAutoNumber) {
         finalInvoiceNumber = await incrementAndGetNumber();
@@ -271,13 +259,13 @@ export function CreateInvoiceDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Create Invoice</DialogTitle>
         </DialogHeader>
         
-        <ScrollArea className="max-h-[calc(90vh-120px)] pr-4">
-          <div className="space-y-6 py-4">
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="space-y-6 px-1 py-4">
             {/* Bill From */}
             <div className="bg-muted/50 p-4 rounded-lg">
               <h3 className="font-semibold mb-2">Bill From</h3>
@@ -291,11 +279,11 @@ export function CreateInvoiceDialog({
 
             {/* Bill To with Party Selector */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <h3 className="font-semibold">Bill To</h3>
                 {parties.length > 0 && (
                   <Select onValueChange={handlePartySelect}>
-                    <SelectTrigger className="w-64">
+                    <SelectTrigger className="w-56">
                       <SelectValue placeholder="Select saved party..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -306,43 +294,43 @@ export function CreateInvoiceDialog({
                   </Select>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2 space-y-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2 space-y-1.5">
                   <Label>Company Name *</Label>
                   <Input value={toCompanyName} onChange={(e) => setToCompanyName(e.target.value)} placeholder="Customer company name" />
                 </div>
-                <div className="col-span-2 space-y-2">
+                <div className="col-span-2 space-y-1.5">
                   <Label>Address</Label>
                   <Textarea value={toCompanyAddress} onChange={(e) => setToCompanyAddress(e.target.value)} placeholder="Street address" rows={2} />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label>City</Label>
                   <Input value={toCompanyCity} onChange={(e) => setToCompanyCity(e.target.value)} placeholder="City" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label>State</Label>
                   <Select value={toCompanyStateCode} onValueChange={handleStateChange}>
                     <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
                     <SelectContent>
-                      {indianStates.map((state) => (
+                      {INDIAN_STATES.map((state) => (
                         <SelectItem key={state.code} value={state.code}>{state.name} ({state.code})</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label>Pincode</Label>
                   <Input value={toCompanyPincode} onChange={(e) => setToCompanyPincode(e.target.value)} placeholder="Pincode" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label>GSTIN</Label>
                   <Input value={toCompanyGstin} onChange={(e) => setToCompanyGstin(e.target.value)} placeholder="GSTIN" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label>Contact Person</Label>
                   <Input value={toCompanyContactPerson} onChange={(e) => setToCompanyContactPerson(e.target.value)} />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label>Phone</Label>
                   <Input value={toCompanyPhone} onChange={(e) => setToCompanyPhone(e.target.value)} />
                 </div>
@@ -354,8 +342,8 @@ export function CreateInvoiceDialog({
             {/* Invoice Details */}
             <div className="space-y-4">
               <h3 className="font-semibold">Invoice Details</h3>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-3 space-y-2">
+              <div className="space-y-3">
+                <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
                     <Label>Invoice Number</Label>
                     <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => { setUseAutoNumber(!useAutoNumber); setInvoiceNumberError(''); }}>
@@ -385,17 +373,19 @@ export function CreateInvoiceDialog({
                     </div>
                   )}
                 </div>
-                <div className="space-y-2">
-                  <Label>Invoice Date *</Label>
-                  <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Due Date</Label>
-                  <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Terms</Label>
-                  <Input value={terms} onChange={(e) => setTerms(e.target.value)} placeholder="e.g., Net 30" />
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Invoice Date *</Label>
+                    <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Due Date</Label>
+                    <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Terms</Label>
+                    <Input value={terms} onChange={(e) => setTerms(e.target.value)} placeholder="e.g., Net 30" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -405,8 +395,8 @@ export function CreateInvoiceDialog({
             {/* GST Configuration */}
             <div className="space-y-3">
               <h3 className="font-semibold">GST Configuration</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
                   <Label>GST Preset</Label>
                   <Select value={gstPreset} onValueChange={(v) => handleGstPresetChange(v as GSTPreset)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -423,23 +413,27 @@ export function CreateInvoiceDialog({
                     </SelectContent>
                   </Select>
                 </div>
-                {gstPreset === 'custom' && (
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs">CGST %</Label>
-                      <Input type="number" min="0" step="0.5" value={gstRates.cgst_rate} onChange={(e) => setGstRates(prev => ({ ...prev, cgst_rate: parseFloat(e.target.value) || 0 }))} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">SGST %</Label>
-                      <Input type="number" min="0" step="0.5" value={gstRates.sgst_rate} onChange={(e) => setGstRates(prev => ({ ...prev, sgst_rate: parseFloat(e.target.value) || 0 }))} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">IGST %</Label>
-                      <Input type="number" min="0" step="0.5" value={gstRates.igst_rate} onChange={(e) => setGstRates(prev => ({ ...prev, igst_rate: parseFloat(e.target.value) || 0 }))} />
-                    </div>
-                  </div>
-                )}
+                <div className="space-y-1.5">
+                  <Label>Place of Supply</Label>
+                  <Input value={placeOfSupply} onChange={(e) => setPlaceOfSupply(e.target.value)} />
+                </div>
               </div>
+              {gstPreset === 'custom' && (
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">CGST %</Label>
+                    <Input type="number" min="0" step="0.5" value={gstRates.cgst_rate} onChange={(e) => setGstRates(prev => ({ ...prev, cgst_rate: parseFloat(e.target.value) || 0 }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">SGST %</Label>
+                    <Input type="number" min="0" step="0.5" value={gstRates.sgst_rate} onChange={(e) => setGstRates(prev => ({ ...prev, sgst_rate: parseFloat(e.target.value) || 0 }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">IGST %</Label>
+                    <Input type="number" min="0" step="0.5" value={gstRates.igst_rate} onChange={(e) => setGstRates(prev => ({ ...prev, igst_rate: parseFloat(e.target.value) || 0 }))} />
+                  </div>
+                </div>
+              )}
             </div>
 
             <Separator />
@@ -485,14 +479,14 @@ export function CreateInvoiceDialog({
             </div>
 
             {/* Notes */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label>Notes</Label>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Additional notes..." rows={2} />
             </div>
           </div>
         </ScrollArea>
 
-        <div className="flex justify-end gap-2 pt-4 border-t">
+        <div className="flex justify-end gap-2 pt-4 border-t flex-shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={loading}>
             {loading ? 'Creating...' : 'Create Invoice'}

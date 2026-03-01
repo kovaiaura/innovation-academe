@@ -15,6 +15,13 @@ export interface InvoiceParty {
   contact_person?: string;
   phone?: string;
   email?: string;
+  country?: string;
+  shipping_address?: string;
+  shipping_city?: string;
+  shipping_state?: string;
+  shipping_state_code?: string;
+  shipping_pincode?: string;
+  shipping_same_as_billing?: boolean;
   created_at?: string;
 }
 
