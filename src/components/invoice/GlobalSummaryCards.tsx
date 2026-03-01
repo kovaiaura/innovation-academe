@@ -12,14 +12,16 @@ interface GlobalSummaryCardsProps {
 
 export function GlobalSummaryCards({ invoices, payments, loading }: GlobalSummaryCardsProps) {
   const stats = useMemo(() => {
-    const salesInvoices = invoices.filter(
+    const safeInvoices = invoices || [];
+    const safePayments = payments || [];
+    const salesInvoices = safeInvoices.filter(
       inv => inv.invoice_type === 'sales' || inv.invoice_type === 'institution'
     );
 
     const totalSales = salesInvoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
 
     const salesIds = new Set(salesInvoices.map(inv => inv.id));
-    const received = payments
+    const received = safePayments
       .filter(p => salesIds.has(p.invoice_id))
       .reduce((sum, p) => sum + (p.amount || 0), 0);
 
