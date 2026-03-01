@@ -31,6 +31,7 @@ export interface CompanyProfile {
   bank_details?: BankDetails;
   terms_and_conditions?: string;
   logo_url?: string;
+  report_logo_url?: string;
   signature_url?: string;
   declaration?: string;
   default_notes?: string;
@@ -224,6 +225,10 @@ export interface CreateInvoiceInput {
   bill_receipt_date?: string;
   expense_category?: string;
   line_items: Omit<InvoiceLineItem, 'id' | 'invoice_id'>[];
+  // GST rates explicitly selected by user
+  cgst_rate?: number;
+  sgst_rate?: number;
+  igst_rate?: number;
 }
 
 export interface InvoiceFilters {

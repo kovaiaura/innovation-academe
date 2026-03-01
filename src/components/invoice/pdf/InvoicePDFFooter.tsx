@@ -17,7 +17,7 @@ export function InvoicePDFFooter({ invoice }: InvoicePDFFooterProps) {
         {/* Bank Details */}
         {hasBankDetails && (
           <View style={styles.bankDetailsBox}>
-            <Text style={styles.sectionTitle}>Bank Details</Text>
+            <Text style={styles.sectionTitle}>Account Details</Text>
             {bankDetails.account_holder && (
               <Text style={styles.bankDetail}>
                 Account Holder: {bankDetails.account_holder}

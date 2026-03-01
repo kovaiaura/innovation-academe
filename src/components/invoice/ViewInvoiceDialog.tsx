@@ -45,8 +45,9 @@ export function ViewInvoiceDialog({
         if (fullInvoice) {
           setInvoice(fullInvoice);
         }
-        if (profile?.logo_url) {
-          setLogoUrl(profile.logo_url);
+        const logo = profile?.logo_url || profile?.report_logo_url;
+        if (logo) {
+          setLogoUrl(logo);
         }
       }).catch(console.error)
         .finally(() => setLoading(false));
