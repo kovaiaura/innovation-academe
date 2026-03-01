@@ -29,11 +29,12 @@ export default function InvoiceManagement() {
   const [partiesDialogOpen, setPartiesDialogOpen] = useState(false);
   
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
 
   const { summary, allInvoices, loading, refetch } = useGlobalInvoiceSummary();
   const { addPayment } = usePaymentsForInvoice(selectedInvoice?.id || null);
 
-  // Filter invoices - show all sales/institution invoices (exclude purchase)
+  // Filter invoices
   const filteredInvoices = useMemo(() => {
     let invoices = allInvoices.filter(inv => 
       inv.invoice_type === 'sales' || inv.invoice_type === 'institution'
@@ -94,6 +95,18 @@ export default function InvoiceManagement() {
     refetch();
   };
 
+  const handleEdit = (invoice: Invoice) => {
+    setEditingInvoice(invoice);
+    setCreateDialogOpen(true);
+  };
+
+  const handleCreateDialogClose = (open: boolean) => {
+    setCreateDialogOpen(open);
+    if (!open) {
+      setEditingInvoice(null);
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -109,7 +122,7 @@ export default function InvoiceManagement() {
             <Button variant="outline" onClick={() => setExportDialogOpen(true)}>
               <Download className="h-4 w-4 mr-2" /> Export
             </Button>
-            <Button onClick={() => setCreateDialogOpen(true)}>
+            <Button onClick={() => { setEditingInvoice(null); setCreateDialogOpen(true); }}>
               <Plus className="h-4 w-4 mr-2" /> Create Invoice
             </Button>
           </div>
@@ -117,7 +130,6 @@ export default function InvoiceManagement() {
 
         <GlobalSummaryCards summary={summary} loading={loading} />
 
-        {/* Month Filter */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <InvoiceMonthFilter selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} />
           {selectedMonth && (
@@ -125,7 +137,6 @@ export default function InvoiceManagement() {
           )}
         </div>
 
-        {/* Invoice List */}
         <InvoiceList
           invoices={filteredInvoices}
           loading={loading}
@@ -135,13 +146,14 @@ export default function InvoiceManagement() {
           onDelete={handleDelete}
           onRecordPayment={handleRecordPayment}
           onViewPayments={handleViewPayments}
+          onEdit={handleEdit}
         />
 
-        {/* Dialogs */}
         <CreateInvoiceDialog
           open={createDialogOpen}
-          onOpenChange={setCreateDialogOpen}
+          onOpenChange={handleCreateDialogClose}
           onSuccess={refetch}
+          editInvoice={editingInvoice}
         />
 
         <ViewInvoiceDialog

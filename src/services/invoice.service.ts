@@ -542,6 +542,129 @@ export async function createPurchaseInvoice(input: CreateInvoiceInput): Promise<
   return { ...invoice, line_items: lineItems } as Invoice;
 }
 
+// Update invoice (edit mode)
+export async function updateInvoice(id: string, input: CreateInvoiceInput): Promise<Invoice> {
+  // Fetch company profile for signature fallback
+  const companyProfile = await fetchDefaultCompanyProfile();
+
+  const gstRates: GSTRates = {
+    cgst_rate: input.cgst_rate ?? companyProfile?.default_cgst_rate ?? 9,
+    sgst_rate: input.sgst_rate ?? companyProfile?.default_sgst_rate ?? 9,
+    igst_rate: input.igst_rate ?? companyProfile?.default_igst_rate ?? 18,
+  };
+
+  const isInterState = (gstRates.igst_rate > 0 && gstRates.cgst_rate === 0)
+    || (input.from_company_state_code !== input.to_company_state_code);
+
+  const calculatedItems = input.line_items.map((item, index) => ({
+    ...calculateLineItemTaxes(item, isInterState, gstRates),
+    display_order: index,
+  }));
+
+  const totals = calculateInvoiceTotals(calculatedItems, isInterState, 0, gstRates);
+
+  // Update the invoice record
+  const { data: invoice, error: invoiceError } = await supabase
+    .from('invoices')
+    .update({
+      invoice_number: input.invoice_number,
+      invoice_type: input.invoice_type,
+      from_company_name: input.from_company_name,
+      from_company_address: input.from_company_address,
+      from_company_city: input.from_company_city,
+      from_company_state: input.from_company_state,
+      from_company_state_code: input.from_company_state_code,
+      from_company_pincode: input.from_company_pincode,
+      from_company_gstin: input.from_company_gstin,
+      from_company_pan: input.from_company_pan,
+      from_company_cin: input.from_company_cin,
+      from_company_phone: input.from_company_phone,
+      from_company_email: input.from_company_email,
+      from_company_website: input.from_company_website,
+      to_company_name: input.to_company_name,
+      to_company_address: input.to_company_address,
+      to_company_city: input.to_company_city,
+      to_company_state: input.to_company_state,
+      to_company_state_code: input.to_company_state_code,
+      to_company_pincode: input.to_company_pincode,
+      to_company_gstin: input.to_company_gstin,
+      to_company_contact_person: input.to_company_contact_person,
+      to_company_phone: input.to_company_phone,
+      ship_to_name: input.ship_to_name,
+      ship_to_address: input.ship_to_address,
+      ship_to_city: input.ship_to_city,
+      ship_to_state: input.ship_to_state,
+      ship_to_state_code: input.ship_to_state_code,
+      ship_to_pincode: input.ship_to_pincode,
+      ship_to_gstin: input.ship_to_gstin,
+      invoice_date: input.invoice_date,
+      due_date: input.due_date,
+      terms: input.terms,
+      place_of_supply: input.place_of_supply,
+      reference_number: input.reference_number,
+      delivery_note: input.delivery_note,
+      sub_total: totals.sub_total,
+      cgst_rate: totals.cgst_rate,
+      cgst_amount: totals.cgst_amount,
+      sgst_rate: totals.sgst_rate,
+      sgst_amount: totals.sgst_amount,
+      igst_rate: totals.igst_rate,
+      igst_amount: totals.igst_amount,
+      total_amount: totals.total_amount,
+      balance_due: totals.balance_due,
+      total_in_words: numberToWords(totals.total_amount),
+      bank_details: input.bank_details ? JSON.parse(JSON.stringify(input.bank_details)) : null,
+      notes: input.notes,
+      terms_and_conditions: input.terms_and_conditions,
+      declaration: input.declaration,
+      signature_url: companyProfile?.signature_url,
+      institution_id: input.institution_id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (invoiceError) throw invoiceError;
+
+  // Delete old line items
+  const { error: deleteError } = await supabase
+    .from('invoice_line_items')
+    .delete()
+    .eq('invoice_id', id);
+
+  if (deleteError) throw deleteError;
+
+  // Insert new line items
+  const lineItemsToInsert = calculatedItems.map((item) => ({
+    invoice_id: id,
+    description: item.description,
+    hsn_sac_code: item.hsn_sac_code,
+    quantity: item.quantity,
+    unit: item.unit,
+    rate: item.rate,
+    discount_percent: item.discount_percent,
+    discount_amount: item.discount_amount,
+    cgst_rate: item.cgst_rate,
+    cgst_amount: item.cgst_amount,
+    sgst_rate: item.sgst_rate,
+    sgst_amount: item.sgst_amount,
+    igst_rate: item.igst_rate,
+    igst_amount: item.igst_amount,
+    amount: item.amount,
+    display_order: item.display_order,
+  }));
+
+  const { data: lineItems, error: lineItemsError } = await supabase
+    .from('invoice_line_items')
+    .insert(lineItemsToInsert)
+    .select();
+
+  if (lineItemsError) throw lineItemsError;
+
+  return { ...invoice, line_items: lineItems } as Invoice;
+}
+
 // Update company profile
 export async function updateCompanyProfile(id: string, data: Partial<CompanyProfile>): Promise<void> {
   const updateData = { ...data, updated_at: new Date().toISOString() };
