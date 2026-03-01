@@ -1,51 +1,41 @@
 
 
-# Add Edit Invoice Feature
+# Fix: Edit Invoice Not Pre-filling Line Items and GST Rates
 
-## Overview
-Add the ability to edit existing invoices by reusing the full-screen Create Invoice dialog in "edit mode". An "Edit" option will appear in each invoice's dropdown menu.
+## Root Cause
 
-## Changes
+When the "Edit" button is clicked, the invoice object comes from `useGlobalInvoiceSummary`, which fetches invoices using `select('*')` -- this only retrieves invoice table columns. **Line items are stored in a separate `invoice_line_items` table** and are never fetched in this hook. So `editInvoice.line_items` is `undefined`, causing:
 
-### 1. Add `updateInvoice` service function
-**File: `src/services/invoice.service.ts`**
-- New `updateInvoice(id, input)` function that:
-  - Recalculates line item taxes and totals using the provided GST rates
-  - Updates the invoice record in the `invoices` table
-  - Deletes old line items and inserts new ones (simplest approach for line item edits)
-  - Returns the updated invoice
+1. **Empty line items** -- the dialog sees no line items and shows a blank default row
+2. **GST rates showing 0%** -- the `cgst_rate`/`sgst_rate`/`igst_rate` fields on the invoice record may actually be correct, but the "Custom" preset appears because all rates are 0 when the invoice was saved without explicit rates
 
-### 2. Make CreateInvoiceDialog support edit mode
-**File: `src/components/invoice/CreateInvoiceDialog.tsx`**
-- Add optional `editInvoice?: Invoice` prop
-- When `editInvoice` is provided:
-  - Pre-populate all form fields from the existing invoice data
-  - Change title to "Edit Invoice"
-  - Disable invoice number auto-generation (keep the existing number, allow manual change with duplicate check excluding self)
-  - On submit, call `updateInvoice()` instead of `createInvoice()`
-  - Determine GST preset from existing rates
-- When `editInvoice` is null/undefined, behave exactly as today (create mode)
+## Fix
 
-### 3. Add Edit menu item to invoice list
-**File: `src/components/invoice/InvoiceList.tsx`**
-- Add `onEdit?: (invoice: Invoice) => void` prop
-- Add "Edit" dropdown menu item (with Pencil icon) -- only show for draft/sent invoices (not fully paid or cancelled)
+### File: `src/components/invoice/CreateInvoiceDialog.tsx`
 
-### 4. Wire up in InvoiceManagement page
-**File: `src/pages/system-admin/InvoiceManagement.tsx`**
-- Add `editInvoice` state and `handleEdit` handler
-- Pass `onEdit={handleEdit}` to `InvoiceList`
-- Pass `editInvoice` prop to `CreateInvoiceDialog`
-- Reset edit state when dialog closes
+When entering edit mode, fetch the complete invoice (with line items) from the database using the existing `fetchInvoiceById` service function, instead of relying on the incomplete invoice object from the list.
 
-## File Summary
+**Changes:**
+- Import `fetchInvoiceById` from invoice service
+- In the `useEffect` that handles `editInvoice`, call `fetchInvoiceById(editInvoice.id)` to get the full invoice with line items
+- Use the fetched data (which includes `line_items`) to populate the form
+- Show a brief loading state while fetching
 
-| Action | File |
-|--------|------|
-| Modify | `src/services/invoice.service.ts` -- add `updateInvoice()` function |
-| Modify | `src/components/invoice/CreateInvoiceDialog.tsx` -- accept `editInvoice` prop, pre-fill form |
-| Modify | `src/components/invoice/InvoiceList.tsx` -- add Edit menu item |
-| Modify | `src/pages/system-admin/InvoiceManagement.tsx` -- wire edit flow |
+This ensures all fields -- line items, GST rates, customer details, notes -- are correctly populated when editing.
 
-No database changes required.
+### File: `src/hooks/useGlobalInvoiceSummary.ts` (minor)
+
+No changes needed here since the fix is at the dialog level. The summary hook intentionally skips line items for performance (it only needs totals for the dashboard).
+
+## Technical Detail
+
+```text
+Current flow (broken):
+  InvoiceList -> handleEdit(invoice_without_line_items) -> Dialog shows empty items
+
+Fixed flow:
+  InvoiceList -> handleEdit(invoice) -> Dialog calls fetchInvoiceById(id) -> Gets full invoice with line_items -> Pre-fills correctly
+```
+
+Only one file is modified: `CreateInvoiceDialog.tsx`.
 
