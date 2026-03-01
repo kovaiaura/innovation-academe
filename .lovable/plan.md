@@ -1,35 +1,80 @@
 
 
-# Fix: "Cannot read properties of undefined (reading 'filter')" Crash
+# Add Purchases Tab to Invoice Management
 
-## Root Cause
+## Overview
+Add a "Purchases" tab alongside the existing "Sales" invoices in the Invoice Management page, using a Tabs component. The existing purchase infrastructure (table columns, components) already exists -- we just need to wire it into the main page with simplified fields matching your requirements.
 
-`useGlobalInvoiceSummary()` returns `allInvoices` and `allPayments` which are `undefined` before data finishes loading. The code in `InvoiceManagement.tsx` calls `.filter()` on these values without guarding against `undefined`, which crashes the app.
+## What You'll Get
 
-## Fix
+**Two-tab layout:**
+- **Sales** tab (default) -- current invoice list + summary cards
+- **Purchases** tab -- simplified purchase bill tracker
 
+**Purchases tab columns:**
+- Supplier Name
+- Invoice Number (vendor's bill number)
+- Amount
+- GST (rate/amount shown)
+- TDS Deducted (Yes/No badge)
+- Status (Settled / Pending)
+- Handled By
+- Remark
+- Bill attachment (view/download link)
+
+**The same date filter** will apply to both tabs.
+
+**"Add Purchase" button** appears when on the Purchases tab (reuses existing `CreatePurchaseInvoiceDialog` with minor additions for "handled by" and "remark" fields).
+
+---
+
+## Technical Plan
+
+### 1. Add "handled_by" and "remark" columns to invoices table
+**Database migration** -- two new nullable text columns on the `invoices` table:
+- `handled_by TEXT` -- who handled this purchase
+- `remark TEXT` -- any remark/note
+
+### 2. Update Invoice type
+**File: `src/types/invoice.ts`**
+- Add `handled_by?: string` and `remark?: string` to the `Invoice` interface
+- Add same fields to `CreateInvoiceInput`
+
+### 3. Restructure InvoiceManagement page with Tabs
 **File: `src/pages/system-admin/InvoiceManagement.tsx`**
+- Wrap content in `<Tabs defaultValue="sales">` with two `TabsTrigger`: "Sales" and "Purchases"
+- Sales tab: current summary cards + invoice list (unchanged)
+- Purchases tab: purchase summary (total purchases, settled, pending) + simplified purchase list
+- Action buttons change based on active tab (Create Invoice vs Add Purchase)
+- Date filter shared across both tabs
 
-Add default empty arrays when destructuring from the hook:
+### 4. Create simplified PurchasesTab component
+**New file: `src/components/invoice/PurchasesTab.tsx`**
+- Accepts filtered purchase invoices as prop
+- Table with columns: Supplier Name, Invoice #, Amount, GST, TDS Deducted, Status, Handled By, Remark, Actions
+- Status shown as simple badge: "Settled" (green) or "Pending" (yellow)
+- TDS shown as "Yes"/"No" badge
+- Bill attachment shown as clickable icon/link
+- Row actions: View Bill, Delete
 
-```typescript
-const { allInvoices = [], allPayments = [], loading, refetch } = useGlobalInvoiceSummary();
-```
+### 5. Update CreatePurchaseInvoiceDialog
+**File: `src/components/invoice/CreatePurchaseInvoiceDialog.tsx`**
+- Add "Handled By" text input
+- Add "Remark" textarea
+- Add "TDS Deducted" yes/no toggle
+- Include these fields in the save call
 
-This single change ensures `filteredInvoices` and `filteredPayments` computations never crash, and `GlobalSummaryCards` always receives valid arrays.
+### 6. Update invoice service
+**File: `src/services/invoice.service.ts`**
+- Include `handled_by` and `remark` in `createPurchaseInvoice` function
 
-**File: `src/components/invoice/GlobalSummaryCards.tsx`** (defensive guard)
+### Files Summary
 
-Add fallback defaults in the component as well for safety:
-
-```typescript
-const safeInvoices = invoices || [];
-const safePayments = payments || [];
-```
-
-Use these in the `useMemo` instead of the raw props. This prevents future crashes if the component is used elsewhere without guaranteed arrays.
-
-## Files to Modify
-- `src/pages/system-admin/InvoiceManagement.tsx` (line 34 -- add defaults)
-- `src/components/invoice/GlobalSummaryCards.tsx` (lines 14-15 -- add defensive guards)
-
+| Action | File |
+|--------|------|
+| DB Migration | Add `handled_by`, `remark` columns to `invoices` |
+| Modify | `src/types/invoice.ts` -- add new fields |
+| Modify | `src/pages/system-admin/InvoiceManagement.tsx` -- add Tabs layout |
+| Create | `src/components/invoice/PurchasesTab.tsx` -- simplified purchase list |
+| Modify | `src/components/invoice/CreatePurchaseInvoiceDialog.tsx` -- add handled_by, remark, TDS toggle |
+| Modify | `src/services/invoice.service.ts` -- include new fields in purchase create |
