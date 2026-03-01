@@ -2,14 +2,12 @@ import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
   Select,
@@ -19,8 +17,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { InvoiceLineItemsEditor } from './InvoiceLineItemsEditor';
-import { createInvoice, fetchDefaultCompanyProfile, calculateInvoiceTotals, calculateLineItemTaxes, checkInvoiceNumberExists, GSTRates } from '@/services/invoice.service';
-import type { InvoiceLineItem, CompanyProfile, CreateInvoiceInput } from '@/types/invoice';
+import { createInvoice, updateInvoice, fetchDefaultCompanyProfile, calculateInvoiceTotals, calculateLineItemTaxes, checkInvoiceNumberExists, GSTRates } from '@/services/invoice.service';
+import type { Invoice, InvoiceLineItem, CompanyProfile, CreateInvoiceInput } from '@/types/invoice';
 import { toast } from 'sonner';
 import { Check, AlertCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -32,6 +30,7 @@ interface CreateInvoiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  editInvoice?: Invoice | null;
 }
 
 type GSTPreset = 'gst5' | 'gst12' | 'gst18' | 'gst28' | 'igst5' | 'igst12' | 'igst18' | 'igst28' | 'custom';
@@ -47,11 +46,22 @@ const gstPresetMap: Record<Exclude<GSTPreset, 'custom'>, GSTRates> = {
   igst28: { cgst_rate: 0, sgst_rate: 0, igst_rate: 28 },
 };
 
+function detectGstPreset(rates: GSTRates): GSTPreset {
+  for (const [key, value] of Object.entries(gstPresetMap)) {
+    if (value.cgst_rate === rates.cgst_rate && value.sgst_rate === rates.sgst_rate && value.igst_rate === rates.igst_rate) {
+      return key as GSTPreset;
+    }
+  }
+  return 'custom';
+}
+
 export function CreateInvoiceDialog({
   open,
   onOpenChange,
   onSuccess,
+  editInvoice,
 }: CreateInvoiceDialogProps) {
+  const isEditMode = !!editInvoice;
   const [loading, setLoading] = useState(false);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   const [gstPreset, setGstPreset] = useState<GSTPreset>('igst18');
@@ -67,7 +77,7 @@ export function CreateInvoiceDialog({
   const [invoiceNumberValid, setInvoiceNumberValid] = useState(false);
   const [useAutoNumber, setUseAutoNumber] = useState(true);
   
-  // Bill To (billing address from party)
+  // Bill To
   const [toCompanyName, setToCompanyName] = useState('');
   const [toCompanyAddress, setToCompanyAddress] = useState('');
   const [toCompanyCity, setToCompanyCity] = useState('');
@@ -91,19 +101,64 @@ export function CreateInvoiceDialog({
   useEffect(() => {
     if (open) {
       loadCompanyProfile();
-      const nextNum = getNextNumber();
-      setInvoiceNumber(nextNum);
-      setUseAutoNumber(true);
-      setInvoiceNumberValid(false);
-      setInvoiceNumberError('');
+      if (editInvoice) {
+        // Pre-fill form from existing invoice
+        setInvoiceNumber(editInvoice.invoice_number);
+        setUseAutoNumber(false);
+        setInvoiceNumberValid(true);
+        setInvoiceNumberError('');
+        setToCompanyName(editInvoice.to_company_name || '');
+        setToCompanyAddress(editInvoice.to_company_address || '');
+        setToCompanyCity(editInvoice.to_company_city || '');
+        setToCompanyState(editInvoice.to_company_state || '');
+        setToCompanyStateCode(editInvoice.to_company_state_code || '');
+        setToCompanyPincode(editInvoice.to_company_pincode || '');
+        setToCompanyGstin(editInvoice.to_company_gstin || '');
+        setToCompanyContactPerson(editInvoice.to_company_contact_person || '');
+        setToCompanyPhone(editInvoice.to_company_phone || '');
+        setInvoiceDate(editInvoice.invoice_date || format(new Date(), 'yyyy-MM-dd'));
+        setDueDate(editInvoice.due_date || '');
+        setTerms(editInvoice.terms || 'Custom');
+        setPlaceOfSupply(editInvoice.place_of_supply || 'Tamil Nadu (33)');
+        setNotes(editInvoice.notes || '');
+        
+        // Restore GST rates
+        const rates: GSTRates = {
+          cgst_rate: editInvoice.cgst_rate || 0,
+          sgst_rate: editInvoice.sgst_rate || 0,
+          igst_rate: editInvoice.igst_rate || 0,
+        };
+        setGstRates(rates);
+        setGstPreset(detectGstPreset(rates));
+        
+        // Restore line items
+        if (editInvoice.line_items && editInvoice.line_items.length > 0) {
+          setLineItems(editInvoice.line_items.map(li => ({
+            description: li.description,
+            hsn_sac_code: li.hsn_sac_code,
+            quantity: li.quantity,
+            unit: li.unit,
+            rate: li.rate,
+            discount_percent: li.discount_percent,
+            discount_amount: li.discount_amount,
+            amount: li.amount,
+          })));
+        }
+      } else {
+        const nextNum = getNextNumber();
+        setInvoiceNumber(nextNum);
+        setUseAutoNumber(true);
+        setInvoiceNumberValid(false);
+        setInvoiceNumberError('');
+      }
     }
-  }, [open]);
+  }, [open, editInvoice]);
 
   const loadCompanyProfile = async () => {
     try {
       const profile = await fetchDefaultCompanyProfile();
       setCompanyProfile(profile);
-      if (profile?.default_notes) setNotes(profile.default_notes);
+      if (!isEditMode && profile?.default_notes) setNotes(profile.default_notes);
     } catch (error) {
       console.error('Error loading company profile:', error);
     }
@@ -112,7 +167,6 @@ export function CreateInvoiceDialog({
   const handlePartySelect = (partyId: string) => {
     const party = parties.find(p => p.id === partyId);
     if (!party) return;
-    // Use billing address fields
     setToCompanyName(party.party_name);
     setToCompanyAddress(party.address || '');
     setToCompanyCity(party.city || '');
@@ -158,7 +212,8 @@ export function CreateInvoiceDialog({
       setIsCheckingNumber(true);
       setInvoiceNumberError('');
       const exists = await checkInvoiceNumberExists(invoiceNumber.trim());
-      if (exists) {
+      // In edit mode, allow keeping the same number
+      if (exists && !(isEditMode && invoiceNumber.trim() === editInvoice?.invoice_number)) {
         setInvoiceNumberError('This invoice number is already in use');
         setInvoiceNumberValid(false);
       } else {
@@ -182,12 +237,22 @@ export function CreateInvoiceDialog({
       setLoading(true);
 
       let finalInvoiceNumber = invoiceNumber.trim();
-      if (useAutoNumber) {
-        finalInvoiceNumber = await incrementAndGetNumber();
+      
+      if (isEditMode) {
+        // In edit mode, validate number if changed
+        if (finalInvoiceNumber !== editInvoice?.invoice_number) {
+          if (!finalInvoiceNumber) { toast.error('Please enter invoice number'); return; }
+          const exists = await checkInvoiceNumberExists(finalInvoiceNumber);
+          if (exists) { setInvoiceNumberError('Invoice number already in use'); toast.error('Invoice number already in use'); return; }
+        }
       } else {
-        if (!finalInvoiceNumber) { toast.error('Please enter invoice number'); return; }
-        const exists = await checkInvoiceNumberExists(finalInvoiceNumber);
-        if (exists) { setInvoiceNumberError('Invoice number already in use'); toast.error('Invoice number already in use'); return; }
+        if (useAutoNumber) {
+          finalInvoiceNumber = await incrementAndGetNumber();
+        } else {
+          if (!finalInvoiceNumber) { toast.error('Please enter invoice number'); return; }
+          const exists = await checkInvoiceNumberExists(finalInvoiceNumber);
+          if (exists) { setInvoiceNumberError('Invoice number already in use'); toast.error('Invoice number already in use'); return; }
+        }
       }
 
       const input: CreateInvoiceInput = {
@@ -225,14 +290,19 @@ export function CreateInvoiceDialog({
         igst_rate: gstRates.igst_rate,
       };
 
-      await createInvoice(input);
-      toast.success('Invoice created successfully');
+      if (isEditMode) {
+        await updateInvoice(editInvoice!.id, input);
+        toast.success('Invoice updated successfully');
+      } else {
+        await createInvoice(input);
+        toast.success('Invoice created successfully');
+      }
       onSuccess();
       onOpenChange(false);
       resetForm();
     } catch (error) {
-      console.error('Error creating invoice:', error);
-      toast.error('Failed to create invoice');
+      console.error('Error saving invoice:', error);
+      toast.error(isEditMode ? 'Failed to update invoice' : 'Failed to create invoice');
     } finally {
       setLoading(false);
     }
@@ -264,7 +334,7 @@ export function CreateInvoiceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="!max-w-none !w-full !h-full !translate-x-0 !translate-y-0 !top-0 !left-0 !rounded-none flex flex-col p-0">
         <div className="flex-shrink-0 border-b px-6 py-4">
-          <DialogTitle>Create Invoice</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Edit Invoice' : 'Create Invoice'}</DialogTitle>
         </div>
         
         <div className="flex-1 overflow-y-auto px-6">
@@ -349,11 +419,13 @@ export function CreateInvoiceDialog({
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
                     <Label>Invoice Number</Label>
-                    <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => { setUseAutoNumber(!useAutoNumber); setInvoiceNumberError(''); }}>
-                      {useAutoNumber ? 'Enter manually' : 'Use auto-number'}
-                    </Button>
+                    {!isEditMode && (
+                      <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => { setUseAutoNumber(!useAutoNumber); setInvoiceNumberError(''); }}>
+                        {useAutoNumber ? 'Enter manually' : 'Use auto-number'}
+                      </Button>
+                    )}
                   </div>
-                  {useAutoNumber ? (
+                  {!isEditMode && useAutoNumber ? (
                     <div className="flex items-center gap-2 bg-muted/50 px-3 py-2 rounded-md">
                       <span className="font-mono text-sm">{invoiceNumber}</span>
                       <span className="text-xs text-muted-foreground">(auto-generated on save)</span>
@@ -492,7 +564,7 @@ export function CreateInvoiceDialog({
         <div className="flex justify-end gap-2 px-6 py-4 border-t flex-shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Creating...' : 'Create Invoice'}
+            {loading ? (isEditMode ? 'Updating...' : 'Creating...') : (isEditMode ? 'Update Invoice' : 'Create Invoice')}
           </Button>
         </div>
       </DialogContent>

@@ -35,6 +35,7 @@ import {
   CreditCard,
   History,
   Send,
+  Pencil,
 } from 'lucide-react';
 import type { Invoice, InvoiceStatus } from '@/types/invoice';
 import { format, differenceInDays } from 'date-fns';
@@ -48,6 +49,7 @@ interface InvoiceListProps {
   onDelete: (id: string) => void;
   onRecordPayment?: (invoice: Invoice) => void;
   onViewPayments?: (invoice: Invoice) => void;
+  onEdit?: (invoice: Invoice) => void;
 }
 
 export function InvoiceList({
@@ -59,6 +61,7 @@ export function InvoiceList({
   onDelete,
   onRecordPayment,
   onViewPayments,
+  onEdit,
 }: InvoiceListProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -187,6 +190,11 @@ export function InvoiceList({
                             <DropdownMenuItem onClick={() => onDownload(invoice)}>
                               <Download className="h-4 w-4 mr-2" /> Download PDF
                             </DropdownMenuItem>
+                            {onEdit && (getSimplifiedStatus(invoice) === 'draft' || getSimplifiedStatus(invoice) === 'sent') && (
+                              <DropdownMenuItem onClick={() => onEdit(invoice)}>
+                                <Pencil className="h-4 w-4 mr-2" /> Edit
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
                             {invoice.status !== 'cancelled' && getSimplifiedStatus(invoice) !== 'fully_paid' && onRecordPayment && (
                               <DropdownMenuItem onClick={() => onRecordPayment(invoice)}>
