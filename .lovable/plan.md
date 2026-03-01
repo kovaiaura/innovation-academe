@@ -1,80 +1,93 @@
 
 
-# Add Purchases Tab to Invoice Management
+# Improve Purchase Invoice UI + GST/TDS Fields + Vendor Management
 
 ## Overview
-Add a "Purchases" tab alongside the existing "Sales" invoices in the Invoice Management page, using a Tabs component. The existing purchase infrastructure (table columns, components) already exists -- we just need to wire it into the main page with simplified fields matching your requirements.
-
-## What You'll Get
-
-**Two-tab layout:**
-- **Sales** tab (default) -- current invoice list + summary cards
-- **Purchases** tab -- simplified purchase bill tracker
-
-**Purchases tab columns:**
-- Supplier Name
-- Invoice Number (vendor's bill number)
-- Amount
-- GST (rate/amount shown)
-- TDS Deducted (Yes/No badge)
-- Status (Settled / Pending)
-- Handled By
-- Remark
-- Bill attachment (view/download link)
-
-**The same date filter** will apply to both tabs.
-
-**"Add Purchase" button** appears when on the Purchases tab (reuses existing `CreatePurchaseInvoiceDialog` with minor additions for "handled by" and "remark" fields).
+Three improvements: (1) Upgrade the purchase invoice form to match the sales invoice's full-screen, sectioned layout, (2) add proper GST (IGST/CGST/SGST) and TDS amount fields, (3) create a vendor saving system mirroring the existing Parties/Customers feature.
 
 ---
 
-## Technical Plan
+## 1. Create Vendor Management (mirror of Parties)
 
-### 1. Add "handled_by" and "remark" columns to invoices table
-**Database migration** -- two new nullable text columns on the `invoices` table:
-- `handled_by TEXT` -- who handled this purchase
-- `remark TEXT` -- any remark/note
+### Database
+**New table: `invoice_vendors`** with identical structure to `invoice_parties`:
+- `id`, `vendor_name`, `address`, `city`, `state`, `state_code`, `pincode`, `gstin`, `pan`, `contact_person`, `phone`, `email`, `country`, `created_by`, `created_at`, `updated_at`
+- RLS policy: Same as `invoice_parties` -- admins only (super_admin / system_admin)
 
-### 2. Update Invoice type
-**File: `src/types/invoice.ts`**
-- Add `handled_by?: string` and `remark?: string` to the `Invoice` interface
-- Add same fields to `CreateInvoiceInput`
+### New hook: `src/hooks/useInvoiceVendors.ts`
+- Mirror of `useInvoiceParties.ts` with CRUD operations on `invoice_vendors` table
+- Query key: `['invoice-vendors']`
 
-### 3. Restructure InvoiceManagement page with Tabs
+### New component: `src/components/invoice/InvoiceVendorsManager.tsx`
+- Mirror of `InvoicePartiesManager.tsx` but titled "Manage Vendors / Suppliers"
+- Same form fields: name, address, city, state (with Indian states dropdown), state_code, pincode, GSTIN, PAN, contact person, phone, email, country
+- Table listing with edit/delete actions
+- Accessible from a "Manage Vendors" button in the Purchases tab header
+
+---
+
+## 2. Add TDS Amount and GST Fields to Database
+
+**Migration** -- add `tds_deducted` (boolean, default false) column to `invoices` table. The existing `tds_amount`, `cgst_rate`, `cgst_amount`, `sgst_rate`, `sgst_amount`, `igst_rate`, `igst_amount` columns are already present and will now be utilized for purchases.
+
+---
+
+## 3. Redesign Purchase Invoice Form
+
+**File: `src/components/invoice/CreatePurchaseInvoiceDialog.tsx`** -- Major rewrite
+
+The dialog will be upgraded to match the sales invoice's full-screen layout:
+
+### Layout changes:
+- Full-screen dialog (`max-w-4xl` or similar to sales)
+- Sectioned layout with clear headers and separators
+
+### Vendor selection:
+- Dropdown to select from saved vendors (from `useInvoiceVendors`)
+- Auto-fills vendor name, address, GSTIN, PAN, phone when selected
+- Option to type manually if vendor not saved
+- "Save as Vendor" button to save current details as a new vendor
+
+### New GST section:
+- GST preset selector (same as sales invoice): GST 5%/12%/18%/28%, IGST 5%/12%/18%/28%, Custom
+- When a preset is selected, auto-calculate CGST/SGST or IGST amounts based on `totalAmount`
+- Display calculated amounts: CGST, SGST, or IGST values
+- These values stored in the existing `cgst_rate`, `sgst_rate`, `igst_rate`, `cgst_amount`, `sgst_amount`, `igst_amount` columns
+
+### New TDS section:
+- "TDS Deducted?" toggle (yes/no)
+- When "Yes" is selected, show a TDS Amount input field
+- TDS amount stored in `tds_amount` column, boolean in `tds_deducted`
+
+### Amount calculation:
+- Subtotal (base amount)
+- + GST amounts (CGST+SGST or IGST)
+- = Gross Total
+- - TDS deducted
+- = Net Payable (stored as `total_amount`)
+
+### Service update:
+- `createPurchaseInvoice` in `invoice.service.ts` updated to include: `cgst_rate`, `sgst_rate`, `igst_rate`, `cgst_amount`, `sgst_amount`, `igst_amount`, `tds_deducted`, `tds_amount`
+
+---
+
+## 4. Wire Vendor Manager into Purchases Tab
+
 **File: `src/pages/system-admin/InvoiceManagement.tsx`**
-- Wrap content in `<Tabs defaultValue="sales">` with two `TabsTrigger`: "Sales" and "Purchases"
-- Sales tab: current summary cards + invoice list (unchanged)
-- Purchases tab: purchase summary (total purchases, settled, pending) + simplified purchase list
-- Action buttons change based on active tab (Create Invoice vs Add Purchase)
-- Date filter shared across both tabs
+- Add "Manage Vendors" button next to "Add Purchase" in the Purchases tab header
+- Open `InvoiceVendorsManager` dialog on click
 
-### 4. Create simplified PurchasesTab component
-**New file: `src/components/invoice/PurchasesTab.tsx`**
-- Accepts filtered purchase invoices as prop
-- Table with columns: Supplier Name, Invoice #, Amount, GST, TDS Deducted, Status, Handled By, Remark, Actions
-- Status shown as simple badge: "Settled" (green) or "Pending" (yellow)
-- TDS shown as "Yes"/"No" badge
-- Bill attachment shown as clickable icon/link
-- Row actions: View Bill, Delete
+---
 
-### 5. Update CreatePurchaseInvoiceDialog
-**File: `src/components/invoice/CreatePurchaseInvoiceDialog.tsx`**
-- Add "Handled By" text input
-- Add "Remark" textarea
-- Add "TDS Deducted" yes/no toggle
-- Include these fields in the save call
-
-### 6. Update invoice service
-**File: `src/services/invoice.service.ts`**
-- Include `handled_by` and `remark` in `createPurchaseInvoice` function
-
-### Files Summary
+## Files Summary
 
 | Action | File |
 |--------|------|
-| DB Migration | Add `handled_by`, `remark` columns to `invoices` |
-| Modify | `src/types/invoice.ts` -- add new fields |
-| Modify | `src/pages/system-admin/InvoiceManagement.tsx` -- add Tabs layout |
-| Create | `src/components/invoice/PurchasesTab.tsx` -- simplified purchase list |
-| Modify | `src/components/invoice/CreatePurchaseInvoiceDialog.tsx` -- add handled_by, remark, TDS toggle |
-| Modify | `src/services/invoice.service.ts` -- include new fields in purchase create |
+| DB Migration | Create `invoice_vendors` table + add `tds_deducted` to `invoices` |
+| Create | `src/hooks/useInvoiceVendors.ts` -- CRUD hook for vendors |
+| Create | `src/components/invoice/InvoiceVendorsManager.tsx` -- Vendor management dialog |
+| Rewrite | `src/components/invoice/CreatePurchaseInvoiceDialog.tsx` -- Full-screen form with GST presets, TDS amount, vendor selection |
+| Modify | `src/services/invoice.service.ts` -- Include GST rates/amounts + TDS in purchase creation |
+| Modify | `src/types/invoice.ts` -- Add `tds_deducted` to interface |
+| Modify | `src/pages/system-admin/InvoiceManagement.tsx` -- Add "Manage Vendors" button |
+
