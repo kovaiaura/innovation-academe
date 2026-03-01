@@ -220,6 +220,9 @@ export function CreateInvoiceDialog({
         terms_and_conditions: companyProfile?.terms_and_conditions,
         bank_details: companyProfile?.bank_details,
         line_items: lineItems,
+        cgst_rate: gstRates.cgst_rate,
+        sgst_rate: gstRates.sgst_rate,
+        igst_rate: gstRates.igst_rate,
       };
 
       await createInvoice(input);

@@ -8,10 +8,9 @@ interface InvoicePDFTotalsProps {
 }
 
 export function InvoicePDFTotals({ invoice }: InvoicePDFTotalsProps) {
-  // Determine if this is inter-state (show only IGST) or intra-state (show CGST+SGST)
-  const isInterState = invoice.from_company_state_code !== invoice.to_company_state_code;
-  const hasIGST = (invoice.igst_amount ?? 0) > 0 || (invoice.igst_rate ?? 0) > 0;
-  const hasCGSTSGST = ((invoice.cgst_amount ?? 0) > 0 || (invoice.sgst_amount ?? 0) > 0);
+  // Use actual stored rates to determine what to show
+  const hasIGST = (invoice.igst_rate ?? 0) > 0 || (invoice.igst_amount ?? 0) > 0;
+  const hasCGSTSGST = (invoice.cgst_rate ?? 0) > 0 || (invoice.sgst_rate ?? 0) > 0 || (invoice.cgst_amount ?? 0) > 0 || (invoice.sgst_amount ?? 0) > 0;
 
   return (
     <View>
@@ -30,8 +29,8 @@ export function InvoicePDFTotals({ invoice }: InvoicePDFTotalsProps) {
             </View>
           )}
 
-          {/* Show CGST and SGST only if they have values and not inter-state */}
-          {!isInterState && hasCGSTSGST && (
+          {/* Show CGST and SGST when rates/amounts exist and no IGST */}
+          {hasCGSTSGST && !hasIGST && (
             <>
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>CGST @{invoice.cgst_rate ?? 0}%:</Text>
@@ -48,8 +47,8 @@ export function InvoicePDFTotals({ invoice }: InvoicePDFTotalsProps) {
             </>
           )}
 
-          {/* Show IGST - this is the primary tax display */}
-          {(hasIGST || isInterState) && (
+          {/* Show IGST when rate/amount exists */}
+          {hasIGST && (
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>IGST @{invoice.igst_rate ?? 0}%:</Text>
               <Text style={styles.totalValue}>

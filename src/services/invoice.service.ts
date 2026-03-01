@@ -275,16 +275,19 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice>
     throw new Error('Invoice number is required');
   }
   
-  // Fetch company profile to get GST rates
+  // Fetch company profile for defaults
   const companyProfile = await fetchDefaultCompanyProfile();
+  
+  // Use user-provided GST rates if available, otherwise fall back to company profile defaults
   const gstRates: GSTRates = {
-    cgst_rate: companyProfile?.default_cgst_rate ?? 9,
-    sgst_rate: companyProfile?.default_sgst_rate ?? 9,
-    igst_rate: companyProfile?.default_igst_rate ?? 18,
+    cgst_rate: input.cgst_rate ?? companyProfile?.default_cgst_rate ?? 9,
+    sgst_rate: input.sgst_rate ?? companyProfile?.default_sgst_rate ?? 9,
+    igst_rate: input.igst_rate ?? companyProfile?.default_igst_rate ?? 18,
   };
   
-  // Determine if inter-state
-  const isInterState = input.from_company_state_code !== input.to_company_state_code;
+  // Determine if inter-state based on user-selected rates: if IGST rate > 0, treat as inter-state
+  const isInterState = (gstRates.igst_rate > 0 && gstRates.cgst_rate === 0)
+    || (input.from_company_state_code !== input.to_company_state_code);
   
   // Calculate line items with taxes using configured rates
   const calculatedItems = input.line_items.map((item, index) => ({
