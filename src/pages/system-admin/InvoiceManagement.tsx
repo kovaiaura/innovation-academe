@@ -31,7 +31,7 @@ export default function InvoiceManagement() {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
 
-  const { allInvoices, allPayments, loading, refetch } = useGlobalInvoiceSummary();
+  const { allInvoices = [], allPayments = [], loading, refetch } = useGlobalInvoiceSummary();
   const { addPayment } = usePaymentsForInvoice(selectedInvoice?.id || null);
 
   // Filter invoices by type and date range
