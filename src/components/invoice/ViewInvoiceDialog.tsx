@@ -64,7 +64,8 @@ export function ViewInvoiceDialog({
 
   // Use loaded invoice for display, fallback to initial
   const displayInvoice = invoice || initialInvoice;
-  const isInterState = displayInvoice.from_company_state_code !== displayInvoice.to_company_state_code;
+  // Use stored rates to determine tax mode (not state code comparison)
+  const isInterState = (displayInvoice.igst_rate ?? 0) > 0 && (displayInvoice.cgst_rate ?? 0) === 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
