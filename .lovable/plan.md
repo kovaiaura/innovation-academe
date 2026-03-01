@@ -1,81 +1,28 @@
 
+# Make Create Invoice Dialog Full-Screen
 
-# Invoice System Improvements
+## Problem
+The current dialog uses `max-w-4xl max-h-[90vh]` which constrains it, making scrolling difficult and buttons overflowing on smaller screens. The user wants a full-screen layout for better usability.
 
-## 1. Party Management - Add Country, State Auto-suggest, Billing/Shipping Address
+## Solution
+Convert the `DialogContent` from a centered modal to a full-screen overlay page. This gives maximum space for all sections (Bill To, Invoice Details, GST, Line Items, Totals, Notes) and eliminates scroll/overflow issues.
 
-### Database Migration
-Add new columns to `invoice_parties` table:
-- `country` (text, default 'India')
-- `billing_address`, `billing_city`, `billing_state`, `billing_state_code`, `billing_pincode` -- rename existing address fields to be billing
-- `shipping_address`, `shipping_city`, `shipping_state`, `shipping_state_code`, `shipping_pincode` -- new shipping fields
-- `shipping_same_as_billing` (boolean, default true)
+## Changes
 
-Since the existing `address`, `city`, `state` etc. columns already serve as billing address, we'll add shipping columns and a `country` column. The existing columns will remain as billing address fields (no rename needed to avoid breaking changes).
+### File: `src/components/invoice/CreateInvoiceDialog.tsx`
+- Change `DialogContent` classes from `max-w-4xl max-h-[90vh]` to full-screen: `w-screen h-screen max-w-none m-0 rounded-none translate-x-0 translate-y-0 top-0 left-0`
+- Remove the `translate-x-[-50%] translate-y-[-50%]` centering (override with `inset-0`)
+- Keep the same internal structure: sticky header, scrollable body, sticky footer with buttons
+- The `ScrollArea` will now use the full viewport height minus header and footer
+- Footer buttons (Cancel / Create Invoice) remain pinned at bottom with `border-t`
 
-### State Auto-suggest
-Create a comprehensive Indian states/UTs list with codes as a constant (all 36 states/UTs). When user selects a state from a searchable dropdown, auto-fill the state code. Country defaults to "India".
-
-### Files Changed:
-- **Migration**: Add `country`, `shipping_*` columns to `invoice_parties`
-- **`src/hooks/useInvoiceParties.ts`**: Update `InvoiceParty` interface with new fields
-- **`src/components/invoice/InvoicePartiesManager.tsx`**: 
-  - Add Country field (default "India")
-  - Replace State text input with searchable Select of all Indian states (auto-fills state code)
-  - Add "Shipping Address" section with "Same as Billing" checkbox
-  - Proper 2-column grid layout
-
-## 2. Fix Create Invoice Dialog UI
-
-### Layout fixes in `CreateInvoiceDialog.tsx`:
-- Add proper padding inside ScrollArea (`px-6` instead of relying on DialogContent padding)
-- Ensure footer buttons stay inside the dialog box (use `DialogFooter` properly within content flow, not absolute)
-- Fix side spacing consistency across all sections
-- When party is selected, show only billing address fields in "Bill To"
-- Use the comprehensive Indian states list (same as party manager)
-
-## 3. Simplified Record Payment Dialog
-
-### Simplify `RecordPaymentDialog.tsx`:
-- Primary fields: **Amount Received** and **TDS Deducted** (both numeric inputs, prominent)
-- Payment Date, Payment Mode, Reference remain but secondary
-- Remove TDS certificate, quarter fields (keep TDS amount only for simplicity)
-- Show clear summary: Invoice Total, Already Paid, TDS Already Deducted, Balance Due
-
-## 4. Fix Status Logic (Amount Received + TDS = Fully Paid)
-
-### Update balance calculation across the app:
-The core issue: if bill is 700, amount received is 630, and TDS deducted is 70, then 630 + 70 = 700 = Fully Paid.
-
-**`InvoiceList.tsx`** -- Update `getSimplifiedStatus()`:
+### Technical Detail
 ```text
-balance = total_amount - (amount_paid + tds_total)
+DialogContent className changes:
+FROM: "max-w-4xl max-h-[90vh] flex flex-col"
+TO:   "!max-w-none !w-full !h-full !translate-x-0 !translate-y-0 !top-0 !left-0 !rounded-none flex flex-col"
 ```
-Where `tds_total` is sum of all TDS amounts from payments.
 
-**`payment.service.ts`** -- After creating a payment, update the invoice's `amount_paid` and `tds_amount`:
-- Sum all payments' `amount` into `invoices.amount_paid`
-- Sum all payments' `tds_amount` into `invoices.tds_amount`
-- If `amount_paid + tds_amount >= total_amount`, auto-set status to `paid`
-- If `amount_paid + tds_amount > 0 but < total_amount`, status stays as-is (user sees "Partially Paid" badge)
+The inner content area will use `max-w-4xl mx-auto` to keep the form at a readable width while the background fills the screen. This gives proper scrolling across the entire page.
 
-This will be done via a **database trigger** on the `payments` table that automatically updates the parent invoice's `amount_paid`, `tds_amount`, and `status` fields after any INSERT/UPDATE/DELETE on payments.
-
-### Status Display:
-- **Draft** -- newly created
-- **Sent** -- marked as sent
-- **Partially Paid** -- amount_paid + tds > 0 but < total_amount
-- **Fully Paid** -- amount_paid + tds >= total_amount
-
-## Technical Summary
-
-| Action | File |
-|--------|------|
-| Migration | Add columns to `invoice_parties`, create payment trigger |
-| Modify | `src/hooks/useInvoiceParties.ts` -- add shipping/country fields |
-| Modify | `src/components/invoice/InvoicePartiesManager.tsx` -- billing/shipping, state auto-suggest |
-| Modify | `src/components/invoice/CreateInvoiceDialog.tsx` -- UI fixes, full states list, billing address |
-| Modify | `src/components/invoice/InvoiceList.tsx` -- fix balance = total - (paid + tds) |
-| Modify | `src/components/invoice/RecordPaymentDialog.tsx` -- simplify to amount + tds |
-| New | `src/constants/indianStates.ts` -- complete list of 36 states/UTs with codes |
-
+No database changes required. Only one file modified.
