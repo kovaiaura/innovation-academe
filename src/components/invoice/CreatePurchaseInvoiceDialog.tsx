@@ -91,6 +91,10 @@ export function CreatePurchaseInvoiceDialog({
   const [cgstRate, setCgstRate] = useState(0);
   const [sgstRate, setSgstRate] = useState(0);
   const [igstRate, setIgstRate] = useState(0);
+  const [cgstAmountManual, setCgstAmountManual] = useState('');
+  const [sgstAmountManual, setSgstAmountManual] = useState('');
+  const [igstAmountManual, setIgstAmountManual] = useState('');
+  const [gstAmountsManuallyEdited, setGstAmountsManuallyEdited] = useState(false);
   
   // TDS
   const [tdsDeducted, setTdsDeducted] = useState(false);
@@ -105,11 +109,11 @@ export function CreatePurchaseInvoiceDialog({
   const [remark, setRemark] = useState('');
   const [notes, setNotes] = useState('');
 
-  // Calculated amounts
+  // Calculated amounts - use manual values if edited, otherwise auto-calculate from rates
   const subtotal = parseFloat(subtotalAmount) || 0;
-  const cgstAmount = (subtotal * cgstRate) / 100;
-  const sgstAmount = (subtotal * sgstRate) / 100;
-  const igstAmount = (subtotal * igstRate) / 100;
+  const cgstAmount = gstAmountsManuallyEdited && cgstAmountManual !== '' ? parseFloat(cgstAmountManual) || 0 : (subtotal * cgstRate) / 100;
+  const sgstAmount = gstAmountsManuallyEdited && sgstAmountManual !== '' ? parseFloat(sgstAmountManual) || 0 : (subtotal * sgstRate) / 100;
+  const igstAmount = gstAmountsManuallyEdited && igstAmountManual !== '' ? parseFloat(igstAmountManual) || 0 : (subtotal * igstRate) / 100;
   const grossTotal = subtotal + cgstAmount + sgstAmount + igstAmount;
   const tdsDeductedAmount = parseFloat(tdsAmount) || 0;
   const netPayable = grossTotal - tdsDeductedAmount;
@@ -171,6 +175,10 @@ export function CreatePurchaseInvoiceDialog({
 
   const handleGstPresetChange = (preset: string) => {
     setGstPreset(preset);
+    setGstAmountsManuallyEdited(false);
+    setCgstAmountManual('');
+    setSgstAmountManual('');
+    setIgstAmountManual('');
     const found = GST_PRESETS.find(p => p.value === preset);
     if (found && preset !== 'custom') {
       setCgstRate(found.cgst);
@@ -323,7 +331,7 @@ export function CreatePurchaseInvoiceDialog({
     setBillDate(format(new Date(), 'yyyy-MM-dd'));
     setBillReceiptDate(format(new Date(), 'yyyy-MM-dd'));
     setDueDate(''); setSubtotalAmount(''); setExpenseCategory('');
-    setGstPreset('none'); setCgstRate(0); setSgstRate(0); setIgstRate(0);
+    setGstPreset('none'); setCgstRate(0); setSgstRate(0); setIgstRate(0); setCgstAmountManual(''); setSgstAmountManual(''); setIgstAmountManual(''); setGstAmountsManuallyEdited(false);
     setTdsDeducted(false); setTdsAmount('');
     setAttachmentFile(null); setAttachmentPreview(null);
     setHandledBy(''); setRemark(''); setNotes('');
@@ -513,25 +521,50 @@ export function CreatePurchaseInvoiceDialog({
                   </div>
                 )}
 
-                {/* GST Breakdown */}
-                {subtotal > 0 && (cgstRate > 0 || sgstRate > 0 || igstRate > 0) && (
-                  <div className="bg-muted/50 rounded-lg p-3 space-y-1.5 text-sm">
-                    {cgstRate > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">CGST @ {cgstRate}%</span>
-                        <span>₹{cgstAmount.toFixed(2)}</span>
+                {/* GST Breakdown - editable amount fields */}
+                {(cgstRate > 0 || sgstRate > 0 || igstRate > 0 || gstPreset === 'custom') && (
+                  <div className="bg-muted/50 rounded-lg p-3 space-y-2.5">
+                    <p className="text-xs text-muted-foreground font-medium">GST Values (auto-calculated, or enter manually)</p>
+                    {(cgstRate > 0 || gstPreset === 'custom') && (
+                      <div className="flex items-center justify-between gap-3">
+                        <Label className="text-xs text-muted-foreground whitespace-nowrap w-24">CGST {cgstRate > 0 ? `@ ${cgstRate}%` : ''}</Label>
+                        <Input
+                          type="number"
+                          value={gstAmountsManuallyEdited && cgstAmountManual !== '' ? cgstAmountManual : cgstAmount > 0 ? cgstAmount.toFixed(2) : ''}
+                          onChange={(e) => { setGstAmountsManuallyEdited(true); setCgstAmountManual(e.target.value); }}
+                          placeholder={subtotal > 0 && cgstRate > 0 ? `₹${((subtotal * cgstRate) / 100).toFixed(2)}` : '₹ 0.00'}
+                          className="h-8 text-sm"
+                          min="0"
+                          step="0.01"
+                        />
                       </div>
                     )}
-                    {sgstRate > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">SGST @ {sgstRate}%</span>
-                        <span>₹{sgstAmount.toFixed(2)}</span>
+                    {(sgstRate > 0 || gstPreset === 'custom') && (
+                      <div className="flex items-center justify-between gap-3">
+                        <Label className="text-xs text-muted-foreground whitespace-nowrap w-24">SGST {sgstRate > 0 ? `@ ${sgstRate}%` : ''}</Label>
+                        <Input
+                          type="number"
+                          value={gstAmountsManuallyEdited && sgstAmountManual !== '' ? sgstAmountManual : sgstAmount > 0 ? sgstAmount.toFixed(2) : ''}
+                          onChange={(e) => { setGstAmountsManuallyEdited(true); setSgstAmountManual(e.target.value); }}
+                          placeholder={subtotal > 0 && sgstRate > 0 ? `₹${((subtotal * sgstRate) / 100).toFixed(2)}` : '₹ 0.00'}
+                          className="h-8 text-sm"
+                          min="0"
+                          step="0.01"
+                        />
                       </div>
                     )}
-                    {igstRate > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">IGST @ {igstRate}%</span>
-                        <span>₹{igstAmount.toFixed(2)}</span>
+                    {(igstRate > 0 || gstPreset === 'custom') && (
+                      <div className="flex items-center justify-between gap-3">
+                        <Label className="text-xs text-muted-foreground whitespace-nowrap w-24">IGST {igstRate > 0 ? `@ ${igstRate}%` : ''}</Label>
+                        <Input
+                          type="number"
+                          value={gstAmountsManuallyEdited && igstAmountManual !== '' ? igstAmountManual : igstAmount > 0 ? igstAmount.toFixed(2) : ''}
+                          onChange={(e) => { setGstAmountsManuallyEdited(true); setIgstAmountManual(e.target.value); }}
+                          placeholder={subtotal > 0 && igstRate > 0 ? `₹${((subtotal * igstRate) / 100).toFixed(2)}` : '₹ 0.00'}
+                          className="h-8 text-sm"
+                          min="0"
+                          step="0.01"
+                        />
                       </div>
                     )}
                   </div>
