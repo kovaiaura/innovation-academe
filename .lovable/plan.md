@@ -1,28 +1,60 @@
 
-# Make Create Invoice Dialog Full-Screen
 
-## Problem
-The current dialog uses `max-w-4xl max-h-[90vh]` which constrains it, making scrolling difficult and buttons overflowing on smaller screens. The user wants a full-screen layout for better usability.
+# Fix Invoice PDF: GST Rates, Logo, and Template Matching
 
-## Solution
-Convert the `DialogContent` from a centered modal to a full-screen overlay page. This gives maximum space for all sections (Bill To, Invoice Details, GST, Line Items, Totals, Notes) and eliminates scroll/overflow issues.
+## Problems Identified
+
+1. **GST rates not applied**: The `createInvoice()` function in `invoice.service.ts` ignores the user's selected GST preset. It always fetches company profile defaults. So even if the user picks "18% GST", the saved invoice may have 0% IGST or wrong rates.
+
+2. **Logo missing in PDF**: The `ViewInvoiceDialog` fetches `profile.logo_url` from `company_profiles`, which exists in the schema. The logo may not be configured -- need to also check `report_logo_url` as a fallback since that's where Settings > Report uploads logos.
+
+3. **PDF template doesn't match the sample**: The user wants the downloaded PDF to match the Zoho-style layout from their sample (company info on left, invoice details box on right, Bill To below, line items table, CGST/SGST or IGST breakdown, bank details, terms, signature).
 
 ## Changes
 
-### File: `src/components/invoice/CreateInvoiceDialog.tsx`
-- Change `DialogContent` classes from `max-w-4xl max-h-[90vh]` to full-screen: `w-screen h-screen max-w-none m-0 rounded-none translate-x-0 translate-y-0 top-0 left-0`
-- Remove the `translate-x-[-50%] translate-y-[-50%]` centering (override with `inset-0`)
-- Keep the same internal structure: sticky header, scrollable body, sticky footer with buttons
-- The `ScrollArea` will now use the full viewport height minus header and footer
-- Footer buttons (Cancel / Create Invoice) remain pinned at bottom with `border-t`
+### 1. Pass GST rates from dialog to service (`CreateInvoiceInput` + `createInvoice`)
 
-### Technical Detail
-```text
-DialogContent className changes:
-FROM: "max-w-4xl max-h-[90vh] flex flex-col"
-TO:   "!max-w-none !w-full !h-full !translate-x-0 !translate-y-0 !top-0 !left-0 !rounded-none flex flex-col"
-```
+**File: `src/types/invoice.ts`**
+- Add optional GST rate fields to `CreateInvoiceInput`: `cgst_rate`, `sgst_rate`, `igst_rate`
 
-The inner content area will use `max-w-4xl mx-auto` to keep the form at a readable width while the background fills the screen. This gives proper scrolling across the entire page.
+**File: `src/services/invoice.service.ts`**
+- In `createInvoice()`, use `input.cgst_rate / sgst_rate / igst_rate` if provided, falling back to company profile defaults
+- Use the user-selected rates to determine `isInterState` (if `igst_rate > 0`, it's inter-state)
 
-No database changes required. Only one file modified.
+**File: `src/components/invoice/CreateInvoiceDialog.tsx`**
+- Pass `cgst_rate`, `sgst_rate`, `igst_rate` from the dialog's `gstRates` state into the `CreateInvoiceInput`
+
+### 2. Fix logo in PDF
+
+**File: `src/components/invoice/ViewInvoiceDialog.tsx`**
+- When fetching company profile, check `profile.logo_url` first, then fallback to `profile.report_logo_url` -- both exist in the `company_profiles` table
+- This ensures the logo appears in the PDF if either is configured
+
+### 3. Refine PDF totals to show correct GST breakdown
+
+**File: `src/components/invoice/pdf/InvoicePDFTotals.tsx`**
+- Fix the GST display logic: if the invoice has `cgst_rate > 0` and `sgst_rate > 0`, show CGST + SGST rows. If `igst_rate > 0`, show IGST row. Don't rely solely on `isInterState` state code comparison -- use the actual stored rates.
+- Add "Balance Due" row always (matching the sample template)
+
+### 4. Minor PDF template refinements to match sample
+
+**File: `src/components/invoice/pdf/InvoicePDFHeader.tsx`**
+- Ensure phone and email are shown in From company section (already present)
+
+**File: `src/components/invoice/pdf/InvoicePDFFooter.tsx`**  
+- Add "Account Details" section title (rename from "Bank Details" to match sample)
+- Ensure GST number is shown in account details section
+
+No database changes required. These are all code-level fixes.
+
+## File Summary
+
+| Action | File | Change |
+|--------|------|--------|
+| Modify | `src/types/invoice.ts` | Add GST rate fields to `CreateInvoiceInput` |
+| Modify | `src/services/invoice.service.ts` | Use user-provided GST rates instead of profile defaults |
+| Modify | `src/components/invoice/CreateInvoiceDialog.tsx` | Pass GST rates in input |
+| Modify | `src/components/invoice/ViewInvoiceDialog.tsx` | Fallback to `report_logo_url` for logo |
+| Modify | `src/components/invoice/pdf/InvoicePDFTotals.tsx` | Fix GST display logic based on actual rates |
+| Modify | `src/components/invoice/pdf/InvoicePDFFooter.tsx` | Rename bank details heading, show GSTIN |
+
