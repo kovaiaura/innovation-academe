@@ -4,7 +4,7 @@ import { Plus, Download, Users } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { InvoiceList } from '@/components/invoice/InvoiceList';
 import { GlobalSummaryCards } from '@/components/invoice/GlobalSummaryCards';
-import { InvoiceMonthFilter } from '@/components/invoice/InvoiceMonthFilter';
+import { InvoiceDateFilter, type DateRange } from '@/components/invoice/InvoiceDateFilter';
 import { CreateInvoiceDialog } from '@/components/invoice/CreateInvoiceDialog';
 import { ViewInvoiceDialog } from '@/components/invoice/ViewInvoiceDialog';
 import { RecordPaymentDialog } from '@/components/invoice/RecordPaymentDialog';
@@ -19,7 +19,7 @@ import type { CreatePaymentInput } from '@/types/payment';
 import { toast } from 'sonner';
 
 export default function InvoiceManagement() {
-  const [selectedMonth, setSelectedMonth] = useState<Date | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange>({ from: null, to: null });
   
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -31,24 +31,36 @@ export default function InvoiceManagement() {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
 
-  const { summary, allInvoices, loading, refetch } = useGlobalInvoiceSummary();
+  const { allInvoices, allPayments, loading, refetch } = useGlobalInvoiceSummary();
   const { addPayment } = usePaymentsForInvoice(selectedInvoice?.id || null);
 
-  // Filter invoices
+  // Filter invoices by type and date range
   const filteredInvoices = useMemo(() => {
     let invoices = allInvoices.filter(inv => 
       inv.invoice_type === 'sales' || inv.invoice_type === 'institution'
     );
     
-    if (selectedMonth) {
-      invoices = invoices.filter(inv => {
-        const invDate = new Date(inv.invoice_date);
-        return invDate.getMonth() === selectedMonth.getMonth() && invDate.getFullYear() === selectedMonth.getFullYear();
-      });
+    if (dateRange.from) {
+      invoices = invoices.filter(inv => new Date(inv.invoice_date) >= dateRange.from!);
+    }
+    if (dateRange.to) {
+      invoices = invoices.filter(inv => new Date(inv.invoice_date) <= dateRange.to!);
     }
     
     return invoices;
-  }, [allInvoices, selectedMonth]);
+  }, [allInvoices, dateRange]);
+
+  // Filter payments by date range too
+  const filteredPayments = useMemo(() => {
+    let payments = allPayments || [];
+    if (dateRange.from) {
+      payments = payments.filter(p => new Date(p.payment_date) >= dateRange.from!);
+    }
+    if (dateRange.to) {
+      payments = payments.filter(p => new Date(p.payment_date) <= dateRange.to!);
+    }
+    return payments;
+  }, [allPayments, dateRange]);
 
   const handleView = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -128,13 +140,11 @@ export default function InvoiceManagement() {
           </div>
         </div>
 
-        <GlobalSummaryCards summary={summary} loading={loading} />
+        <GlobalSummaryCards invoices={filteredInvoices} payments={filteredPayments} loading={loading} />
 
         <div className="flex items-center justify-between flex-wrap gap-4">
-          <InvoiceMonthFilter selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} />
-          {selectedMonth && (
-            <p className="text-sm text-muted-foreground">{filteredInvoices.length} invoices in selected period</p>
-          )}
+          <InvoiceDateFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
+          <p className="text-sm text-muted-foreground">{filteredInvoices.length} invoices</p>
         </div>
 
         <InvoiceList

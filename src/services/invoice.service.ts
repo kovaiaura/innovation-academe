@@ -408,6 +408,13 @@ export async function updateInvoiceStatus(id: string, status: InvoiceStatus, pai
 
 // Delete invoice (any state) with cascade handling
 export async function deleteInvoice(id: string): Promise<void> {
+  // Fetch the invoice first to get its number for counter adjustment
+  const { data: invoiceToDelete } = await supabase
+    .from('invoices')
+    .select('invoice_number')
+    .eq('id', id)
+    .single();
+
   // Delete related payments first (has ON DELETE CASCADE but delete explicitly to be safe)
   const { error: paymentsError } = await supabase
     .from('payments')
@@ -465,6 +472,33 @@ export async function deleteInvoice(id: string): Promise<void> {
     .eq('id', id);
   
   if (error) throw error;
+
+  // If this was the latest invoice, decrement the counter so the number gets reused
+  if (invoiceToDelete?.invoice_number) {
+    try {
+      const { data: settings } = await supabase
+        .from('invoice_settings')
+        .select('id, prefix, suffix, current_number, number_padding')
+        .limit(1)
+        .single();
+
+      if (settings) {
+        // Reconstruct what the current highest invoice number would be
+        const currentFormatted = (settings.prefix || '') + 
+          String(settings.current_number).padStart(settings.number_padding || 3, '0') + 
+          (settings.suffix || '');
+        
+        if (invoiceToDelete.invoice_number === currentFormatted) {
+          await supabase
+            .from('invoice_settings')
+            .update({ current_number: settings.current_number - 1, updated_at: new Date().toISOString() })
+            .eq('id', settings.id);
+        }
+      }
+    } catch (e) {
+      console.error('Error adjusting invoice counter after deletion:', e);
+    }
+  }
 }
 
 // Create purchase invoice (simplified for vendor bills)
