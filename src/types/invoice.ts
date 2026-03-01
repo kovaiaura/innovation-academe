@@ -230,6 +230,7 @@ export interface CreateInvoiceInput {
   handled_by?: string;
   remark?: string;
   tds_deducted?: boolean;
+  tds_amount?: number;
   line_items: Omit<InvoiceLineItem, 'id' | 'invoice_id'>[];
   // GST rates explicitly selected by user
   cgst_rate?: number;

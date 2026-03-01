@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Download, Users } from 'lucide-react';
+import { Plus, Download, Users, Store } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InvoiceList } from '@/components/invoice/InvoiceList';
@@ -14,6 +14,7 @@ import { RecordPaymentDialog } from '@/components/invoice/RecordPaymentDialog';
 import { PaymentHistoryDialog } from '@/components/invoice/PaymentHistoryDialog';
 import { InvoiceExportDialog } from '@/components/invoice/InvoiceExportDialog';
 import { InvoicePartiesManager } from '@/components/invoice/InvoicePartiesManager';
+import { InvoiceVendorsManager } from '@/components/invoice/InvoiceVendorsManager';
 import { useGlobalInvoiceSummary } from '@/hooks/useGlobalInvoiceSummary';
 import { usePaymentsForInvoice } from '@/hooks/usePayments';
 import { updateInvoiceStatus, deleteInvoice } from '@/services/invoice.service';
@@ -32,6 +33,7 @@ export default function InvoiceManagement() {
   const [paymentHistoryDialogOpen, setPaymentHistoryDialogOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [partiesDialogOpen, setPartiesDialogOpen] = useState(false);
+  const [vendorsDialogOpen, setVendorsDialogOpen] = useState(false);
   
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
@@ -147,20 +149,27 @@ export default function InvoiceManagement() {
             <p className="text-muted-foreground">Create, manage and track invoices & purchases</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setPartiesDialogOpen(true)}>
-              <Users className="h-4 w-4 mr-2" /> Parties
-            </Button>
             <Button variant="outline" onClick={() => setExportDialogOpen(true)}>
               <Download className="h-4 w-4 mr-2" /> Export
             </Button>
             {activeTab === 'sales' ? (
-              <Button onClick={() => { setEditingInvoice(null); setCreateDialogOpen(true); }}>
-                <Plus className="h-4 w-4 mr-2" /> Create Invoice
-              </Button>
+              <>
+                <Button variant="outline" onClick={() => setPartiesDialogOpen(true)}>
+                  <Users className="h-4 w-4 mr-2" /> Parties
+                </Button>
+                <Button onClick={() => { setEditingInvoice(null); setCreateDialogOpen(true); }}>
+                  <Plus className="h-4 w-4 mr-2" /> Create Invoice
+                </Button>
+              </>
             ) : (
-              <Button onClick={() => setPurchaseDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" /> Add Purchase
-              </Button>
+              <>
+                <Button variant="outline" onClick={() => setVendorsDialogOpen(true)}>
+                  <Store className="h-4 w-4 mr-2" /> Vendors
+                </Button>
+                <Button onClick={() => setPurchaseDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" /> Add Purchase
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -247,6 +256,11 @@ export default function InvoiceManagement() {
         <InvoicePartiesManager
           open={partiesDialogOpen}
           onOpenChange={setPartiesDialogOpen}
+        />
+
+        <InvoiceVendorsManager
+          open={vendorsDialogOpen}
+          onOpenChange={setVendorsDialogOpen}
         />
       </div>
     </Layout>
