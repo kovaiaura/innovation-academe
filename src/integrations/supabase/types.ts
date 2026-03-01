@@ -3732,6 +3732,7 @@ export type Database = {
           from_company_state: string | null
           from_company_state_code: string | null
           from_company_website: string | null
+          handled_by: string | null
           id: string
           igst_amount: number | null
           igst_rate: number | null
@@ -3747,6 +3748,7 @@ export type Database = {
           payment_status: string | null
           place_of_supply: string | null
           reference_number: string | null
+          remark: string | null
           sent_date: string | null
           sgst_amount: number | null
           sgst_rate: number | null
@@ -3813,6 +3815,7 @@ export type Database = {
           from_company_state?: string | null
           from_company_state_code?: string | null
           from_company_website?: string | null
+          handled_by?: string | null
           id?: string
           igst_amount?: number | null
           igst_rate?: number | null
@@ -3828,6 +3831,7 @@ export type Database = {
           payment_status?: string | null
           place_of_supply?: string | null
           reference_number?: string | null
+          remark?: string | null
           sent_date?: string | null
           sgst_amount?: number | null
           sgst_rate?: number | null
@@ -3894,6 +3898,7 @@ export type Database = {
           from_company_state?: string | null
           from_company_state_code?: string | null
           from_company_website?: string | null
+          handled_by?: string | null
           id?: string
           igst_amount?: number | null
           igst_rate?: number | null
@@ -3909,6 +3914,7 @@ export type Database = {
           payment_status?: string | null
           place_of_supply?: string | null
           reference_number?: string | null
+          remark?: string | null
           sent_date?: string | null
           sgst_amount?: number | null
           sgst_rate?: number | null

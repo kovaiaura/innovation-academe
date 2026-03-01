@@ -549,6 +549,8 @@ export async function createPurchaseInvoice(input: CreateInvoiceInput): Promise<
       vendor_pan: input.vendor_pan,
       bill_receipt_date: input.bill_receipt_date,
       expense_category: input.expense_category,
+      handled_by: input.handled_by,
+      remark: input.remark,
     }])
     .select()
     .single();
