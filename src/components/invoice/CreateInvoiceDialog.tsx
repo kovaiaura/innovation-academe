@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { InvoiceLineItemsEditor } from './InvoiceLineItemsEditor';
-import { createInvoice, updateInvoice, fetchDefaultCompanyProfile, calculateInvoiceTotals, calculateLineItemTaxes, checkInvoiceNumberExists, GSTRates } from '@/services/invoice.service';
+import { createInvoice, updateInvoice, fetchInvoiceById, fetchDefaultCompanyProfile, calculateInvoiceTotals, calculateLineItemTaxes, checkInvoiceNumberExists, GSTRates } from '@/services/invoice.service';
 import type { Invoice, InvoiceLineItem, CompanyProfile, CreateInvoiceInput } from '@/types/invoice';
 import { toast } from 'sonner';
 import { Check, AlertCircle, Loader2 } from 'lucide-react';
@@ -63,6 +63,7 @@ export function CreateInvoiceDialog({
 }: CreateInvoiceDialogProps) {
   const isEditMode = !!editInvoice;
   const [loading, setLoading] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   const [gstPreset, setGstPreset] = useState<GSTPreset>('igst18');
   const [gstRates, setGstRates] = useState<GSTRates>({ cgst_rate: 0, sgst_rate: 0, igst_rate: 18 });
@@ -98,52 +99,66 @@ export function CreateInvoiceDialog({
     { description: '', hsn_sac_code: '998311', quantity: 1, unit: 'Nos', rate: 0, amount: 0 },
   ]);
 
+  const populateFromInvoice = (inv: Invoice) => {
+    setInvoiceNumber(inv.invoice_number);
+    setUseAutoNumber(false);
+    setInvoiceNumberValid(true);
+    setInvoiceNumberError('');
+    setToCompanyName(inv.to_company_name || '');
+    setToCompanyAddress(inv.to_company_address || '');
+    setToCompanyCity(inv.to_company_city || '');
+    setToCompanyState(inv.to_company_state || '');
+    setToCompanyStateCode(inv.to_company_state_code || '');
+    setToCompanyPincode(inv.to_company_pincode || '');
+    setToCompanyGstin(inv.to_company_gstin || '');
+    setToCompanyContactPerson(inv.to_company_contact_person || '');
+    setToCompanyPhone(inv.to_company_phone || '');
+    setInvoiceDate(inv.invoice_date || format(new Date(), 'yyyy-MM-dd'));
+    setDueDate(inv.due_date || '');
+    setTerms(inv.terms || 'Custom');
+    setPlaceOfSupply(inv.place_of_supply || 'Tamil Nadu (33)');
+    setNotes(inv.notes || '');
+
+    const rates: GSTRates = {
+      cgst_rate: inv.cgst_rate || 0,
+      sgst_rate: inv.sgst_rate || 0,
+      igst_rate: inv.igst_rate || 0,
+    };
+    setGstRates(rates);
+    setGstPreset(detectGstPreset(rates));
+
+    if (inv.line_items && inv.line_items.length > 0) {
+      setLineItems(inv.line_items.map(li => ({
+        description: li.description,
+        hsn_sac_code: li.hsn_sac_code,
+        quantity: li.quantity,
+        unit: li.unit,
+        rate: li.rate,
+        discount_percent: li.discount_percent,
+        discount_amount: li.discount_amount,
+        amount: li.amount,
+      })));
+    }
+  };
+
   useEffect(() => {
     if (open) {
       loadCompanyProfile();
       if (editInvoice) {
-        // Pre-fill form from existing invoice
-        setInvoiceNumber(editInvoice.invoice_number);
-        setUseAutoNumber(false);
-        setInvoiceNumberValid(true);
-        setInvoiceNumberError('');
-        setToCompanyName(editInvoice.to_company_name || '');
-        setToCompanyAddress(editInvoice.to_company_address || '');
-        setToCompanyCity(editInvoice.to_company_city || '');
-        setToCompanyState(editInvoice.to_company_state || '');
-        setToCompanyStateCode(editInvoice.to_company_state_code || '');
-        setToCompanyPincode(editInvoice.to_company_pincode || '');
-        setToCompanyGstin(editInvoice.to_company_gstin || '');
-        setToCompanyContactPerson(editInvoice.to_company_contact_person || '');
-        setToCompanyPhone(editInvoice.to_company_phone || '');
-        setInvoiceDate(editInvoice.invoice_date || format(new Date(), 'yyyy-MM-dd'));
-        setDueDate(editInvoice.due_date || '');
-        setTerms(editInvoice.terms || 'Custom');
-        setPlaceOfSupply(editInvoice.place_of_supply || 'Tamil Nadu (33)');
-        setNotes(editInvoice.notes || '');
-        
-        // Restore GST rates
-        const rates: GSTRates = {
-          cgst_rate: editInvoice.cgst_rate || 0,
-          sgst_rate: editInvoice.sgst_rate || 0,
-          igst_rate: editInvoice.igst_rate || 0,
-        };
-        setGstRates(rates);
-        setGstPreset(detectGstPreset(rates));
-        
-        // Restore line items
-        if (editInvoice.line_items && editInvoice.line_items.length > 0) {
-          setLineItems(editInvoice.line_items.map(li => ({
-            description: li.description,
-            hsn_sac_code: li.hsn_sac_code,
-            quantity: li.quantity,
-            unit: li.unit,
-            rate: li.rate,
-            discount_percent: li.discount_percent,
-            discount_amount: li.discount_amount,
-            amount: li.amount,
-          })));
-        }
+        // Fetch full invoice with line items from DB
+        setEditLoading(true);
+        fetchInvoiceById(editInvoice.id).then((fullInvoice) => {
+          if (fullInvoice) {
+            populateFromInvoice(fullInvoice);
+          } else {
+            // Fallback to partial data
+            populateFromInvoice(editInvoice);
+          }
+        }).catch(() => {
+          populateFromInvoice(editInvoice);
+        }).finally(() => {
+          setEditLoading(false);
+        });
       } else {
         const nextNum = getNextNumber();
         setInvoiceNumber(nextNum);
@@ -337,6 +352,11 @@ export function CreateInvoiceDialog({
           <DialogTitle>{isEditMode ? 'Edit Invoice' : 'Create Invoice'}</DialogTitle>
         </div>
         
+        {editLoading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
         <div className="flex-1 overflow-y-auto px-6">
           <div className="max-w-4xl mx-auto space-y-6 py-6">
             {/* Bill From */}
@@ -560,6 +580,7 @@ export function CreateInvoiceDialog({
             </div>
           </div>
         </div>
+        )}
 
         <div className="flex justify-end gap-2 px-6 py-4 border-t flex-shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
