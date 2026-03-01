@@ -285,9 +285,8 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice>
     igst_rate: input.igst_rate ?? companyProfile?.default_igst_rate ?? 18,
   };
   
-  // Determine if inter-state based on user-selected rates: if IGST rate > 0, treat as inter-state
-  const isInterState = (gstRates.igst_rate > 0 && gstRates.cgst_rate === 0)
-    || (input.from_company_state_code !== input.to_company_state_code);
+  // Determine if inter-state based on user-selected rates only (not state code comparison)
+  const isInterState = gstRates.igst_rate > 0 && gstRates.cgst_rate === 0 && gstRates.sgst_rate === 0;
   
   // Calculate line items with taxes using configured rates
   const calculatedItems = input.line_items.map((item, index) => ({
@@ -553,8 +552,8 @@ export async function updateInvoice(id: string, input: CreateInvoiceInput): Prom
     igst_rate: input.igst_rate ?? companyProfile?.default_igst_rate ?? 18,
   };
 
-  const isInterState = (gstRates.igst_rate > 0 && gstRates.cgst_rate === 0)
-    || (input.from_company_state_code !== input.to_company_state_code);
+  // Determine if inter-state based on user-selected rates only (not state code comparison)
+  const isInterState = gstRates.igst_rate > 0 && gstRates.cgst_rate === 0 && gstRates.sgst_rate === 0;
 
   const calculatedItems = input.line_items.map((item, index) => ({
     ...calculateLineItemTaxes(item, isInterState, gstRates),

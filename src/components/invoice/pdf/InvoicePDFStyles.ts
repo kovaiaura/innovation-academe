@@ -12,25 +12,33 @@ export const styles = StyleSheet.create({
   header: {
     marginBottom: 15,
   },
+  headerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  headerLogoArea: {
+    width: '50%',
+  },
+  headerTitleArea: {
+    width: '50%',
+    alignItems: 'flex-end',
+  },
   title: {
     fontSize: 16,
     fontWeight: 'bold',
-    textAlign: 'center',
+    textAlign: 'right',
     marginBottom: 2,
     color: '#0066cc',
   },
   subtitle: {
     fontSize: 9,
-    textAlign: 'center',
+    textAlign: 'right',
     color: '#666666',
-    marginBottom: 15,
   },
   
   // Logo styles
-  logoContainer: {
-    width: 100,
-    marginBottom: 8,
-  },
   logo: {
     maxWidth: 100,
     maxHeight: 50,
@@ -72,10 +80,10 @@ export const styles = StyleSheet.create({
   // Invoice Details Box
   invoiceDetailsBox: {
     width: '40%',
-    border: '1 solid #1a1a2e',
+    border: '0.5 solid #cccccc',
     padding: 8,
     borderRadius: 3,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#fafbfc',
   },
   invoiceDetailRow: {
     flexDirection: 'row',

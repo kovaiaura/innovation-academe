@@ -18,9 +18,18 @@ export function InvoicePDFHeader({ invoice, copyType = 'original', logoUrl }: In
 
   return (
     <View style={styles.header}>
-      {/* Title */}
-      <Text style={styles.title}>TAX INVOICE</Text>
-      <Text style={styles.subtitle}>({copyText[copyType]})</Text>
+      {/* Top Row: Logo left, TAX INVOICE right */}
+      <View style={styles.headerTopRow}>
+        <View style={styles.headerLogoArea}>
+          {logoUrl && (
+            <Image src={logoUrl} style={styles.logo} />
+          )}
+        </View>
+        <View style={styles.headerTitleArea}>
+          <Text style={styles.title}>TAX INVOICE</Text>
+          <Text style={styles.subtitle}>({copyText[copyType]})</Text>
+        </View>
+      </View>
 
       {/* E-Invoice Info if available */}
       {invoice.irn && (
@@ -44,17 +53,10 @@ export function InvoicePDFHeader({ invoice, copyType = 'original', logoUrl }: In
         </View>
       )}
 
-      {/* Company & Invoice Details */}
+      {/* Second Row: Company details left, Invoice meta right */}
       <View style={styles.companySection}>
-        {/* From Company with Logo */}
+        {/* From Company */}
         <View style={styles.companyBox}>
-          {/* Company Logo */}
-          {logoUrl && (
-            <View style={styles.logoContainer}>
-              <Image src={logoUrl} style={styles.logo} />
-            </View>
-          )}
-          
           <Text style={styles.companyName}>{invoice.from_company_name}</Text>
           {invoice.from_company_address && (
             <Text style={styles.companyDetail}>{invoice.from_company_address}</Text>
