@@ -1,110 +1,81 @@
 
-# Simplified Invoice Management for CEO Dashboard
 
-## Overview
-Rebuild the invoice system to be simpler and more streamlined: unified "Create Invoice" (no sales/institution split), a parties (customer) management system, proper Indian GST with preset rates, auto-incrementing invoice numbers with configurable prefix/suffix, and a clean listing with easy payment recording.
+# Invoice System Improvements
 
-## Database Changes
+## 1. Party Management - Add Country, State Auto-suggest, Billing/Shipping Address
 
-### 1. New table: `invoice_parties`
-Stores saved customers/parties for quick selection during invoice creation.
+### Database Migration
+Add new columns to `invoice_parties` table:
+- `country` (text, default 'India')
+- `billing_address`, `billing_city`, `billing_state`, `billing_state_code`, `billing_pincode` -- rename existing address fields to be billing
+- `shipping_address`, `shipping_city`, `shipping_state`, `shipping_state_code`, `shipping_pincode` -- new shipping fields
+- `shipping_same_as_billing` (boolean, default true)
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| party_name | text NOT NULL | Company/person name |
-| address | text | Street address |
-| city | text | City |
-| state | text | State name |
-| state_code | text | State code (e.g. 33) |
-| pincode | text | PIN code |
-| gstin | text | GSTIN number |
-| pan | text | PAN number |
-| contact_person | text | Contact name |
-| phone | text | Phone |
-| email | text | Email |
-| created_by | uuid | auth.uid() |
-| created_at | timestamptz | now() |
-| updated_at | timestamptz | now() |
+Since the existing `address`, `city`, `state` etc. columns already serve as billing address, we'll add shipping columns and a `country` column. The existing columns will remain as billing address fields (no rename needed to avoid breaking changes).
 
-RLS: system_admin/super_admin can CRUD.
+### State Auto-suggest
+Create a comprehensive Indian states/UTs list with codes as a constant (all 36 states/UTs). When user selects a state from a searchable dropdown, auto-fill the state code. Country defaults to "India".
 
-### 2. New table: `invoice_settings`
-Stores invoice numbering configuration (prefix, suffix, current counter).
+### Files Changed:
+- **Migration**: Add `country`, `shipping_*` columns to `invoice_parties`
+- **`src/hooks/useInvoiceParties.ts`**: Update `InvoiceParty` interface with new fields
+- **`src/components/invoice/InvoicePartiesManager.tsx`**: 
+  - Add Country field (default "India")
+  - Replace State text input with searchable Select of all Indian states (auto-fills state code)
+  - Add "Shipping Address" section with "Same as Billing" checkbox
+  - Proper 2-column grid layout
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| prefix | text | e.g. "INV-" (optional) |
-| suffix | text | e.g. "" (optional) |
-| current_number | integer NOT NULL DEFAULT 0 | Last used number |
-| number_padding | integer DEFAULT 3 | Zero-pad length (e.g. 3 = 001) |
-| created_by | uuid | auth.uid() |
-| created_at | timestamptz | now() |
-| updated_at | timestamptz | now() |
+## 2. Fix Create Invoice Dialog UI
 
-RLS: system_admin/super_admin can read/update. Single row design (upsert).
+### Layout fixes in `CreateInvoiceDialog.tsx`:
+- Add proper padding inside ScrollArea (`px-6` instead of relying on DialogContent padding)
+- Ensure footer buttons stay inside the dialog box (use `DialogFooter` properly within content flow, not absolute)
+- Fix side spacing consistency across all sections
+- When party is selected, show only billing address fields in "Bill To"
+- Use the comprehensive Indian states list (same as party manager)
 
-### 3. Database function: `get_next_invoice_number()`
-Atomically increments `invoice_settings.current_number` and returns the formatted invoice number (prefix + padded number + suffix). Only increments -- called during successful invoice creation.
+## 3. Simplified Record Payment Dialog
 
-## Code Changes
+### Simplify `RecordPaymentDialog.tsx`:
+- Primary fields: **Amount Received** and **TDS Deducted** (both numeric inputs, prominent)
+- Payment Date, Payment Mode, Reference remain but secondary
+- Remove TDS certificate, quarter fields (keep TDS amount only for simplicity)
+- Show clear summary: Invoice Total, Already Paid, TDS Already Deducted, Balance Due
 
-### 1. Settings > Invoice tab (`InvoiceSettingsTab.tsx`)
-Add a new card **"Invoice Numbering"** with:
-- Prefix input (optional, e.g. "INV/24-25/")
-- Suffix input (optional)
-- Starting Number input (e.g. 001, 037)
-- Preview showing what the next invoice number will look like
-- Save button that upserts into `invoice_settings`
+## 4. Fix Status Logic (Amount Received + TDS = Fully Paid)
 
-### 2. GST in Create Invoice Dialog
-Replace the current IGST-only collapsible with a simple GST dropdown:
-- Preset options: **5% GST** (2.5+2.5), **12% GST** (6+6), **18% GST** (9+9), **28% GST** (14+14), **IGST 5%**, **IGST 12%**, **IGST 18%**, **IGST 28%**, **Custom** (manual entry)
-- When a preset is selected, auto-fill CGST/SGST or IGST rates
-- Custom allows manually typing any rate
+### Update balance calculation across the app:
+The core issue: if bill is 700, amount received is 630, and TDS deducted is 70, then 630 + 70 = 700 = Fully Paid.
 
-### 3. Parties Management
-- New component: `InvoicePartiesManager.tsx` -- a dialog/panel to add, edit, delete saved parties
-- Accessible from a "Manage Parties" button on the invoice page
-- In Create Invoice dialog: add a "Select Party" dropdown at the top of "Bill To" section that auto-fills all party fields when selected, with option to type manually
+**`InvoiceList.tsx`** -- Update `getSimplifiedStatus()`:
+```text
+balance = total_amount - (amount_paid + tds_total)
+```
+Where `tds_total` is sum of all TDS amounts from payments.
 
-### 4. Simplified Create Invoice Dialog
-- Remove `invoiceType` prop -- always creates a generic invoice (stored as `invoice_type = 'sales'` in DB for backward compatibility)
-- Remove institution selection dropdown
-- Invoice number is auto-generated from settings (show as read-only with the next number preview), but allow manual override
-- Add party selector at top of Bill To
-- GST preset dropdown (as described above)
-- Keep line items editor, totals calculation, and notes as-is
+**`payment.service.ts`** -- After creating a payment, update the invoice's `amount_paid` and `tds_amount`:
+- Sum all payments' `amount` into `invoices.amount_paid`
+- Sum all payments' `tds_amount` into `invoices.tds_amount`
+- If `amount_paid + tds_amount >= total_amount`, auto-set status to `paid`
+- If `amount_paid + tds_amount > 0 but < total_amount`, status stays as-is (user sees "Partially Paid" badge)
 
-### 5. Simplified Invoice List columns
-Update `InvoiceList.tsx` to show only:
-- Invoice # | Customer | Date | Due Date | Amount | Paid | Balance | TDS Deducted | Status
+This will be done via a **database trigger** on the `payments` table that automatically updates the parent invoice's `amount_paid`, `tds_amount`, and `status` fields after any INSERT/UPDATE/DELETE on payments.
 
-Status values simplified to: **Draft, Sent, Partially Paid, Fully Paid**
+### Status Display:
+- **Draft** -- newly created
+- **Sent** -- marked as sent
+- **Partially Paid** -- amount_paid + tds > 0 but < total_amount
+- **Fully Paid** -- amount_paid + tds >= total_amount
 
-Remove: Mode, Reference columns. Remove payment status badge column (merge into Status).
-
-### 6. Simplified InvoiceManagement page
-- Remove Sales/Purchase tabs -- single list view
-- Remove the create invoice dropdown (Sales/Institution options) -- single "Create Invoice" button
-- Keep month filter, export, and record payment functionality
-- Keep the "Record Payment" action in the row dropdown menu (simple flow: click record payment, enter amount + date + mode, done)
-- Remove credit/debit note, TDS certificate upload from the simplified view (can be added back later if needed)
-
-### 7. PDF template
-No changes -- existing PDF layout remains unchanged as requested.
-
-## File Summary
+## Technical Summary
 
 | Action | File |
 |--------|------|
-| Migration | New table `invoice_parties`, `invoice_settings`, function `get_next_invoice_number()` |
-| New | `src/components/invoice/InvoicePartiesManager.tsx` |
-| New | `src/hooks/useInvoiceParties.ts` |
-| New | `src/hooks/useInvoiceSettings.ts` |
-| Modify | `src/components/settings/InvoiceSettingsTab.tsx` -- add numbering card |
-| Modify | `src/components/invoice/CreateInvoiceDialog.tsx` -- party selector, GST presets, auto-number |
-| Modify | `src/components/invoice/InvoiceList.tsx` -- simplified columns and statuses |
-| Modify | `src/pages/system-admin/InvoiceManagement.tsx` -- remove tabs, single list, single create button |
-| Modify | `src/types/invoice.ts` -- add party type, update status enum |
+| Migration | Add columns to `invoice_parties`, create payment trigger |
+| Modify | `src/hooks/useInvoiceParties.ts` -- add shipping/country fields |
+| Modify | `src/components/invoice/InvoicePartiesManager.tsx` -- billing/shipping, state auto-suggest |
+| Modify | `src/components/invoice/CreateInvoiceDialog.tsx` -- UI fixes, full states list, billing address |
+| Modify | `src/components/invoice/InvoiceList.tsx` -- fix balance = total - (paid + tds) |
+| Modify | `src/components/invoice/RecordPaymentDialog.tsx` -- simplify to amount + tds |
+| New | `src/constants/indianStates.ts` -- complete list of 36 states/UTs with codes |
+
