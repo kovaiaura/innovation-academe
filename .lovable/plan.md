@@ -1,79 +1,121 @@
 
-# Salary Invoice Cleanup, Payment Date, and Top Sheet Reordering
+# Add Half-Day Leave Support
 
 ## Overview
-Three changes: (1) Remove invoice number for salary payment entries, (2) Add a date picker for salary payment date, and (3) Add drag-and-drop or manual reordering of Top Sheet ledger rows with serial numbers updating accordingly.
+Add the ability for officers and staff to apply for half-day leave (morning or afternoon), where each half-day counts as 0.5 leave. Two half-day leaves equal one full day of leave.
 
 ---
 
-## 1. Remove Invoice Number for Salary Entries
+## 1. Database Migration
 
-**File: `src/components/payroll/IndividualAttendanceTab.tsx`**
-- When creating the purchase invoice for salary, remove the `invoice_number` field (or set it to an empty/null value like `SAL-<name>-<month>` without the formal invoice format)
-- Actually, the DB may require `invoice_number`. Instead, set it to a simple identifier like `--` or leave it as a non-invoice-style label: e.g., `Salary/Feb 2026/Employee`
-- Better approach: set `invoice_number` to `NULL` or an empty string if the schema allows it; otherwise use a simple non-formal format like `SAL-FEB2026-JEEVA`
+Add a `leave_duration` column to the `leave_applications` table:
 
-**File: `src/components/invoice/TopSheetTab.tsx`**
-- For entries where `invoiceNo` starts with `SAL/` or is empty, show `--` or "Salary" instead of the invoice number in the table
+```text
+ALTER TABLE leave_applications 
+  ADD COLUMN leave_duration TEXT NOT NULL DEFAULT 'full_day';
+-- Values: 'full_day', 'first_half', 'second_half'
+```
 
-## 2. Add Salary Payment Date Picker
+Also change `total_days`, `paid_days`, and `lop_days` from INTEGER to NUMERIC to support 0.5 values:
 
-**File: `src/components/payroll/IndividualAttendanceTab.tsx`**
-- Add a `paymentDate` state (defaults to today's date)
-- In the "Mark as Paid" dialog, add a date input field labeled "Payment Date"
-- When creating the invoice and salary_payments record, use this date for:
-  - `invoice_date` and `due_date` on the invoice
-  - `paid_at` on the salary_payments record
-- This allows backdating or forward-dating salary payments
+```text
+ALTER TABLE leave_applications ALTER COLUMN total_days TYPE NUMERIC;
+ALTER TABLE leave_applications ALTER COLUMN paid_days TYPE NUMERIC;
+ALTER TABLE leave_applications ALTER COLUMN lop_days TYPE NUMERIC;
+```
 
-## 3. Top Sheet Row Reordering
-
-**File: `src/components/invoice/TopSheetTab.tsx`**
-- Add a `customOrder` state: `Record<string, number>` mapping entry IDs to manual positions
-- Add up/down arrow buttons (or a move-to-position control) on each row
-- When reordering is active, override the sort with the custom order
-- Serial numbers (`Sl.No`) always reflect the current display position (already does `idx + 1`)
-- Store order in component state (resets on page reload) -- simple and sufficient
-- Add small up/down arrow buttons in the Sl.No column for each row
-- When clicked, swap that entry with the one above/below it
+Update `leave_balances` columns similarly (sick_leave_used, casual_leave_used, lop_days, balance_remaining) to NUMERIC to support 0.5 increments.
 
 ---
 
-## Technical Details
+## 2. Type Updates
 
-### IndividualAttendanceTab.tsx changes
+**File: `src/types/leave.ts`**
+- Add `LeaveDuration` type: `'full_day' | 'first_half' | 'second_half'`
+- Add `leave_duration` field to `LeaveApplication` interface
+- Add `leave_duration` field to `CreateLeaveApplicationInput`
+- Add display labels: `{ full_day: 'Full Day', first_half: 'First Half (Morning)', second_half: 'Second Half (Afternoon)' }`
+- Change `total_days`, `paid_days`, `lop_days` from `number` (integer) -- they already are `number` in TS so no change needed, but logic must handle 0.5
 
-**State additions:**
-- `paymentDate: string` -- defaults to `new Date().toISOString().split('T')[0]`
+---
 
-**Dialog additions:**
-- Date input between the payment type radio and the confirm button
-- Label: "Payment Date"
+## 3. Service Updates
 
-**Invoice creation update (line ~1652-1668):**
-- Remove or simplify `invoice_number` -- set to empty string or null
-- Use `paymentDate` for `invoice_date` and `due_date`
+**File: `src/services/leave.service.ts`**
+- In `applyLeave`: 
+  - If `leave_duration` is `first_half` or `second_half`, force `start_date === end_date` (half-day is single-day only) and set `totalDays = 0.5`
+  - For full-day, keep existing logic
+  - Include `leave_duration` in the insert payload
+  - LOP calculation: compare 0.5 against available balance
+- In `calculateWorkingDays`: no change needed (half-day bypasses this)
 
-**Salary payment record (line ~1673-1687):**
-- Use `paymentDate` for `paid_at`
+**File: `src/services/leave.service.ts` (balance update)**
+- `updateBalanceOnApproval`: already accepts `days: number`, will work with 0.5
+- The DB function `apply_leave_application_to_balance` uses `paid_days` and `lop_days` from the record -- since we're changing those to NUMERIC, 0.5 values will flow through correctly
 
-### TopSheetTab.tsx changes
+---
 
-**State additions:**
-- `manualOrder: string[]` -- array of entry IDs in custom order (initialized from sorted entries)
-- `isReordering: boolean` -- toggle for reorder mode
+## 4. UI Form Updates (4 files)
 
-**UI additions:**
-- "Reorder" toggle button next to "Export CSV"
-- When reordering is active, show up/down arrow buttons on each row in the Sl.No column
-- Clicking up swaps with previous entry; clicking down swaps with next
-- Sl.No always shows current index + 1
+All leave application forms need a "Leave Duration" selector that appears when start_date equals end_date (single day):
 
-**Invoice number display:**
-- If `entry.invoiceNo` is empty, null, or starts with certain salary patterns, display `--`
+**Files to modify:**
+- `src/pages/officer/OfficerLeave.tsx` -- Officer leave form (Step 1 of multi-step)
+- `src/pages/system-admin/Leave.tsx` -- Staff leave form
+- `src/pages/system-admin/MetaStaffLeaveManagement.tsx` -- Meta staff leave form
+- `src/pages/system-admin/LeaveApply.tsx` -- Simple leave apply form
 
-### Files to modify:
+**UI behavior:**
+- Add a radio group or Select with 3 options: "Full Day", "First Half (Morning)", "Second Half (Afternoon)"
+- Default: "Full Day"
+- When half-day is selected and date range spans multiple days, show warning: "Half-day leave can only be for a single day"
+- When half-day is selected, the "Total Days Requested" shows 0.5 instead of 1
+- Include `leave_duration` in the mutation payload
+
+---
+
+## 5. Leave Records Display Updates
+
+**Files:**
+- `src/pages/system-admin/LeaveRecords.tsx`
+- `src/pages/system-admin/LeaveStatus.tsx`
+- Leave approval dialogs
+
+Show the leave duration label next to total days in records tables (e.g., "0.5 day (Morning)" or "2 days (Full Day)").
+
+---
+
+## 6. Balance Function Updates
+
+**DB function: `get_leave_balance`** -- Already returns numeric-compatible fields; changing column types to NUMERIC ensures 0.5 values work.
+
+**DB function: `apply_leave_application_to_balance`** -- Uses `paid_days` and `lop_days` from the application record. With NUMERIC columns, 0.5 will propagate correctly.
+
+**DB function: `initialize_leave_balance`** -- Uses integer arithmetic; update to handle NUMERIC (balance_remaining calculation).
+
+---
+
+## 7. Payroll/Attendance Integration
+
+**File: `src/components/payroll/IndividualAttendanceTab.tsx`**
+- When reading leave applications for attendance stats, treat `total_days = 0.5` correctly in paid leave / LOP counts
+- The existing code already sums `paid_days` and `lop_days` -- with NUMERIC types, 0.5 values will add up correctly
+
+**File: `src/components/payroll/MonthlyBreakdownTab.tsx`**  
+- Already handles `half_day` status in attendance records; leave records with 0.5 will integrate naturally
+
+---
+
+## Files Summary
+
 | Action | File |
 |--------|------|
-| Modify | `src/components/payroll/IndividualAttendanceTab.tsx` -- remove invoice number, add payment date picker |
-| Modify | `src/components/invoice/TopSheetTab.tsx` -- add reorder controls with up/down arrows |
+| Create | DB migration -- add `leave_duration` column, change day columns to NUMERIC |
+| Modify | `src/types/leave.ts` -- add LeaveDuration type and labels |
+| Modify | `src/services/leave.service.ts` -- handle half-day in applyLeave |
+| Modify | `src/pages/officer/OfficerLeave.tsx` -- add duration selector |
+| Modify | `src/pages/system-admin/Leave.tsx` -- add duration selector |
+| Modify | `src/pages/system-admin/MetaStaffLeaveManagement.tsx` -- add duration selector |
+| Modify | `src/pages/system-admin/LeaveApply.tsx` -- add duration selector |
+| Modify | `src/pages/system-admin/LeaveRecords.tsx` -- display duration in records |
+| Modify | `src/pages/system-admin/LeaveStatus.tsx` -- display duration in status view |
