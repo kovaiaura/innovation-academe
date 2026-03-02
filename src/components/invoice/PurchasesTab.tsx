@@ -10,17 +10,25 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { FileText, Trash2, ExternalLink, ShoppingCart, CheckCircle2, Clock } from 'lucide-react';
-import type { Invoice } from '@/types/invoice';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { FileText, Trash2, ExternalLink, ShoppingCart, CheckCircle2, Clock, Pencil, ChevronDown } from 'lucide-react';
+import type { Invoice, InvoiceStatus } from '@/types/invoice';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface PurchasesTabProps {
   purchases: Invoice[];
   loading: boolean;
   onDelete: (id: string) => void;
+  onStatusChange?: (id: string, status: InvoiceStatus) => void;
+  onEdit?: (purchase: Invoice) => void;
 }
 
-export function PurchasesTab({ purchases, loading, onDelete }: PurchasesTabProps) {
+export function PurchasesTab({ purchases, loading, onDelete, onStatusChange, onEdit }: PurchasesTabProps) {
   const stats = useMemo(() => {
     const total = purchases.reduce((sum, p) => sum + (p.total_amount || 0), 0);
     const settled = purchases.filter(p => p.status === 'paid').reduce((sum, p) => sum + (p.total_amount || 0), 0);
@@ -105,7 +113,7 @@ export function PurchasesTab({ purchases, loading, onDelete }: PurchasesTabProps
                 <TableHead>Handled By</TableHead>
                 <TableHead>Remark</TableHead>
                 <TableHead>Bill</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
+                <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -134,12 +142,42 @@ export function PurchasesTab({ purchases, loading, onDelete }: PurchasesTabProps
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={isSettled ? 'default' : 'secondary'}
-                        className={isSettled ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'}
-                      >
-                        {isSettled ? 'Settled' : 'Pending'}
-                      </Badge>
+                      {onStatusChange ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-auto p-0 hover:bg-transparent"
+                            >
+                              <Badge
+                                variant={isSettled ? 'default' : 'secondary'}
+                                className={`cursor-pointer ${isSettled ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'}`}
+                              >
+                                {isSettled ? 'Settled' : 'Pending'}
+                                <ChevronDown className="h-3 w-3 ml-1" />
+                              </Badge>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuItem onClick={() => onStatusChange(purchase.id, 'paid')} disabled={isSettled}>
+                              <CheckCircle2 className="h-4 w-4 mr-2 text-green-600" />
+                              Mark as Settled
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onStatusChange(purchase.id, 'issued')} disabled={!isSettled}>
+                              <Clock className="h-4 w-4 mr-2 text-yellow-600" />
+                              Mark as Pending
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (
+                        <Badge
+                          variant={isSettled ? 'default' : 'secondary'}
+                          className={isSettled ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'}
+                        >
+                          {isSettled ? 'Settled' : 'Pending'}
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm">
                       {(purchase as any).handled_by || <span className="text-muted-foreground">—</span>}
@@ -164,14 +202,26 @@ export function PurchasesTab({ purchases, loading, onDelete }: PurchasesTabProps
                       )}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => onDelete(purchase.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        {onEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => onEdit(purchase)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => onDelete(purchase.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

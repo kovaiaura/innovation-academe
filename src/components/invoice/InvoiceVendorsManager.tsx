@@ -54,6 +54,8 @@ export function InvoiceVendorsManager({ open, onOpenChange }: InvoiceVendorsMana
   const [form, setForm] = useState<CreateVendorInput>(emptyVendor);
   const [showForm, setShowForm] = useState(false);
 
+  const isIndia = (form.country || 'India') === 'India';
+
   const handleSave = () => {
     if (!form.vendor_name.trim()) return;
     if (editing) {
@@ -98,6 +100,15 @@ export function InvoiceVendorsManager({ open, onOpenChange }: InvoiceVendorsMana
     }
   };
 
+  const handleCountryChange = (country: string) => {
+    setForm(prev => ({
+      ...prev,
+      country,
+      // Clear Indian-specific fields when switching away from India
+      ...(country !== 'India' ? { state_code: '', gstin: '' } : {}),
+    }));
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[85vh]">
@@ -137,7 +148,7 @@ export function InvoiceVendorsManager({ open, onOpenChange }: InvoiceVendorsMana
                 </div>
                 <div className="space-y-1">
                   <Label>Country</Label>
-                  <Select value={form.country || 'India'} onValueChange={(v) => setForm({ ...form, country: v })}>
+                  <Select value={form.country || 'India'} onValueChange={handleCountryChange}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {COUNTRIES.map(c => (
@@ -159,23 +170,32 @@ export function InvoiceVendorsManager({ open, onOpenChange }: InvoiceVendorsMana
                     <Label>City</Label>
                     <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
                   </div>
+                  {isIndia ? (
+                    <>
+                      <div className="space-y-1">
+                        <Label>State</Label>
+                        <Select value={form.state_code || ''} onValueChange={handleStateChange}>
+                          <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
+                          <SelectContent>
+                            {INDIAN_STATES.map(s => (
+                              <SelectItem key={s.code} value={s.code}>{s.name} ({s.code})</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label>State Code</Label>
+                        <Input value={form.state_code} readOnly className="bg-muted" />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="space-y-1">
+                      <Label>State / Province</Label>
+                      <Input value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} placeholder="State or province" />
+                    </div>
+                  )}
                   <div className="space-y-1">
-                    <Label>State</Label>
-                    <Select value={form.state_code || ''} onValueChange={handleStateChange}>
-                      <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
-                      <SelectContent>
-                        {INDIAN_STATES.map(s => (
-                          <SelectItem key={s.code} value={s.code}>{s.name} ({s.code})</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>State Code</Label>
-                    <Input value={form.state_code} readOnly className="bg-muted" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Pincode</Label>
+                    <Label>{isIndia ? 'Pincode' : 'ZIP / Postal Code'}</Label>
                     <Input value={form.pincode} onChange={(e) => setForm({ ...form, pincode: e.target.value })} />
                   </div>
                 </div>
@@ -206,6 +226,7 @@ export function InvoiceVendorsManager({ open, onOpenChange }: InvoiceVendorsMana
                         <TableHead>GSTIN</TableHead>
                         <TableHead>PAN</TableHead>
                         <TableHead>City</TableHead>
+                        <TableHead>Country</TableHead>
                         <TableHead>Phone</TableHead>
                         <TableHead className="w-20"></TableHead>
                       </TableRow>
@@ -217,6 +238,7 @@ export function InvoiceVendorsManager({ open, onOpenChange }: InvoiceVendorsMana
                           <TableCell className="text-sm text-muted-foreground">{v.gstin || '-'}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{v.pan || '-'}</TableCell>
                           <TableCell className="text-sm">{v.city || '-'}</TableCell>
+                          <TableCell className="text-sm">{v.country || 'India'}</TableCell>
                           <TableCell className="text-sm">{v.phone || '-'}</TableCell>
                           <TableCell>
                             <div className="flex gap-1">

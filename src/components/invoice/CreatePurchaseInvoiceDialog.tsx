@@ -21,8 +21,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Upload, X, FileText, Image as ImageIcon, Loader2, Check, AlertCircle, Calendar, AlertTriangle, Save } from 'lucide-react';
-import { createPurchaseInvoice, fetchDefaultCompanyProfile, checkInvoiceNumberExists } from '@/services/invoice.service';
-import type { CompanyProfile } from '@/types/invoice';
+import { createPurchaseInvoice, updatePurchaseInvoice, fetchDefaultCompanyProfile, checkInvoiceNumberExists } from '@/services/invoice.service';
+import type { CompanyProfile, Invoice } from '@/types/invoice';
 import { EXPENSE_CATEGORIES } from '@/types/payment';
 import { toast } from 'sonner';
 import { format, differenceInDays, addDays } from 'date-fns';
@@ -33,6 +33,7 @@ interface CreatePurchaseInvoiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  editPurchase?: Invoice | null;
 }
 
 const GST_PRESETS = [
@@ -52,6 +53,7 @@ export function CreatePurchaseInvoiceDialog({
   open,
   onOpenChange,
   onSuccess,
+  editPurchase,
 }: CreatePurchaseInvoiceDialogProps) {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -122,12 +124,66 @@ export function CreatePurchaseInvoiceDialog({
     ? differenceInDays(new Date(dueDate), new Date())
     : null;
 
+  const isEditMode = !!editPurchase;
+
   useEffect(() => {
     if (open) {
       loadCompanyProfile();
-      setDueDate(format(addDays(new Date(), 30), 'yyyy-MM-dd'));
+      if (editPurchase) {
+        // Pre-fill form with existing purchase data
+        setInvoiceNumber(editPurchase.invoice_number || '');
+        setInvoiceNumberValid(true);
+        setVendorName(editPurchase.from_company_name || '');
+        setVendorAddress(editPurchase.from_company_address || '');
+        setVendorCity(editPurchase.from_company_city || '');
+        setVendorState(editPurchase.from_company_state || '');
+        setVendorGstin(editPurchase.from_company_gstin || '');
+        setVendorPan((editPurchase as any).vendor_pan || editPurchase.from_company_pan || '');
+        setVendorPhone(editPurchase.from_company_phone || '');
+        setVendorEmail(editPurchase.from_company_email || '');
+        setVendorInvoiceNumber(editPurchase.reference_number || '');
+        setBillDate(editPurchase.invoice_date || format(new Date(), 'yyyy-MM-dd'));
+        setBillReceiptDate((editPurchase as any).bill_receipt_date || format(new Date(), 'yyyy-MM-dd'));
+        setDueDate(editPurchase.due_date || format(addDays(new Date(), 30), 'yyyy-MM-dd'));
+        setSubtotalAmount(String(editPurchase.sub_total || editPurchase.total_amount || ''));
+        setExpenseCategory((editPurchase as any).expense_category || '');
+        setHandledBy((editPurchase as any).handled_by || '');
+        setRemark((editPurchase as any).remark || '');
+        setNotes(editPurchase.notes || '');
+        setTdsDeducted(!!(editPurchase as any).tds_deducted);
+        setTdsAmount(editPurchase.tds_amount ? String(editPurchase.tds_amount) : '');
+        
+        // GST rates
+        const cr = editPurchase.cgst_rate || 0;
+        const sr = editPurchase.sgst_rate || 0;
+        const ir = editPurchase.igst_rate || 0;
+        setCgstRate(cr);
+        setSgstRate(sr);
+        setIgstRate(ir);
+        
+        // Determine which GST preset matches
+        const matchPreset = GST_PRESETS.find(p => p.cgst === cr && p.sgst === sr && p.igst === ir && p.value !== 'custom');
+        setGstPreset(matchPreset ? matchPreset.value : (cr > 0 || sr > 0 || ir > 0 ? 'custom' : 'none'));
+        
+        // Set manual GST amounts if they differ from calculated
+        const calcCgst = ((editPurchase.sub_total || 0) * cr) / 100;
+        const calcSgst = ((editPurchase.sub_total || 0) * sr) / 100;
+        const calcIgst = ((editPurchase.sub_total || 0) * ir) / 100;
+        const actualCgst = editPurchase.cgst_amount || 0;
+        const actualSgst = editPurchase.sgst_amount || 0;
+        const actualIgst = editPurchase.igst_amount || 0;
+        
+        if (Math.abs(calcCgst - actualCgst) > 0.01 || Math.abs(calcSgst - actualSgst) > 0.01 || Math.abs(calcIgst - actualIgst) > 0.01) {
+          setGstAmountsManuallyEdited(true);
+          setCgstAmountManual(actualCgst > 0 ? String(actualCgst) : '');
+          setSgstAmountManual(actualSgst > 0 ? String(actualSgst) : '');
+          setIgstAmountManual(actualIgst > 0 ? String(actualIgst) : '');
+        }
+      } else {
+        setDueDate(format(addDays(new Date(), 30), 'yyyy-MM-dd'));
+      }
     }
-  }, [open]);
+  }, [open, editPurchase]);
 
   const loadCompanyProfile = async () => {
     try {
@@ -254,24 +310,40 @@ export function CreatePurchaseInvoiceDialog({
     if (invoiceNumberError) { toast.error('Please fix the invoice number error'); return; }
     if (!vendorName) { toast.error('Please enter vendor name'); return; }
     if (!subtotalAmount || subtotal <= 0) { toast.error('Please enter a valid amount'); return; }
-    if (!attachmentFile) { toast.error('Please attach the vendor bill'); return; }
+    if (!attachmentFile && !isEditMode) { toast.error('Please attach the vendor bill'); return; }
 
-    const exists = await checkInvoiceNumberExists(invoiceNumber.trim());
-    if (exists) {
-      setInvoiceNumberError('This invoice number is already in use');
-      toast.error('Invoice number is already in use');
-      return;
+    const isEdit = isEditMode && editPurchase;
+
+    // For new invoices, check uniqueness; for edit, skip if number unchanged
+    if (!isEdit) {
+      const exists = await checkInvoiceNumberExists(invoiceNumber.trim());
+      if (exists) {
+        setInvoiceNumberError('This invoice number is already in use');
+        toast.error('Invoice number is already in use');
+        return;
+      }
     }
 
     try {
       setLoading(true);
-      setUploading(true);
-      const attachment = await uploadAttachment();
-      if (!attachment) { toast.error('Failed to upload attachment'); return; }
 
-      await createPurchaseInvoice({
+      let attachmentData = isEdit 
+        ? { url: editPurchase.attachment_url || '', name: editPurchase.attachment_name || '', type: editPurchase.attachment_type || '' }
+        : null;
+
+      if (attachmentFile) {
+        setUploading(true);
+        const uploaded = await uploadAttachment();
+        if (!uploaded && !isEdit) { toast.error('Failed to upload attachment'); return; }
+        if (uploaded) attachmentData = uploaded;
+      } else if (!isEdit) {
+        toast.error('Please attach the vendor bill');
+        return;
+      }
+
+      const invoiceData = {
         invoice_number: invoiceNumber.trim(),
-        invoice_type: 'purchase',
+        invoice_type: 'purchase' as const,
         from_company_name: vendorName,
         from_company_address: vendorAddress,
         from_company_gstin: vendorGstin,
@@ -288,9 +360,9 @@ export function CreatePurchaseInvoiceDialog({
         reference_number: vendorInvoiceNumber,
         notes,
         total_amount: netPayable,
-        attachment_url: attachment.url,
-        attachment_name: attachment.name,
-        attachment_type: attachment.type,
+        attachment_url: attachmentData?.url,
+        attachment_name: attachmentData?.name,
+        attachment_type: attachmentData?.type,
         vendor_pan: vendorPan || undefined,
         bill_receipt_date: billReceiptDate || undefined,
         expense_category: expenseCategory || undefined,
@@ -307,15 +379,22 @@ export function CreatePurchaseInvoiceDialog({
           rate: subtotal,
           amount: subtotal,
         }],
-      });
+      };
+
+      if (isEdit) {
+        await updatePurchaseInvoice(editPurchase.id, invoiceData);
+        toast.success('Purchase invoice updated successfully');
+      } else {
+        await createPurchaseInvoice(invoiceData);
+        toast.success('Purchase invoice created successfully');
+      }
       
-      toast.success('Purchase invoice created successfully');
       onSuccess();
       onOpenChange(false);
       resetForm();
     } catch (error) {
-      console.error('Error creating purchase invoice:', error);
-      toast.error('Failed to create purchase invoice');
+      console.error('Error saving purchase invoice:', error);
+      toast.error(isEdit ? 'Failed to update purchase invoice' : 'Failed to create purchase invoice');
     } finally {
       setLoading(false);
       setUploading(false);
@@ -341,7 +420,7 @@ export function CreatePurchaseInvoiceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[95vh] p-0">
         <DialogHeader className="px-6 pt-6 pb-0">
-          <DialogTitle className="text-xl">Record Purchase Invoice</DialogTitle>
+          <DialogTitle className="text-xl">{isEditMode ? 'Edit Purchase Invoice' : 'Record Purchase Invoice'}</DialogTitle>
         </DialogHeader>
         
         <ScrollArea className="max-h-[calc(95vh-140px)] px-6">
@@ -635,7 +714,7 @@ export function CreatePurchaseInvoiceDialog({
 
             {/* Attachment Upload */}
             <div className="space-y-3">
-              <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Attach Vendor Bill *</h3>
+              <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">{isEditMode ? 'Attach Vendor Bill (optional - replace existing)' : 'Attach Vendor Bill *'}</h3>
               <p className="text-xs text-muted-foreground">Upload the original bill/invoice received from the vendor (PDF, JPG, PNG, or WEBP)</p>
               
               <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={handleFileSelect} className="hidden" />
@@ -703,7 +782,7 @@ export function CreatePurchaseInvoiceDialog({
                 {uploading ? 'Uploading...' : 'Creating...'}
               </>
             ) : (
-              'Record Purchase Invoice'
+              isEditMode ? 'Update Purchase Invoice' : 'Record Purchase Invoice'
             )}
           </Button>
         </div>
