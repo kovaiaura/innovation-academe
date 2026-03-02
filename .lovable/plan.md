@@ -1,35 +1,60 @@
 
-# Fix Credit Column to Reflect Actual Payment Status
 
-## Problem
-The Top Sheet currently shows ALL sales invoice amounts in the **Credit** column, even if the invoice has only been sent and no payment has been received. This misrepresents cash flow -- ₹64,900 appears as "received" when it's actually just an invoice sent.
+# Remove Global Export Button and Add Party/Vendor Filters
 
-## Solution
-Only populate the **Credit** column for sales invoices where payment has actually been received (status is `paid`). For unpaid/sent invoices, display a label like "Invoice Sent" in the Credit column instead of the amount.
+## Overview
+Two changes: (1) Remove the top-level "Export" button that appears on all tabs -- CSV export is only needed on the Top Sheet tab (which already has its own Export CSV button). (2) Add a party/vendor name filter dropdown on the Sales and Purchase tabs so users can filter invoices by a specific customer or supplier.
 
-Similarly, update the **summary cards** so that "Total Received" only counts payments actually received (already correct via `payments` array), and ensure the ledger totals row only sums actual credits.
+---
 
-## Changes
+## 1. Remove Global Export Button
 
-### File: `src/components/invoice/TopSheetTab.tsx`
+**File: `src/pages/system-admin/InvoiceManagement.tsx`**
+- Remove the "Export" button (lines 154-156) and the `InvoiceExportDialog` component (lines 271-276)
+- Remove the `exportDialogOpen` state and `InvoiceExportDialog` import
+- The Top Sheet tab already has its own inline "Export CSV" button, so no export functionality is lost
 
-**1. Add status to LedgerEntry interface**
-- Add `status: string` field to track invoice status
+## 2. Add Party Filter on Sales Tab
 
-**2. Update sales entry mapping (lines 61-77)**
-- Set `credit` to `inv.total_amount` only when `inv.status === 'paid'`; otherwise set to `0`
-- Store `status: inv.status` for display logic
+**File: `src/pages/system-admin/InvoiceManagement.tsx`**
+- Extract unique customer names (`to_company_name`) from sales invoices
+- Add a `selectedParty` state (string or null)
+- Render a `Select` dropdown in the Sales tab (next to the invoice count) with options: "All Parties" + list of unique customer names
+- Apply the filter to `filteredInvoices` before passing to `InvoiceList`
 
-**3. Update Credit cell rendering (lines 215-217)**
-- When `entry.type === 'sales'` and `entry.credit === 0`: show a muted label like "Invoice Sent" (or "Overdue" if overdue)
-- When `entry.credit > 0`: show the amount as before
+## 3. Add Vendor Filter on Purchase Tab
 
-**4. Update Debit cell similarly for purchases**
-- When `entry.type === 'purchase'` and `entry.debit === 0` (not yet settled): show "Pending"
-- When settled: show the amount
+**File: `src/pages/system-admin/InvoiceManagement.tsx`**
+- Extract unique vendor names (`from_company_name`) from purchase invoices
+- Add a `selectedVendor` state (string or null)
+- Render a `Select` dropdown in the Purchases tab content area
+- Apply the filter to `filteredPurchases` before passing to `PurchasesTab`
 
-### File: `src/services/invoice-export.service.ts`
-- Update the CSV export to reflect the same logic -- show "Invoice Sent" / "Pending" text instead of amounts for unpaid entries
+---
 
-## Summary
-This ensures the Top Sheet accurately reflects actual money movement: Credit only appears when payment is received, and Debit only when a purchase is settled. Unpaid entries are clearly labeled with their current status.
+## Technical Details
+
+### State additions in InvoiceManagement.tsx
+- `selectedParty: string | null` -- filters sales by customer name
+- `selectedVendor: string | null` -- filters purchases by vendor name
+- Both reset to `null` (show all) when the value is cleared
+
+### Filter logic
+```text
+// Sales: after date filtering
+if (selectedParty) filter where inv.to_company_name === selectedParty
+
+// Purchases: after date filtering  
+if (selectedVendor) filter where (inv.from_company_name || inv.to_company_name) === selectedVendor
+```
+
+### UI placement
+- Each filter dropdown sits inline next to the entry count line (e.g., "12 invoices") within each tab's content area
+- Uses the existing shadcn `Select` component for consistency
+
+### Files Summary
+
+| Action | File |
+|--------|------|
+| Modify | `src/pages/system-admin/InvoiceManagement.tsx` -- remove global export, add party/vendor filter dropdowns |
+
