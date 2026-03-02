@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, ArrowUpDown, TrendingUp, TrendingDown, IndianRupee, AlertTriangle, CheckCircle, BarChart3 } from 'lucide-react';
+import { Download, ArrowUpDown, TrendingUp, TrendingDown, IndianRupee, AlertTriangle, CheckCircle, BarChart3, ChevronUp, ChevronDown, ArrowUpDownIcon } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import type { Invoice } from '@/types/invoice';
@@ -38,6 +38,8 @@ interface LedgerEntry {
 export function TopSheetTab({ salesInvoices, purchaseInvoices, payments, loading }: TopSheetTabProps) {
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [isReordering, setIsReordering] = useState(false);
+  const [manualOrder, setManualOrder] = useState<string[]>([]);
 
   // Summary calculations
   const summary = useMemo(() => {
@@ -55,8 +57,8 @@ export function TopSheetTab({ salesInvoices, purchaseInvoices, payments, loading
     return { totalSales, totalReceived, overdue, totalPurchases, settledAmount, profit };
   }, [salesInvoices, purchaseInvoices, payments]);
 
-  // Combined ledger entries
-  const ledgerEntries = useMemo(() => {
+  // Combined ledger entries (sorted)
+  const sortedEntries = useMemo(() => {
     const entries: LedgerEntry[] = [];
 
     salesInvoices.forEach(inv => {
@@ -114,7 +116,32 @@ export function TopSheetTab({ salesInvoices, purchaseInvoices, payments, loading
     return entries;
   }, [salesInvoices, purchaseInvoices, sortField, sortDir]);
 
+  // Initialize manual order when sorted entries change (or when toggling reorder mode)
+  useEffect(() => {
+    if (!isReordering) {
+      setManualOrder(sortedEntries.map(e => e.id));
+    }
+  }, [sortedEntries, isReordering]);
+
+  // The actual displayed entries
+  const ledgerEntries = useMemo(() => {
+    if (!isReordering || manualOrder.length === 0) return sortedEntries;
+    const entryMap = new Map(sortedEntries.map(e => [e.id, e]));
+    return manualOrder
+      .map(id => entryMap.get(id))
+      .filter((e): e is LedgerEntry => !!e);
+  }, [isReordering, manualOrder, sortedEntries]);
+
+  const moveRow = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= manualOrder.length) return;
+    const newOrder = [...manualOrder];
+    [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
+    setManualOrder(newOrder);
+  };
+
   const toggleSort = (field: SortField) => {
+    if (isReordering) return; // Disable sort when reordering
     if (sortField === field) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     } else {
@@ -128,6 +155,11 @@ export function TopSheetTab({ salesInvoices, purchaseInvoices, payments, loading
   };
 
   const fmt = (n: number) => new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+
+  const displayInvoiceNo = (invoiceNo: string) => {
+    if (!invoiceNo || invoiceNo.trim() === '' || invoiceNo.startsWith('SAL/')) return '--';
+    return invoiceNo;
+  };
 
   const summaryCards = [
     { label: 'Total Sales', value: summary.totalSales, icon: TrendingUp, color: 'text-blue-600' },
@@ -165,9 +197,19 @@ export function TopSheetTab({ salesInvoices, purchaseInvoices, payments, loading
       {/* Table Header */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{ledgerEntries.length} entries</p>
-        <Button variant="outline" size="sm" onClick={handleExport}>
-          <Download className="h-4 w-4 mr-2" /> Export CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={isReordering ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setIsReordering(!isReordering)}
+          >
+            <ArrowUpDownIcon className="h-4 w-4 mr-2" />
+            {isReordering ? 'Done Reordering' : 'Reorder'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-2" /> Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Combined Ledger Table */}
@@ -175,7 +217,7 @@ export function TopSheetTab({ salesInvoices, purchaseInvoices, payments, loading
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-16">Sl.No</TableHead>
+              <TableHead className="w-20">Sl.No</TableHead>
               <TableHead className="cursor-pointer" onClick={() => toggleSort('date')}>
                 <span className="flex items-center gap-1">Date <ArrowUpDown className="h-3 w-3" /></span>
               </TableHead>
@@ -208,9 +250,31 @@ export function TopSheetTab({ salesInvoices, purchaseInvoices, payments, loading
               <>
                 {ledgerEntries.map((entry, idx) => (
                   <TableRow key={entry.id} className={entry.type === 'sales' ? 'bg-green-50/30' : 'bg-orange-50/30'}>
-                    <TableCell className="font-medium">{idx + 1}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-1">
+                        {isReordering && (
+                          <div className="flex flex-col">
+                            <button
+                              className="p-0.5 hover:bg-muted rounded disabled:opacity-30"
+                              disabled={idx === 0}
+                              onClick={() => moveRow(idx, 'up')}
+                            >
+                              <ChevronUp className="h-3 w-3" />
+                            </button>
+                            <button
+                              className="p-0.5 hover:bg-muted rounded disabled:opacity-30"
+                              disabled={idx === ledgerEntries.length - 1}
+                              onClick={() => moveRow(idx, 'down')}
+                            >
+                              <ChevronDown className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )}
+                        {idx + 1}
+                      </div>
+                    </TableCell>
                     <TableCell>{format(new Date(entry.date), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell className="font-mono text-xs">{entry.invoiceNo}</TableCell>
+                    <TableCell className="font-mono text-xs">{displayInvoiceNo(entry.invoiceNo)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <span className={`inline-block w-2 h-2 rounded-full ${entry.type === 'sales' ? 'bg-green-500' : 'bg-orange-500'}`} />
