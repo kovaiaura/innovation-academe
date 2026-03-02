@@ -346,6 +346,92 @@ export function exportToCSV(
   return csvContent;
 }
 
+// Export Top Sheet combined ledger as CSV
+export function exportTopSheetCSV(salesInvoices: Invoice[], purchaseInvoices: Invoice[]): void {
+  const headers = [
+    'Sl.No', 'Date', 'Invoice No', 'Supplier/Customer Name', 'Type',
+    'Credit', 'Debit', 'GST', 'SGST Value', 'CGST Value',
+    'TDS Deducted', 'Handled By', 'Remark'
+  ];
+
+  interface LedgerRow {
+    date: string;
+    invoiceNo: string;
+    name: string;
+    type: string;
+    credit: number;
+    debit: number;
+    gst: number;
+    sgst: number;
+    cgst: number;
+    tds: number;
+    handledBy: string;
+    remark: string;
+  }
+
+  const entries: LedgerRow[] = [];
+
+  salesInvoices.forEach(inv => {
+    entries.push({
+      date: inv.invoice_date,
+      invoiceNo: inv.invoice_number,
+      name: inv.to_company_name,
+      type: 'Sales',
+      credit: inv.total_amount || 0,
+      debit: 0,
+      gst: (inv.cgst_amount || 0) + (inv.sgst_amount || 0) + (inv.igst_amount || 0),
+      sgst: inv.sgst_amount || 0,
+      cgst: inv.cgst_amount || 0,
+      tds: inv.tds_amount || 0,
+      handledBy: inv.handled_by || '',
+      remark: inv.remark || inv.notes || '',
+    });
+  });
+
+  purchaseInvoices.forEach(inv => {
+    entries.push({
+      date: inv.invoice_date,
+      invoiceNo: inv.invoice_number,
+      name: inv.from_company_name || inv.to_company_name,
+      type: 'Purchase',
+      credit: 0,
+      debit: inv.total_amount || 0,
+      gst: (inv.cgst_amount || 0) + (inv.sgst_amount || 0) + (inv.igst_amount || 0),
+      sgst: inv.sgst_amount || 0,
+      cgst: inv.cgst_amount || 0,
+      tds: inv.tds_amount || 0,
+      handledBy: inv.handled_by || '',
+      remark: inv.remark || inv.notes || '',
+    });
+  });
+
+  // Sort by date descending
+  entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const rows = entries.map((e, i) => [
+    (i + 1).toString(),
+    format(new Date(e.date), 'dd/MM/yyyy'),
+    e.invoiceNo,
+    e.name,
+    e.type,
+    e.credit > 0 ? e.credit.toFixed(2) : '',
+    e.debit > 0 ? e.debit.toFixed(2) : '',
+    e.gst > 0 ? e.gst.toFixed(2) : '',
+    e.sgst > 0 ? e.sgst.toFixed(2) : '',
+    e.cgst > 0 ? e.cgst.toFixed(2) : '',
+    e.tds > 0 ? e.tds.toFixed(2) : '',
+    e.handledBy,
+    e.remark,
+  ]);
+
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+  ].join('\n');
+
+  downloadCSV(csvContent, `top-sheet-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+}
+
 // Download CSV file
 export function downloadCSV(content: string, filename: string): void {
   const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });

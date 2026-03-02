@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InvoiceList } from '@/components/invoice/InvoiceList';
 import { GlobalSummaryCards } from '@/components/invoice/GlobalSummaryCards';
 import { PurchasesTab } from '@/components/invoice/PurchasesTab';
+import { TopSheetTab } from '@/components/invoice/TopSheetTab';
 import { InvoiceDateFilter, type DateRange } from '@/components/invoice/InvoiceDateFilter';
 import { CreateInvoiceDialog } from '@/components/invoice/CreateInvoiceDialog';
 import { CreatePurchaseInvoiceDialog } from '@/components/invoice/CreatePurchaseInvoiceDialog';
@@ -153,7 +154,7 @@ export default function InvoiceManagement() {
             <Button variant="outline" onClick={() => setExportDialogOpen(true)}>
               <Download className="h-4 w-4 mr-2" /> Export
             </Button>
-            {activeTab === 'sales' ? (
+            {activeTab === 'sales' && (
               <>
                 <Button variant="outline" onClick={() => setPartiesDialogOpen(true)}>
                   <Users className="h-4 w-4 mr-2" /> Parties
@@ -162,7 +163,8 @@ export default function InvoiceManagement() {
                   <Plus className="h-4 w-4 mr-2" /> Create Invoice
                 </Button>
               </>
-            ) : (
+            )}
+            {activeTab === 'purchases' && (
               <>
                 <Button variant="outline" onClick={() => setVendorsDialogOpen(true)}>
                   <Store className="h-4 w-4 mr-2" /> Vendors
@@ -183,6 +185,7 @@ export default function InvoiceManagement() {
           <TabsList>
             <TabsTrigger value="sales">Sales</TabsTrigger>
             <TabsTrigger value="purchases">Purchases</TabsTrigger>
+            <TabsTrigger value="topsheet">Top Sheet</TabsTrigger>
           </TabsList>
 
           <TabsContent value="sales" className="space-y-6">
@@ -215,6 +218,15 @@ export default function InvoiceManagement() {
                 setEditingPurchase(purchase);
                 setPurchaseDialogOpen(true);
               }}
+            />
+          </TabsContent>
+
+          <TabsContent value="topsheet" className="space-y-6">
+            <TopSheetTab
+              salesInvoices={filteredInvoices}
+              purchaseInvoices={filteredPurchases}
+              payments={filteredPayments}
+              loading={loading}
             />
           </TabsContent>
         </Tabs>
