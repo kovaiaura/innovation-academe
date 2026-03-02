@@ -17,7 +17,7 @@ import { InvoicePartiesManager } from '@/components/invoice/InvoicePartiesManage
 import { InvoiceVendorsManager } from '@/components/invoice/InvoiceVendorsManager';
 import { useGlobalInvoiceSummary } from '@/hooks/useGlobalInvoiceSummary';
 import { usePaymentsForInvoice } from '@/hooks/usePayments';
-import { updateInvoiceStatus, deleteInvoice } from '@/services/invoice.service';
+import { updateInvoiceStatus, deleteInvoice, updatePurchaseInvoice } from '@/services/invoice.service';
 import type { Invoice, InvoiceStatus } from '@/types/invoice';
 import type { CreatePaymentInput } from '@/types/payment';
 import { toast } from 'sonner';
@@ -37,6 +37,7 @@ export default function InvoiceManagement() {
   
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [editingPurchase, setEditingPurchase] = useState<Invoice | null>(null);
 
   const { allInvoices = [], allPayments = [], loading, refetch } = useGlobalInvoiceSummary();
   const { addPayment } = usePaymentsForInvoice(selectedInvoice?.id || null);
@@ -166,7 +167,7 @@ export default function InvoiceManagement() {
                 <Button variant="outline" onClick={() => setVendorsDialogOpen(true)}>
                   <Store className="h-4 w-4 mr-2" /> Vendors
                 </Button>
-                <Button onClick={() => setPurchaseDialogOpen(true)}>
+                <Button onClick={() => { setEditingPurchase(null); setPurchaseDialogOpen(true); }}>
                   <Plus className="h-4 w-4 mr-2" /> Add Purchase
                 </Button>
               </>
@@ -209,6 +210,11 @@ export default function InvoiceManagement() {
               purchases={filteredPurchases}
               loading={loading}
               onDelete={handleDelete}
+              onStatusChange={handleStatusChange}
+              onEdit={(purchase) => {
+                setEditingPurchase(purchase);
+                setPurchaseDialogOpen(true);
+              }}
             />
           </TabsContent>
         </Tabs>
@@ -222,8 +228,12 @@ export default function InvoiceManagement() {
 
         <CreatePurchaseInvoiceDialog
           open={purchaseDialogOpen}
-          onOpenChange={setPurchaseDialogOpen}
+          onOpenChange={(open) => {
+            setPurchaseDialogOpen(open);
+            if (!open) setEditingPurchase(null);
+          }}
           onSuccess={refetch}
+          editPurchase={editingPurchase}
         />
 
         <ViewInvoiceDialog
