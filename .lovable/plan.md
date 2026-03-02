@@ -1,102 +1,79 @@
 
-# Attendance Corrections + Salary Payment Tracking
+# Salary Invoice Cleanup, Payment Date, and Top Sheet Reordering
 
 ## Overview
-Fix several attendance card calculations, replace "Late Days" with "Weekends", add a "Salary Payable Days" card, and introduce a "Mark as Paid" feature that creates a corresponding purchase invoice entry in the Top Sheet.
+Three changes: (1) Remove invoice number for salary payment entries, (2) Add a date picker for salary payment date, and (3) Add drag-and-drop or manual reordering of Top Sheet ledger rows with serial numbers updating accordingly.
 
 ---
 
-## Changes Summary
+## 1. Remove Invoice Number for Salary Entries
 
-### 1. Fix "Working Days" calculation
-**Current**: Counts only days with `dayType === 'working'` (excludes leave days, which is incorrect).
-**New**: `Working Days = Present + Paid Leave + LOP` (i.e., days the employee was expected to work, excluding weekends and holidays).
+**File: `src/components/payroll/IndividualAttendanceTab.tsx`**
+- When creating the purchase invoice for salary, remove the `invoice_number` field (or set it to an empty/null value like `SAL-<name>-<month>` without the formal invoice format)
+- Actually, the DB may require `invoice_number`. Instead, set it to a simple identifier like `--` or leave it as a non-invoice-style label: e.g., `Salary/Feb 2026/Employee`
+- Better approach: set `invoice_number` to `NULL` or an empty string if the schema allows it; otherwise use a simple non-formal format like `SAL-FEB2026-JEEVA`
 
-### 2. Replace "Late Days" card with "Weekends" card
-**Current**: Shows "Late Days" count.
-**New**: Shows "Weekends" count (total weekend days from the calendar for that employee's institution/company).
+**File: `src/components/invoice/TopSheetTab.tsx`**
+- For entries where `invoiceNo` starts with `SAL/` or is empty, show `--` or "Salary" instead of the invoice number in the table
 
-### 3. Fix "Attendance %" calculation
-**Current**: `(Total Days in Month - LOP) / Total Days in Month`
-**New**: `(Total Days in Month - (Casual Leave + LOP)) * 100 / Total Days in Month`
-- Casual leave (paid leave) and LOP both reduce attendance percentage. Weekends, holidays, and present days don't.
+## 2. Add Salary Payment Date Picker
 
-### 4. Add "Salary Payable Days" card
-**New card**: `Present + Holidays + Weekends + Paid Leave`
-This represents how many days count toward the salary payout.
+**File: `src/components/payroll/IndividualAttendanceTab.tsx`**
+- Add a `paymentDate` state (defaults to today's date)
+- In the "Mark as Paid" dialog, add a date input field labeled "Payment Date"
+- When creating the invoice and salary_payments record, use this date for:
+  - `invoice_date` and `due_date` on the invoice
+  - `paid_at` on the salary_payments record
+- This allows backdating or forward-dating salary payments
 
-### 5. Add "Mark Salary as Paid" feature
-Below the Monthly Payout Summary, add a "Mark as Paid" button with two options:
-- **Full Salary**: Records the net payout amount as paid
-- **Custom Amount**: Allows entering a custom amount
+## 3. Top Sheet Row Reordering
 
-When marked as paid:
-- Store a record in a new `salary_payments` database table (employee_id, month, year, amount_paid, payment_type, paid_at, paid_by)
-- Show a "Paid" badge on the payout card with the paid amount
-- Automatically create a **purchase invoice** entry in the invoices table with:
-  - `invoice_type = 'purchase'`
-  - `to_company_name` = employee name
-  - `total_amount` = amount paid
-  - `status = 'paid'`
-  - `remark = "February 2026 Salary"`
-  - This will appear in the **Top Sheet** as a debit entry
+**File: `src/components/invoice/TopSheetTab.tsx`**
+- Add a `customOrder` state: `Record<string, number>` mapping entry IDs to manual positions
+- Add up/down arrow buttons (or a move-to-position control) on each row
+- When reordering is active, override the sort with the custom order
+- Serial numbers (`Sl.No`) always reflect the current display position (already does `idx + 1`)
+- Store order in component state (resets on page reload) -- simple and sufficient
+- Add small up/down arrow buttons in the Sl.No column for each row
+- When clicked, swap that entry with the one above/below it
 
 ---
 
 ## Technical Details
 
-### Database Migration: Create `salary_payments` table
-```text
-CREATE TABLE salary_payments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  employee_id TEXT NOT NULL,
-  employee_name TEXT NOT NULL,
-  employee_type TEXT NOT NULL,  -- 'officer' or 'staff'
-  month INTEGER NOT NULL,
-  year INTEGER NOT NULL,
-  amount_paid NUMERIC NOT NULL,
-  net_salary NUMERIC NOT NULL,
-  payment_type TEXT DEFAULT 'full',  -- 'full' or 'custom'
-  invoice_id UUID REFERENCES invoices(id),
-  paid_by UUID,
-  paid_by_name TEXT,
-  paid_at TIMESTAMPTZ DEFAULT now(),
-  created_at TIMESTAMPTZ DEFAULT now()
-);
--- Enable RLS + policy for authenticated users
-```
+### IndividualAttendanceTab.tsx changes
 
-### File: `src/components/payroll/IndividualAttendanceTab.tsx`
+**State additions:**
+- `paymentDate: string` -- defaults to `new Date().toISOString().split('T')[0]`
 
-**Stats calculation changes (calculateStats function)**:
-- `workingDays` = presentDays + paidLeaveDays + totalLopDays (expected work days)
-- `weekendDays` = days with `dayType === 'weekend'` (already calculated)
-- `attendancePercentage` = `((totalDaysInMonth - (paidLeaveDays + totalLopDays)) * 100) / totalDaysInMonth`
-- New: `salaryPayableDays` = presentDays + holidays + weekendDays + paidLeaveDays
+**Dialog additions:**
+- Date input between the payment type radio and the confirm button
+- Label: "Payment Date"
 
-**Summary cards update**:
-- Card 1: Working Days (recalculated)
-- Card 2: Present (unchanged)
-- Card 3: Attendance % (recalculated)
-- Card 4: **Weekends** (replacing Late Days)
-- Card 5: Holidays (unchanged)
-- Card 6: Paid Leave (unchanged)
-- Card 7: LOP Days (unchanged)
-- Card 8: Approved Overtime (unchanged)
-- New Card 9: **Salary Payable Days**
+**Invoice creation update (line ~1652-1668):**
+- Remove or simplify `invoice_number` -- set to empty string or null
+- Use `paymentDate` for `invoice_date` and `due_date`
 
-**Mark as Paid section** (below payout summary):
-- State: `salaryPaymentStatus`, `paymentAmount`, `showPaymentDialog`
-- Load existing payment from `salary_payments` table on employee/month change
-- Dialog with radio: "Full Salary" (pre-filled net payout) or "Custom Amount" (editable input)
-- On confirm: Insert into `salary_payments`, create purchase invoice, refresh data
-- Show green "Paid" badge with amount if already paid; allow undo/re-mark
+**Salary payment record (line ~1673-1687):**
+- Use `paymentDate` for `paid_at`
 
-### Integration with Top Sheet
-No changes needed to TopSheetTab -- it already reads from the invoices table. The purchase invoice created by "Mark as Paid" will automatically appear as a settled debit entry with the salary remark.
+### TopSheetTab.tsx changes
 
-### Files to modify/create:
+**State additions:**
+- `manualOrder: string[]` -- array of entry IDs in custom order (initialized from sorted entries)
+- `isReordering: boolean` -- toggle for reorder mode
+
+**UI additions:**
+- "Reorder" toggle button next to "Export CSV"
+- When reordering is active, show up/down arrow buttons on each row in the Sl.No column
+- Clicking up swaps with previous entry; clicking down swaps with next
+- Sl.No always shows current index + 1
+
+**Invoice number display:**
+- If `entry.invoiceNo` is empty, null, or starts with certain salary patterns, display `--`
+
+### Files to modify:
 | Action | File |
 |--------|------|
-| Modify | `src/components/payroll/IndividualAttendanceTab.tsx` -- fix stats, replace late with weekends, add payable days card, add mark-as-paid |
-| Create | DB migration for `salary_payments` table |
+| Modify | `src/components/payroll/IndividualAttendanceTab.tsx` -- remove invoice number, add payment date picker |
+| Modify | `src/components/invoice/TopSheetTab.tsx` -- add reorder controls with up/down arrows |
