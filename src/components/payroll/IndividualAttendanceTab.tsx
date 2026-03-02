@@ -1652,7 +1652,9 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                     .insert({
                       invoice_type: 'purchase',
                       invoice_number: `SAL/${localYear}/${String(localMonth).padStart(2, '0')}/${selectedEmployee.name.substring(0, 10).toUpperCase().replace(/\s/g, '')}`,
+                      from_company_name: 'MetaSage Alliance',
                       to_company_name: selectedEmployee.name,
+                      sub_total: amountPaid,
                       total_amount: amountPaid,
                       status: 'paid',
                       payment_status: 'paid',
