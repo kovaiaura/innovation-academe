@@ -6234,6 +6234,65 @@ export type Database = {
         }
         Relationships: []
       }
+      salary_payments: {
+        Row: {
+          amount_paid: number
+          created_at: string | null
+          employee_id: string
+          employee_name: string
+          employee_type: string
+          id: string
+          invoice_id: string | null
+          month: number
+          net_salary: number
+          paid_at: string | null
+          paid_by: string | null
+          paid_by_name: string | null
+          payment_type: string | null
+          year: number
+        }
+        Insert: {
+          amount_paid: number
+          created_at?: string | null
+          employee_id: string
+          employee_name: string
+          employee_type: string
+          id?: string
+          invoice_id?: string | null
+          month: number
+          net_salary: number
+          paid_at?: string | null
+          paid_by?: string | null
+          paid_by_name?: string | null
+          payment_type?: string | null
+          year: number
+        }
+        Update: {
+          amount_paid?: number
+          created_at?: string | null
+          employee_id?: string
+          employee_name?: string
+          employee_type?: string
+          id?: string
+          invoice_id?: string | null
+          month?: number
+          net_salary?: number
+          paid_at?: string | null
+          paid_by?: string | null
+          paid_by_name?: string | null
+          payment_type?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_attendance: {
         Row: {
           check_in_address: string | null

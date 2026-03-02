@@ -3,7 +3,7 @@
  * Comprehensive view with holidays, weekends, leaves, overtime approvals
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,8 @@ import {
   CalendarCheck,
   Wallet,
   FileText,
+  IndianRupee,
+  BadgeCheck,
 } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isAfter, subMonths, getDaysInMonth } from 'date-fns';
 import { toast } from 'sonner';
@@ -153,6 +156,19 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
   const [payslipDialogOpen, setPayslipDialogOpen] = useState(false);
   const [payslipData, setPayslipData] = useState<any>(null);
 
+  // Salary payment state
+  const [salaryPayment, setSalaryPayment] = useState<{
+    id: string;
+    amount_paid: number;
+    payment_type: string;
+    paid_at: string;
+    invoice_id: string | null;
+  } | null>(null);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [paymentType, setPaymentType] = useState<'full' | 'custom'>('full');
+  const [customPaymentAmount, setCustomPaymentAmount] = useState<number>(0);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
   // Generate month options (last 12 months)
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
     const date = subMonths(new Date(year, month - 1), i);
@@ -163,6 +179,23 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       label: format(date, 'MMMM yyyy')
     };
   });
+
+  // Load salary payment status
+  const loadSalaryPayment = useCallback(async () => {
+    if (!selectedEmployee) return;
+    try {
+      const { data } = await supabase
+        .from('salary_payments')
+        .select('id, amount_paid, payment_type, paid_at, invoice_id')
+        .eq('employee_id', selectedEmployee.id)
+        .eq('month', localMonth)
+        .eq('year', localYear)
+        .maybeSingle();
+      setSalaryPayment(data);
+    } catch (error) {
+      console.error('Error loading salary payment:', error);
+    }
+  }, [selectedEmployee, localMonth, localYear]);
 
   // Load employees
   useEffect(() => {
@@ -176,6 +209,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     if (selectedEmployee) {
       loadAllData();
       loadSalaryData();
+      loadSalaryPayment();
     }
   }, [selectedEmployee, localMonth, localYear]);
 
@@ -524,8 +558,6 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     // Total calendar days in the month
     const totalDaysInMonth = getDaysInMonth(new Date(localYear, localMonth - 1));
     
-    // Working days are days where employee was expected to work (not weekend, not holiday, not leave, not future)
-    const workingDays = dayRecords.filter((r) => r.dayType === 'working' && r.status !== 'future').length;
     const weekendDays = dayRecords.filter((r) => r.dayType === 'weekend').length;
     const holidays = dayRecords.filter((r) => r.dayType === 'holiday').length;
     const leaveDays = dayRecords.filter((r) => r.dayType === 'leave').length;
@@ -546,12 +578,16 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     // Total LOP days = approved LOP leaves + unmarked days (unapproved absences)
     const totalLopDays = lopLeaveDays + unmarkedDays;
 
-    // NEW FORMULA: Attendance % = ((Total Days in Month - (LOP Leave Days + Unmarked Days)) × 100) / Total Days in Month
-    // Only LOP and unmarked days count against attendance, paid leave doesn't
-    const absentDays = totalLopDays;
+    // Working Days = Present + Paid Leave + LOP (days the employee was expected to work)
+    const workingDays = presentDays + paidLeaveDays + totalLopDays;
+
+    // Attendance % = ((Total Days - (Paid Leave + LOP)) * 100) / Total Days
     const attendancePercentage = totalDaysInMonth > 0 
-      ? parseFloat((((totalDaysInMonth - absentDays) * 100) / totalDaysInMonth).toFixed(2))
+      ? parseFloat((((totalDaysInMonth - (paidLeaveDays + totalLopDays)) * 100) / totalDaysInMonth).toFixed(2))
       : 100;
+
+    // Salary Payable Days = Present + Holidays + Weekends + Paid Leave
+    const salaryPayableDays = presentDays + holidays + weekendDays + paidLeaveDays;
 
     return {
       totalDaysInMonth,
@@ -570,6 +606,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       approvedOvertime,
       pendingOvertimeCount,
       attendancePercentage,
+      salaryPayableDays,
     };
   };
 
@@ -999,9 +1036,9 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                 </Card>
                 <Card>
                   <CardContent className="pt-4 text-center">
-                    <AlertTriangle className="h-5 w-5 mx-auto text-orange-500 mb-1" />
-                    <p className="text-2xl font-bold text-orange-600">{stats?.lateDays}</p>
-                    <p className="text-xs text-muted-foreground">Late Days</p>
+                    <CalendarOff className="h-5 w-5 mx-auto text-orange-500 mb-1" />
+                    <p className="text-2xl font-bold text-orange-600">{stats?.weekendDays}</p>
+                    <p className="text-xs text-muted-foreground">Weekends</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -1035,6 +1072,13 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                       )}
                     </p>
                     <p className="text-xs text-muted-foreground">Approved Overtime</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4 text-center">
+                    <Wallet className="h-5 w-5 mx-auto text-teal-500 mb-1" />
+                    <p className="text-2xl font-bold text-teal-600">{stats?.salaryPayableDays || 0}</p>
+                    <p className="text-xs text-muted-foreground">Salary Payable Days</p>
                   </CardContent>
                 </Card>
               </div>
@@ -1196,6 +1240,62 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                         </div>
                       );
                     })()}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Salary Payment Status */}
+              {salaryData && selectedEmployee && (
+                <Card className={salaryPayment ? 'border-green-500/30 bg-green-50/50 dark:bg-green-950/20' : ''}>
+                  <CardContent className="pt-6">
+                    {salaryPayment ? (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <BadgeCheck className="h-6 w-6 text-green-600" />
+                          <div>
+                            <p className="font-semibold text-green-700 dark:text-green-400">Salary Paid</p>
+                            <p className="text-sm text-muted-foreground">
+                              {formatCurrency(salaryPayment.amount_paid)} ({salaryPayment.payment_type === 'full' ? 'Full Salary' : 'Custom Amount'}) • {format(parseISO(salaryPayment.paid_at), 'dd MMM yyyy')}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            if (!confirm('Are you sure you want to undo this salary payment? The linked invoice will also be deleted.')) return;
+                            try {
+                              // Delete linked invoice if exists
+                              if (salaryPayment.invoice_id) {
+                                await supabase.from('invoices').delete().eq('id', salaryPayment.invoice_id);
+                              }
+                              await supabase.from('salary_payments').delete().eq('id', salaryPayment.id);
+                              setSalaryPayment(null);
+                              toast.success('Salary payment undone');
+                            } catch (err) {
+                              console.error(err);
+                              toast.error('Failed to undo payment');
+                            }
+                          }}
+                        >
+                          Undo Payment
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold">Salary Not Yet Paid</p>
+                          <p className="text-sm text-muted-foreground">Mark this month's salary as paid to record it in the ledger</p>
+                        </div>
+                        <Button onClick={() => {
+                          setPaymentType('full');
+                          setPaymentDialogOpen(true);
+                        }}>
+                          <IndianRupee className="h-4 w-4 mr-2" />
+                          Mark as Paid
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -1493,6 +1593,115 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
         payslipData={payslipData}
         companyProfile={companyProfile}
       />
+
+      {/* Salary Payment Dialog */}
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark Salary as Paid</DialogTitle>
+            <DialogDescription>
+              Record salary payment for {selectedEmployee?.name} - {format(new Date(localYear, localMonth - 1), 'MMMM yyyy')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <RadioGroup value={paymentType} onValueChange={(v) => setPaymentType(v as 'full' | 'custom')}>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="full" id="full" />
+                <Label htmlFor="full">Full Salary</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="custom" id="custom" />
+                <Label htmlFor="custom">Custom Amount</Label>
+              </div>
+            </RadioGroup>
+            {paymentType === 'custom' && (
+              <div>
+                <Label>Amount</Label>
+                <Input
+                  type="number"
+                  value={customPaymentAmount}
+                  onChange={(e) => setCustomPaymentAmount(parseFloat(e.target.value) || 0)}
+                  placeholder="Enter amount"
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={isProcessingPayment}
+              onClick={async () => {
+                if (!selectedEmployee || !salaryData || !user || !stats) return;
+                setIsProcessingPayment(true);
+                try {
+                  const daysInMonth = getDaysInMonth(new Date(localYear, localMonth - 1));
+                  const perDaySalary = salaryData.monthlySalary / daysInMonth;
+                  const lopDeduction = perDaySalary * (stats.totalLopDays || 0);
+                  const calculatedOvertimePay = (stats.approvedOvertime || 0) * salaryData.hourlyRate * salaryData.overtimeMultiplier;
+                  const overtimePay = customOvertimePay ?? calculatedOvertimePay;
+                  const netPayout = salaryData.monthlySalary - lopDeduction + overtimePay;
+                  const amountPaid = paymentType === 'full' ? netPayout : customPaymentAmount;
+
+                  const monthName = format(new Date(localYear, localMonth - 1), 'MMMM yyyy');
+
+                  // Create purchase invoice
+                  const { data: invoice, error: invoiceError } = await supabase
+                    .from('invoices')
+                    .insert({
+                      invoice_type: 'purchase',
+                      invoice_number: `SAL/${localYear}/${String(localMonth).padStart(2, '0')}/${selectedEmployee.name.substring(0, 10).toUpperCase().replace(/\s/g, '')}`,
+                      to_company_name: selectedEmployee.name,
+                      total_amount: amountPaid,
+                      status: 'paid',
+                      payment_status: 'paid',
+                      amount_paid: amountPaid,
+                      remark: `${monthName} Salary`,
+                      invoice_date: new Date().toISOString().split('T')[0],
+                      due_date: new Date().toISOString().split('T')[0],
+                      created_by: user.id,
+                    } as any)
+                    .select('id')
+                    .single();
+
+                  if (invoiceError) throw invoiceError;
+
+                  // Create salary payment record
+                  const { error: paymentError } = await supabase
+                    .from('salary_payments')
+                    .insert({
+                      employee_id: selectedEmployee.id,
+                      employee_name: selectedEmployee.name,
+                      employee_type: selectedEmployee.type,
+                      month: localMonth,
+                      year: localYear,
+                      amount_paid: amountPaid,
+                      net_salary: netPayout,
+                      payment_type: paymentType,
+                      invoice_id: invoice?.id || null,
+                      paid_by: user.id,
+                      paid_by_name: user.name,
+                    } as any);
+
+                  if (paymentError) throw paymentError;
+
+                  toast.success(`Salary of ${formatCurrency(amountPaid)} marked as paid`);
+                  setPaymentDialogOpen(false);
+                  loadSalaryPayment();
+                } catch (error) {
+                  console.error('Error processing payment:', error);
+                  toast.error('Failed to process salary payment');
+                } finally {
+                  setIsProcessingPayment(false);
+                }
+              }}
+            >
+              {isProcessingPayment ? 'Processing...' : 'Confirm Payment'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
