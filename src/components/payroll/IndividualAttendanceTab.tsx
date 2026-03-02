@@ -168,6 +168,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
   const [paymentType, setPaymentType] = useState<'full' | 'custom'>('full');
   const [customPaymentAmount, setCustomPaymentAmount] = useState<number>(0);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   // Generate month options (last 12 months)
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
@@ -1625,6 +1626,14 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                 />
               </div>
             )}
+            <div>
+              <Label>Payment Date</Label>
+              <Input
+                type="date"
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
@@ -1651,7 +1660,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                     .from('invoices')
                     .insert({
                       invoice_type: 'purchase',
-                      invoice_number: `SAL/${localYear}/${String(localMonth).padStart(2, '0')}/${selectedEmployee.name.substring(0, 10).toUpperCase().replace(/\s/g, '')}`,
+                      invoice_number: '',
                       from_company_name: 'MetaSage Alliance',
                       to_company_name: selectedEmployee.name,
                       sub_total: amountPaid,
@@ -1660,8 +1669,8 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                       payment_status: 'paid',
                       amount_paid: amountPaid,
                       remark: `${monthName} Salary`,
-                      invoice_date: new Date().toISOString().split('T')[0],
-                      due_date: new Date().toISOString().split('T')[0],
+                      invoice_date: paymentDate,
+                      due_date: paymentDate,
                       created_by: user.id,
                     } as any)
                     .select('id')
@@ -1684,6 +1693,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                       invoice_id: invoice?.id || null,
                       paid_by: user.id,
                       paid_by_name: user.name,
+                      paid_at: paymentDate,
                     } as any);
 
                   if (paymentError) throw paymentError;
