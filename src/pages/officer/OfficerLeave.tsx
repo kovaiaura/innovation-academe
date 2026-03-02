@@ -24,9 +24,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { 
   LeaveType, 
   LeaveStatus,
+  LeaveDuration,
   SubstituteAssignment,
   LEAVE_TYPE_LABELS, 
   LEAVE_STATUS_LABELS,
+  LEAVE_DURATION_LABELS,
 } from '@/types/leave';
 import type { DateRange } from 'react-day-picker';
 import { LeaveOverviewTab } from '@/components/leave/LeaveOverviewTab';
@@ -49,6 +51,7 @@ export default function OfficerLeave() {
   const [currentStep, setCurrentStep] = useState(1);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [leaveType, setLeaveType] = useState<LeaveType>('casual');
+  const [leaveDuration, setLeaveDuration] = useState<LeaveDuration>('full_day');
   const [reason, setReason] = useState('');
   const [affectedSlots, setAffectedSlots] = useState<AffectedTimetableSlot[]>([]);
   const [substituteAssignments, setSubstituteAssignments] = useState<SubstituteAssignment[]>([]);
@@ -152,6 +155,11 @@ export default function OfficerLeave() {
       return { totalCalendarDays: 0, weekendsInRange: 0, holidaysInRange: 0, actualLeaveDays: 0 };
     }
     
+    // If half-day selected, always 0.5
+    if (leaveDuration !== 'full_day') {
+      return { totalCalendarDays: 1, weekendsInRange: 0, holidaysInRange: 0, actualLeaveDays: 0.5 };
+    }
+    
     const start = parseISO(format(dateRange.from, 'yyyy-MM-dd'));
     const end = parseISO(format(dateRange.to, 'yyyy-MM-dd'));
     const days = eachDayOfInterval({ start, end });
@@ -176,7 +184,7 @@ export default function OfficerLeave() {
       holidaysInRange,
       actualLeaveDays: Math.max(0, totalCalendarDays - weekendsInRange - holidaysInRange)
     };
-  }, [dateRange, institutionNonWorkingDays]);
+  }, [dateRange, institutionNonWorkingDays, leaveDuration]);
 
   const applyMutation = useMutation({
     mutationFn: leaveApplicationService.applyLeave,
@@ -196,6 +204,7 @@ export default function OfficerLeave() {
   const resetForm = () => {
     setDateRange(undefined);
     setLeaveType('casual');
+    setLeaveDuration('full_day');
     setReason('');
     setAffectedSlots([]);
     setSubstituteAssignments([]);
@@ -347,6 +356,7 @@ export default function OfficerLeave() {
       start_date: format(dateRange.from, 'yyyy-MM-dd'),
       end_date: format(dateRange.to, 'yyyy-MM-dd'),
       leave_type: leaveType,
+      leave_duration: leaveDuration,
       reason: reason.trim(),
       substitute_assignments: substituteAssignments.filter(s => s.substitute_officer_id)
     });
@@ -435,6 +445,11 @@ export default function OfficerLeave() {
                           </TableCell>
                           <TableCell>
                             {app.total_days}
+                            {app.leave_duration && app.leave_duration !== 'full_day' && (
+                              <span className="text-muted-foreground text-xs ml-1">
+                                ({LEAVE_DURATION_LABELS[app.leave_duration]})
+                              </span>
+                            )}
                             {app.lop_days > 0 && (
                               <span className="text-red-600 text-xs ml-1">({app.lop_days} LOP)</span>
                             )}
@@ -511,6 +526,24 @@ export default function OfficerLeave() {
                             </SelectContent>
                           </Select>
                         </div>
+
+                        {/* Leave Duration - only show for single day */}
+                        {dateRange?.from && dateRange?.to && 
+                          format(dateRange.from, 'yyyy-MM-dd') === format(dateRange.to, 'yyyy-MM-dd') && (
+                          <div>
+                            <Label>Leave Duration</Label>
+                            <Select value={leaveDuration} onValueChange={(v) => setLeaveDuration(v as LeaveDuration)}>
+                              <SelectTrigger className="mt-2">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="full_day">Full Day</SelectItem>
+                                <SelectItem value="first_half">First Half (Morning)</SelectItem>
+                                <SelectItem value="second_half">Second Half (Afternoon)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                         <div>
                           <Label>Reason</Label>
                           <Textarea

@@ -15,7 +15,7 @@ import { CalendarCheck, Clock, CheckCircle, XCircle, Calendar as CalendarIcon, F
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { DateRange } from 'react-day-picker';
-import { LeaveType, LEAVE_TYPE_LABELS, LEAVE_STATUS_LABELS, LeaveStatus } from '@/types/leave';
+import { LeaveType, LEAVE_TYPE_LABELS, LEAVE_STATUS_LABELS, LeaveStatus, LeaveDuration, LEAVE_DURATION_LABELS } from '@/types/leave';
 import { leaveApplicationService, leaveBalanceService } from '@/services/leave.service';
 import { calendarDayTypeService } from '@/services/calendarDayType.service';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,6 +38,7 @@ export default function MetaStaffLeaveManagement() {
   // Apply Leave Form State
   const [dateRange, setDateRange] = useState<DateRange>();
   const [leaveType, setLeaveType] = useState<LeaveType>('casual');
+  const [leaveDuration, setLeaveDuration] = useState<LeaveDuration>('full_day');
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -113,6 +114,11 @@ export default function MetaStaffLeaveManagement() {
       return { totalCalendarDays: 0, weekendsInRange: 0, holidaysInRange: 0, actualLeaveDays: 0 };
     }
     
+    // If half-day selected, always 0.5
+    if (leaveDuration !== 'full_day') {
+      return { totalCalendarDays: 1, weekendsInRange: 0, holidaysInRange: 0, actualLeaveDays: 0.5 };
+    }
+    
     const start = parseISO(format(dateRange.from, 'yyyy-MM-dd'));
     const end = parseISO(format(dateRange.to, 'yyyy-MM-dd'));
     const days = eachDayOfInterval({ start, end });
@@ -137,7 +143,7 @@ export default function MetaStaffLeaveManagement() {
       holidaysInRange,
       actualLeaveDays: Math.max(0, totalCalendarDays - weekendsInRange - holidaysInRange)
     };
-  }, [dateRange, companyNonWorkingDays]);
+  }, [dateRange, companyNonWorkingDays, leaveDuration]);
 
   const yearApplications = applications.filter(app => {
     const appYear = new Date(app.start_date).getFullYear();
@@ -161,6 +167,7 @@ export default function MetaStaffLeaveManagement() {
   const resetForm = () => {
     setDateRange(undefined);
     setLeaveType('casual');
+    setLeaveDuration('full_day');
     setReason('');
   };
 
@@ -179,6 +186,7 @@ export default function MetaStaffLeaveManagement() {
       start_date: format(dateRange.from, 'yyyy-MM-dd'),
       end_date: format(dateRange.to, 'yyyy-MM-dd'),
       leave_type: leaveType,
+      leave_duration: leaveDuration,
       reason: reason.trim(),
       substitute_assignments: []
     });
@@ -291,6 +299,24 @@ export default function MetaStaffLeaveManagement() {
                       </Select>
                     </div>
 
+                    {/* Leave Duration - only for single day */}
+                    {dateRange?.from && dateRange?.to && 
+                      format(dateRange.from, 'yyyy-MM-dd') === format(dateRange.to, 'yyyy-MM-dd') && (
+                      <div>
+                        <Label>Leave Duration</Label>
+                        <Select value={leaveDuration} onValueChange={(v) => setLeaveDuration(v as LeaveDuration)}>
+                          <SelectTrigger className="mt-2">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="full_day">Full Day</SelectItem>
+                            <SelectItem value="first_half">First Half (Morning)</SelectItem>
+                            <SelectItem value="second_half">Second Half (Afternoon)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
                     <div>
                       <Label>Reason for Leave</Label>
                       <Textarea
@@ -366,6 +392,11 @@ export default function MetaStaffLeaveManagement() {
                           </TableCell>
                           <TableCell>
                             {app.total_days}
+                            {app.leave_duration && app.leave_duration !== 'full_day' && (
+                              <span className="text-muted-foreground text-xs ml-1">
+                                ({LEAVE_DURATION_LABELS[app.leave_duration]})
+                              </span>
+                            )}
                             {app.lop_days > 0 && (
                               <span className="text-red-600 text-xs ml-1">({app.lop_days} LOP)</span>
                             )}

@@ -15,6 +15,7 @@ import { leaveApplicationService, leaveBalanceService } from '@/services/leave.s
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   LeaveType, 
+  LeaveDuration,
   LEAVE_TYPE_LABELS, 
   MAX_LEAVES_PER_MONTH,
   CalculatedLeaveBalance
@@ -31,6 +32,7 @@ export default function LeaveApply() {
     start_date: '',
     end_date: '',
     leave_type: 'casual' as LeaveType,
+    leave_duration: 'full_day' as LeaveDuration,
     reason: ''
   });
 
@@ -46,7 +48,7 @@ export default function LeaveApply() {
       queryClient.invalidateQueries({ queryKey: ['leave-balance'] });
       queryClient.invalidateQueries({ queryKey: ['my-leave-applications'] });
       toast.success('Leave application submitted successfully');
-      setFormData({ start_date: '', end_date: '', leave_type: 'casual', reason: '' });
+      setFormData({ start_date: '', end_date: '', leave_type: 'casual', leave_duration: 'full_day', reason: '' });
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -55,6 +57,7 @@ export default function LeaveApply() {
 
   const calculateDays = () => {
     if (!formData.start_date || !formData.end_date) return 0;
+    if (formData.leave_duration !== 'full_day') return 0.5;
     return leaveApplicationService.calculateWorkingDays(formData.start_date, formData.end_date);
   };
 
@@ -87,6 +90,7 @@ export default function LeaveApply() {
       start_date: formData.start_date,
       end_date: formData.end_date,
       leave_type: formData.leave_type,
+      leave_duration: formData.leave_duration,
       reason: formData.reason
     });
   };
@@ -200,6 +204,26 @@ export default function LeaveApply() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Leave Duration - only for single day */}
+              {formData.start_date && formData.end_date && formData.start_date === formData.end_date && (
+                <div className="space-y-2">
+                  <Label>Leave Duration</Label>
+                  <Select
+                    value={formData.leave_duration}
+                    onValueChange={(v) => setFormData({ ...formData, leave_duration: v as LeaveDuration })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="full_day">Full Day</SelectItem>
+                      <SelectItem value="first_half">First Half (Morning)</SelectItem>
+                      <SelectItem value="second_half">Second Half (Afternoon)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="reason">Reason *</Label>

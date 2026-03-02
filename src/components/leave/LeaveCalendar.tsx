@@ -93,6 +93,7 @@ export function LeaveCalendar({ institutionId, showInstitutionSelector = false }
       setLeaves((data || []).map(l => ({
         ...l,
         leave_type: l.leave_type as LeaveType,
+        leave_duration: ((l as any).leave_duration || 'full_day') as any,
         status: l.status as LeaveStatus,
         applicant_type: l.applicant_type as UserType,
         approval_chain: (Array.isArray(l.approval_chain) ? l.approval_chain : []) as unknown as ApprovalChainItem[],

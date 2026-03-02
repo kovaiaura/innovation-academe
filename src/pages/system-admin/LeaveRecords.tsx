@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { leaveBalanceService, leaveApplicationService } from '@/services/leave.service';
-import { LeaveApplication, LEAVE_TYPE_LABELS, LEAVE_STATUS_LABELS, LeaveStatus, LeaveType, LEAVES_PER_YEAR } from '@/types/leave';
+import { LeaveApplication, LEAVE_TYPE_LABELS, LEAVE_STATUS_LABELS, LeaveStatus, LeaveType, LEAVES_PER_YEAR, LEAVE_DURATION_LABELS } from '@/types/leave';
 import { format, parseISO } from 'date-fns';
 import { Calendar, FileText, TrendingUp, TrendingDown, Clock, CheckCircle, XCircle, AlertTriangle, Download } from 'lucide-react';
 
@@ -264,7 +264,14 @@ export default function LeaveRecords() {
                           <TableCell>
                             <Badge variant="outline">{LEAVE_TYPE_LABELS[app.leave_type]}</Badge>
                           </TableCell>
-                          <TableCell>{app.total_days}</TableCell>
+                              <TableCell>
+                                {app.total_days}
+                                {app.leave_duration && app.leave_duration !== 'full_day' && (
+                                  <span className="text-muted-foreground text-xs ml-1">
+                                    ({LEAVE_DURATION_LABELS[app.leave_duration]})
+                                  </span>
+                                )}
+                              </TableCell>
                           <TableCell>{app.paid_days}</TableCell>
                           <TableCell>
                             {app.lop_days > 0 ? (
