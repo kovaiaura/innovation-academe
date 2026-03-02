@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Download, Users, Store } from 'lucide-react';
+import { Plus, Users, Store } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { InvoiceList } from '@/components/invoice/InvoiceList';
 import { GlobalSummaryCards } from '@/components/invoice/GlobalSummaryCards';
 import { PurchasesTab } from '@/components/invoice/PurchasesTab';
@@ -13,7 +14,6 @@ import { CreatePurchaseInvoiceDialog } from '@/components/invoice/CreatePurchase
 import { ViewInvoiceDialog } from '@/components/invoice/ViewInvoiceDialog';
 import { RecordPaymentDialog } from '@/components/invoice/RecordPaymentDialog';
 import { PaymentHistoryDialog } from '@/components/invoice/PaymentHistoryDialog';
-import { InvoiceExportDialog } from '@/components/invoice/InvoiceExportDialog';
 import { InvoicePartiesManager } from '@/components/invoice/InvoicePartiesManager';
 import { InvoiceVendorsManager } from '@/components/invoice/InvoiceVendorsManager';
 import { useGlobalInvoiceSummary } from '@/hooks/useGlobalInvoiceSummary';
@@ -32,13 +32,15 @@ export default function InvoiceManagement() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [recordPaymentDialogOpen, setRecordPaymentDialogOpen] = useState(false);
   const [paymentHistoryDialogOpen, setPaymentHistoryDialogOpen] = useState(false);
-  const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [partiesDialogOpen, setPartiesDialogOpen] = useState(false);
   const [vendorsDialogOpen, setVendorsDialogOpen] = useState(false);
   
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [editingPurchase, setEditingPurchase] = useState<Invoice | null>(null);
+
+  const [selectedParty, setSelectedParty] = useState<string | null>(null);
+  const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
 
   const { allInvoices = [], allPayments = [], loading, refetch } = useGlobalInvoiceSummary();
   const { addPayment } = usePaymentsForInvoice(selectedInvoice?.id || null);
@@ -84,6 +86,34 @@ export default function InvoiceManagement() {
     }
     return payments;
   }, [allPayments, dateRange]);
+
+  // Extract unique party names for sales filter
+  const uniqueParties = useMemo(() => {
+    const names = filteredInvoices
+      .map(inv => inv.to_company_name)
+      .filter((name): name is string => !!name);
+    return [...new Set(names)].sort();
+  }, [filteredInvoices]);
+
+  // Extract unique vendor names for purchase filter
+  const uniqueVendors = useMemo(() => {
+    const names = filteredPurchases
+      .map(inv => inv.from_company_name || inv.to_company_name)
+      .filter((name): name is string => !!name);
+    return [...new Set(names)].sort();
+  }, [filteredPurchases]);
+
+  // Apply party filter to sales
+  const displayInvoices = useMemo(() => {
+    if (!selectedParty) return filteredInvoices;
+    return filteredInvoices.filter(inv => inv.to_company_name === selectedParty);
+  }, [filteredInvoices, selectedParty]);
+
+  // Apply vendor filter to purchases
+  const displayPurchases = useMemo(() => {
+    if (!selectedVendor) return filteredPurchases;
+    return filteredPurchases.filter(inv => (inv.from_company_name || inv.to_company_name) === selectedVendor);
+  }, [filteredPurchases, selectedVendor]);
 
   const handleView = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -151,9 +181,6 @@ export default function InvoiceManagement() {
             <p className="text-muted-foreground">Create, manage and track invoices & purchases</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setExportDialogOpen(true)}>
-              <Download className="h-4 w-4 mr-2" /> Export
-            </Button>
             {activeTab === 'sales' && (
               <>
                 <Button variant="outline" onClick={() => setPartiesDialogOpen(true)}>
@@ -191,12 +218,30 @@ export default function InvoiceManagement() {
           <TabsContent value="sales" className="space-y-6">
             <GlobalSummaryCards invoices={filteredInvoices} payments={filteredPayments} loading={loading} />
             
-            <div className="flex items-center justify-end">
-              <p className="text-sm text-muted-foreground">{filteredInvoices.length} invoices</p>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-muted-foreground">{displayInvoices.length} invoices</p>
+                {uniqueParties.length > 0 && (
+                  <Select
+                    value={selectedParty || 'all'}
+                    onValueChange={(val) => setSelectedParty(val === 'all' ? null : val)}
+                  >
+                    <SelectTrigger className="w-[200px] h-8 text-sm">
+                      <SelectValue placeholder="All Parties" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Parties</SelectItem>
+                      {uniqueParties.map(name => (
+                        <SelectItem key={name} value={name}>{name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
             </div>
 
             <InvoiceList
-              invoices={filteredInvoices}
+              invoices={displayInvoices}
               loading={loading}
               onView={handleView}
               onDownload={handleDownload}
@@ -209,8 +254,27 @@ export default function InvoiceManagement() {
           </TabsContent>
 
           <TabsContent value="purchases" className="space-y-6">
+            <div className="flex items-center gap-3 mb-2">
+              <p className="text-sm text-muted-foreground">{displayPurchases.length} purchases</p>
+              {uniqueVendors.length > 0 && (
+                <Select
+                  value={selectedVendor || 'all'}
+                  onValueChange={(val) => setSelectedVendor(val === 'all' ? null : val)}
+                >
+                  <SelectTrigger className="w-[200px] h-8 text-sm">
+                    <SelectValue placeholder="All Vendors" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Vendors</SelectItem>
+                    {uniqueVendors.map(name => (
+                      <SelectItem key={name} value={name}>{name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
             <PurchasesTab
-              purchases={filteredPurchases}
+              purchases={displayPurchases}
               loading={loading}
               onDelete={handleDelete}
               onStatusChange={handleStatusChange}
@@ -266,13 +330,6 @@ export default function InvoiceManagement() {
           open={paymentHistoryDialogOpen}
           onOpenChange={setPaymentHistoryDialogOpen}
           invoice={selectedInvoice}
-        />
-
-        <InvoiceExportDialog
-          open={exportDialogOpen}
-          onOpenChange={setExportDialogOpen}
-          invoices={filteredInvoices}
-          invoiceType="sales"
         />
 
         <InvoicePartiesManager
