@@ -1,86 +1,35 @@
 
+# Fix Credit Column to Reflect Actual Payment Status
 
-# Add "Top Sheet" Tab to Invoice Management
+## Problem
+The Top Sheet currently shows ALL sales invoice amounts in the **Credit** column, even if the invoice has only been sent and no payment has been received. This misrepresents cash flow -- ₹64,900 appears as "received" when it's actually just an invoice sent.
 
-## Overview
-A new third tab called **Top Sheet** that provides a consolidated financial overview combining both sales and purchase invoices into a single ledger-style view, with summary cards at the top and a combined table below. Includes month-wise filtering and CSV export.
+## Solution
+Only populate the **Credit** column for sales invoices where payment has actually been received (status is `paid`). For unpaid/sent invoices, display a label like "Invoice Sent" in the Credit column instead of the amount.
 
----
+Similarly, update the **summary cards** so that "Total Received" only counts payments actually received (already correct via `payments` array), and ensure the ledger totals row only sums actual credits.
 
-## What You'll Get
+## Changes
 
-### Summary Cards (top section)
-Six cards showing filtered totals:
-- **Total Sales** -- sum of all sales invoice amounts
-- **Total Received** -- sum of payments received on sales
-- **Overdue** -- unpaid sales past due date
-- **Total Purchases** -- sum of all purchase invoice amounts
-- **Settled Amount** -- sum of settled (paid) purchases
-- **Profit** -- Total Received minus Settled Purchases
+### File: `src/components/invoice/TopSheetTab.tsx`
 
-### Combined Ledger Table
-All sales and purchase invoices merged into one time-sorted table:
+**1. Add status to LedgerEntry interface**
+- Add `status: string` field to track invoice status
 
-| Column | Description |
-|--------|-------------|
-| Sl.No | Auto-numbered row index |
-| Date | Invoice date |
-| Invoice No | Invoice number |
-| Supplier/Customer Name | Vendor name (purchase) or customer name (sales) |
-| Credit | Amount received from clients (sales invoices that are paid) |
-| Debit | Amount paid to vendors (purchase invoices that are settled) |
-| GST | Total GST amount |
-| SGST Value | SGST amount |
-| CGST Value | CGST amount |
-| TDS Deducted | TDS amount |
-| Handled By | Who handled this entry |
-| Remark | Any notes |
+**2. Update sales entry mapping (lines 61-77)**
+- Set `credit` to `inv.total_amount` only when `inv.status === 'paid'`; otherwise set to `0`
+- Store `status: inv.status` for display logic
 
-- Sorted by date (newest first by default)
-- Column header click to toggle sort order (date, amount, name)
-- Sales entries show amount in **Credit** column, Debit shows "--"
-- Purchase entries show amount in **Debit** column, Credit shows "--"
+**3. Update Credit cell rendering (lines 215-217)**
+- When `entry.type === 'sales'` and `entry.credit === 0`: show a muted label like "Invoice Sent" (or "Overdue" if overdue)
+- When `entry.credit > 0`: show the amount as before
 
-### Month Filter
-The existing date filter (All Time / This Month / This Quarter / This Year / Custom) already applies to all tabs -- the Top Sheet will use the same shared `dateRange` state.
+**4. Update Debit cell similarly for purchases**
+- When `entry.type === 'purchase'` and `entry.debit === 0` (not yet settled): show "Pending"
+- When settled: show the amount
 
-### Export
-A dedicated "Export Top Sheet" button that downloads the combined ledger table as a CSV file with all visible columns.
+### File: `src/services/invoice-export.service.ts`
+- Update the CSV export to reflect the same logic -- show "Invoice Sent" / "Pending" text instead of amounts for unpaid entries
 
----
-
-## Technical Plan
-
-### 1. Create TopSheetTab component
-**New file: `src/components/invoice/TopSheetTab.tsx`**
-- Props: `salesInvoices`, `purchaseInvoices`, `payments`, `loading`
-- Computes summary stats (total sales, received, overdue, total purchases, settled, profit)
-- Merges sales + purchases into a single array, sorted by `invoice_date` descending
-- Renders 6 summary cards in a grid
-- Renders combined table with sortable columns (click header to sort by date/name/amount)
-- Each row determines Credit vs Debit based on `invoice_type`
-- "Export CSV" button at top-right of table section
-- Uses `papaparse` (already installed) or manual CSV generation via existing `downloadCSV` utility
-
-### 2. Add export function for top sheet
-**Modified file: `src/services/invoice-export.service.ts`**
-- Add `exportTopSheetCSV(salesInvoices, purchaseInvoices)` function
-- Generates CSV with columns: Sl.No, Date, Invoice No, Name, Credit, Debit, GST, SGST, CGST, TDS Deducted, Handled By, Remark
-- Reuses existing `downloadCSV` helper
-
-### 3. Wire into InvoiceManagement page
-**Modified file: `src/pages/system-admin/InvoiceManagement.tsx`**
-- Add third `TabsTrigger` value "topsheet" with label "Top Sheet"
-- Add `TabsContent` rendering `TopSheetTab` with `filteredInvoices`, `filteredPurchases`, `filteredPayments`
-- Hide Sales/Purchase-specific action buttons when Top Sheet tab is active (only show Export)
-
-### Files Summary
-
-| Action | File |
-|--------|------|
-| Create | `src/components/invoice/TopSheetTab.tsx` -- combined ledger view with summary + table + sort + export |
-| Modify | `src/services/invoice-export.service.ts` -- add `exportTopSheetCSV` function |
-| Modify | `src/pages/system-admin/InvoiceManagement.tsx` -- add third tab trigger + content |
-
-No database changes needed -- this is purely a read-only reporting view using existing data.
-
+## Summary
+This ensures the Top Sheet accurately reflects actual money movement: Credit only appears when payment is received, and Debit only when a purchase is settled. Unpaid entries are clearly labeled with their current status.
