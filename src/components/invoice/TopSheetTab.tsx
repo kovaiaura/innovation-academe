@@ -24,6 +24,7 @@ interface LedgerEntry {
   invoiceNo: string;
   name: string;
   type: 'sales' | 'purchase';
+  status: string;
   credit: number;
   debit: number;
   gst: number;
@@ -59,13 +60,15 @@ export function TopSheetTab({ salesInvoices, purchaseInvoices, payments, loading
     const entries: LedgerEntry[] = [];
 
     salesInvoices.forEach(inv => {
+      const isPaid = inv.status === 'paid';
       entries.push({
         id: inv.id,
         date: inv.invoice_date,
         invoiceNo: inv.invoice_number,
         name: inv.to_company_name,
         type: 'sales',
-        credit: inv.total_amount || 0,
+        status: inv.status,
+        credit: isPaid ? (inv.total_amount || 0) : 0,
         debit: 0,
         gst: (inv.cgst_amount || 0) + (inv.sgst_amount || 0) + (inv.igst_amount || 0),
         sgst: inv.sgst_amount || 0,
@@ -77,14 +80,16 @@ export function TopSheetTab({ salesInvoices, purchaseInvoices, payments, loading
     });
 
     purchaseInvoices.forEach(inv => {
+      const isSettled = inv.status === 'paid';
       entries.push({
         id: inv.id,
         date: inv.invoice_date,
         invoiceNo: inv.invoice_number,
         name: inv.from_company_name || inv.to_company_name,
         type: 'purchase',
+        status: inv.status,
         credit: 0,
-        debit: inv.total_amount || 0,
+        debit: isSettled ? (inv.total_amount || 0) : 0,
         gst: (inv.cgst_amount || 0) + (inv.sgst_amount || 0) + (inv.igst_amount || 0),
         sgst: inv.sgst_amount || 0,
         cgst: inv.cgst_amount || 0,
@@ -212,11 +217,25 @@ export function TopSheetTab({ salesInvoices, purchaseInvoices, payments, loading
                         {entry.name}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right text-green-700 font-medium">
-                      {entry.credit > 0 ? `₹${fmt(entry.credit)}` : '--'}
+                    <TableCell className="text-right font-medium">
+                      {entry.type === 'sales' ? (
+                        entry.credit > 0 ? (
+                          <span className="text-green-700">₹{fmt(entry.credit)}</span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">
+                            {entry.status === 'overdue' ? 'Overdue' : 'Invoice Sent'}
+                          </span>
+                        )
+                      ) : '--'}
                     </TableCell>
-                    <TableCell className="text-right text-red-700 font-medium">
-                      {entry.debit > 0 ? `₹${fmt(entry.debit)}` : '--'}
+                    <TableCell className="text-right font-medium">
+                      {entry.type === 'purchase' ? (
+                        entry.debit > 0 ? (
+                          <span className="text-red-700">₹{fmt(entry.debit)}</span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">Pending</span>
+                        )
+                      ) : '--'}
                     </TableCell>
                     <TableCell className="text-right">{entry.gst > 0 ? `₹${fmt(entry.gst)}` : '--'}</TableCell>
                     <TableCell className="text-right">{entry.sgst > 0 ? `₹${fmt(entry.sgst)}` : '--'}</TableCell>

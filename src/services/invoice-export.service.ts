@@ -359,6 +359,7 @@ export function exportTopSheetCSV(salesInvoices: Invoice[], purchaseInvoices: In
     invoiceNo: string;
     name: string;
     type: string;
+    status: string;
     credit: number;
     debit: number;
     gst: number;
@@ -372,13 +373,15 @@ export function exportTopSheetCSV(salesInvoices: Invoice[], purchaseInvoices: In
   const entries: LedgerRow[] = [];
 
   salesInvoices.forEach(inv => {
+    const isPaid = inv.status === 'paid';
     entries.push({
       date: inv.invoice_date,
       invoiceNo: inv.invoice_number,
       name: inv.to_company_name,
       type: 'Sales',
-      credit: inv.total_amount || 0,
+      credit: isPaid ? (inv.total_amount || 0) : 0,
       debit: 0,
+      status: inv.status,
       gst: (inv.cgst_amount || 0) + (inv.sgst_amount || 0) + (inv.igst_amount || 0),
       sgst: inv.sgst_amount || 0,
       cgst: inv.cgst_amount || 0,
@@ -389,13 +392,15 @@ export function exportTopSheetCSV(salesInvoices: Invoice[], purchaseInvoices: In
   });
 
   purchaseInvoices.forEach(inv => {
+    const isSettled = inv.status === 'paid';
     entries.push({
       date: inv.invoice_date,
       invoiceNo: inv.invoice_number,
       name: inv.from_company_name || inv.to_company_name,
       type: 'Purchase',
       credit: 0,
-      debit: inv.total_amount || 0,
+      debit: isSettled ? (inv.total_amount || 0) : 0,
+      status: inv.status,
       gst: (inv.cgst_amount || 0) + (inv.sgst_amount || 0) + (inv.igst_amount || 0),
       sgst: inv.sgst_amount || 0,
       cgst: inv.cgst_amount || 0,
@@ -414,8 +419,8 @@ export function exportTopSheetCSV(salesInvoices: Invoice[], purchaseInvoices: In
     e.invoiceNo,
     e.name,
     e.type,
-    e.credit > 0 ? e.credit.toFixed(2) : '',
-    e.debit > 0 ? e.debit.toFixed(2) : '',
+    e.credit > 0 ? e.credit.toFixed(2) : (e.type === 'Sales' ? (e.status === 'overdue' ? 'Overdue' : 'Invoice Sent') : ''),
+    e.debit > 0 ? e.debit.toFixed(2) : (e.type === 'Purchase' ? 'Pending' : ''),
     e.gst > 0 ? e.gst.toFixed(2) : '',
     e.sgst > 0 ? e.sgst.toFixed(2) : '',
     e.cgst > 0 ? e.cgst.toFixed(2) : '',
