@@ -1,60 +1,102 @@
 
-
-# Remove Global Export Button and Add Party/Vendor Filters
+# Attendance Corrections + Salary Payment Tracking
 
 ## Overview
-Two changes: (1) Remove the top-level "Export" button that appears on all tabs -- CSV export is only needed on the Top Sheet tab (which already has its own Export CSV button). (2) Add a party/vendor name filter dropdown on the Sales and Purchase tabs so users can filter invoices by a specific customer or supplier.
+Fix several attendance card calculations, replace "Late Days" with "Weekends", add a "Salary Payable Days" card, and introduce a "Mark as Paid" feature that creates a corresponding purchase invoice entry in the Top Sheet.
 
 ---
 
-## 1. Remove Global Export Button
+## Changes Summary
 
-**File: `src/pages/system-admin/InvoiceManagement.tsx`**
-- Remove the "Export" button (lines 154-156) and the `InvoiceExportDialog` component (lines 271-276)
-- Remove the `exportDialogOpen` state and `InvoiceExportDialog` import
-- The Top Sheet tab already has its own inline "Export CSV" button, so no export functionality is lost
+### 1. Fix "Working Days" calculation
+**Current**: Counts only days with `dayType === 'working'` (excludes leave days, which is incorrect).
+**New**: `Working Days = Present + Paid Leave + LOP` (i.e., days the employee was expected to work, excluding weekends and holidays).
 
-## 2. Add Party Filter on Sales Tab
+### 2. Replace "Late Days" card with "Weekends" card
+**Current**: Shows "Late Days" count.
+**New**: Shows "Weekends" count (total weekend days from the calendar for that employee's institution/company).
 
-**File: `src/pages/system-admin/InvoiceManagement.tsx`**
-- Extract unique customer names (`to_company_name`) from sales invoices
-- Add a `selectedParty` state (string or null)
-- Render a `Select` dropdown in the Sales tab (next to the invoice count) with options: "All Parties" + list of unique customer names
-- Apply the filter to `filteredInvoices` before passing to `InvoiceList`
+### 3. Fix "Attendance %" calculation
+**Current**: `(Total Days in Month - LOP) / Total Days in Month`
+**New**: `(Total Days in Month - (Casual Leave + LOP)) * 100 / Total Days in Month`
+- Casual leave (paid leave) and LOP both reduce attendance percentage. Weekends, holidays, and present days don't.
 
-## 3. Add Vendor Filter on Purchase Tab
+### 4. Add "Salary Payable Days" card
+**New card**: `Present + Holidays + Weekends + Paid Leave`
+This represents how many days count toward the salary payout.
 
-**File: `src/pages/system-admin/InvoiceManagement.tsx`**
-- Extract unique vendor names (`from_company_name`) from purchase invoices
-- Add a `selectedVendor` state (string or null)
-- Render a `Select` dropdown in the Purchases tab content area
-- Apply the filter to `filteredPurchases` before passing to `PurchasesTab`
+### 5. Add "Mark Salary as Paid" feature
+Below the Monthly Payout Summary, add a "Mark as Paid" button with two options:
+- **Full Salary**: Records the net payout amount as paid
+- **Custom Amount**: Allows entering a custom amount
+
+When marked as paid:
+- Store a record in a new `salary_payments` database table (employee_id, month, year, amount_paid, payment_type, paid_at, paid_by)
+- Show a "Paid" badge on the payout card with the paid amount
+- Automatically create a **purchase invoice** entry in the invoices table with:
+  - `invoice_type = 'purchase'`
+  - `to_company_name` = employee name
+  - `total_amount` = amount paid
+  - `status = 'paid'`
+  - `remark = "February 2026 Salary"`
+  - This will appear in the **Top Sheet** as a debit entry
 
 ---
 
 ## Technical Details
 
-### State additions in InvoiceManagement.tsx
-- `selectedParty: string | null` -- filters sales by customer name
-- `selectedVendor: string | null` -- filters purchases by vendor name
-- Both reset to `null` (show all) when the value is cleared
-
-### Filter logic
+### Database Migration: Create `salary_payments` table
 ```text
-// Sales: after date filtering
-if (selectedParty) filter where inv.to_company_name === selectedParty
-
-// Purchases: after date filtering  
-if (selectedVendor) filter where (inv.from_company_name || inv.to_company_name) === selectedVendor
+CREATE TABLE salary_payments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  employee_id TEXT NOT NULL,
+  employee_name TEXT NOT NULL,
+  employee_type TEXT NOT NULL,  -- 'officer' or 'staff'
+  month INTEGER NOT NULL,
+  year INTEGER NOT NULL,
+  amount_paid NUMERIC NOT NULL,
+  net_salary NUMERIC NOT NULL,
+  payment_type TEXT DEFAULT 'full',  -- 'full' or 'custom'
+  invoice_id UUID REFERENCES invoices(id),
+  paid_by UUID,
+  paid_by_name TEXT,
+  paid_at TIMESTAMPTZ DEFAULT now(),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+-- Enable RLS + policy for authenticated users
 ```
 
-### UI placement
-- Each filter dropdown sits inline next to the entry count line (e.g., "12 invoices") within each tab's content area
-- Uses the existing shadcn `Select` component for consistency
+### File: `src/components/payroll/IndividualAttendanceTab.tsx`
 
-### Files Summary
+**Stats calculation changes (calculateStats function)**:
+- `workingDays` = presentDays + paidLeaveDays + totalLopDays (expected work days)
+- `weekendDays` = days with `dayType === 'weekend'` (already calculated)
+- `attendancePercentage` = `((totalDaysInMonth - (paidLeaveDays + totalLopDays)) * 100) / totalDaysInMonth`
+- New: `salaryPayableDays` = presentDays + holidays + weekendDays + paidLeaveDays
 
+**Summary cards update**:
+- Card 1: Working Days (recalculated)
+- Card 2: Present (unchanged)
+- Card 3: Attendance % (recalculated)
+- Card 4: **Weekends** (replacing Late Days)
+- Card 5: Holidays (unchanged)
+- Card 6: Paid Leave (unchanged)
+- Card 7: LOP Days (unchanged)
+- Card 8: Approved Overtime (unchanged)
+- New Card 9: **Salary Payable Days**
+
+**Mark as Paid section** (below payout summary):
+- State: `salaryPaymentStatus`, `paymentAmount`, `showPaymentDialog`
+- Load existing payment from `salary_payments` table on employee/month change
+- Dialog with radio: "Full Salary" (pre-filled net payout) or "Custom Amount" (editable input)
+- On confirm: Insert into `salary_payments`, create purchase invoice, refresh data
+- Show green "Paid" badge with amount if already paid; allow undo/re-mark
+
+### Integration with Top Sheet
+No changes needed to TopSheetTab -- it already reads from the invoices table. The purchase invoice created by "Mark as Paid" will automatically appear as a settled debit entry with the salary remark.
+
+### Files to modify/create:
 | Action | File |
 |--------|------|
-| Modify | `src/pages/system-admin/InvoiceManagement.tsx` -- remove global export, add party/vendor filter dropdowns |
-
+| Modify | `src/components/payroll/IndividualAttendanceTab.tsx` -- fix stats, replace late with weekends, add payable days card, add mark-as-paid |
+| Create | DB migration for `salary_payments` table |
