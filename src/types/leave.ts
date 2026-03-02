@@ -1,6 +1,7 @@
 // Leave Management Types
 
 export type LeaveType = 'sick' | 'casual';
+export type LeaveDuration = 'full_day' | 'first_half' | 'second_half';
 export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export type UserType = 'officer' | 'staff';
 export type HolidayType = 'company' | 'national' | 'optional' | 'institution' | 'academic' | 'exam';
@@ -126,6 +127,7 @@ export interface LeaveApplication {
   start_date: string;
   end_date: string;
   leave_type: LeaveType;
+  leave_duration: LeaveDuration;
   reason: string;
   total_days: number;
   is_lop: boolean;
@@ -174,6 +176,7 @@ export interface CreateLeaveApplicationInput {
   start_date: string;
   end_date: string;
   leave_type: LeaveType;
+  leave_duration?: LeaveDuration;
   reason: string;
   substitute_assignments?: SubstituteAssignment[];
 }
@@ -212,4 +215,10 @@ export const HOLIDAY_TYPE_LABELS: Record<HolidayType, string> = {
   institution: 'Institution Holiday',
   academic: 'Academic Holiday',
   exam: 'Exam Holiday',
+};
+
+export const LEAVE_DURATION_LABELS: Record<LeaveDuration, string> = {
+  full_day: 'Full Day',
+  first_half: 'First Half (Morning)',
+  second_half: 'Second Half (Afternoon)',
 };

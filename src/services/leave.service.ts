@@ -8,6 +8,7 @@ import {
   ApprovalHierarchyInput,
   ApprovalChainItem,
   LeaveType,
+  LeaveDuration,
   LeaveStatus,
   UserType,
   MAX_LEAVES_PER_MONTH,
@@ -26,6 +27,17 @@ const parseSubstituteAssignments = (data: unknown): SubstituteAssignment[] => {
   if (Array.isArray(data)) return data as SubstituteAssignment[];
   return [];
 };
+
+// Helper to map raw DB row to LeaveApplication
+const mapToLeaveApplication = (app: any): LeaveApplication => ({
+  ...app,
+  leave_type: app.leave_type as LeaveType,
+  leave_duration: (app.leave_duration || 'full_day') as LeaveDuration,
+  status: app.status as LeaveStatus,
+  applicant_type: app.applicant_type as UserType,
+  approval_chain: parseApprovalChain(app.approval_chain),
+  substitute_assignments: parseSubstituteAssignments(app.substitute_assignments)
+});
 
 // =============================================
 // LEAVE BALANCE SERVICE
@@ -258,27 +270,37 @@ export const leaveApplicationService = {
       ? officer.assigned_institutions[0] 
       : undefined;
     
+    // Determine leave duration
+    const leaveDuration: LeaveDuration = input.leave_duration || 'full_day';
+    const isHalfDay = leaveDuration === 'first_half' || leaveDuration === 'second_half';
+    
     // Fetch non-working days (weekends + holidays) from the appropriate calendar
     let totalDays: number;
-    try {
-      const { getNonWorkingDaysInRange } = await import('./calendarDayType.service');
-      const nonWorkingDays = await getNonWorkingDaysInRange(
-        calendarType as 'company' | 'institution',
-        input.start_date,
-        input.end_date,
-        calendarInstitutionId
-      );
-      
-      totalDays = leaveApplicationService.calculateActualWorkingDays(
-        input.start_date,
-        input.end_date,
-        nonWorkingDays.weekends,
-        nonWorkingDays.holidays
-      );
-    } catch (error) {
-      // Fallback to simple calendar day count if calendar service fails
-      console.warn('Failed to fetch calendar data, using all calendar days:', error);
-      totalDays = leaveApplicationService.calculateWorkingDays(input.start_date, input.end_date);
+    
+    if (isHalfDay) {
+      // Half-day leave is always 0.5 for a single day
+      totalDays = 0.5;
+    } else {
+      try {
+        const { getNonWorkingDaysInRange } = await import('./calendarDayType.service');
+        const nonWorkingDays = await getNonWorkingDaysInRange(
+          calendarType as 'company' | 'institution',
+          input.start_date,
+          input.end_date,
+          calendarInstitutionId
+        );
+        
+        totalDays = leaveApplicationService.calculateActualWorkingDays(
+          input.start_date,
+          input.end_date,
+          nonWorkingDays.weekends,
+          nonWorkingDays.holidays
+        );
+      } catch (error) {
+        // Fallback to simple calendar day count if calendar service fails
+        console.warn('Failed to fetch calendar data, using all calendar days:', error);
+        totalDays = leaveApplicationService.calculateWorkingDays(input.start_date, input.end_date);
+      }
     }
 
     // Get approval chain
@@ -363,6 +385,7 @@ export const leaveApplicationService = {
       start_date: input.start_date,
       end_date: input.end_date,
       leave_type: input.leave_type,
+      leave_duration: leaveDuration,
       reason: input.reason,
       total_days: totalDays,
       is_lop: isLop,
@@ -380,14 +403,7 @@ export const leaveApplicationService = {
 
     if (error) throw error;
     
-    const result: LeaveApplication = {
-      ...data,
-      leave_type: data.leave_type as LeaveType,
-      status: data.status as LeaveStatus,
-      applicant_type: data.applicant_type as UserType,
-      approval_chain: parseApprovalChain(data.approval_chain),
-      substitute_assignments: parseSubstituteAssignments(data.substitute_assignments)
-    };
+    const result: LeaveApplication = mapToLeaveApplication(data);
 
     // Send notification to first approver
     try {
@@ -415,14 +431,7 @@ export const leaveApplicationService = {
       .order('applied_at', { ascending: false });
 
     if (error) throw error;
-    return (data || []).map(app => ({
-      ...app,
-      leave_type: app.leave_type as LeaveType,
-      status: app.status as LeaveStatus,
-      applicant_type: app.applicant_type as UserType,
-      approval_chain: parseApprovalChain(app.approval_chain),
-      substitute_assignments: parseSubstituteAssignments(app.substitute_assignments)
-    }));
+    return (data || []).map(mapToLeaveApplication);
   },
 
   getPendingApplications: async (): Promise<LeaveApplication[]> => {
@@ -433,14 +442,7 @@ export const leaveApplicationService = {
       .order('applied_at', { ascending: true });
 
     if (error) throw error;
-    return (data || []).map(app => ({
-      ...app,
-      leave_type: app.leave_type as LeaveType,
-      status: app.status as LeaveStatus,
-      applicant_type: app.applicant_type as UserType,
-      approval_chain: parseApprovalChain(app.approval_chain),
-      substitute_assignments: parseSubstituteAssignments(app.substitute_assignments)
-    }));
+    return (data || []).map(mapToLeaveApplication);
   },
 
   // Get pending applications for a specific approval level
@@ -453,14 +455,7 @@ export const leaveApplicationService = {
       .order('applied_at', { ascending: true });
 
     if (error) throw error;
-    return (data || []).map(app => ({
-      ...app,
-      leave_type: app.leave_type as LeaveType,
-      status: app.status as LeaveStatus,
-      applicant_type: app.applicant_type as UserType,
-      approval_chain: parseApprovalChain(app.approval_chain),
-      substitute_assignments: parseSubstituteAssignments(app.substitute_assignments)
-    }));
+    return (data || []).map(mapToLeaveApplication);
   },
 
   // Get pending applications for Project Manager (level 1)
@@ -482,14 +477,7 @@ export const leaveApplicationService = {
 
     const { data, error } = await query;
     if (error) throw error;
-    return (data || []).map(app => ({
-      ...app,
-      leave_type: app.leave_type as LeaveType,
-      status: app.status as LeaveStatus,
-      applicant_type: app.applicant_type as UserType,
-      approval_chain: parseApprovalChain(app.approval_chain),
-      substitute_assignments: parseSubstituteAssignments(app.substitute_assignments)
-    }));
+    return (data || []).map(mapToLeaveApplication);
   },
 
   approveApplication: async (id: string, comments?: string): Promise<LeaveApplication> => {
@@ -528,14 +516,7 @@ export const leaveApplicationService = {
     const { data, error } = await supabase.from('leave_applications').update(updateData).eq('id', id).select().single();
     if (error) throw error;
 
-    const result: LeaveApplication = {
-      ...data,
-      leave_type: data.leave_type as LeaveType,
-      status: data.status as LeaveStatus,
-      applicant_type: data.applicant_type as UserType,
-      approval_chain: parseApprovalChain(data.approval_chain),
-      substitute_assignments: parseSubstituteAssignments(data.substitute_assignments)
-    };
+    const result: LeaveApplication = mapToLeaveApplication(data);
 
     // Update leave balance when leave is finally approved using backend function
     if (isFinalApproval) {
@@ -606,14 +587,7 @@ export const leaveApplicationService = {
 
     if (error) throw error;
 
-    const result: LeaveApplication = {
-      ...data,
-      leave_type: data.leave_type as LeaveType,
-      status: data.status as LeaveStatus,
-      applicant_type: data.applicant_type as UserType,
-      approval_chain: parseApprovalChain(data.approval_chain),
-      substitute_assignments: parseSubstituteAssignments(data.substitute_assignments)
-    };
+    const result: LeaveApplication = mapToLeaveApplication(data);
 
     // Notify applicant of rejection
     try {

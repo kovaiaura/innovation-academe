@@ -13,7 +13,8 @@ import {
   LeaveApplication, 
   LeaveStatus as LeaveStatusType,
   LEAVE_TYPE_LABELS, 
-  LEAVE_STATUS_LABELS 
+  LEAVE_STATUS_LABELS,
+  LEAVE_DURATION_LABELS
 } from '@/types/leave';
 
 export default function LeaveStatus() {
@@ -93,7 +94,14 @@ export default function LeaveStatus() {
               <TableCell>
                 <Badge variant="outline">{LEAVE_TYPE_LABELS[app.leave_type]}</Badge>
               </TableCell>
-              <TableCell>{app.total_days}</TableCell>
+              <TableCell>
+                {app.total_days}
+                {app.leave_duration && app.leave_duration !== 'full_day' && (
+                  <span className="text-muted-foreground text-xs ml-1">
+                    ({LEAVE_DURATION_LABELS[app.leave_duration]})
+                  </span>
+                )}
+              </TableCell>
               <TableCell>
                 {app.lop_days > 0 ? (
                   <Badge variant="destructive">{app.lop_days} LOP</Badge>

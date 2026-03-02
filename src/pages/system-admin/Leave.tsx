@@ -25,8 +25,10 @@ import { LeaveHolidayCalendar, calculateActualLeaveDays } from '@/components/lea
 import { 
   LeaveType, 
   LeaveStatus,
+  LeaveDuration,
   LEAVE_TYPE_LABELS, 
   LEAVE_STATUS_LABELS,
+  LEAVE_DURATION_LABELS,
   MAX_LEAVES_PER_MONTH,
   LEAVES_PER_YEAR
 } from '@/types/leave';
@@ -49,6 +51,7 @@ export default function Leave() {
     start_date: '',
     end_date: '',
     leave_type: 'casual' as LeaveType,
+    leave_duration: 'full_day' as LeaveDuration,
     reason: ''
   });
 
@@ -133,13 +136,17 @@ export default function Leave() {
     if (!formData.start_date || !formData.end_date) {
       return { totalCalendarDays: 0, weekendsInRange: 0, holidaysInRange: 0, actualLeaveDays: 0 };
     }
+    // If half-day selected, always 0.5
+    if (formData.leave_duration !== 'full_day') {
+      return { totalCalendarDays: 1, weekendsInRange: 0, holidaysInRange: 0, actualLeaveDays: 0.5 };
+    }
     return calculateActualLeaveDays(
       formData.start_date,
       formData.end_date,
       companyNonWorkingDays.weekends,
       companyNonWorkingDays.holidays
     );
-  }, [formData.start_date, formData.end_date, companyNonWorkingDays]);
+  }, [formData.start_date, formData.end_date, formData.leave_duration, companyNonWorkingDays]);
 
   const applyMutation = useMutation({
     mutationFn: leaveApplicationService.applyLeave,
@@ -148,7 +155,7 @@ export default function Leave() {
       queryClient.invalidateQueries({ queryKey: ['my-leave-applications'] });
       queryClient.invalidateQueries({ queryKey: ['leave-yearly-summary'] });
       toast.success('Leave application submitted successfully');
-      setFormData({ start_date: '', end_date: '', leave_type: 'casual', reason: '' });
+      setFormData({ start_date: '', end_date: '', leave_type: 'casual', leave_duration: 'full_day', reason: '' });
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -225,6 +232,7 @@ export default function Leave() {
       start_date: formData.start_date,
       end_date: formData.end_date,
       leave_type: formData.leave_type,
+      leave_duration: formData.leave_duration,
       reason: formData.reason
     });
   };
@@ -380,7 +388,14 @@ export default function Leave() {
                               <TableCell>
                                 <Badge variant="outline">{LEAVE_TYPE_LABELS[app.leave_type]}</Badge>
                               </TableCell>
-                              <TableCell>{app.total_days}</TableCell>
+                              <TableCell>
+                                {app.total_days}
+                                {app.leave_duration && app.leave_duration !== 'full_day' && (
+                                  <span className="text-muted-foreground text-xs ml-1">
+                                    ({LEAVE_DURATION_LABELS[app.leave_duration]})
+                                  </span>
+                                )}
+                              </TableCell>
                               <TableCell>{app.paid_days}</TableCell>
                               <TableCell>
                                 {app.lop_days > 0 ? (
@@ -639,6 +654,26 @@ export default function Leave() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Leave Duration - only for single day */}
+                  {formData.start_date && formData.end_date && formData.start_date === formData.end_date && (
+                    <div className="space-y-2">
+                      <Label>Leave Duration</Label>
+                      <Select
+                        value={formData.leave_duration}
+                        onValueChange={(v) => setFormData({ ...formData, leave_duration: v as LeaveDuration })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="full_day">Full Day</SelectItem>
+                          <SelectItem value="first_half">First Half (Morning)</SelectItem>
+                          <SelectItem value="second_half">Second Half (Afternoon)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="reason">Reason *</Label>
