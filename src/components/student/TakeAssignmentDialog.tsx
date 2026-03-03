@@ -204,7 +204,7 @@ export function TakeAssignmentDialog({
     // Create notification for officer if manual grading needed
     const needsManualGrading = graded.status === 'pending';
     if (needsManualGrading) {
-      createNotification(
+      notificationService.createNotification(
         officerId,
         'officer',
         'assignment_submission',

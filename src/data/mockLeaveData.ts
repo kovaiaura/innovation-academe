@@ -686,7 +686,7 @@ export const rejectLeaveApplicationHierarchical = (
       ? '/officer/leave-management' 
       : '/system-admin/leave-management';
     
-    createNotification(
+    notificationService.createNotification(
       app.officer_id,
       userRole,
       'leave_application_rejected',

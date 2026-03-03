@@ -209,7 +209,7 @@ export function TakeQuizDialog({
     // Create notification for officer if manual grading needed
     const needsManualGrading = graded.status === 'submitted';
     if (needsManualGrading) {
-      createNotification(
+      notificationService.createNotification(
         officerId,
         'officer',
         'quiz_completion',

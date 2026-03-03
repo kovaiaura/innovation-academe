@@ -40,7 +40,7 @@ import { useAvailableSubstitutes, useOfficerInstitution } from '@/hooks/useAvail
 
 export default function LeaveManagement() {
   const { user } = useAuth();
-  const { notifications, markAsRead } = useNotifications(user?.id || '', 'officer');
+  const { notifications, markAsRead } = useDbNotifications(user?.id);
   const [leaveBalance, setLeaveBalance] = useState<LeaveBalance | null>(null);
   const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>([]);
   const [approvedLeaveDates, setApprovedLeaveDates] = useState<string[]>([]);

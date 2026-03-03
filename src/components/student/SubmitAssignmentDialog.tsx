@@ -92,7 +92,7 @@ export function SubmitAssignmentDialog({
     localStorage.setItem(key, JSON.stringify(existing));
 
     // Create notification for officer
-    createNotification(
+    notificationService.createNotification(
       officerId,
       'officer',
       'assignment_submission',
