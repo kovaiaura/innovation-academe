@@ -290,6 +290,7 @@ export default function Profile() {
               officerName={officer.full_name}
               month={selectedMonth}
               onMonthChange={setSelectedMonth}
+              institutionId={assignedInstitutionIds[0] || undefined}
             />
           )}
 
