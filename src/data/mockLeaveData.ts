@@ -531,7 +531,7 @@ export const approveLeaveApplicationManager = (
     saveAllLeaveApplications(allApps);
     
     // Notify the officer
-    createNotification(
+    notificationService.createNotification(
       allApps[appIndex].officer_id,
       'officer',
       'leave_application_approved',
