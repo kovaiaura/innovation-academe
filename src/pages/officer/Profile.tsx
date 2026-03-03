@@ -9,6 +9,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useOfficerByUserId } from '@/hooks/useOfficerProfile';
 import { OfficerDailyAttendanceDetails } from '@/components/officer/OfficerDailyAttendanceDetails';
 import { Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   User,
   Mail,
@@ -29,34 +31,50 @@ export default function Profile() {
   const { user } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   
-  // Get officer data from database
   const { data: officer, isLoading, error } = useOfficerByUserId(user?.id);
 
-  // Get current month
   const currentDate = new Date();
   const currentMonthYear = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
   
-  // Initialize selected month
   useEffect(() => {
     if (!selectedMonth && officer) {
       setSelectedMonth(currentMonthYear);
     }
   }, [officer, selectedMonth, currentMonthYear]);
 
+  // Resolve institution names from UUIDs
+  const assignedInstitutionIds = Array.isArray(officer?.assigned_institutions) ? officer.assigned_institutions : [];
+  const { data: institutionNames } = useQuery({
+    queryKey: ['institution-names', assignedInstitutionIds],
+    queryFn: async () => {
+      if (assignedInstitutionIds.length === 0) return {};
+      const { data, error } = await supabase
+        .from('institutions')
+        .select('id, name')
+        .in('id', assignedInstitutionIds);
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      data?.forEach((inst) => { map[inst.id] = inst.name; });
+      return map;
+    },
+    enabled: assignedInstitutionIds.length > 0,
+  });
+
   const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  // Safe array accessors for JSONB fields
   const qualifications = Array.isArray((officer as any)?.qualifications) ? (officer as any).qualifications : [];
   const certifications = Array.isArray((officer as any)?.certifications) ? (officer as any).certifications : [];
   const skills = Array.isArray((officer as any)?.skills) ? (officer as any).skills : [];
-  const assignedInstitutions = Array.isArray(officer?.assigned_institutions) ? officer.assigned_institutions : [];
+
+  const maskAccountNumber = (acc: string | null) => {
+    if (!acc) return 'Not provided';
+    if (acc.length <= 4) return acc;
+    return 'XXXX' + acc.slice(-4);
+  };
+
+  const statutoryInfo = officer?.statutory_info as Record<string, any> | null;
 
   if (isLoading) {
     return (
@@ -81,7 +99,6 @@ export default function Profile() {
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Page Header */}
         <div>
           <h1 className="text-3xl font-bold">My Profile</h1>
           <p className="text-muted-foreground">View your personal and professional information</p>
@@ -91,7 +108,6 @@ export default function Profile() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col md:flex-row gap-6 items-start">
-              {/* Avatar */}
               <Avatar className="h-24 w-24">
                 <AvatarImage src={officer.profile_photo_url || undefined} alt={officer.full_name} />
                 <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
@@ -99,20 +115,18 @@ export default function Profile() {
                 </AvatarFallback>
               </Avatar>
 
-              {/* Main Info */}
               <div className="flex-1 space-y-3">
                 <div>
                   <h2 className="text-2xl font-bold">{officer.full_name}</h2>
                   <p className="text-muted-foreground">{officer.employee_id || 'No Employee ID'}</p>
                 </div>
 
-                {/* Badges */}
                 <div className="flex flex-wrap gap-2">
                   <Badge variant={officer.status === 'active' ? 'default' : 'secondary'}>
                     {officer.status === 'active' ? 'Active' : officer.status}
                   </Badge>
-                  {(officer as any).employment_type && (
-                    <Badge variant="outline">{(officer as any).employment_type.replace('_', ' ').toUpperCase()}</Badge>
+                  {officer.employment_type && (
+                    <Badge variant="outline">{officer.employment_type.replace('_', ' ').toUpperCase()}</Badge>
                   )}
                   {officer.department && (
                     <Badge variant="outline" className="gap-1">
@@ -122,23 +136,22 @@ export default function Profile() {
                   )}
                 </div>
 
-                {/* Quick Stats */}
                 <div className="flex flex-wrap gap-6 text-sm">
-                  {(officer as any).join_date && (
+                  {officer.join_date && (
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <span className="text-muted-foreground">Joined:</span>
-                      <span className="font-medium">{new Date((officer as any).join_date).toLocaleDateString()}</span>
+                      <span className="font-medium">{new Date(officer.join_date).toLocaleDateString()}</span>
                     </div>
                   )}
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">{officer.email}</span>
                   </div>
-                  {(officer as any).phone && (
+                  {officer.phone && (
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{(officer as any).phone}</span>
+                      <span className="font-medium">{officer.phone}</span>
                     </div>
                   )}
                 </div>
@@ -158,11 +171,11 @@ export default function Profile() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {(officer as any).date_of_birth && (
+              {officer.date_of_birth && (
                 <>
                   <div>
                     <p className="text-sm text-muted-foreground">Date of Birth</p>
-                    <p className="font-medium">{new Date((officer as any).date_of_birth).toLocaleDateString()}</p>
+                    <p className="font-medium">{new Date(officer.date_of_birth).toLocaleDateString()}</p>
                   </div>
                   <Separator />
                 </>
@@ -172,7 +185,7 @@ export default function Profile() {
                   <MapPin className="h-4 w-4" />
                   Address
                 </p>
-                <p className="font-medium">{(officer as any).address || 'Not specified'}</p>
+                <p className="font-medium">{officer.address || 'Not specified'}</p>
               </div>
             </CardContent>
           </Card>
@@ -207,9 +220,7 @@ export default function Profile() {
                 {certifications.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {certifications.map((cert: string, idx: number) => (
-                      <Badge key={idx} variant="secondary" className="text-xs">
-                        {cert}
-                      </Badge>
+                      <Badge key={idx} variant="secondary" className="text-xs">{cert}</Badge>
                     ))}
                   </div>
                 ) : (
@@ -257,9 +268,7 @@ export default function Profile() {
                 {skills.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {skills.map((skill: string, idx: number) => (
-                      <Badge key={idx} variant="outline" className="text-xs">
-                        {skill}
-                      </Badge>
+                      <Badge key={idx} variant="outline" className="text-xs">{skill}</Badge>
                     ))}
                   </div>
                 ) : (
@@ -269,7 +278,6 @@ export default function Profile() {
             </CardContent>
           </Card>
 
-          {/* Placeholder for layout balance */}
           <div className="hidden lg:block" />
         </div>
 
@@ -281,6 +289,7 @@ export default function Profile() {
               officerId={officer.id}
               officerName={officer.full_name}
               month={selectedMonth}
+              onMonthChange={setSelectedMonth}
             />
           )}
 
@@ -293,11 +302,11 @@ export default function Profile() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {assignedInstitutions.length > 0 ? (
+              {assignedInstitutionIds.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
-                  {assignedInstitutions.map((inst, idx) => (
+                  {assignedInstitutionIds.map((instId, idx) => (
                     <Badge key={idx} variant="secondary" className="text-sm">
-                      {inst}
+                      {institutionNames?.[instId] || instId}
                     </Badge>
                   ))}
                 </div>
@@ -321,9 +330,24 @@ export default function Profile() {
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Bank details are managed by the management team. Contact HR for updates.
-                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Bank Name</p>
+                      <p className="font-medium">{officer.bank_name || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Account Number</p>
+                      <p className="font-medium">{maskAccountNumber(officer.bank_account_number)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">IFSC Code</p>
+                      <p className="font-medium">{officer.bank_ifsc || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Branch</p>
+                      <p className="font-medium">{officer.bank_branch || 'Not provided'}</p>
+                    </div>
+                  </div>
                 </CardContent>
               </CollapsibleContent>
             </Card>
@@ -343,9 +367,52 @@ export default function Profile() {
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Statutory information (PF, ESI, PAN, etc.) is managed by the management team. Contact HR for details.
-                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">PF Number</p>
+                      <p className="font-medium">{statutoryInfo?.pf_number || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">UAN Number</p>
+                      <p className="font-medium">{statutoryInfo?.uan_number || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">PAN Number</p>
+                      <p className="font-medium">{statutoryInfo?.pan_number || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">PT Registration</p>
+                      <p className="font-medium">{statutoryInfo?.pt_registration || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">ESI Number</p>
+                      <p className="font-medium">{statutoryInfo?.esi_number || 'Not provided'}</p>
+                    </div>
+                    {statutoryInfo?.pf_applicable !== undefined && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">PF Applicable</p>
+                        <Badge variant={statutoryInfo.pf_applicable ? 'default' : 'secondary'}>
+                          {statutoryInfo.pf_applicable ? 'Yes' : 'No'}
+                        </Badge>
+                      </div>
+                    )}
+                    {statutoryInfo?.esi_applicable !== undefined && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">ESI Applicable</p>
+                        <Badge variant={statutoryInfo.esi_applicable ? 'default' : 'secondary'}>
+                          {statutoryInfo.esi_applicable ? 'Yes' : 'No'}
+                        </Badge>
+                      </div>
+                    )}
+                    {statutoryInfo?.pt_applicable !== undefined && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">PT Applicable</p>
+                        <Badge variant={statutoryInfo.pt_applicable ? 'default' : 'secondary'}>
+                          {statutoryInfo.pt_applicable ? 'Yes' : 'No'}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </CollapsibleContent>
             </Card>
