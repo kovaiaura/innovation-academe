@@ -1,5 +1,4 @@
 import { Layout } from "@/components/layout/Layout";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +15,6 @@ import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { getInstitutionBySlug } from "@/data/mockInstitutionData";
 import { useLocation } from "react-router-dom";
 import { usePublishedReports } from "@/hooks/usePublishedReports";
-import { useInstitutionPerformanceMetrics } from "@/hooks/useInstitutionPerformanceMetrics";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -42,92 +40,6 @@ function useInstitutionId(slug: string | undefined) {
     enabled: !!slug,
   });
 }
-
-// Performance Analytics Tab
-const PerformanceAnalyticsTab = ({ institutionId }: { institutionId: string | undefined }) => {
-  const [period, setPeriod] = useState("monthly");
-  const { data: metrics, isLoading } = useInstitutionPerformanceMetrics(institutionId);
-
-  const performanceMetrics = [
-    {
-      id: "1",
-      metricName: "Student Pass Rate",
-      category: "academic" as const,
-      currentValue: metrics?.passRate ?? 0,
-      targetValue: 90,
-    },
-    {
-      id: "2",
-      metricName: "Average Attendance",
-      category: "attendance" as const,
-      currentValue: metrics?.avgAttendance ?? 0,
-      targetValue: 95,
-    },
-    {
-      id: "3",
-      metricName: "Student Engagement Score",
-      category: "engagement" as const,
-      currentValue: metrics?.engagementScore ?? 0,
-      targetValue: 85,
-    },
-  ];
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Performance Analytics</h2>
-        <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Select period" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="weekly">Weekly</SelectItem>
-            <SelectItem value="monthly">Monthly</SelectItem>
-            <SelectItem value="quarterly">Quarterly</SelectItem>
-            <SelectItem value="annual">Annual</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {!metrics?.hasData && (
-        <Card className="border-dashed">
-          <CardContent className="py-8 text-center">
-            <p className="text-muted-foreground">No performance data recorded yet for this institution.</p>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {performanceMetrics.map((metric) => (
-          <Card key={metric.id}>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">{metric.metricName}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-baseline justify-between">
-                <span className="text-3xl font-bold">{metric.currentValue}%</span>
-                <span className="text-sm text-muted-foreground">
-                  Target: {metric.targetValue}%
-                </span>
-              </div>
-              <Badge variant="outline" className="capitalize">
-                {metric.category}
-              </Badge>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-};
 
 // Monthly Reports Tab - Now uses real published reports
 const MonthlyReportsTab = ({ institutionId }: { institutionId: string | undefined }) => {
@@ -278,21 +190,10 @@ const Reports = () => {
         
         <div>
           <h1 className="text-3xl font-bold">Reports</h1>
-          <p className="text-muted-foreground">Performance analytics and reports</p>
+          <p className="text-muted-foreground">Monthly reports</p>
         </div>
 
-        <Tabs defaultValue="analytics" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="analytics">Performance Analytics</TabsTrigger>
-            <TabsTrigger value="reports">Monthly Reports</TabsTrigger>
-          </TabsList>
-          <TabsContent value="analytics" className="mt-6">
-            <PerformanceAnalyticsTab institutionId={institutionId} />
-          </TabsContent>
-          <TabsContent value="reports" className="mt-6">
-            <MonthlyReportsTab institutionId={institutionId} />
-          </TabsContent>
-        </Tabs>
+        <MonthlyReportsTab institutionId={institutionId} />
       </div>
     </Layout>
   );
