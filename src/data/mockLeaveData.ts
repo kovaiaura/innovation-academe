@@ -1,5 +1,5 @@
 import type { LeaveApplication, LeaveBalance } from "@/types/attendance";
-import { createNotification, createNotificationForSystemAdmin } from '@/hooks/useNotifications';
+import { notificationService } from '@/services/notification.service';
 
 // ========================================
 // LOCALSTORAGE KEYS
