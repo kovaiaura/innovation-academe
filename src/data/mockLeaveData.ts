@@ -481,7 +481,7 @@ export const rejectLeaveApplication = (
       ? '/officer/leave-management' 
       : '/system-admin/leave-management';
     
-    createNotification(
+    notificationService.createNotification(
       app.officer_id,
       userRole,
       'leave_application_rejected',
