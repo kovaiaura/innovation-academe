@@ -422,16 +422,17 @@ export default function CEOAnalyticsDashboard() {
             <CardContent>
               {studentDistributionData.length > 0 && studentDistributionData.some(d => d.value > 0) ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie data={studentDistributionData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value"
-                      label={({ name, value }) => `${name}: ${value}`}>
+                  <BarChart data={studentDistributionData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} angle={-25} textAnchor="end" height={60} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Bar dataKey="value" name="Students" radius={[4, 4, 0, 0]}>
                       {studentDistributionData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
-                    </Pie>
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend />
-                  </PieChart>
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-64 text-muted-foreground">No student data available</div>
