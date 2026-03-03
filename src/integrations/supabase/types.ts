@@ -4216,6 +4216,7 @@ export type Database = {
           institution_id: string | null
           institution_name: string | null
           is_lop: boolean | null
+          leave_duration: string
           leave_type: string
           lop_days: number | null
           officer_id: string | null
@@ -4248,6 +4249,7 @@ export type Database = {
           institution_id?: string | null
           institution_name?: string | null
           is_lop?: boolean | null
+          leave_duration?: string
           leave_type: string
           lop_days?: number | null
           officer_id?: string | null
@@ -4280,6 +4282,7 @@ export type Database = {
           institution_id?: string | null
           institution_name?: string | null
           is_lop?: boolean | null
+          leave_duration?: string
           leave_type?: string
           lop_days?: number | null
           officer_id?: string | null
