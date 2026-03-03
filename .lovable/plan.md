@@ -1,17 +1,18 @@
 
-# Remove Performance Analytics Tab from Management Reports
 
-## Overview
-Remove the Performance Analytics tab from the Management Reports page, keeping only the Monthly Reports content as the main view (no tabs needed).
+# Fix: Add Missing `leave_duration` Column to `leave_applications` Table
 
-## Changes
+## Problem
+The error "Could not find the 'leave_duration' column of 'leave_applications' in the schema cache" occurs because the code writes/reads `leave_duration` but the column doesn't exist in the database.
 
-**File: `src/pages/management/Reports.tsx`**
+## Solution
+Add the `leave_duration` column to the `leave_applications` table via a migration.
 
-1. Remove the `PerformanceAnalyticsTab` component entirely (lines 47-130)
-2. Remove the `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` wrapper -- since there's only one section now, no tabs are needed
-3. Render the `MonthlyReportsTab` content directly
-4. Remove unused imports: `Tabs`, `TabsContent`, `TabsList`, `TabsTrigger`, `useState` (from PerformanceAnalyticsTab), `useInstitutionPerformanceMetrics`, `Badge` (if only used in analytics)
-5. Update the page subtitle from "Performance analytics and reports" to just "Monthly reports"
+**Migration SQL:**
+```sql
+ALTER TABLE public.leave_applications 
+ADD COLUMN leave_duration text NOT NULL DEFAULT 'full_day';
+```
 
-The page will simply show the "Published Reports" list directly without any tab navigation.
+This single migration fixes the issue. No code changes needed — the code already correctly uses `leave_duration` everywhere (service layer, officer leave page, system admin leave page, leave records).
+
