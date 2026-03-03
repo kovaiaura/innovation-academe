@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { notificationService, DbNotification, GetNotificationsOptions } from '@/services/notification.service';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export function useDbNotifications(userId: string | undefined, options: GetNotificationsOptions = {}) {
   const [notifications, setNotifications] = useState<DbNotification[]>([]);
