@@ -1,23 +1,17 @@
 
+# Remove Performance Analytics Tab from Management Reports
 
-# Fix: Half-Day Leave "invalid input syntax for type integer: 0.5"
+## Overview
+Remove the Performance Analytics tab from the Management Reports page, keeping only the Monthly Reports content as the main view (no tabs needed).
 
-## Problem
-The `total_days`, `lop_days`, and `paid_days` columns in `leave_applications` are `integer` type, but half-day leaves send `0.5`, causing a Postgres error.
+## Changes
 
-## Solution
-Single database migration to change all three columns from `integer` to `numeric`:
+**File: `src/pages/management/Reports.tsx`**
 
-```sql
-ALTER TABLE public.leave_applications 
-  ALTER COLUMN total_days TYPE numeric USING total_days::numeric,
-  ALTER COLUMN lop_days TYPE numeric USING lop_days::numeric,
-  ALTER COLUMN paid_days TYPE numeric USING paid_days::numeric;
-```
+1. Remove the `PerformanceAnalyticsTab` component entirely (lines 47-130)
+2. Remove the `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` wrapper -- since there's only one section now, no tabs are needed
+3. Render the `MonthlyReportsTab` content directly
+4. Remove unused imports: `Tabs`, `TabsContent`, `TabsList`, `TabsTrigger`, `useState` (from PerformanceAnalyticsTab), `useInstitutionPerformanceMetrics`, `Badge` (if only used in analytics)
+5. Update the page subtitle from "Performance analytics and reports" to just "Monthly reports"
 
-No frontend code changes needed — the code already correctly calculates 0.5 for half-day leaves.
-
-| Action | File |
-|--------|------|
-| Create | Migration SQL (alter column types) |
-
+The page will simply show the "Published Reports" list directly without any tab navigation.
