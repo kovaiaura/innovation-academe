@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { createNotification } from '@/hooks/useNotifications';
+import { notificationService } from '@/services/notification.service';
 import { cn } from '@/lib/utils';
 
 interface TakeAssignmentDialogProps {
