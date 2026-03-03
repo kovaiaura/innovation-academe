@@ -13,6 +13,17 @@ export interface OfficerProfile {
   status: string;
   profile_photo_url: string | null;
   annual_salary: number | null;
+  bank_name: string | null;
+  bank_account_number: string | null;
+  bank_ifsc: string | null;
+  bank_branch: string | null;
+  statutory_info: Record<string, any> | null;
+  phone: string | null;
+  address: string | null;
+  date_of_birth: string | null;
+  join_date: string | null;
+  employment_type: string | null;
+  normal_working_hours: number | null;
 }
 
 /**
