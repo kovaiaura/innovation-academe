@@ -637,7 +637,7 @@ export const approveLeaveApplicationCEO = (
     saveAllLeaveApplications(allApps);
     
     // Notify the meta staff user
-    createNotification(
+    notificationService.createNotification(
       app.officer_id,
       'system_admin',
       'leave_application_approved',
