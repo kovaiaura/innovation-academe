@@ -27,6 +27,7 @@ import { CreateReportDialog } from '@/components/reports/CreateReportDialog';
 import { ViewReportDialog } from '@/components/reports/ViewReportDialog';
 import { ActivityReportPDF } from '@/components/reports/pdf/ActivityReportPDF';
 import { pdf } from '@react-pdf/renderer';
+import { useReportSettings } from '@/hooks/useReportSettings';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,6 +52,7 @@ export default function ReportsManagement() {
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [reportToPublish, setReportToPublish] = useState<Report | null>(null);
   const [publishAction, setPublishAction] = useState<'publish' | 'unpublish'>('publish');
+  const { data: reportSettings } = useReportSettings();
 
   useEffect(() => {
     fetchReports();
@@ -83,7 +85,7 @@ export default function ReportsManagement() {
 
   const handleDownloadReport = async (report: Report) => {
     try {
-      const blob = await pdf(<ActivityReportPDF report={report} />).toBlob();
+      const blob = await pdf(<ActivityReportPDF report={report} reportSettings={reportSettings} />).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;

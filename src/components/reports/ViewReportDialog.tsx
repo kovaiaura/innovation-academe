@@ -6,6 +6,7 @@ import { Report } from '@/types/report';
 import { ActivityReportPDF } from './pdf/ActivityReportPDF';
 import { pdf } from '@react-pdf/renderer';
 import { toast } from 'sonner';
+import { useReportSettings } from '@/hooks/useReportSettings';
 
 interface ViewReportDialogProps {
   open: boolean;
@@ -15,13 +16,14 @@ interface ViewReportDialogProps {
 
 export function ViewReportDialog({ open, onOpenChange, report }: ViewReportDialogProps) {
   const [downloading, setDownloading] = useState(false);
+  const { data: reportSettings } = useReportSettings();
 
   if (!report) return null;
 
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const blob = await pdf(<ActivityReportPDF report={report} />).toBlob();
+      const blob = await pdf(<ActivityReportPDF report={report} reportSettings={reportSettings} />).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -41,7 +43,7 @@ export function ViewReportDialog({ open, onOpenChange, report }: ViewReportDialo
 
   const handlePrint = async () => {
     try {
-      const blob = await pdf(<ActivityReportPDF report={report} />).toBlob();
+      const blob = await pdf(<ActivityReportPDF report={report} reportSettings={reportSettings} />).toBlob();
       const url = URL.createObjectURL(blob);
       const printWindow = window.open(url, '_blank');
       if (printWindow) {
