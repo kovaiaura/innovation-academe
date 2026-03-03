@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/dialog';
 import type { LeaveApplication, LeaveBalance, LeaveType, AffectedSlot, SubstituteAssignment } from '@/types/attendance';
 import type { DateRange } from 'react-day-picker';
-import { useNotifications } from '@/hooks/useNotifications';
+import { useDbNotifications } from '@/hooks/useDbNotifications';
 import { getAffectedSlots, calculateSlotHours } from '@/utils/substituteHelpers';
 import { ApplicantLeaveBalanceCard } from '@/components/leave/ApplicantLeaveBalanceCard';
 import { useApplicantLeaveBalance, usePendingLeavesCount } from '@/hooks/useApplicantLeaveBalance';
