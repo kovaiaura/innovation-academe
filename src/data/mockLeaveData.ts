@@ -585,7 +585,7 @@ export const approveLeaveApplicationAGM = (
     saveAllLeaveApplications(allApps);
     
     // Notify the officer
-    createNotification(
+    notificationService.createNotification(
       app.officer_id,
       'officer',
       'leave_application_approved',
