@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { createNotification } from '@/hooks/useNotifications';
+import { notificationService } from '@/services/notification.service';
 import { cn } from '@/lib/utils';
 
 interface TakeQuizDialogProps {
@@ -209,7 +209,7 @@ export function TakeQuizDialog({
     // Create notification for officer if manual grading needed
     const needsManualGrading = graded.status === 'submitted';
     if (needsManualGrading) {
-      createNotification(
+      notificationService.createNotification(
         officerId,
         'officer',
         'quiz_completion',

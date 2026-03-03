@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { createNotification } from '@/hooks/useNotifications';
+import { notificationService } from '@/services/notification.service';
 import { cn } from '@/lib/utils';
 
 interface TakeAssignmentDialogProps {
@@ -204,7 +204,7 @@ export function TakeAssignmentDialog({
     // Create notification for officer if manual grading needed
     const needsManualGrading = graded.status === 'pending';
     if (needsManualGrading) {
-      createNotification(
+      notificationService.createNotification(
         officerId,
         'officer',
         'assignment_submission',

@@ -1,5 +1,5 @@
 import type { LeaveApplication, LeaveBalance } from "@/types/attendance";
-import { createNotification, createNotificationForSystemAdmin } from '@/hooks/useNotifications';
+import { notificationService } from '@/services/notification.service';
 
 // ========================================
 // LOCALSTORAGE KEYS
@@ -287,8 +287,12 @@ export const addLeaveApplication = (application: LeaveApplication): void => {
   saveAllLeaveApplications(allApps);
   
   // Create notification for appropriate approver
+  // Use system_admin_001 as a fallback recipient for system admin notifications
+  const systemAdminId = 'system_admin_001';
   if (application.applicant_type === 'innovation_officer') {
-    createNotificationForSystemAdmin(
+    notificationService.createNotification(
+      systemAdminId,
+      'system_admin',
       'leave_application_submitted',
       'New Leave Application',
       `${application.officer_name} has applied for ${application.leave_type} leave (${application.total_days} days)`,
@@ -305,7 +309,9 @@ export const addLeaveApplication = (application: LeaveApplication): void => {
     );
   } else {
     // Meta staff - notify CEO
-    createNotificationForSystemAdmin(
+    notificationService.createNotification(
+      systemAdminId,
+      'system_admin',
       'leave_application_submitted',
       'New Meta Staff Leave Application',
       `${application.officer_name} has applied for ${application.leave_type} leave (${application.total_days} days)`,
@@ -432,7 +438,7 @@ export const approveLeaveApplication = (
       ? '/officer/leave-management' 
       : '/system-admin/leave-management';
     
-    createNotification(
+    notificationService.createNotification(
       app.officer_id,
       userRole,
       'leave_application_approved',
@@ -475,7 +481,7 @@ export const rejectLeaveApplication = (
       ? '/officer/leave-management' 
       : '/system-admin/leave-management';
     
-    createNotification(
+    notificationService.createNotification(
       app.officer_id,
       userRole,
       'leave_application_rejected',
@@ -525,7 +531,7 @@ export const approveLeaveApplicationManager = (
     saveAllLeaveApplications(allApps);
     
     // Notify the officer
-    createNotification(
+    notificationService.createNotification(
       allApps[appIndex].officer_id,
       'officer',
       'leave_application_approved',
@@ -579,7 +585,7 @@ export const approveLeaveApplicationAGM = (
     saveAllLeaveApplications(allApps);
     
     // Notify the officer
-    createNotification(
+    notificationService.createNotification(
       app.officer_id,
       'officer',
       'leave_application_approved',
@@ -631,7 +637,7 @@ export const approveLeaveApplicationCEO = (
     saveAllLeaveApplications(allApps);
     
     // Notify the meta staff user
-    createNotification(
+    notificationService.createNotification(
       app.officer_id,
       'system_admin',
       'leave_application_approved',
@@ -680,7 +686,7 @@ export const rejectLeaveApplicationHierarchical = (
       ? '/officer/leave-management' 
       : '/system-admin/leave-management';
     
-    createNotification(
+    notificationService.createNotification(
       app.officer_id,
       userRole,
       'leave_application_rejected',

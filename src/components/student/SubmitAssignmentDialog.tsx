@@ -7,7 +7,7 @@ import { Assignment, AssignmentSubmission } from '@/types/course';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Calendar } from 'lucide-react';
-import { createNotification } from '@/hooks/useNotifications';
+import { notificationService } from '@/services/notification.service';
 
 interface SubmitAssignmentDialogProps {
   open: boolean;
@@ -92,7 +92,7 @@ export function SubmitAssignmentDialog({
     localStorage.setItem(key, JSON.stringify(existing));
 
     // Create notification for officer
-    createNotification(
+    notificationService.createNotification(
       officerId,
       'officer',
       'assignment_submission',

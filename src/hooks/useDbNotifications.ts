@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { notificationService, DbNotification, GetNotificationsOptions } from '@/services/notification.service';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export function useDbNotifications(userId: string | undefined, options: GetNotificationsOptions = {}) {
   const [notifications, setNotifications] = useState<DbNotification[]>([]);
@@ -53,6 +54,18 @@ export function useDbNotifications(userId: string | undefined, options: GetNotif
               setUnreadCount(prev => prev + 1);
             }
           }
+
+          // Show toast alert for new notification
+          toast(newNotification.title, {
+            description: newNotification.message,
+            duration: 6000,
+            action: newNotification.link ? {
+              label: 'View',
+              onClick: () => {
+                window.location.href = newNotification.link!;
+              }
+            } : undefined,
+          });
         }
       )
       .on(

@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/dialog';
 import type { LeaveApplication, LeaveBalance, LeaveType, AffectedSlot, SubstituteAssignment } from '@/types/attendance';
 import type { DateRange } from 'react-day-picker';
-import { useNotifications } from '@/hooks/useNotifications';
+import { useDbNotifications } from '@/hooks/useDbNotifications';
 import { getAffectedSlots, calculateSlotHours } from '@/utils/substituteHelpers';
 import { ApplicantLeaveBalanceCard } from '@/components/leave/ApplicantLeaveBalanceCard';
 import { useApplicantLeaveBalance, usePendingLeavesCount } from '@/hooks/useApplicantLeaveBalance';
@@ -40,7 +40,7 @@ import { useAvailableSubstitutes, useOfficerInstitution } from '@/hooks/useAvail
 
 export default function LeaveManagement() {
   const { user } = useAuth();
-  const { notifications, markAsRead } = useNotifications(user?.id || '', 'officer');
+  const { notifications, markAsRead } = useDbNotifications(user?.id);
   const [leaveBalance, setLeaveBalance] = useState<LeaveBalance | null>(null);
   const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>([]);
   const [approvedLeaveDates, setApprovedLeaveDates] = useState<string[]>([]);
