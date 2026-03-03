@@ -23,6 +23,7 @@ import { format } from "date-fns";
 import { ActivityReportPDF } from "@/components/reports/pdf/ActivityReportPDF";
 import { pdf } from "@react-pdf/renderer";
 import { toast } from "sonner";
+import { useReportSettings } from "@/hooks/useReportSettings";
 
 // Hook to get institution ID from slug
 function useInstitutionId(slug: string | undefined) {
@@ -133,6 +134,7 @@ const MonthlyReportsTab = ({ institutionId }: { institutionId: string | undefine
   const [typeFilter, setTypeFilter] = useState("all");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const { data: publishedReports, isLoading } = usePublishedReports(institutionId);
+  const { data: reportSettings } = useReportSettings();
 
   const filteredReports = (publishedReports || []).filter((report) => {
     if (typeFilter === "all") return true;
@@ -142,7 +144,7 @@ const MonthlyReportsTab = ({ institutionId }: { institutionId: string | undefine
   const handleDownloadReport = async (report: any) => {
     try {
       setDownloadingId(report.id);
-      const blob = await pdf(<ActivityReportPDF report={report} />).toBlob();
+      const blob = await pdf(<ActivityReportPDF report={report} reportSettings={reportSettings} />).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;

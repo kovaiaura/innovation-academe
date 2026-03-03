@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ActivityReportPDF } from '@/components/reports/pdf/ActivityReportPDF';
 import { pdf } from '@react-pdf/renderer';
 import { Report } from '@/types/report';
+import { useReportSettings } from '@/hooks/useReportSettings';
 
 export default function Reports() {
   const { slug } = useParams<{ slug: string }>();
@@ -31,10 +32,11 @@ export default function Reports() {
   });
 
   const { data: reports, isLoading } = usePublishedReports(institution?.id);
+  const { data: reportSettings } = useReportSettings();
 
   const handleDownloadReport = async (report: Report) => {
     try {
-      const blob = await pdf(<ActivityReportPDF report={report} />).toBlob();
+      const blob = await pdf(<ActivityReportPDF report={report} reportSettings={reportSettings} />).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
