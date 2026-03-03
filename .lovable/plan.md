@@ -1,108 +1,62 @@
 
-# Add Half-Day Leave Support
+# Fix Report PDF Logo to Use Settings from CEO Report Configuration
 
-## Overview
-Add the ability for officers and staff to apply for half-day leave (morning or afternoon), where each half-day counts as 0.5 leave. Two half-day leaves equal one full day of leave.
+## Problem
+The Activity Report PDF always shows the default bundled logo (`src/assets/logo.png`) because none of the 4 places that generate the PDF pass the `reportSettings` prop. The logo configured in Settings > Reports (stored in `company_profiles.report_logo_url`) is never fetched or used.
 
----
-
-## 1. Database Migration
-
-Add a `leave_duration` column to the `leave_applications` table:
-
-```text
-ALTER TABLE leave_applications 
-  ADD COLUMN leave_duration TEXT NOT NULL DEFAULT 'full_day';
--- Values: 'full_day', 'first_half', 'second_half'
-```
-
-Also change `total_days`, `paid_days`, and `lop_days` from INTEGER to NUMERIC to support 0.5 values:
-
-```text
-ALTER TABLE leave_applications ALTER COLUMN total_days TYPE NUMERIC;
-ALTER TABLE leave_applications ALTER COLUMN paid_days TYPE NUMERIC;
-ALTER TABLE leave_applications ALTER COLUMN lop_days TYPE NUMERIC;
-```
-
-Update `leave_balances` columns similarly (sick_leave_used, casual_leave_used, lop_days, balance_remaining) to NUMERIC to support 0.5 increments.
+## Solution
+Create a shared hook to fetch report settings from `company_profiles`, then pass those settings to `ActivityReportPDF` in all 4 locations that generate PDFs.
 
 ---
 
-## 2. Type Updates
+## Changes
 
-**File: `src/types/leave.ts`**
-- Add `LeaveDuration` type: `'full_day' | 'first_half' | 'second_half'`
-- Add `leave_duration` field to `LeaveApplication` interface
-- Add `leave_duration` field to `CreateLeaveApplicationInput`
-- Add display labels: `{ full_day: 'Full Day', first_half: 'First Half (Morning)', second_half: 'Second Half (Afternoon)' }`
-- Change `total_days`, `paid_days`, `lop_days` from `number` (integer) -- they already are `number` in TS so no change needed, but logic must handle 0.5
+### 1. Create a reusable hook: `src/hooks/useReportSettings.ts`
+- Fetches `report_logo_url`, `report_logo_width`, `report_logo_height` from `company_profiles` where `is_default = true`
+- Returns the settings object compatible with the `ReportSettings` interface in `ActivityReportPDF`
+- Uses `@tanstack/react-query` for caching
 
----
+### 2. Update all 4 PDF generation locations to fetch and pass report settings
 
-## 3. Service Updates
-
-**File: `src/services/leave.service.ts`**
-- In `applyLeave`: 
-  - If `leave_duration` is `first_half` or `second_half`, force `start_date === end_date` (half-day is single-day only) and set `totalDays = 0.5`
-  - For full-day, keep existing logic
-  - Include `leave_duration` in the insert payload
-  - LOP calculation: compare 0.5 against available balance
-- In `calculateWorkingDays`: no change needed (half-day bypasses this)
-
-**File: `src/services/leave.service.ts` (balance update)**
-- `updateBalanceOnApproval`: already accepts `days: number`, will work with 0.5
-- The DB function `apply_leave_application_to_balance` uses `paid_days` and `lop_days` from the record -- since we're changing those to NUMERIC, 0.5 values will flow through correctly
-
----
-
-## 4. UI Form Updates (4 files)
-
-All leave application forms need a "Leave Duration" selector that appears when start_date equals end_date (single day):
+Each file will:
+- Import and call `useReportSettings()`
+- Pass the fetched settings as `reportSettings` prop to `<ActivityReportPDF>`
 
 **Files to modify:**
-- `src/pages/officer/OfficerLeave.tsx` -- Officer leave form (Step 1 of multi-step)
-- `src/pages/system-admin/Leave.tsx` -- Staff leave form
-- `src/pages/system-admin/MetaStaffLeaveManagement.tsx` -- Meta staff leave form
-- `src/pages/system-admin/LeaveApply.tsx` -- Simple leave apply form
 
-**UI behavior:**
-- Add a radio group or Select with 3 options: "Full Day", "First Half (Morning)", "Second Half (Afternoon)"
-- Default: "Full Day"
-- When half-day is selected and date range spans multiple days, show warning: "Half-day leave can only be for a single day"
-- When half-day is selected, the "Total Days Requested" shows 0.5 instead of 1
-- Include `leave_duration` in the mutation payload
+| File | Usage |
+|------|-------|
+| `src/pages/system-admin/ReportsManagement.tsx` | System admin report download |
+| `src/pages/management/Reports.tsx` | Management report download |
+| `src/pages/institution/Reports.tsx` | Institution report download |
+| `src/components/reports/ViewReportDialog.tsx` | View/download/print dialog |
 
----
-
-## 5. Leave Records Display Updates
-
-**Files:**
-- `src/pages/system-admin/LeaveRecords.tsx`
-- `src/pages/system-admin/LeaveStatus.tsx`
-- Leave approval dialogs
-
-Show the leave duration label next to total days in records tables (e.g., "0.5 day (Morning)" or "2 days (Full Day)").
+### 3. No changes needed to `ActivityReportPDF.tsx`
+It already accepts `reportSettings` and falls back to the default logo when not provided. Once we pass the settings, it will use the configured logo automatically.
 
 ---
 
-## 6. Balance Function Updates
+## Technical Details
 
-**DB function: `get_leave_balance`** -- Already returns numeric-compatible fields; changing column types to NUMERIC ensures 0.5 values work.
+### Hook implementation (`useReportSettings.ts`)
+```text
+- Query: SELECT report_logo_url, report_logo_width, report_logo_height 
+         FROM company_profiles WHERE is_default = true
+- Returns: { report_logo_url, report_logo_width, report_logo_height }
+- Cached via react-query key: ['report-settings']
+```
 
-**DB function: `apply_leave_application_to_balance`** -- Uses `paid_days` and `lop_days` from the application record. With NUMERIC columns, 0.5 will propagate correctly.
+### Prop passing pattern
+```text
+// In each file:
+const { data: reportSettings } = useReportSettings();
 
-**DB function: `initialize_leave_balance`** -- Uses integer arithmetic; update to handle NUMERIC (balance_remaining calculation).
+// When generating PDF:
+<ActivityReportPDF report={report} reportSettings={reportSettings} />
+```
 
----
-
-## 7. Payroll/Attendance Integration
-
-**File: `src/components/payroll/IndividualAttendanceTab.tsx`**
-- When reading leave applications for attendance stats, treat `total_days = 0.5` correctly in paid leave / LOP counts
-- The existing code already sums `paid_days` and `lop_days` -- with NUMERIC types, 0.5 values will add up correctly
-
-**File: `src/components/payroll/MonthlyBreakdownTab.tsx`**  
-- Already handles `half_day` status in attendance records; leave records with 0.5 will integrate naturally
+### For `ViewReportDialog.tsx`
+Since it's a component (not a page), the `reportSettings` will be passed as a new prop from its parent callers. Alternatively, the hook can be called directly inside the dialog component.
 
 ---
 
@@ -110,12 +64,8 @@ Show the leave duration label next to total days in records tables (e.g., "0.5 d
 
 | Action | File |
 |--------|------|
-| Create | DB migration -- add `leave_duration` column, change day columns to NUMERIC |
-| Modify | `src/types/leave.ts` -- add LeaveDuration type and labels |
-| Modify | `src/services/leave.service.ts` -- handle half-day in applyLeave |
-| Modify | `src/pages/officer/OfficerLeave.tsx` -- add duration selector |
-| Modify | `src/pages/system-admin/Leave.tsx` -- add duration selector |
-| Modify | `src/pages/system-admin/MetaStaffLeaveManagement.tsx` -- add duration selector |
-| Modify | `src/pages/system-admin/LeaveApply.tsx` -- add duration selector |
-| Modify | `src/pages/system-admin/LeaveRecords.tsx` -- display duration in records |
-| Modify | `src/pages/system-admin/LeaveStatus.tsx` -- display duration in status view |
+| Create | `src/hooks/useReportSettings.ts` |
+| Modify | `src/pages/system-admin/ReportsManagement.tsx` |
+| Modify | `src/pages/management/Reports.tsx` |
+| Modify | `src/pages/institution/Reports.tsx` |
+| Modify | `src/components/reports/ViewReportDialog.tsx` |
