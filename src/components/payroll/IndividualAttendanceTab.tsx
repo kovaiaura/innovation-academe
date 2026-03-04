@@ -773,7 +773,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
           const checkIn = new Date(correctionData.check_in_time);
           const checkOut = new Date(correctionData.check_out_time);
           totalHoursWorked = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
-          overtimeHours = Math.max(0, totalHoursWorked - 8);
+          overtimeHours = Math.max(0, totalHoursWorked - institutionWorkingHours.normal_working_hours);
         }
 
         if (selectedRecord.attendance_id) {
