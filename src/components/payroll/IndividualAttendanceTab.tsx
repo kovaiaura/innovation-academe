@@ -720,7 +720,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
           end_date: selectedRecord.date,
           leave_type: leaveType,
           reason: correctionData.reason,
-          total_days: 1,
+          total_days: dayValue,
           is_lop: isLop,
           paid_days: paidDays,
           lop_days: lopDays,
