@@ -120,7 +120,15 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     check_out_time: '',
     reason: '',
     attendance_type: 'present' as 'present' | 'paid_leave' | 'lop' | 'leave',
+    leave_duration: 'full_day' as 'full_day' | 'half_day',
   });
+  
+  // Institution working hours cache
+  const [institutionWorkingHours, setInstitutionWorkingHours] = useState<{
+    check_in_time: string;
+    check_out_time: string;
+    normal_working_hours: number;
+  }>({ check_in_time: '09:00', check_out_time: '18:00', normal_working_hours: 8 });
   const [isSaving, setIsSaving] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectOvertimeId, setRejectOvertimeId] = useState<string | null>(null);
@@ -614,6 +622,34 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
   const stats = selectedEmployee ? calculateStats() : null;
 
   // Correction handlers
+  // Fetch institution working hours when employee changes
+  useEffect(() => {
+    const fetchWorkingHours = async () => {
+      if (!selectedEmployee?.institution_id) {
+        setInstitutionWorkingHours({ check_in_time: '09:00', check_out_time: '18:00', normal_working_hours: 8 });
+        return;
+      }
+      try {
+        const { data } = await supabase
+          .from('institutions')
+          .select('settings')
+          .eq('id', selectedEmployee.institution_id)
+          .single();
+        if (data?.settings) {
+          const s = data.settings as Record<string, unknown>;
+          setInstitutionWorkingHours({
+            check_in_time: (s.check_in_time as string) || '09:00',
+            check_out_time: (s.check_out_time as string) || '18:00',
+            normal_working_hours: (s.normal_working_hours as number) || 8,
+          });
+        }
+      } catch (e) {
+        console.error('Error fetching institution working hours:', e);
+      }
+    };
+    fetchWorkingHours();
+  }, [selectedEmployee?.institution_id]);
+
   const openCorrectionDialog = (record: DayRecord) => {
     if (!record.attendance_id && record.status !== 'unmarked') return;
     
@@ -621,13 +657,13 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     setCorrectionData({
       check_in_time: record.check_in_time
         ? format(parseISO(record.check_in_time), "yyyy-MM-dd'T'HH:mm")
-        : `${record.date}T09:00`,
+        : `${record.date}T${institutionWorkingHours.check_in_time}`,
       check_out_time: record.check_out_time
         ? format(parseISO(record.check_out_time), "yyyy-MM-dd'T'HH:mm")
-        : `${record.date}T18:00`,
+        : `${record.date}T${institutionWorkingHours.check_out_time}`,
       reason: '',
-      // If it's already a leave day: paid_leave when is_paid_leave=true, otherwise lop
       attendance_type: record.leave_id ? (record.is_paid_leave ? 'paid_leave' : 'lop') : 'present',
+      leave_duration: 'full_day',
     });
     setCorrectionDialogOpen(true);
   };
@@ -650,8 +686,10 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       if (attendanceType === 'paid_leave' || attendanceType === 'lop' || attendanceType === 'leave') {
         const leaveType = attendanceType === 'leave' ? 'sick' : 'casual';
         const isLop = attendanceType === 'lop';
-        const paidDays = isLop ? 0 : 1;
-        const lopDays = isLop ? 1 : 0;
+        const isHalfDay = correctionData.leave_duration === 'half_day';
+        const dayValue = isHalfDay ? 0.5 : 1;
+        const paidDays = isLop ? 0 : dayValue;
+        const lopDays = isLop ? dayValue : 0;
 
         // If there's an existing leave record for this day, delete it first to allow re-edit
         if (selectedRecord.leave_id) {
@@ -682,7 +720,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
           end_date: selectedRecord.date,
           leave_type: leaveType,
           reason: correctionData.reason,
-          total_days: 1,
+          total_days: dayValue,
           is_lop: isLop,
           paid_days: paidDays,
           lop_days: lopDays,
@@ -699,7 +737,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
 
         // Log correction
         await supabase.from('attendance_corrections').insert({
-          attendance_id: selectedRecord.attendance_id || 'new',
+          attendance_id: selectedRecord.attendance_id || null,
           attendance_type: selectedEmployee.type,
           field_corrected: 'leave_application',
           original_value: selectedRecord.leave_id ? 'leave' : 'none',
@@ -735,7 +773,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
           const checkIn = new Date(correctionData.check_in_time);
           const checkOut = new Date(correctionData.check_out_time);
           totalHoursWorked = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
-          overtimeHours = Math.max(0, totalHoursWorked - 8);
+          overtimeHours = Math.max(0, totalHoursWorked - institutionWorkingHours.normal_working_hours);
         }
 
         if (selectedRecord.attendance_id) {
@@ -788,7 +826,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
 
         // Log correction
         await supabase.from('attendance_corrections').insert({
-          attendance_id: selectedRecord.attendance_id || 'new',
+          attendance_id: selectedRecord.attendance_id || null,
           attendance_type: selectedEmployee.type,
           field_corrected: 'check_in_time, check_out_time',
           original_value: `${selectedRecord.check_in_time || 'null'}, ${selectedRecord.check_out_time || 'null'}`,
@@ -1523,6 +1561,25 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                   />
                 </div>
               </>
+            )}
+
+            {/* Half-day / Full-day selector for leave types */}
+            {correctionData.attendance_type !== 'present' && (
+              <div className="space-y-2">
+                <Label>Leave Duration</Label>
+                <Select
+                  value={correctionData.leave_duration}
+                  onValueChange={(v) => setCorrectionData((prev) => ({ ...prev, leave_duration: v as 'full_day' | 'half_day' }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="full_day">Full Day (1.0)</SelectItem>
+                    <SelectItem value="half_day">Half Day (0.5)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             )}
 
             {/* Info message for leave types */}

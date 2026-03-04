@@ -646,7 +646,7 @@ export type Database = {
       }
       attendance_corrections: {
         Row: {
-          attendance_id: string
+          attendance_id: string | null
           attendance_type: string
           corrected_by: string | null
           corrected_by_name: string | null
@@ -658,7 +658,7 @@ export type Database = {
           reason: string
         }
         Insert: {
-          attendance_id: string
+          attendance_id?: string | null
           attendance_type: string
           corrected_by?: string | null
           corrected_by_name?: string | null
@@ -670,7 +670,7 @@ export type Database = {
           reason: string
         }
         Update: {
-          attendance_id?: string
+          attendance_id?: string | null
           attendance_type?: string
           corrected_by?: string | null
           corrected_by_name?: string | null
