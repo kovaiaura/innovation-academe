@@ -1563,6 +1563,25 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
               </>
             )}
 
+            {/* Half-day / Full-day selector for leave types */}
+            {correctionData.attendance_type !== 'present' && (
+              <div className="space-y-2">
+                <Label>Leave Duration</Label>
+                <Select
+                  value={correctionData.leave_duration}
+                  onValueChange={(v) => setCorrectionData((prev) => ({ ...prev, leave_duration: v as 'full_day' | 'half_day' }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="full_day">Full Day (1.0)</SelectItem>
+                    <SelectItem value="half_day">Half Day (0.5)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Info message for leave types */}
             {correctionData.attendance_type !== 'present' && (
               <div className="p-3 bg-muted rounded-md">
