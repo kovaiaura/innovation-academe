@@ -622,6 +622,34 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
   const stats = selectedEmployee ? calculateStats() : null;
 
   // Correction handlers
+  // Fetch institution working hours when employee changes
+  useEffect(() => {
+    const fetchWorkingHours = async () => {
+      if (!selectedEmployee?.institution_id) {
+        setInstitutionWorkingHours({ check_in_time: '09:00', check_out_time: '18:00', normal_working_hours: 8 });
+        return;
+      }
+      try {
+        const { data } = await supabase
+          .from('institutions')
+          .select('settings')
+          .eq('id', selectedEmployee.institution_id)
+          .single();
+        if (data?.settings) {
+          const s = data.settings as Record<string, unknown>;
+          setInstitutionWorkingHours({
+            check_in_time: (s.check_in_time as string) || '09:00',
+            check_out_time: (s.check_out_time as string) || '18:00',
+            normal_working_hours: (s.normal_working_hours as number) || 8,
+          });
+        }
+      } catch (e) {
+        console.error('Error fetching institution working hours:', e);
+      }
+    };
+    fetchWorkingHours();
+  }, [selectedEmployee?.institution_id]);
+
   const openCorrectionDialog = (record: DayRecord) => {
     if (!record.attendance_id && record.status !== 'unmarked') return;
     
@@ -629,13 +657,13 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     setCorrectionData({
       check_in_time: record.check_in_time
         ? format(parseISO(record.check_in_time), "yyyy-MM-dd'T'HH:mm")
-        : `${record.date}T09:00`,
+        : `${record.date}T${institutionWorkingHours.check_in_time}`,
       check_out_time: record.check_out_time
         ? format(parseISO(record.check_out_time), "yyyy-MM-dd'T'HH:mm")
-        : `${record.date}T18:00`,
+        : `${record.date}T${institutionWorkingHours.check_out_time}`,
       reason: '',
-      // If it's already a leave day: paid_leave when is_paid_leave=true, otherwise lop
       attendance_type: record.leave_id ? (record.is_paid_leave ? 'paid_leave' : 'lop') : 'present',
+      leave_duration: 'full_day',
     });
     setCorrectionDialogOpen(true);
   };
