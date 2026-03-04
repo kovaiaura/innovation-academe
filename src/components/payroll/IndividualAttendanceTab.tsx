@@ -737,7 +737,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
 
         // Log correction
         await supabase.from('attendance_corrections').insert({
-          attendance_id: selectedRecord.attendance_id || 'new',
+          attendance_id: selectedRecord.attendance_id || null,
           attendance_type: selectedEmployee.type,
           field_corrected: 'leave_application',
           original_value: selectedRecord.leave_id ? 'leave' : 'none',
