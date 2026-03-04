@@ -686,8 +686,10 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       if (attendanceType === 'paid_leave' || attendanceType === 'lop' || attendanceType === 'leave') {
         const leaveType = attendanceType === 'leave' ? 'sick' : 'casual';
         const isLop = attendanceType === 'lop';
-        const paidDays = isLop ? 0 : 1;
-        const lopDays = isLop ? 1 : 0;
+        const isHalfDay = correctionData.leave_duration === 'half_day';
+        const dayValue = isHalfDay ? 0.5 : 1;
+        const paidDays = isLop ? 0 : dayValue;
+        const lopDays = isLop ? dayValue : 0;
 
         // If there's an existing leave record for this day, delete it first to allow re-edit
         if (selectedRecord.leave_id) {
