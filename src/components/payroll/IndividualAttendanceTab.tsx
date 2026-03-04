@@ -826,7 +826,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
 
         // Log correction
         await supabase.from('attendance_corrections').insert({
-          attendance_id: selectedRecord.attendance_id || 'new',
+          attendance_id: selectedRecord.attendance_id || null,
           attendance_type: selectedEmployee.type,
           field_corrected: 'check_in_time, check_out_time',
           original_value: `${selectedRecord.check_in_time || 'null'}, ${selectedRecord.check_out_time || 'null'}`,
