@@ -120,7 +120,15 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     check_out_time: '',
     reason: '',
     attendance_type: 'present' as 'present' | 'paid_leave' | 'lop' | 'leave',
+    leave_duration: 'full_day' as 'full_day' | 'half_day',
   });
+  
+  // Institution working hours cache
+  const [institutionWorkingHours, setInstitutionWorkingHours] = useState<{
+    check_in_time: string;
+    check_out_time: string;
+    normal_working_hours: number;
+  }>({ check_in_time: '09:00', check_out_time: '18:00', normal_working_hours: 8 });
   const [isSaving, setIsSaving] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectOvertimeId, setRejectOvertimeId] = useState<string | null>(null);
