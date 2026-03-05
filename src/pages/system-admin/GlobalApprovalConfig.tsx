@@ -41,6 +41,7 @@ export default function GlobalApprovalConfig() {
     reminder_minutes_before: 5
   });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [isSavingGps, setIsSavingGps] = useState(false);
   const [isSavingReminder, setIsSavingReminder] = useState(false);
 
   const { data: allPositions = [] } = useQuery({
