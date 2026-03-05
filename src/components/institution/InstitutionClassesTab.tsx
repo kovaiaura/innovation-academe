@@ -15,6 +15,7 @@ interface InstitutionClassesTabProps {
   onEditClass: (classData: InstitutionClass) => void;
   onDeleteClass: (classId: string) => void;
   onSelectClass: (classId: string) => void;
+  institutionType?: string;
 }
 
 export const InstitutionClassesTab = ({
@@ -24,7 +25,8 @@ export const InstitutionClassesTab = ({
   onAddClass,
   onEditClass,
   onDeleteClass,
-  onSelectClass
+  onSelectClass,
+  institutionType
 }: InstitutionClassesTabProps) => {
   const [mappingDialogOpen, setMappingDialogOpen] = useState(false);
   const [internalMarksOpen, setInternalMarksOpen] = useState(false);
@@ -193,6 +195,7 @@ export const InstitutionClassesTab = ({
           classId={selectedClass.id}
           className={selectedClass.class_name}
           institutionId={institutionId}
+          institutionType={institutionType}
         />
       )}
     </div>

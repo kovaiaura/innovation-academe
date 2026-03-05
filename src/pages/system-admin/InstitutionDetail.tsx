@@ -447,6 +447,7 @@ export default function InstitutionDetail() {
           <TabsContent value="classes" className="space-y-6">
             <InstitutionClassesTab
               institutionId={institutionId!}
+              institutionType={institution?.type}
               institutionClasses={classesWithCounts.map(c => ({
                 id: c.id,
                 institution_id: c.institution_id,

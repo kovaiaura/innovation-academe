@@ -61,6 +61,24 @@ export default function OfficerAssessmentManagement() {
     },
     enabled: !!officerInstitutionId,
   });
+
+  // Fetch institution type
+  const { data: institutionData } = useQuery({
+    queryKey: ['institution-type', officerInstitutionId],
+    queryFn: async () => {
+      if (!officerInstitutionId) return null;
+      const { data, error } = await supabase
+        .from('institutions')
+        .select('type')
+        .eq('id', officerInstitutionId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!officerInstitutionId,
+  });
+
+  const institutionType = institutionData?.type;
   
   // Create Assessment State
   const [step, setStep] = useState(1);
@@ -497,7 +515,9 @@ export default function OfficerAssessmentManagement() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-muted-foreground mb-4">
-                      Map assessments to weightage categories (FA1: 20%, FA2: 20%, Final: 40%, Internal: 20%) for each class.
+                      {institutionType === 'college' 
+                        ? 'Map assessments to weightage categories (Internal: 40%, Final: 60%) for each class.'
+                        : 'Map assessments to weightage categories (FA1: 20%, FA2: 20%, Final: 40%, Internal: 20%) for each class.'}
                     </p>
                     
                     {!classes || classes.length === 0 ? (
@@ -555,6 +575,7 @@ export default function OfficerAssessmentManagement() {
                     classId={selectedClassForMapping.id}
                     className={selectedClassForMapping.name}
                     institutionId={officerInstitutionId || ''}
+                    institutionType={institutionType}
                   />
                 )}
               </div>
