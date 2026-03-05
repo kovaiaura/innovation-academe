@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, ArrowRight, Users, GitBranch, Info, Crown, Briefcase, UserCog, Settings, Save, Loader2, MapPin, MapPinOff, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, Users, GitBranch, Info, Crown, Briefcase, UserCog, Settings, Save, Loader2, MapPin, MapPinOff, AlertCircle, Bell, BellOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { approvalHierarchyService } from '@/services/leave.service';
 import { positionService } from '@/services/position.service';
@@ -35,10 +35,14 @@ export default function GlobalApprovalConfig() {
     leaves_per_month: 1,
     max_carry_forward: 1,
     max_leaves_per_month: 2,
-    gps_checkin_enabled: true
+    gps_checkin_enabled: true,
+    reminder_enabled_officer: false,
+    reminder_enabled_staff: false,
+    reminder_minutes_before: 5
   });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isSavingGps, setIsSavingGps] = useState(false);
+  const [isSavingReminder, setIsSavingReminder] = useState(false);
 
   const { data: allPositions = [] } = useQuery({
     queryKey: ['positions'],
@@ -570,6 +574,123 @@ export default function GlobalApprovalConfig() {
                     </AlertDescription>
                   </Alert>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Attendance Reminder Settings */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  {(leaveSettings.reminder_enabled_officer || leaveSettings.reminder_enabled_staff) ? (
+                    <Bell className="h-5 w-5 text-primary" />
+                  ) : (
+                    <BellOff className="h-5 w-5 text-muted-foreground" />
+                  )}
+                  Attendance Reminder Emails
+                </CardTitle>
+                <CardDescription>
+                  Send email reminders before check-in and check-out times
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Remind Officers</span>
+                      {leaveSettings.reminder_enabled_officer ? (
+                        <Badge className="bg-green-500">Enabled</Badge>
+                      ) : (
+                        <Badge variant="secondary">Disabled</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Send reminder emails to officers before their check-in/check-out times
+                    </p>
+                  </div>
+                  <Switch
+                    checked={leaveSettings.reminder_enabled_officer}
+                    disabled={isSavingReminder}
+                    onCheckedChange={async (checked) => {
+                      setIsSavingReminder(true);
+                      try {
+                        await leaveSettingsService.updateSetting('reminder_enabled_officer', checked);
+                        setLeaveSettings(prev => ({ ...prev, reminder_enabled_officer: checked }));
+                        toast.success(checked ? 'Officer reminders enabled' : 'Officer reminders disabled');
+                      } catch (error) {
+                        toast.error('Failed to update reminder setting');
+                      } finally {
+                        setIsSavingReminder(false);
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Remind Staff</span>
+                      {leaveSettings.reminder_enabled_staff ? (
+                        <Badge className="bg-green-500">Enabled</Badge>
+                      ) : (
+                        <Badge variant="secondary">Disabled</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Send reminder emails to staff before their check-in/check-out times
+                    </p>
+                  </div>
+                  <Switch
+                    checked={leaveSettings.reminder_enabled_staff}
+                    disabled={isSavingReminder}
+                    onCheckedChange={async (checked) => {
+                      setIsSavingReminder(true);
+                      try {
+                        await leaveSettingsService.updateSetting('reminder_enabled_staff', checked);
+                        setLeaveSettings(prev => ({ ...prev, reminder_enabled_staff: checked }));
+                        toast.success(checked ? 'Staff reminders enabled' : 'Staff reminders disabled');
+                      } catch (error) {
+                        toast.error('Failed to update reminder setting');
+                      } finally {
+                        setIsSavingReminder(false);
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="p-4 border rounded-lg space-y-2">
+                  <Label htmlFor="reminder_minutes">Minutes Before</Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      id="reminder_minutes"
+                      type="number"
+                      min="1"
+                      max="30"
+                      className="w-24"
+                      value={leaveSettings.reminder_minutes_before}
+                      onChange={(e) => setLeaveSettings(prev => ({ ...prev, reminder_minutes_before: parseInt(e.target.value) || 5 }))}
+                    />
+                    <span className="text-sm text-muted-foreground">minutes before check-in/check-out</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isSavingReminder}
+                    onClick={async () => {
+                      setIsSavingReminder(true);
+                      try {
+                        await leaveSettingsService.updateSetting('reminder_minutes_before', leaveSettings.reminder_minutes_before);
+                        toast.success('Reminder timing saved');
+                      } catch (error) {
+                        toast.error('Failed to save reminder timing');
+                      } finally {
+                        setIsSavingReminder(false);
+                      }
+                    }}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Save
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 

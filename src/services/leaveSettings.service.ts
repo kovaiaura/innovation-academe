@@ -6,6 +6,9 @@ export interface LeaveSettings {
   max_carry_forward: number;
   max_leaves_per_month: number;
   gps_checkin_enabled: boolean;
+  reminder_enabled_officer: boolean;
+  reminder_enabled_staff: boolean;
+  reminder_minutes_before: number;
 }
 
 // Cache for settings
@@ -34,7 +37,10 @@ export const leaveSettingsService = {
         leaves_per_month: 1,
         max_carry_forward: 1,
         max_leaves_per_month: 2,
-        gps_checkin_enabled: true
+        gps_checkin_enabled: true,
+        reminder_enabled_officer: false,
+        reminder_enabled_staff: false,
+        reminder_minutes_before: 5
       };
     }
 
@@ -43,14 +49,19 @@ export const leaveSettingsService = {
       leaves_per_month: 1,
       max_carry_forward: 1,
       max_leaves_per_month: 2,
-      gps_checkin_enabled: true
+      gps_checkin_enabled: true,
+      reminder_enabled_officer: false,
+      reminder_enabled_staff: false,
+      reminder_minutes_before: 5
     };
 
     data?.forEach(row => {
-      if (row.setting_key === 'gps_checkin_enabled') {
-        // Handle boolean setting
+      if (row.setting_key === 'gps_checkin_enabled' || row.setting_key === 'reminder_enabled_officer' || row.setting_key === 'reminder_enabled_staff') {
         const value = row.setting_value;
-        settings.gps_checkin_enabled = value === true || value === 'true';
+        const boolValue = value === true || value === 'true';
+        if (row.setting_key === 'gps_checkin_enabled') settings.gps_checkin_enabled = boolValue;
+        if (row.setting_key === 'reminder_enabled_officer') settings.reminder_enabled_officer = boolValue;
+        if (row.setting_key === 'reminder_enabled_staff') settings.reminder_enabled_staff = boolValue;
       } else {
         const value = typeof row.setting_value === 'string' 
           ? parseInt(row.setting_value) 
@@ -68,6 +79,9 @@ export const leaveSettingsService = {
             break;
           case 'max_leaves_per_month':
             settings.max_leaves_per_month = value;
+            break;
+          case 'reminder_minutes_before':
+            settings.reminder_minutes_before = value || 5;
             break;
         }
       }
@@ -97,7 +111,10 @@ export const leaveSettingsService = {
       { key: 'leaves_per_month', value: settings.leaves_per_month },
       { key: 'max_carry_forward', value: settings.max_carry_forward },
       { key: 'max_leaves_per_month', value: settings.max_leaves_per_month },
-      { key: 'gps_checkin_enabled', value: settings.gps_checkin_enabled }
+      { key: 'gps_checkin_enabled', value: settings.gps_checkin_enabled },
+      { key: 'reminder_enabled_officer', value: settings.reminder_enabled_officer },
+      { key: 'reminder_enabled_staff', value: settings.reminder_enabled_staff },
+      { key: 'reminder_minutes_before', value: settings.reminder_minutes_before }
     ];
 
     for (const { key, value } of updates) {
