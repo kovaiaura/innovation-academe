@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Calculator, Trophy } from 'lucide-react';
+import { FileText, Calculator, Trophy, GraduationCap, School } from 'lucide-react';
 import { AboutIMSTab } from '@/components/about-ims/AboutIMSTab';
 import { AssessmentWeightageTab } from '@/components/about-ims/AssessmentWeightageTab';
+import { CollegeAssessmentWeightageTab } from '@/components/about-ims/CollegeAssessmentWeightageTab';
 import { GamificationRulesTab } from '@/components/about-ims/GamificationRulesTab';
 import { supabase } from '@/integrations/supabase/client';
 
