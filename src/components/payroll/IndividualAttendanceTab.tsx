@@ -588,8 +588,13 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     const leaveDays = dayRecords.filter((r) => r.dayType === 'leave').length;
     
     // Separate paid leave vs LOP leave
-    const paidLeaveDays = dayRecords.filter((r) => r.dayType === 'leave' && r.is_paid_leave === true).length;
-    const lopLeaveDays = dayRecords.filter((r) => r.dayType === 'leave' && r.is_paid_leave === false).length;
+    // Sum fractional leave values (0.5 for half-day, 1 for full-day)
+    const paidLeaveDays = dayRecords
+      .filter((r) => (r.dayType === 'leave' && r.is_paid_leave === true) || (r.leave_type && r.is_paid_leave === true && r.leave_day_value === 0.5))
+      .reduce((sum, r) => sum + (r.leave_day_value || 1), 0);
+    const lopLeaveDays = dayRecords
+      .filter((r) => (r.dayType === 'leave' && r.is_paid_leave === false) || (r.leave_type && r.is_paid_leave === false && r.leave_day_value === 0.5))
+      .reduce((sum, r) => sum + (r.leave_day_value || 1), 0);
     
     const presentDays = dayRecords.filter((r) => r.status === 'present' || r.status === 'late').length;
     const lateDays = dayRecords.filter((r) => r.status === 'late').length;
