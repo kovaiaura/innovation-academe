@@ -1710,7 +1710,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
             )}
 
             {/* Info message for leave types */}
-            {correctionData.attendance_type !== 'present' && (
+            {correctionData.attendance_type !== 'present' && correctionData.attendance_type !== 'half_day_present' && (
               <div className="p-3 bg-muted rounded-md">
                 <p className="text-sm text-muted-foreground">
                   {correctionData.attendance_type === 'paid_leave' && (
