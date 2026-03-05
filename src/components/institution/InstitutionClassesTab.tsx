@@ -15,6 +15,7 @@ interface InstitutionClassesTabProps {
   onEditClass: (classData: InstitutionClass) => void;
   onDeleteClass: (classId: string) => void;
   onSelectClass: (classId: string) => void;
+  institutionType?: string;
 }
 
 export const InstitutionClassesTab = ({
