@@ -10,6 +10,7 @@ export interface ClassAssessmentMapping {
   fa1_assessment_id: string | null;
   fa2_assessment_id: string | null;
   final_assessment_id: string | null;
+  internal_assessment_id: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
