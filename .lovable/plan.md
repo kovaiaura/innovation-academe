@@ -1,24 +1,17 @@
 
+# Remove Performance Analytics Tab from Management Reports
 
-# Plan: Include Officers in Individual Controls
+## Overview
+Remove the Performance Analytics tab from the Management Reports page, keeping only the Monthly Reports content as the main view (no tabs needed).
 
-## Problem
-The `IndividualProfileControls` component queries profiles with `.not('position_id', 'is', null)`, filtering to only users who have a `position_id`. Officers typically don't have a `position_id` set (they're tracked via `officer_assignments`), so they're excluded from the list.
+## Changes
 
-## Fix: `src/components/settings/IndividualProfileControls.tsx`
+**File: `src/pages/management/Reports.tsx`**
 
-Change the data fetching strategy:
+1. Remove the `PerformanceAnalyticsTab` component entirely (lines 47-130)
+2. Remove the `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` wrapper -- since there's only one section now, no tabs are needed
+3. Render the `MonthlyReportsTab` content directly
+4. Remove unused imports: `Tabs`, `TabsContent`, `TabsList`, `TabsTrigger`, `useState` (from PerformanceAnalyticsTab), `useInstitutionPerformanceMetrics`, `Badge` (if only used in analytics)
+5. Update the page subtitle from "Performance analytics and reports" to just "Monthly reports"
 
-1. **Remove the `position_id` filter** — instead, fetch profiles that are either staff (have a `position_id`) OR officers (have an `officer` role in `user_roles`).
-2. **Two-step approach**:
-   - First fetch all user_roles for `system_admin`, `officer`, and `management` roles to get relevant user IDs.
-   - Then fetch profiles for those user IDs (no `position_id` filter needed).
-   - This ensures officers appear in the list alongside staff.
-3. **Display**: Officers will show their role as "Officer" via the role badge. Position column will show their designation or "-" if none.
-
-### Single file change
-Only `src/components/settings/IndividualProfileControls.tsx` needs modification — update the `queryFn` to:
-- Fetch all roles first (for `system_admin` and `officer` at minimum)
-- Use those user IDs to query profiles (removing the `.not('position_id', 'is', null)` filter)
-- This captures both staff with positions and officers without positions
-
+The page will simply show the "Published Reports" list directly without any tab navigation.
