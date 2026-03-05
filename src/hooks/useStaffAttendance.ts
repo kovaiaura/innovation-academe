@@ -115,21 +115,16 @@ export const useStaffCheckOut = () => {
         overtimeHours = Math.max(0, Math.round((totalHours - normalHours) * 100) / 100);
       }
 
-      const updateData: Record<string, any> = {
-        check_out_time: now,
-        status: 'checked_out',
-        total_hours_worked: totalHours,
-        overtime_hours: overtimeHours,
-      };
-
-      if (params.location && !params.skip_gps) {
-        updateData.check_out_latitude = params.location.latitude;
-        updateData.check_out_longitude = params.location.longitude;
-      }
-
       const { data, error } = await supabase
         .from('staff_attendance')
-        .update(updateData)
+        .update({
+          check_out_time: now,
+          status: 'checked_out' as const,
+          total_hours_worked: totalHours,
+          overtime_hours: overtimeHours,
+          check_out_latitude: (params.location && !params.skip_gps) ? params.location.latitude : null,
+          check_out_longitude: (params.location && !params.skip_gps) ? params.location.longitude : null,
+        })
         .eq('id', params.attendance_id)
         .select()
         .single();
