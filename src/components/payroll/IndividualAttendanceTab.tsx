@@ -603,6 +603,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       .reduce((sum, r) => sum + (r.leave_day_value || 1), 0);
     
     const presentDays = dayRecords.filter((r) => r.status === 'present' || r.status === 'late').length;
+    const checkedInDays = dayRecords.filter((r) => r.status === 'checked_in').length;
     const lateDays = dayRecords.filter((r) => r.status === 'late').length;
     const unmarkedDays = dayRecords.filter((r) => r.status === 'unmarked').length;
     const totalHours = dayRecords.reduce((sum, r) => sum + (r.total_hours_worked || 0), 0);
@@ -614,15 +615,15 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     // Total LOP days = approved LOP leaves + unmarked days (unapproved absences)
     const totalLopDays = lopLeaveDays + unmarkedDays;
 
-    // Working Days = Present + Paid Leave + LOP (days the employee was expected to work)
-    const workingDays = presentDays + paidLeaveDays + totalLopDays;
+    // Working Days = Present + Checked-In + Paid Leave + LOP (days the employee was expected to work)
+    const workingDays = presentDays + checkedInDays + paidLeaveDays + totalLopDays;
 
     // Attendance % = ((Total Days - (Paid Leave + LOP)) * 100) / Total Days
     const attendancePercentage = totalDaysInMonth > 0 
       ? parseFloat((((totalDaysInMonth - (paidLeaveDays + totalLopDays)) * 100) / totalDaysInMonth).toFixed(2))
       : 100;
 
-    // Salary Payable Days = Present + Holidays + Weekends + Paid Leave
+    // Salary Payable Days = Present + Holidays + Weekends + Paid Leave (excludes checked_in days until checkout)
     const salaryPayableDays = presentDays + holidays + weekendDays + paidLeaveDays;
 
     return {
