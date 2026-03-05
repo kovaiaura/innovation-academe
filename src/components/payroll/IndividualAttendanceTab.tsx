@@ -78,6 +78,7 @@ interface DayRecord {
   leave_id?: string;
   is_paid_leave?: boolean;
   leave_day_value?: number; // 0.5 for half-day, 1 for full-day
+  leave_duration?: string; // 'first_half', 'second_half', 'full_day'
   
   // Overtime info
   overtime_hours: number | null;
@@ -416,6 +417,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
         id: string;
         isPaid: boolean;
         dayValue: number; // 0.5 for half-day, 1 for full-day
+        leaveDuration: string; // 'first_half', 'second_half', 'full_day'
       }
       const leaveMap = new Map<string, LeaveInfo>();
       let totalPaidLeaveDays = 0;
@@ -440,7 +442,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
           cumulativeDays += dayValue;
           // Mark as paid if cumulative days within paid_days count
           const isPaid = cumulativeDays <= paidDays + 0.001; // small epsilon for float comparison
-          leaveMap.set(dateStr, { type: l.leave_type, id: l.id, isPaid, dayValue });
+          leaveMap.set(dateStr, { type: l.leave_type, id: l.id, isPaid, dayValue, leaveDuration: l.leave_duration || 'full_day' });
         }
       });
 
@@ -564,6 +566,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
           leave_id: leave?.id,
           is_paid_leave: leave?.isPaid,
           leave_day_value: leave?.dayValue,
+          leave_duration: leave?.leaveDuration,
           overtime_hours: overtime?.requested_hours || attendance?.overtime_hours || null,
           overtime_status: overtime?.status as DayRecord['overtime_status'] || null,
           overtime_id: overtime?.id,
@@ -615,12 +618,14 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     // Total LOP days = approved LOP leaves + unmarked days (unapproved absences)
     const totalLopDays = lopLeaveDays + unmarkedDays;
 
-    // Working Days = Present + Checked-In + Paid Leave + LOP (days the employee was expected to work)
-    const workingDays = presentDays + checkedInDays + paidLeaveDays + totalLopDays;
+    // Working Days = number of past calendar working days (non-weekend, non-holiday) excluding today if only checked_in
+    const workingDays = dayRecords.filter((r) => 
+      r.dayType === 'working' && r.status !== 'future' && r.status !== 'checked_in'
+    ).length;
 
-    // Attendance % = ((Total Days - (Paid Leave + LOP)) * 100) / Total Days
+    // Attendance % = ((present + weekends + holidays) × 100) / total days in month
     const attendancePercentage = totalDaysInMonth > 0 
-      ? parseFloat((((totalDaysInMonth - (paidLeaveDays + totalLopDays)) * 100) / totalDaysInMonth).toFixed(2))
+      ? parseFloat((((presentDays + weekendDays + holidays) * 100) / totalDaysInMonth).toFixed(2))
       : 100;
 
     // Salary Payable Days = Present + Holidays + Weekends + Paid Leave (excludes checked_in days until checkout)
@@ -1516,7 +1521,11 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                                   <span className="text-purple-600 text-sm">{record.holiday_name}</span>
                                 )}
                                 {record.leave_type && (
-                                  <span className="text-blue-600 text-sm capitalize">{record.leave_type}</span>
+                                  <span className="text-blue-600 text-sm capitalize">
+                                    {record.leave_day_value === 0.5 
+                                      ? `${record.leave_duration === 'second_half' ? 'Second Half' : 'First Half'} - ${record.leave_type}`
+                                      : record.leave_type}
+                                  </span>
                                 )}
                               </TableCell>
                               <TableCell>

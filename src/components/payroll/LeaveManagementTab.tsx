@@ -155,6 +155,8 @@ export function LeaveManagementTab({ year }: LeaveManagementTabProps) {
         // Split leave across months if it spans multiple months
         const startDate = new Date(leave.start_date);
         const endDate = new Date(leave.end_date);
+        const isHalfDay = leave.total_days === 0.5;
+        const dayValue = isHalfDay ? 0.5 : 1;
         
         let current = new Date(startDate);
         while (current <= endDate) {
@@ -166,9 +168,9 @@ export function LeaveManagementTab({ year }: LeaveManagementTabProps) {
             const dayOfWeek = current.getDay();
             if (dayOfWeek !== 0 && dayOfWeek !== 6) {
               if (leave.leave_type === 'sick') {
-                existing.sick += 1;
+                existing.sick += dayValue;
               } else if (leave.leave_type === 'casual') {
-                existing.casual += 1;
+                existing.casual += dayValue;
               }
             }
             
