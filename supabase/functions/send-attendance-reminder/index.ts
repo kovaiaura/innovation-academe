@@ -46,6 +46,11 @@ function applyTemplate(
   return result;
 }
 
+function timeToMinutes(timeStr: string): number {
+  const [h, m] = timeStr.split(":").map(Number);
+  return h * 60 + m;
+}
+
 async function sendEmail(
   to: string,
   subject: string,
@@ -56,8 +61,6 @@ async function sendEmail(
   if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured");
 
   const fromAddress = `${settings.from_name} <${settings.from_email}>`;
-
-  // Convert plain text body to HTML
   const htmlBody = body.replace(/\n/g, "<br>");
 
   const response = await fetch("https://api.resend.com/emails", {
@@ -91,7 +94,9 @@ serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 1. Fetch reminder settings from leave_settings
+    console.log("[attendance-reminder] Function invoked at", new Date().toISOString());
+
+    // 1. Fetch reminder settings
     const { data: settingsData } = await supabase
       .from("leave_settings")
       .select("setting_key, setting_value")
@@ -114,7 +119,10 @@ serve(async (req: Request) => {
       reminderSettings.reminder_enabled_staff === "true";
     const minutesBefore = Number(reminderSettings.reminder_minutes_before) || 5;
 
+    console.log("[attendance-reminder] Settings:", { enabledOfficer, enabledStaff, minutesBefore });
+
     if (!enabledOfficer && !enabledStaff) {
+      console.log("[attendance-reminder] Both reminders disabled, exiting.");
       return new Response(
         JSON.stringify({ message: "Reminders disabled" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -125,18 +133,18 @@ serve(async (req: Request) => {
     const now = new Date();
     const istOffset = 5.5 * 60 * 60 * 1000;
     const istNow = new Date(now.getTime() + istOffset);
-    const currentHours = istNow.getUTCHours();
-    const currentMinutes = istNow.getUTCMinutes();
+    const currentMinutesOfDay = istNow.getUTCHours() * 60 + istNow.getUTCMinutes();
 
-    // Target time = current time + minutesBefore
-    const targetMinutes = currentHours * 60 + currentMinutes + minutesBefore;
-    const targetHH = String(Math.floor(targetMinutes / 60) % 24).padStart(2, "0");
-    const targetMM = String(targetMinutes % 60).padStart(2, "0");
-    const targetTime = `${targetHH}:${targetMM}`;
+    // Target time = current time + minutesBefore (with 2-minute window for cron jitter)
+    const targetMinutesMin = currentMinutesOfDay + minutesBefore - 1;
+    const targetMinutesMax = currentMinutesOfDay + minutesBefore + 1;
 
     const todayStr = istNow.toISOString().split("T")[0];
 
-    // 3. Fetch reminder template
+    console.log("[attendance-reminder] IST time:", `${istNow.getUTCHours()}:${istNow.getUTCMinutes()}`, 
+      "Target window:", targetMinutesMin, "-", targetMinutesMax);
+
+    // 3. Fetch templates
     const { data: templateData } = await supabase
       .from("system_configurations")
       .select("value")
@@ -147,7 +155,6 @@ serve(async (req: Request) => {
       ? { ...defaultTemplate, ...(templateData.value as any) }
       : defaultTemplate;
 
-    // 4. Fetch email settings
     const { data: emailSettingsData } = await supabase
       .from("system_configurations")
       .select("value")
@@ -162,27 +169,37 @@ serve(async (req: Request) => {
 
     // 5. Process staff reminders (profile-based times)
     if (enabledStaff) {
-      // Staff with check_in_time or check_out_time matching targetTime
       const { data: staffProfiles } = await supabase
         .from("profiles")
-        .select("id, name, email, check_in_time, check_out_time")
-        .or(`check_in_time.eq.${targetTime},check_out_time.eq.${targetTime}`)
-        .not("email", "is", null);
+        .select("id, name, email, check_in_time, check_out_time, enable_notifications")
+        .not("email", "is", null)
+        .not("check_in_time", "is", null);
+
+      console.log("[attendance-reminder] Staff profiles found:", staffProfiles?.length || 0);
 
       if (staffProfiles) {
         for (const profile of staffProfiles) {
           if (!profile.email) continue;
+          // Skip if individual notifications disabled
+          if (profile.enable_notifications === false) continue;
 
           const types: string[] = [];
-          if (profile.check_in_time === targetTime) types.push("Check-in");
-          if (profile.check_out_time === targetTime) types.push("Check-out");
+          if (profile.check_in_time) {
+            const ciMin = timeToMinutes(profile.check_in_time);
+            if (ciMin >= targetMinutesMin && ciMin <= targetMinutesMax) types.push("Check-in");
+          }
+          if (profile.check_out_time) {
+            const coMin = timeToMinutes(profile.check_out_time);
+            if (coMin >= targetMinutesMin && coMin <= targetMinutesMax) types.push("Check-out");
+          }
 
           for (const type of types) {
+            const timeStr = type === "Check-in" ? profile.check_in_time : profile.check_out_time;
             const vars = {
               name: profile.name || "Employee",
               type,
               type_action: type === "Check-in" ? "check in" : "check out",
-              time: targetTime,
+              time: timeStr || "",
               date: todayStr,
             };
 
@@ -191,8 +208,9 @@ serve(async (req: Request) => {
               const body = applyTemplate(template.body, vars);
               await sendEmail(profile.email, subject, body, emailSettings);
               emailsSent++;
+              console.log(`[attendance-reminder] Sent ${type} reminder to ${profile.email}`);
             } catch (err) {
-              console.error(`Failed to send reminder to ${profile.email}:`, err);
+              console.error(`[attendance-reminder] Failed to send to ${profile.email}:`, err);
             }
           }
         }
@@ -201,10 +219,11 @@ serve(async (req: Request) => {
 
     // 6. Process officer reminders (institution-based times)
     if (enabledOfficer) {
-      // Get institutions with matching check-in/check-out settings
       const { data: institutions } = await supabase
         .from("institutions")
         .select("id, settings");
+
+      console.log("[attendance-reminder] Institutions found:", institutions?.length || 0);
 
       if (institutions) {
         for (const inst of institutions) {
@@ -212,12 +231,17 @@ serve(async (req: Request) => {
           if (!s) continue;
 
           const types: string[] = [];
-          if (s.check_in_time === targetTime) types.push("Check-in");
-          if (s.check_out_time === targetTime) types.push("Check-out");
+          if (s.check_in_time) {
+            const ciMin = timeToMinutes(s.check_in_time);
+            if (ciMin >= targetMinutesMin && ciMin <= targetMinutesMax) types.push("Check-in");
+          }
+          if (s.check_out_time) {
+            const coMin = timeToMinutes(s.check_out_time);
+            if (coMin >= targetMinutesMin && coMin <= targetMinutesMax) types.push("Check-out");
+          }
 
           if (types.length === 0) continue;
 
-          // Get officers assigned to this institution
           const { data: officers } = await supabase
             .from("officers")
             .select("id, user_id, name, email")
@@ -225,15 +249,27 @@ serve(async (req: Request) => {
 
           if (!officers) continue;
 
+          // For each officer, check individual enable_notifications
           for (const officer of officers) {
             if (!officer.email) continue;
 
+            // Check individual notification setting
+            if (officer.user_id) {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("enable_notifications")
+                .eq("id", officer.user_id)
+                .single();
+              if (profile?.enable_notifications === false) continue;
+            }
+
             for (const type of types) {
+              const timeStr = type === "Check-in" ? s.check_in_time : s.check_out_time;
               const vars = {
                 name: officer.name || "Officer",
                 type,
                 type_action: type === "Check-in" ? "check in" : "check out",
-                time: targetTime,
+                time: timeStr || "",
                 date: todayStr,
               };
 
@@ -242,8 +278,9 @@ serve(async (req: Request) => {
                 const body = applyTemplate(template.body, vars);
                 await sendEmail(officer.email, subject, body, emailSettings);
                 emailsSent++;
+                console.log(`[attendance-reminder] Sent ${type} reminder to ${officer.email}`);
               } catch (err) {
-                console.error(`Failed to send reminder to ${officer.email}:`, err);
+                console.error(`[attendance-reminder] Failed to send to ${officer.email}:`, err);
               }
             }
           }
@@ -251,12 +288,14 @@ serve(async (req: Request) => {
       }
     }
 
+    console.log(`[attendance-reminder] Done. Emails sent: ${emailsSent}`);
+
     return new Response(
       JSON.stringify({ success: true, emails_sent: emailsSent }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error in send-attendance-reminder:", error);
+    console.error("[attendance-reminder] Error:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
