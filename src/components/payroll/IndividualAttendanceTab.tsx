@@ -77,6 +77,7 @@ interface DayRecord {
   leave_type?: string;
   leave_id?: string;
   is_paid_leave?: boolean;
+  leave_day_value?: number; // 0.5 for half-day, 1 for full-day
   
   // Overtime info
   overtime_hours: number | null;
@@ -414,6 +415,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
         type: string;
         id: string;
         isPaid: boolean;
+        dayValue: number; // 0.5 for half-day, 1 for full-day
       }
       const leaveMap = new Map<string, LeaveInfo>();
       let totalPaidLeaveDays = 0;
@@ -422,20 +424,23 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       (leavesResult.data || []).forEach((l) => {
         const start = new Date(l.start_date);
         const end = new Date(l.end_date);
+        const totalDays = l.total_days || 1;
         const paidDays = l.paid_days || 0;
         const lopDays = l.lop_days || 0;
+        const isHalfDay = totalDays === 0.5;
+        const dayValue = isHalfDay ? 0.5 : 1;
         
         // Track totals
         totalPaidLeaveDays += paidDays;
         totalLopLeaveDays += lopDays;
         
-        let dayCount = 0;
+        let cumulativeDays = 0;
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
           const dateStr = format(d, 'yyyy-MM-dd');
-          dayCount++;
-          // Mark as paid if within paid_days count, otherwise LOP
-          const isPaid = dayCount <= paidDays;
-          leaveMap.set(dateStr, { type: l.leave_type, id: l.id, isPaid });
+          cumulativeDays += dayValue;
+          // Mark as paid if cumulative days within paid_days count
+          const isPaid = cumulativeDays <= paidDays + 0.001; // small epsilon for float comparison
+          leaveMap.set(dateStr, { type: l.leave_type, id: l.id, isPaid, dayValue });
         }
       });
 
@@ -520,8 +525,18 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
           dayType = 'holiday';
           status = 'holiday';
         } else if (leave) {
-          dayType = 'leave';
-          status = 'leave';
+          // Half-day leave with attendance = treat as present (with leave info preserved)
+          if (leave.dayValue === 0.5 && attendance) {
+            dayType = 'working';
+            if (attendance.is_late_login) {
+              status = 'present'; // Don't mark late for half-day leave days
+            } else if (attendance.status === 'checked_in' || attendance.status === 'checked_out') {
+              status = 'present';
+            }
+          } else {
+            dayType = 'leave';
+            status = 'leave';
+          }
         } else if (attendance) {
           if (attendance.is_late_login) {
             status = 'late';
@@ -544,6 +559,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
           leave_type: leave?.type,
           leave_id: leave?.id,
           is_paid_leave: leave?.isPaid,
+          leave_day_value: leave?.dayValue,
           overtime_hours: overtime?.requested_hours || attendance?.overtime_hours || null,
           overtime_status: overtime?.status as DayRecord['overtime_status'] || null,
           overtime_id: overtime?.id,
@@ -569,11 +585,18 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     
     const weekendDays = dayRecords.filter((r) => r.dayType === 'weekend').length;
     const holidays = dayRecords.filter((r) => r.dayType === 'holiday').length;
-    const leaveDays = dayRecords.filter((r) => r.dayType === 'leave').length;
+    const leaveDays = dayRecords
+      .filter((r) => r.dayType === 'leave' || (r.leave_type && r.leave_day_value === 0.5))
+      .reduce((sum, r) => sum + (r.leave_day_value || 1), 0);
     
     // Separate paid leave vs LOP leave
-    const paidLeaveDays = dayRecords.filter((r) => r.dayType === 'leave' && r.is_paid_leave === true).length;
-    const lopLeaveDays = dayRecords.filter((r) => r.dayType === 'leave' && r.is_paid_leave === false).length;
+    // Sum fractional leave values (0.5 for half-day, 1 for full-day)
+    const paidLeaveDays = dayRecords
+      .filter((r) => (r.dayType === 'leave' && r.is_paid_leave === true) || (r.leave_type && r.is_paid_leave === true && r.leave_day_value === 0.5))
+      .reduce((sum, r) => sum + (r.leave_day_value || 1), 0);
+    const lopLeaveDays = dayRecords
+      .filter((r) => (r.dayType === 'leave' && r.is_paid_leave === false) || (r.leave_type && r.is_paid_leave === false && r.leave_day_value === 0.5))
+      .reduce((sum, r) => sum + (r.leave_day_value || 1), 0);
     
     const presentDays = dayRecords.filter((r) => r.status === 'present' || r.status === 'late').length;
     const lateDays = dayRecords.filter((r) => r.status === 'late').length;
