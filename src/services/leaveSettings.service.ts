@@ -6,6 +6,9 @@ export interface LeaveSettings {
   max_carry_forward: number;
   max_leaves_per_month: number;
   gps_checkin_enabled: boolean;
+  reminder_enabled_officer: boolean;
+  reminder_enabled_staff: boolean;
+  reminder_minutes_before: number;
 }
 
 // Cache for settings

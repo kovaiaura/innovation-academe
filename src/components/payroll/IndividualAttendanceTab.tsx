@@ -657,14 +657,39 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
   const stats = selectedEmployee ? calculateStats() : null;
 
   // Correction handlers
-  // Fetch institution working hours when employee changes
+  // Fetch working hours based on employee type: staff uses profile times, officer uses institution settings
   useEffect(() => {
     const fetchWorkingHours = async () => {
-      if (!selectedEmployee?.institution_id) {
+      if (!selectedEmployee) {
         setInstitutionWorkingHours({ check_in_time: '09:00', check_out_time: '18:00', normal_working_hours: 8 });
         return;
       }
+
       try {
+        if (selectedEmployee.type === 'staff') {
+          // Staff: use check_in_time / check_out_time / normal_working_hours from profiles table
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('check_in_time, check_out_time, normal_working_hours')
+            .eq('id', selectedEmployee.user_id)
+            .single();
+
+          if (profileData) {
+            setInstitutionWorkingHours({
+              check_in_time: (profileData.check_in_time as string) || '09:00',
+              check_out_time: (profileData.check_out_time as string) || '18:00',
+              normal_working_hours: (profileData.normal_working_hours as number) || 8,
+            });
+            return;
+          }
+        }
+
+        // Officer or fallback: use institution settings
+        if (!selectedEmployee.institution_id) {
+          setInstitutionWorkingHours({ check_in_time: '09:00', check_out_time: '18:00', normal_working_hours: 8 });
+          return;
+        }
+
         const { data } = await supabase
           .from('institutions')
           .select('settings')
@@ -679,11 +704,11 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
           });
         }
       } catch (e) {
-        console.error('Error fetching institution working hours:', e);
+        console.error('Error fetching working hours:', e);
       }
     };
     fetchWorkingHours();
-  }, [selectedEmployee?.institution_id]);
+  }, [selectedEmployee?.user_id, selectedEmployee?.type, selectedEmployee?.institution_id]);
 
   const openCorrectionDialog = (record: DayRecord) => {
     if (!record.attendance_id && record.status !== 'unmarked' && record.status !== 'leave') return;
