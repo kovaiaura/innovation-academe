@@ -415,6 +415,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
         type: string;
         id: string;
         isPaid: boolean;
+        dayValue: number; // 0.5 for half-day, 1 for full-day
       }
       const leaveMap = new Map<string, LeaveInfo>();
       let totalPaidLeaveDays = 0;
@@ -423,20 +424,23 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       (leavesResult.data || []).forEach((l) => {
         const start = new Date(l.start_date);
         const end = new Date(l.end_date);
+        const totalDays = l.total_days || 1;
         const paidDays = l.paid_days || 0;
         const lopDays = l.lop_days || 0;
+        const isHalfDay = totalDays === 0.5;
+        const dayValue = isHalfDay ? 0.5 : 1;
         
         // Track totals
         totalPaidLeaveDays += paidDays;
         totalLopLeaveDays += lopDays;
         
-        let dayCount = 0;
+        let cumulativeDays = 0;
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
           const dateStr = format(d, 'yyyy-MM-dd');
-          dayCount++;
-          // Mark as paid if within paid_days count, otherwise LOP
-          const isPaid = dayCount <= paidDays;
-          leaveMap.set(dateStr, { type: l.leave_type, id: l.id, isPaid });
+          cumulativeDays += dayValue;
+          // Mark as paid if cumulative days within paid_days count
+          const isPaid = cumulativeDays <= paidDays + 0.001; // small epsilon for float comparison
+          leaveMap.set(dateStr, { type: l.leave_type, id: l.id, isPaid, dayValue });
         }
       });
 
