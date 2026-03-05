@@ -729,8 +729,60 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       const tableName = isOfficer ? 'officer_attendance' : 'staff_attendance';
       const attendanceType = correctionData.attendance_type;
       
+      // Half-day present: create attendance record for the other half while keeping the leave intact
+      if (attendanceType === 'half_day_present') {
+        let totalHoursWorked = null;
+        let overtimeHours = null;
+
+        if (correctionData.check_in_time && correctionData.check_out_time) {
+          const checkIn = new Date(correctionData.check_in_time);
+          const checkOut = new Date(correctionData.check_out_time);
+          totalHoursWorked = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
+          overtimeHours = Math.max(0, totalHoursWorked - (institutionWorkingHours.normal_working_hours / 2));
+        }
+
+        const insertData: Record<string, unknown> = {
+          date: selectedRecord.date,
+          check_in_time: new Date(correctionData.check_in_time).toISOString(),
+          check_out_time: new Date(correctionData.check_out_time).toISOString(),
+          total_hours_worked: Math.round(totalHoursWorked! * 100) / 100,
+          overtime_hours: Math.round(overtimeHours! * 100) / 100,
+          is_manual_correction: true,
+          corrected_by: user.id,
+          correction_reason: correctionData.reason,
+          status: 'checked_out',
+        };
+
+        if (isOfficer) {
+          insertData.officer_id = selectedEmployee.id;
+        } else {
+          insertData.user_id = selectedEmployee.user_id;
+        }
+        if (selectedEmployee.institution_id) {
+          insertData.institution_id = selectedEmployee.institution_id;
+        }
+
+        const { error: insertError } = await supabase
+          .from(tableName)
+          .insert(insertData as never);
+        if (insertError) throw insertError;
+
+        // Log correction
+        await supabase.from('attendance_corrections').insert({
+          attendance_id: null,
+          attendance_type: selectedEmployee.type,
+          field_corrected: 'half_day_check_in',
+          original_value: 'half_day_leave_only',
+          new_value: `${correctionData.check_in_time}, ${correctionData.check_out_time}`,
+          reason: correctionData.reason,
+          corrected_by: user.id,
+          corrected_by_name: user.name,
+        });
+
+        toast.success('Attendance added for remaining half day');
+      }
       // Leave corrections are stored in leave_applications (NOT in officer_attendance.status)
-      if (attendanceType === 'paid_leave' || attendanceType === 'lop' || attendanceType === 'leave') {
+      else if (attendanceType === 'paid_leave' || attendanceType === 'lop' || attendanceType === 'leave') {
         const leaveType = attendanceType === 'leave' ? 'sick' : 'casual';
         const isLop = attendanceType === 'lop';
         const isHalfDay = correctionData.leave_duration === 'half_day';
