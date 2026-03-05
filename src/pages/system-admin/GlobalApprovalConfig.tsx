@@ -12,12 +12,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, ArrowRight, Users, GitBranch, Info, Crown, Briefcase, UserCog, Settings, Save, Loader2, MapPin, MapPinOff, AlertCircle, Bell, BellOff } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, Users, GitBranch, Info, Crown, Briefcase, UserCog, Settings, Save, Loader2, MapPin, MapPinOff, AlertCircle, Bell, BellOff, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { approvalHierarchyService } from '@/services/leave.service';
 import { positionService } from '@/services/position.service';
 import { leaveSettingsService, type LeaveSettings } from '@/services/leaveSettings.service';
 import { UserType } from '@/types/leave';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function GlobalApprovalConfig() {
   const queryClient = useQueryClient();
