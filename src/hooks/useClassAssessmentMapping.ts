@@ -85,6 +85,7 @@ export function useClassAssessmentMapping(classId: string | undefined, academicY
       fa1_assessment_id: string | null;
       fa2_assessment_id: string | null;
       final_assessment_id: string | null;
+      internal_assessment_id?: string | null;
     }) => {
       const { data: user } = await supabase.auth.getUser();
 
