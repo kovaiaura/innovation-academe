@@ -415,6 +415,10 @@ export default function GlobalApprovalConfig() {
               <Settings className="h-4 w-4" />
               Leave Settings
             </TabsTrigger>
+            <TabsTrigger value="individual" className="gap-2">
+              <User className="h-4 w-4" />
+              Individual Controls
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="global" className="space-y-6">
