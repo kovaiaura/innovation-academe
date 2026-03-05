@@ -67,7 +67,7 @@ interface DayRecord {
   check_in_time: string | null;
   check_out_time: string | null;
   total_hours_worked: number | null;
-  status: 'present' | 'late' | 'unmarked' | 'holiday' | 'weekend' | 'leave' | 'future';
+  status: 'present' | 'late' | 'unmarked' | 'holiday' | 'weekend' | 'leave' | 'future' | 'checked_in';
   
   // Late info
   is_late: boolean;
