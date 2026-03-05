@@ -1659,8 +1659,8 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
               </Select>
             </div>
 
-            {/* Check-in/out fields only for Present type */}
-            {correctionData.attendance_type === 'present' && (
+            {/* Check-in/out fields only for Present or Half Day Present type */}
+            {(correctionData.attendance_type === 'present' || correctionData.attendance_type === 'half_day_present') && (
               <>
                 <div className="space-y-2">
                   <Label>Check-in Time</Label>
