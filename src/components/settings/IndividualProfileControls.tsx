@@ -27,31 +27,32 @@ export function IndividualProfileControls() {
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ['individual-profile-controls'],
     queryFn: async () => {
+      // Get all profiles with position info
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, name, email, role, enable_notifications, enable_gps_tracking, position_id')
-        .in('role', ['officer', 'staff', 'management', 'admin'])
+        .select('id, name, email, position_name, designation, enable_notifications, enable_gps_tracking, position_id')
+        .not('position_id', 'is', null)
         .order('name');
 
       if (error) throw error;
 
-      // Fetch position names separately
-      const positionIds = [...new Set((data || []).map(p => p.position_id).filter(Boolean))] as string[];
-      let positionMap: Record<string, string> = {};
-      if (positionIds.length > 0) {
-        const { data: positions } = await supabase
-          .from('positions')
-          .select('id, display_name')
-          .in('id', positionIds);
-        positions?.forEach(p => { positionMap[p.id] = p.display_name; });
+      // Also get user roles
+      const userIds = (data || []).map(p => p.id);
+      let roleMap: Record<string, string> = {};
+      if (userIds.length > 0) {
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('user_id, role')
+          .in('user_id', userIds);
+        roles?.forEach(r => { roleMap[r.user_id] = r.role; });
       }
 
       return (data || []).map((p) => ({
         id: p.id,
         name: p.name || 'Unknown',
         email: p.email || '',
-        role: p.role || 'staff',
-        position_name: p.position_id ? (positionMap[p.position_id] || null) : null,
+        role: roleMap[p.id] || 'staff',
+        position_name: p.position_name || p.designation || null,
         enable_notifications: p.enable_notifications ?? true,
         enable_gps_tracking: p.enable_gps_tracking ?? true,
       })) as ProfileControl[];
