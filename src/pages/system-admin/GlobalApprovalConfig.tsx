@@ -694,6 +694,7 @@ export default function GlobalApprovalConfig() {
               </CardContent>
             </Card>
 
+            <Alert className="bg-green-500/10 border-green-500/20">
               <Info className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-sm">
                 <strong>Leave Settings</strong> configure the default leave policy for all employees. These values are used when calculating leave balances and entitlements.
