@@ -67,6 +67,7 @@ export function ClassAssessmentMappingDialog({
       fa1_assessment_id: isCollege ? null : fa1Id,
       fa2_assessment_id: isCollege ? null : fa2Id,
       final_assessment_id: finalId,
+      internal_assessment_id: isCollege ? internalId : null,
     });
     onOpenChange(false);
   };
