@@ -56,23 +56,18 @@ export const useStaffCheckIn = () => {
         .eq('id', params.user_id)
         .single();
 
-      const insertData: Record<string, any> = {
-        user_id: params.user_id,
-        date: today,
-        check_in_time: now,
-        status: 'checked_in',
-        position_id: profile?.position_id || null,
-        institution_id: profile?.institution_id || null,
-      };
-
-      if (params.location && !params.skip_gps) {
-        insertData.check_in_latitude = params.location.latitude;
-        insertData.check_in_longitude = params.location.longitude;
-      }
-
       const { data, error } = await supabase
         .from('staff_attendance')
-        .insert(insertData)
+        .insert({
+          user_id: params.user_id,
+          date: today,
+          check_in_time: now,
+          status: 'checked_in',
+          position_id: profile?.position_id || null,
+          institution_id: profile?.institution_id || null,
+          check_in_latitude: (params.location && !params.skip_gps) ? params.location.latitude : null,
+          check_in_longitude: (params.location && !params.skip_gps) ? params.location.longitude : null,
+        })
         .select()
         .single();
 
