@@ -146,6 +146,7 @@ export function useInstitutionMappings(institutionId: string | undefined, academ
         m.fa1_assessment_id,
         m.fa2_assessment_id,
         m.final_assessment_id,
+        m.internal_assessment_id,
       ]).filter(Boolean) as string[];
 
       let assessmentsMap: Record<string, { id: string; title: string }> = {};
