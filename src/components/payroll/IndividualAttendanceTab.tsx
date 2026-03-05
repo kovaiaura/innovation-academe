@@ -585,7 +585,9 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     
     const weekendDays = dayRecords.filter((r) => r.dayType === 'weekend').length;
     const holidays = dayRecords.filter((r) => r.dayType === 'holiday').length;
-    const leaveDays = dayRecords.filter((r) => r.dayType === 'leave').length;
+    const leaveDays = dayRecords
+      .filter((r) => r.dayType === 'leave' || (r.leave_type && r.leave_day_value === 0.5))
+      .reduce((sum, r) => sum + (r.leave_day_value || 1), 0);
     
     // Separate paid leave vs LOP leave
     // Sum fractional leave values (0.5 for half-day, 1 for full-day)
