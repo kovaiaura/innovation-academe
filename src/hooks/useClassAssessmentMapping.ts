@@ -51,6 +51,7 @@ export function useClassAssessmentMapping(classId: string | undefined, academicY
         mappingData.fa1_assessment_id,
         mappingData.fa2_assessment_id,
         mappingData.final_assessment_id,
+        mappingData.internal_assessment_id,
       ].filter(Boolean);
 
       let assessmentsMap: Record<string, { id: string; title: string }> = {};
