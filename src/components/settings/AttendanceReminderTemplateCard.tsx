@@ -79,7 +79,8 @@ export function AttendanceReminderTemplateCard() {
           .insert({
             key: 'attendance_reminder_template',
             value: JSON.parse(JSON.stringify(template)),
-          });
+            category: 'email',
+          } as any);
         if (error) throw error;
       }
       toast.success('Reminder email template saved successfully');
