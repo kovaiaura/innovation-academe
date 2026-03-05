@@ -12,13 +12,14 @@ import {
 import { Loader2, TrendingUp, Award, Percent, BookOpen } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { calculateWeightedScore, WEIGHTAGE, getShortLabel } from '@/utils/assessmentWeightageCalculator';
+import { calculateWeightedScore, calculateCollegeWeightedScore, WEIGHTAGE, COLLEGE_WEIGHTAGE } from '@/utils/assessmentWeightageCalculator';
 
 interface WeightedAssessmentViewProps {
   classId: string;
   className: string;
   institutionId: string;
   academicYear?: string;
+  institutionType?: string;
 }
 
 interface StudentWeightedScore {
@@ -37,9 +38,26 @@ export function WeightedAssessmentView({
   className,
   institutionId,
   academicYear = '2024-25',
+  institutionType,
 }: WeightedAssessmentViewProps) {
+  // Fetch institution type if not provided
+  const { data: fetchedType } = useQuery({
+    queryKey: ['institution-type', institutionId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('institutions')
+        .select('type')
+        .eq('id', institutionId)
+        .single();
+      return data?.type || 'school';
+    },
+    enabled: !!institutionId && !institutionType,
+  });
+
+  const isCollege = (institutionType || fetchedType) === 'college';
+
   const { data, isLoading } = useQuery({
-    queryKey: ['weighted-assessment-scores', classId, academicYear],
+    queryKey: ['weighted-assessment-scores', classId, academicYear, isCollege],
     queryFn: async (): Promise<StudentWeightedScore[]> => {
       // Fetch mapping
       const { data: mapping } = await supabase
@@ -60,12 +78,12 @@ export function WeightedAssessmentView({
 
       const studentUserIds = students.map(s => s.user_id).filter(Boolean) as string[];
 
-      // Fetch assessment attempts for mapped assessments
+      // For college: skip FA1/FA2, only fetch Final
       let fa1Attempts: any[] = [];
       let fa2Attempts: any[] = [];
       let finalAttempts: any[] = [];
 
-      if (mapping?.fa1_assessment_id && studentUserIds.length > 0) {
+      if (!isCollege && mapping?.fa1_assessment_id && studentUserIds.length > 0) {
         const { data } = await supabase
           .from('assessment_attempts')
           .select('student_id, score, total_points, percentage, status')
@@ -74,7 +92,7 @@ export function WeightedAssessmentView({
         fa1Attempts = data || [];
       }
 
-      if (mapping?.fa2_assessment_id && studentUserIds.length > 0) {
+      if (!isCollege && mapping?.fa2_assessment_id && studentUserIds.length > 0) {
         const { data } = await supabase
           .from('assessment_attempts')
           .select('student_id, score, total_points, percentage, status')
@@ -103,16 +121,42 @@ export function WeightedAssessmentView({
       const scores: StudentWeightedScore[] = students
         .filter(s => s.user_id)
         .map(student => {
-          const fa1Attempt = fa1Attempts.find(a => a.student_id === student.user_id);
-          const fa2Attempt = fa2Attempts.find(a => a.student_id === student.user_id);
           const finalAttempt = finalAttempts.find(a => a.student_id === student.user_id);
           const internal = internalMarks?.find(m => m.student_id === student.user_id);
+          const internalData = internal ? { obtained: internal.marks_obtained, total: internal.total_marks } : null;
+
+          if (isCollege) {
+            const result = calculateCollegeWeightedScore(
+              finalAttempt || null,
+              internalData
+            );
+            return {
+              student_id: student.id,
+              student_name: student.student_name,
+              fa1: { score: 0, percentage: 0, status: 'pending' },
+              fa2: { score: 0, percentage: 0, status: 'pending' },
+              final: {
+                score: result.final_score,
+                percentage: result.breakdown.final.percentage,
+                status: result.breakdown.final.status,
+              },
+              internal: {
+                score: result.internal_score,
+                percentage: result.breakdown.internal.percentage,
+                status: result.breakdown.internal.status,
+              },
+              total: result.total_weighted,
+            };
+          }
+
+          const fa1Attempt = fa1Attempts.find(a => a.student_id === student.user_id);
+          const fa2Attempt = fa2Attempts.find(a => a.student_id === student.user_id);
 
           const result = calculateWeightedScore(
             fa1Attempt || null,
             fa2Attempt || null,
             finalAttempt || null,
-            internal ? { obtained: internal.marks_obtained, total: internal.total_marks } : null
+            internalData
           );
 
           return {
@@ -175,38 +219,42 @@ export function WeightedAssessmentView({
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">FA1 (20%)</span>
-            </div>
-            <div className="text-2xl font-bold mt-1">
-              {scores.length > 0 
-                ? Math.round((scores.reduce((sum, s) => sum + s.fa1.percentage, 0) / scores.length) * 10) / 10 
-                : 0}%
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">FA2 (20%)</span>
-            </div>
-            <div className="text-2xl font-bold mt-1">
-              {scores.length > 0 
-                ? Math.round((scores.reduce((sum, s) => sum + s.fa2.percentage, 0) / scores.length) * 10) / 10 
-                : 0}%
-            </div>
-          </CardContent>
-        </Card>
+      <div className={`grid gap-4 ${isCollege ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-2 md:grid-cols-5'}`}>
+        {!isCollege && (
+          <>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">FA1 (20%)</span>
+                </div>
+                <div className="text-2xl font-bold mt-1">
+                  {scores.length > 0 
+                    ? Math.round((scores.reduce((sum, s) => sum + s.fa1.percentage, 0) / scores.length) * 10) / 10 
+                    : 0}%
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">FA2 (20%)</span>
+                </div>
+                <div className="text-2xl font-bold mt-1">
+                  {scores.length > 0 
+                    ? Math.round((scores.reduce((sum, s) => sum + s.fa2.percentage, 0) / scores.length) * 10) / 10 
+                    : 0}%
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
               <Award className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Final (40%)</span>
+              <span className="text-sm text-muted-foreground">Final ({isCollege ? '60%' : '40%'})</span>
             </div>
             <div className="text-2xl font-bold mt-1">
               {scores.length > 0 
@@ -219,7 +267,7 @@ export function WeightedAssessmentView({
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
               <Percent className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Internal (20%)</span>
+              <span className="text-sm text-muted-foreground">Internal ({isCollege ? '40%' : '20%'})</span>
             </div>
             <div className="text-2xl font-bold mt-1">
               {scores.length > 0 
@@ -244,7 +292,9 @@ export function WeightedAssessmentView({
         <CardHeader>
           <CardTitle>Student Weighted Scores - {className}</CardTitle>
           <CardDescription>
-            Breakdown by assessment category with weighted totals
+            {isCollege 
+              ? 'College assessment: Internal (40%) + Final (60%)' 
+              : 'Breakdown by assessment category with weighted totals'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -258,10 +308,14 @@ export function WeightedAssessmentView({
                 <TableRow>
                   <TableHead className="w-[60px]">Rank</TableHead>
                   <TableHead>Student</TableHead>
-                  <TableHead className="text-center">FA1 (20%)</TableHead>
-                  <TableHead className="text-center">FA2 (20%)</TableHead>
-                  <TableHead className="text-center">Final (40%)</TableHead>
-                  <TableHead className="text-center">Internal (20%)</TableHead>
+                  {!isCollege && (
+                    <>
+                      <TableHead className="text-center">FA1 (20%)</TableHead>
+                      <TableHead className="text-center">FA2 (20%)</TableHead>
+                    </>
+                  )}
+                  <TableHead className="text-center">Internal ({isCollege ? '40%' : '20%'})</TableHead>
+                  <TableHead className="text-center">Final ({isCollege ? '60%' : '40%'})</TableHead>
                   <TableHead className="text-right">Weighted Total</TableHead>
                 </TableRow>
               </TableHeader>
@@ -274,17 +328,21 @@ export function WeightedAssessmentView({
                       </Badge>
                     </TableCell>
                     <TableCell className="font-medium">{student.student_name}</TableCell>
+                    {!isCollege && (
+                      <>
+                        <TableCell className="text-center">
+                          {getStatusBadge(student.fa1.status, student.fa1.percentage)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {getStatusBadge(student.fa2.status, student.fa2.percentage)}
+                        </TableCell>
+                      </>
+                    )}
                     <TableCell className="text-center">
-                      {getStatusBadge(student.fa1.status, student.fa1.percentage)}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {getStatusBadge(student.fa2.status, student.fa2.percentage)}
+                      {getStatusBadge(student.internal.status, student.internal.percentage)}
                     </TableCell>
                     <TableCell className="text-center">
                       {getStatusBadge(student.final.status, student.final.percentage)}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {getStatusBadge(student.internal.status, student.internal.percentage)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
