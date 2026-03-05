@@ -25,7 +25,8 @@ export const InstitutionClassesTab = ({
   onAddClass,
   onEditClass,
   onDeleteClass,
-  onSelectClass
+  onSelectClass,
+  institutionType
 }: InstitutionClassesTabProps) => {
   const [mappingDialogOpen, setMappingDialogOpen] = useState(false);
   const [internalMarksOpen, setInternalMarksOpen] = useState(false);
