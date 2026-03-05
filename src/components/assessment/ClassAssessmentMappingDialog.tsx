@@ -110,90 +110,107 @@ export function ClassAssessmentMappingDialog({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-4 gap-2 text-center text-sm">
-                <div className="p-2 rounded bg-primary/10">
-                  <div className="font-semibold text-primary">FA1</div>
-                  <div className="text-muted-foreground">{WEIGHTAGE.FA1 * 100}%</div>
+              {isCollege ? (
+                <div className="grid grid-cols-2 gap-2 text-center text-sm">
+                  <div className="p-2 rounded bg-accent">
+                    <div className="font-semibold text-accent-foreground">Internal</div>
+                    <div className="text-muted-foreground">{COLLEGE_WEIGHTAGE.INTERNAL * 100}%</div>
+                  </div>
+                  <div className="p-2 rounded bg-primary/10">
+                    <div className="font-semibold text-primary">Final</div>
+                    <div className="text-muted-foreground">{COLLEGE_WEIGHTAGE.FINAL * 100}%</div>
+                  </div>
                 </div>
-                <div className="p-2 rounded bg-secondary">
-                  <div className="font-semibold text-secondary-foreground">FA2</div>
-                  <div className="text-muted-foreground">{WEIGHTAGE.FA2 * 100}%</div>
+              ) : (
+                <div className="grid grid-cols-4 gap-2 text-center text-sm">
+                  <div className="p-2 rounded bg-primary/10">
+                    <div className="font-semibold text-primary">FA1</div>
+                    <div className="text-muted-foreground">{WEIGHTAGE.FA1 * 100}%</div>
+                  </div>
+                  <div className="p-2 rounded bg-secondary">
+                    <div className="font-semibold text-secondary-foreground">FA2</div>
+                    <div className="text-muted-foreground">{WEIGHTAGE.FA2 * 100}%</div>
+                  </div>
+                  <div className="p-2 rounded bg-accent">
+                    <div className="font-semibold text-accent-foreground">Final</div>
+                    <div className="text-muted-foreground">{WEIGHTAGE.FINAL * 100}%</div>
+                  </div>
+                  <div className="p-2 rounded bg-muted">
+                    <div className="font-semibold text-foreground">Internal</div>
+                    <div className="text-muted-foreground">{WEIGHTAGE.INTERNAL * 100}%</div>
+                  </div>
                 </div>
-                <div className="p-2 rounded bg-accent">
-                  <div className="font-semibold text-accent-foreground">Final</div>
-                  <div className="text-muted-foreground">{WEIGHTAGE.FINAL * 100}%</div>
-                </div>
-                <div className="p-2 rounded bg-muted">
-                  <div className="font-semibold text-foreground">Internal</div>
-                  <div className="text-muted-foreground">{WEIGHTAGE.INTERNAL * 100}%</div>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Assessment Selection */}
           <div className="space-y-4">
-            {/* FA1 */}
-            <div className="space-y-2">
-              <Label>{getWeightageLabel('fa1')}</Label>
-              <Select value={fa1Id || 'none'} onValueChange={(v) => setFa1Id(v === 'none' ? null : v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select assessment for FA1" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">-- Not Assigned --</SelectItem>
-                  {availableAssessments?.map((assessment: any) => (
-                    <SelectItem key={assessment.id} value={assessment.id}>
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        {assessment.title}
-                        <Badge variant="outline" className="ml-2">
-                          {assessment.total_points} pts
-                        </Badge>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {fa1Id && getAssessmentById(fa1Id) && (
-                <p className="text-xs text-muted-foreground">
-                  Total: {getAssessmentById(fa1Id)?.total_points} points → Weighted to 20%
-                </p>
-              )}
-            </div>
+            {/* FA1 - School only */}
+            {!isCollege && (
+              <div className="space-y-2">
+                <Label>{getWeightageLabel('fa1')}</Label>
+                <Select value={fa1Id || 'none'} onValueChange={(v) => setFa1Id(v === 'none' ? null : v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select assessment for FA1" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-- Not Assigned --</SelectItem>
+                    {availableAssessments?.map((assessment: any) => (
+                      <SelectItem key={assessment.id} value={assessment.id}>
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          {assessment.title}
+                          <Badge variant="outline" className="ml-2">
+                            {assessment.total_points} pts
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {fa1Id && getAssessmentById(fa1Id) && (
+                  <p className="text-xs text-muted-foreground">
+                    Total: {getAssessmentById(fa1Id)?.total_points} points → Weighted to 20%
+                  </p>
+                )}
+              </div>
+            )}
 
-            {/* FA2 */}
-            <div className="space-y-2">
-              <Label>{getWeightageLabel('fa2')}</Label>
-              <Select value={fa2Id || 'none'} onValueChange={(v) => setFa2Id(v === 'none' ? null : v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select assessment for FA2" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">-- Not Assigned --</SelectItem>
-                  {availableAssessments?.map((assessment: any) => (
-                    <SelectItem key={assessment.id} value={assessment.id}>
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        {assessment.title}
-                        <Badge variant="outline" className="ml-2">
-                          {assessment.total_points} pts
-                        </Badge>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {fa2Id && getAssessmentById(fa2Id) && (
-                <p className="text-xs text-muted-foreground">
-                  Total: {getAssessmentById(fa2Id)?.total_points} points → Weighted to 20%
-                </p>
-              )}
-            </div>
+            {/* FA2 - School only */}
+            {!isCollege && (
+              <div className="space-y-2">
+                <Label>{getWeightageLabel('fa2')}</Label>
+                <Select value={fa2Id || 'none'} onValueChange={(v) => setFa2Id(v === 'none' ? null : v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select assessment for FA2" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-- Not Assigned --</SelectItem>
+                    {availableAssessments?.map((assessment: any) => (
+                      <SelectItem key={assessment.id} value={assessment.id}>
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          {assessment.title}
+                          <Badge variant="outline" className="ml-2">
+                            {assessment.total_points} pts
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {fa2Id && getAssessmentById(fa2Id) && (
+                  <p className="text-xs text-muted-foreground">
+                    Total: {getAssessmentById(fa2Id)?.total_points} points → Weighted to 20%
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Final */}
             <div className="space-y-2">
-              <Label>{getWeightageLabel('final')}</Label>
+              <Label>{isCollege ? `Final Assessment (${COLLEGE_WEIGHTAGE.FINAL * 100}%)` : getWeightageLabel('final')}</Label>
               <Select value={finalId || 'none'} onValueChange={(v) => setFinalId(v === 'none' ? null : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select assessment for Final" />
@@ -215,7 +232,7 @@ export function ClassAssessmentMappingDialog({
               </Select>
               {finalId && getAssessmentById(finalId) && (
                 <p className="text-xs text-muted-foreground">
-                  Total: {getAssessmentById(finalId)?.total_points} points → Weighted to 40%
+                  Total: {getAssessmentById(finalId)?.total_points} points → Weighted to {isCollege ? '60' : '40'}%
                 </p>
               )}
             </div>
@@ -223,7 +240,7 @@ export function ClassAssessmentMappingDialog({
             {/* Internal Note */}
             <div className="p-3 rounded-lg bg-muted/50">
               <p className="text-sm text-muted-foreground">
-                <strong>Internal Assessment (20%)</strong> marks are entered separately 
+                <strong>Internal Assessment ({isCollege ? COLLEGE_WEIGHTAGE.INTERNAL * 100 : WEIGHTAGE.INTERNAL * 100}%)</strong> marks are entered separately 
                 via the "Internal Marks" option.
               </p>
             </div>
