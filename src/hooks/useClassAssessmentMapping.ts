@@ -71,6 +71,7 @@ export function useClassAssessmentMapping(classId: string | undefined, academicY
         fa1_assessment: mappingData.fa1_assessment_id ? assessmentsMap[mappingData.fa1_assessment_id] || null : null,
         fa2_assessment: mappingData.fa2_assessment_id ? assessmentsMap[mappingData.fa2_assessment_id] || null : null,
         final_assessment: mappingData.final_assessment_id ? assessmentsMap[mappingData.final_assessment_id] || null : null,
+        internal_assessment: mappingData.internal_assessment_id ? assessmentsMap[mappingData.internal_assessment_id] || null : null,
       };
     },
     enabled: !!classId,
