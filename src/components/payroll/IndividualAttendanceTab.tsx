@@ -1519,7 +1519,11 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                                   <span className="text-purple-600 text-sm">{record.holiday_name}</span>
                                 )}
                                 {record.leave_type && (
-                                  <span className="text-blue-600 text-sm capitalize">{record.leave_type}</span>
+                                  <span className="text-blue-600 text-sm capitalize">
+                                    {record.leave_day_value === 0.5 
+                                      ? `${record.leave_duration === 'second_half' ? 'Second Half' : 'First Half'} - ${record.leave_type}`
+                                      : record.leave_type}
+                                  </span>
                                 )}
                               </TableCell>
                               <TableCell>
