@@ -18,6 +18,9 @@ const EmailConfigurationTab = () => {
       
       {/* Email Template Settings */}
       <EmailTemplateSettingsCard />
+
+      {/* Attendance Reminder Email Template */}
+      <AttendanceReminderTemplateCard />
     </div>
   );
 };
