@@ -163,6 +163,8 @@ export function WeightedAssessmentView({
 
           const fa1Attempt = fa1Attempts.find(a => a.student_id === student.user_id);
           const fa2Attempt = fa2Attempts.find(a => a.student_id === student.user_id);
+          const internal = internalMarks?.find((m: any) => m.student_id === student.user_id);
+          const internalData = internal ? { obtained: internal.marks_obtained, total: internal.total_marks } : null;
 
           const result = calculateWeightedScore(
             fa1Attempt || null,

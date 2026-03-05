@@ -232,13 +232,23 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
             )
           : null;
 
-        // Get internal marks for this student
-        const studentInternal = internalMarks?.find(im => 
-          im.student_id === studentUserId && im.class_id === classId
-        );
+        // Get internal marks/attempt for this student
+        const internalMarksData = isCollege ? null : (() => {
+          const studentInternal = internalMarks?.find(im => 
+            im.student_id === studentUserId && im.class_id === classId
+          );
+          return studentInternal 
+            ? { obtained: Number(studentInternal.marks_obtained), total: Number(studentInternal.total_marks) }
+            : null;
+        })();
 
-        const internalMarksData = studentInternal 
-          ? { obtained: Number(studentInternal.marks_obtained), total: Number(studentInternal.total_marks) }
+        // For college: get internal assessment attempt
+        const internalAttempt = (isCollege && mapping.internal_assessment_id)
+          ? assessmentAttempts?.find(a => 
+              a.student_id === studentUserId && 
+              a.assessment_id === (mapping as any).internal_assessment_id &&
+              ['completed', 'submitted', 'auto_submitted', 'evaluated', 'absent'].includes(a.status)
+            )
           : null;
 
         // Convert to AssessmentAttempt format for the calculator
@@ -257,7 +267,7 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
         if (isCollege) {
           const result = calculateCollegeWeightedScore(
             toAttemptFormat(finalAttempt),
-            internalMarksData
+            toAttemptFormat(internalAttempt)
           );
           return {
             fa1_score: 0,
