@@ -674,18 +674,42 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
   }, [selectedEmployee?.institution_id]);
 
   const openCorrectionDialog = (record: DayRecord) => {
-    if (!record.attendance_id && record.status !== 'unmarked') return;
+    if (!record.attendance_id && record.status !== 'unmarked' && record.status !== 'leave') return;
     
     setSelectedRecord(record);
+
+    // If this is a half-day leave day without attendance, pre-select half_day_present
+    const isHalfDayLeaveWithoutAttendance = record.leave_day_value === 0.5 && !record.attendance_id;
+    
+    // Determine default check-in/out based on leave half
+    // If first-half leave, pre-fill afternoon times; if second-half leave, pre-fill morning times
+    const leaveHalf = record.leave_type?.toLowerCase().includes('second') ? 'second' : 'first';
+    let defaultCheckIn = `${record.date}T${institutionWorkingHours.check_in_time}`;
+    let defaultCheckOut = `${record.date}T${institutionWorkingHours.check_out_time}`;
+    
+    if (isHalfDayLeaveWithoutAttendance) {
+      if (leaveHalf === 'first') {
+        // First half is leave, so pre-fill afternoon (13:00 to check_out_time)
+        defaultCheckIn = `${record.date}T13:00`;
+        defaultCheckOut = `${record.date}T${institutionWorkingHours.check_out_time}`;
+      } else {
+        // Second half is leave, so pre-fill morning (check_in_time to 13:00)
+        defaultCheckIn = `${record.date}T${institutionWorkingHours.check_in_time}`;
+        defaultCheckOut = `${record.date}T13:00`;
+      }
+    }
+
     setCorrectionData({
       check_in_time: record.check_in_time
         ? format(parseISO(record.check_in_time), "yyyy-MM-dd'T'HH:mm")
-        : `${record.date}T${institutionWorkingHours.check_in_time}`,
+        : defaultCheckIn,
       check_out_time: record.check_out_time
         ? format(parseISO(record.check_out_time), "yyyy-MM-dd'T'HH:mm")
-        : `${record.date}T${institutionWorkingHours.check_out_time}`,
+        : defaultCheckOut,
       reason: '',
-      attendance_type: record.leave_id ? (record.is_paid_leave ? 'paid_leave' : 'lop') : 'present',
+      attendance_type: isHalfDayLeaveWithoutAttendance 
+        ? 'half_day_present' 
+        : record.leave_id ? (record.is_paid_leave ? 'paid_leave' : 'lop') : 'present',
       leave_duration: 'full_day',
     });
     setCorrectionDialogOpen(true);
