@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { calculateWeightedScore, WEIGHTAGE } from '@/utils/assessmentWeightageCalculator';
+import { calculateWeightedScore, calculateCollegeWeightedScore, WEIGHTAGE } from '@/utils/assessmentWeightageCalculator';
 import { AssessmentAttempt } from '@/types/assessment';
 
 export interface WeightedAssessmentBreakdown {
