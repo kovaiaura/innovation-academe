@@ -528,9 +528,11 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
           // Half-day leave with attendance = treat as present (with leave info preserved)
           if (leave.dayValue === 0.5 && attendance) {
             dayType = 'working';
-            if (attendance.is_late_login) {
+            if (attendance.status === 'checked_in') {
+              status = 'checked_in'; // Not yet checked out — don't count as present
+            } else if (attendance.is_late_login) {
               status = 'present'; // Don't mark late for half-day leave days
-            } else if (attendance.status === 'checked_in' || attendance.status === 'checked_out') {
+            } else if (attendance.status === 'checked_out') {
               status = 'present';
             }
           } else {
