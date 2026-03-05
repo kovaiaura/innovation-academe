@@ -61,6 +61,24 @@ export default function OfficerAssessmentManagement() {
     },
     enabled: !!officerInstitutionId,
   });
+
+  // Fetch institution type
+  const { data: institutionData } = useQuery({
+    queryKey: ['institution-type', officerInstitutionId],
+    queryFn: async () => {
+      if (!officerInstitutionId) return null;
+      const { data, error } = await supabase
+        .from('institutions')
+        .select('type')
+        .eq('id', officerInstitutionId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!officerInstitutionId,
+  });
+
+  const institutionType = institutionData?.type;
   
   // Create Assessment State
   const [step, setStep] = useState(1);
