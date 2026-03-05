@@ -100,27 +100,17 @@ export function useClasses(institutionId?: string) {
         throw classError;
       }
 
-      // Get student counts per class
-      const { data: studentCounts, error: countError } = await supabase
-        .from('students')
-        .select('class_id')
-        .eq('institution_id', institutionId);
+      // Get exact student counts per class (bypasses 1000-row limit)
+      const countsPromises = (classData || []).map(cls =>
+        supabase.from('students')
+          .select('*', { count: 'exact', head: true })
+          .eq('class_id', cls.id)
+      );
+      const countsResults = await Promise.all(countsPromises);
 
-      if (countError) {
-        console.error('[Classes] Fetch student counts error:', countError);
-        throw countError;
-      }
-
-      const countMap: Record<string, number> = {};
-      studentCounts?.forEach(s => {
-        if (s.class_id) {
-          countMap[s.class_id] = (countMap[s.class_id] || 0) + 1;
-        }
-      });
-
-      const result = (classData || []).map(cls => ({
+      const result = (classData || []).map((cls, i) => ({
         ...cls,
-        student_count: countMap[cls.id] || 0
+        student_count: countsResults[i].count || 0
       })) as ClassWithStudentCount[];
       
       console.log('[Classes] Fetched with counts:', result.length, 'classes');

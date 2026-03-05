@@ -116,6 +116,7 @@ export function ClassStudentsTab({
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">S.No</TableHead>
                       <TableHead>Student</TableHead>
                       <TableHead>Roll Number</TableHead>
                       <TableHead>Email</TableHead>
@@ -125,8 +126,9 @@ export function ClassStudentsTab({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredStudents.map((student) => (
+                    {filteredStudents.map((student, index) => (
                       <TableRow key={student.id}>
+                        <TableCell className="font-medium text-muted-foreground">{index + 1}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">

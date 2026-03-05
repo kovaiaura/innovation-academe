@@ -75,25 +75,48 @@ export function useStudents(institutionId?: string, classId?: string) {
       
       console.log('[Students] Fetching students for institution:', institutionId, classId ? `class: ${classId}` : '');
       
-      let query = supabase
-        .from('students')
-        .select('*')
-        .eq('institution_id', institutionId)
-        .order('student_name', { ascending: true });
-
+      // For class-specific queries, single fetch is fine (< 1000 rows)
       if (classId) {
-        query = query.eq('class_id', classId);
+        const { data, error } = await supabase
+          .from('students')
+          .select('*')
+          .eq('institution_id', institutionId)
+          .eq('class_id', classId)
+          .order('student_name', { ascending: true });
+
+        if (error) {
+          console.error('[Students] Fetch error:', error);
+          throw error;
+        }
+        console.log('[Students] Fetched:', data?.length || 0, 'students');
+        return data as DbStudent[];
       }
 
-      const { data, error } = await query;
+      // For institution-wide queries, paginate to bypass 1000-row limit
+      const allStudents: DbStudent[] = [];
+      let offset = 0;
+      const batchSize = 1000;
+      let hasMore = true;
 
-      if (error) {
-        console.error('[Students] Fetch error:', error);
-        throw error;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('students')
+          .select('*')
+          .eq('institution_id', institutionId)
+          .order('student_name', { ascending: true })
+          .range(offset, offset + batchSize - 1);
+
+        if (error) {
+          console.error('[Students] Fetch error:', error);
+          throw error;
+        }
+        allStudents.push(...(data as DbStudent[] || []));
+        hasMore = (data?.length || 0) === batchSize;
+        offset += batchSize;
       }
-      
-      console.log('[Students] Fetched:', data?.length || 0, 'students');
-      return data as DbStudent[];
+
+      console.log('[Students] Fetched:', allStudents.length, 'students (paginated)');
+      return allStudents;
     },
     enabled: !!institutionId,
     staleTime: 30000,
