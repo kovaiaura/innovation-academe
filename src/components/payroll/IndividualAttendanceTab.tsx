@@ -120,7 +120,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     check_in_time: '',
     check_out_time: '',
     reason: '',
-    attendance_type: 'present' as 'present' | 'paid_leave' | 'lop' | 'leave',
+    attendance_type: 'present' as 'present' | 'paid_leave' | 'lop' | 'leave' | 'half_day_present',
     leave_duration: 'full_day' as 'full_day' | 'half_day',
   });
   
