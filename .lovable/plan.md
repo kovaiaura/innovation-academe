@@ -1,17 +1,31 @@
 
-# Remove Performance Analytics Tab from Management Reports
 
-## Overview
-Remove the Performance Analytics tab from the Management Reports page, keeping only the Monthly Reports content as the main view (no tabs needed).
+# Plan: Make Assessment Mapping Dialog College-Aware
+
+## Problem
+The `ClassAssessmentMappingDialog` always shows the school-style layout (FA1 20%, FA2 20%, Final 40%, Internal 20%) regardless of institution type. For college-type institutions, it should show only Internal Assessment (40%) and Final Assessment (60%).
 
 ## Changes
 
-**File: `src/pages/management/Reports.tsx`**
+### File 1: `src/components/assessment/ClassAssessmentMappingDialog.tsx`
+- Add `institutionType?: string` prop
+- When `institutionType === 'college'`:
+  - Show 2-column weightage grid (Internal 40%, Final 60%) instead of 4-column (FA1/FA2/Final/Internal)
+  - Hide FA1 and FA2 dropdowns entirely
+  - Show only Final Assessment (60%) dropdown
+  - Change Internal note to say "Internal Assessment (40%) marks are entered separately..."
+  - On save, pass `fa1_assessment_id: null` and `fa2_assessment_id: null`
 
-1. Remove the `PerformanceAnalyticsTab` component entirely (lines 47-130)
-2. Remove the `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` wrapper -- since there's only one section now, no tabs are needed
-3. Render the `MonthlyReportsTab` content directly
-4. Remove unused imports: `Tabs`, `TabsContent`, `TabsList`, `TabsTrigger`, `useState` (from PerformanceAnalyticsTab), `useInstitutionPerformanceMetrics`, `Badge` (if only used in analytics)
-5. Update the page subtitle from "Performance analytics and reports" to just "Monthly reports"
+### File 2: `src/components/institution/InstitutionClassesTab.tsx`
+- Add `institutionType?: string` prop
+- Pass it through to `ClassAssessmentMappingDialog`
 
-The page will simply show the "Published Reports" list directly without any tab navigation.
+### File 3: Parent that renders `InstitutionClassesTab`
+- Pass the institution's `type` field down as `institutionType`
+
+### File 4: `src/pages/officer/AssessmentManagement.tsx`
+- Fetch the officer's institution type
+- Pass it to `ClassAssessmentMappingDialog`
+
+This ensures colleges only see and map Internal (40%) + Final (60%), while schools keep the existing FA1/FA2/Final/Internal layout.
+
