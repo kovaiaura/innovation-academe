@@ -111,7 +111,10 @@ export const leaveSettingsService = {
       { key: 'leaves_per_month', value: settings.leaves_per_month },
       { key: 'max_carry_forward', value: settings.max_carry_forward },
       { key: 'max_leaves_per_month', value: settings.max_leaves_per_month },
-      { key: 'gps_checkin_enabled', value: settings.gps_checkin_enabled }
+      { key: 'gps_checkin_enabled', value: settings.gps_checkin_enabled },
+      { key: 'reminder_enabled_officer', value: settings.reminder_enabled_officer },
+      { key: 'reminder_enabled_staff', value: settings.reminder_enabled_staff },
+      { key: 'reminder_minutes_before', value: settings.reminder_minutes_before }
     ];
 
     for (const { key, value } of updates) {
