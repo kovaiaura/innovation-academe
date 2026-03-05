@@ -19,6 +19,7 @@ import { positionService } from '@/services/position.service';
 import { leaveSettingsService, type LeaveSettings } from '@/services/leaveSettings.service';
 import { UserType } from '@/types/leave';
 import { supabase } from '@/integrations/supabase/client';
+import { IndividualProfileControls } from '@/components/settings/IndividualProfileControls';
 
 export default function GlobalApprovalConfig() {
   const queryClient = useQueryClient();
