@@ -68,6 +68,15 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
     queryFn: async (): Promise<InstitutionPerformance | null> => {
       if (!institutionId) return null;
 
+      // Fetch institution type
+      const { data: institutionData } = await supabase
+        .from('institutions')
+        .select('type')
+        .eq('id', institutionId)
+        .single();
+      
+      const isCollege = institutionData?.type === 'college';
+
       // Fetch all students for this institution
       const { data: students } = await supabase
         .from('students')
