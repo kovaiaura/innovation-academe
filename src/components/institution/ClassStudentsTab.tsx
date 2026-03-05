@@ -116,6 +116,7 @@ export function ClassStudentsTab({
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">S.No</TableHead>
                       <TableHead>Student</TableHead>
                       <TableHead>Roll Number</TableHead>
                       <TableHead>Email</TableHead>
