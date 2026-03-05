@@ -48,12 +48,14 @@ export function ClassAssessmentMappingDialog({
   const [fa1Id, setFa1Id] = useState<string | null>(null);
   const [fa2Id, setFa2Id] = useState<string | null>(null);
   const [finalId, setFinalId] = useState<string | null>(null);
+  const [internalId, setInternalId] = useState<string | null>(null);
 
   useEffect(() => {
     if (mapping) {
       setFa1Id(mapping.fa1_assessment_id);
       setFa2Id(mapping.fa2_assessment_id);
       setFinalId(mapping.final_assessment_id);
+      setInternalId((mapping as any).internal_assessment_id || null);
     }
   }, [mapping]);
 
