@@ -166,6 +166,7 @@ export function useInstitutionMappings(institutionId: string | undefined, academ
         fa1_assessment: m.fa1_assessment_id ? assessmentsMap[m.fa1_assessment_id] || null : null,
         fa2_assessment: m.fa2_assessment_id ? assessmentsMap[m.fa2_assessment_id] || null : null,
         final_assessment: m.final_assessment_id ? assessmentsMap[m.final_assessment_id] || null : null,
+        internal_assessment: m.internal_assessment_id ? assessmentsMap[m.internal_assessment_id] || null : null,
       }));
     },
     enabled: !!institutionId,
