@@ -845,6 +845,18 @@ export default function GlobalApprovalConfig() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Individual Profile Controls Tab */}
+          <TabsContent value="individual" className="space-y-6">
+            <Alert className="bg-primary/5 border-primary/20">
+              <Info className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-sm">
+                <strong>Individual Controls</strong> let you enable or disable GPS tracking and email notifications per user. These override the global settings.
+              </AlertDescription>
+            </Alert>
+
+            <IndividualProfileControls />
+          </TabsContent>
         </Tabs>
 
         {/* Add Approver Dialog */}
