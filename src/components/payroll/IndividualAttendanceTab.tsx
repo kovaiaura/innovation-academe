@@ -616,12 +616,14 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     // Total LOP days = approved LOP leaves + unmarked days (unapproved absences)
     const totalLopDays = lopLeaveDays + unmarkedDays;
 
-    // Working Days = Present + Checked-In + Paid Leave + LOP (days the employee was expected to work)
-    const workingDays = presentDays + checkedInDays + paidLeaveDays + totalLopDays;
+    // Working Days = number of past calendar working days (non-weekend, non-holiday) excluding today if only checked_in
+    const workingDays = dayRecords.filter((r) => 
+      r.dayType === 'working' && r.status !== 'future' && r.status !== 'checked_in'
+    ).length;
 
-    // Attendance % = ((Total Days - (Paid Leave + LOP)) * 100) / Total Days
+    // Attendance % = ((present + weekends + holidays) × 100) / total days in month
     const attendancePercentage = totalDaysInMonth > 0 
-      ? parseFloat((((totalDaysInMonth - (paidLeaveDays + totalLopDays)) * 100) / totalDaysInMonth).toFixed(2))
+      ? parseFloat((((presentDays + weekendDays + holidays) * 100) / totalDaysInMonth).toFixed(2))
       : 100;
 
     // Salary Payable Days = Present + Holidays + Weekends + Paid Leave (excludes checked_in days until checkout)
