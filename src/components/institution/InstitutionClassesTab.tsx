@@ -195,6 +195,7 @@ export const InstitutionClassesTab = ({
           classId={selectedClass.id}
           className={selectedClass.class_name}
           institutionId={institutionId}
+          institutionType={institutionType}
         />
       )}
     </div>
