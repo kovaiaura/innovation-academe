@@ -27,25 +27,31 @@ export function IndividualProfileControls() {
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ['individual-profile-controls'],
     queryFn: async () => {
-      // Get all profiles with position info
+      // Step 1: Get user IDs for staff and officer roles
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('role', ['system_admin', 'officer', 'management']);
+
+      if (roleError) throw roleError;
+
+      const roleMap: Record<string, string> = {};
+      const userIds: string[] = [];
+      (roleData || []).forEach(r => {
+        roleMap[r.user_id] = r.role;
+        if (!userIds.includes(r.user_id)) userIds.push(r.user_id);
+      });
+
+      if (userIds.length === 0) return [] as ProfileControl[];
+
+      // Step 2: Fetch profiles for those user IDs (no position_id filter)
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, name, email, position_name, designation, enable_notifications, enable_gps_tracking, position_id')
-        .not('position_id', 'is', null)
+        .select('id, name, email, position_name, designation, enable_notifications, enable_gps_tracking')
+        .in('id', userIds)
         .order('name');
 
       if (error) throw error;
-
-      // Also get user roles
-      const userIds = (data || []).map(p => p.id);
-      let roleMap: Record<string, string> = {};
-      if (userIds.length > 0) {
-        const { data: roles } = await supabase
-          .from('user_roles')
-          .select('user_id, role')
-          .in('user_id', userIds);
-        roles?.forEach(r => { roleMap[r.user_id] = r.role; });
-      }
 
       return (data || []).map((p) => ({
         id: p.id,
