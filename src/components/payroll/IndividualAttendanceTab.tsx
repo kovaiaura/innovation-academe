@@ -559,6 +559,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
           leave_type: leave?.type,
           leave_id: leave?.id,
           is_paid_leave: leave?.isPaid,
+          leave_day_value: leave?.dayValue,
           overtime_hours: overtime?.requested_hours || attendance?.overtime_hours || null,
           overtime_status: overtime?.status as DayRecord['overtime_status'] || null,
           overtime_id: overtime?.id,
