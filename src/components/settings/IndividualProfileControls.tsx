@@ -27,21 +27,31 @@ export function IndividualProfileControls() {
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ['individual-profile-controls'],
     queryFn: async () => {
-      // Get staff profiles (non-student users with positions or roles)
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, name, email, role, enable_notifications, enable_gps_tracking, positions(display_name)')
+        .select('id, name, email, role, enable_notifications, enable_gps_tracking, position_id')
         .in('role', ['officer', 'staff', 'management', 'admin'])
         .order('name');
 
       if (error) throw error;
 
-      return (data || []).map((p: any) => ({
+      // Fetch position names separately
+      const positionIds = [...new Set((data || []).map(p => p.position_id).filter(Boolean))] as string[];
+      let positionMap: Record<string, string> = {};
+      if (positionIds.length > 0) {
+        const { data: positions } = await supabase
+          .from('positions')
+          .select('id, display_name')
+          .in('id', positionIds);
+        positions?.forEach(p => { positionMap[p.id] = p.display_name; });
+      }
+
+      return (data || []).map((p) => ({
         id: p.id,
         name: p.name || 'Unknown',
         email: p.email || '',
         role: p.role || 'staff',
-        position_name: p.positions?.display_name || null,
+        position_name: p.position_id ? (positionMap[p.position_id] || null) : null,
         enable_notifications: p.enable_notifications ?? true,
         enable_gps_tracking: p.enable_gps_tracking ?? true,
       })) as ProfileControl[];
