@@ -20,6 +20,7 @@ export interface MappingWithDetails extends ClassAssessmentMapping {
   fa1_assessment?: { id: string; title: string } | null;
   fa2_assessment?: { id: string; title: string } | null;
   final_assessment?: { id: string; title: string } | null;
+  internal_assessment?: { id: string; title: string } | null;
 }
 
 export function useClassAssessmentMapping(classId: string | undefined, academicYear: string = '2024-25') {
