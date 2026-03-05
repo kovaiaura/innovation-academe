@@ -1681,8 +1681,17 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
               </>
             )}
 
+            {/* Info for half_day_present */}
+            {correctionData.attendance_type === 'half_day_present' && (
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-md">
+                <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                  The existing half-day leave will be <strong>preserved</strong>. An attendance record will be created for the remaining half of the day.
+                </p>
+              </div>
+            )}
+
             {/* Half-day / Full-day selector for leave types */}
-            {correctionData.attendance_type !== 'present' && (
+            {correctionData.attendance_type !== 'present' && correctionData.attendance_type !== 'half_day_present' && (
               <div className="space-y-2">
                 <Label>Leave Duration</Label>
                 <Select
