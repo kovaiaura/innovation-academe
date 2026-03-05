@@ -575,6 +575,7 @@ export default function OfficerAssessmentManagement() {
                     classId={selectedClassForMapping.id}
                     className={selectedClassForMapping.name}
                     institutionId={officerInstitutionId || ''}
+                    institutionType={institutionType}
                   />
                 )}
               </div>
