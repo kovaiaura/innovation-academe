@@ -20,7 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, FileText, Percent } from 'lucide-react';
 import { useClassAssessmentMapping, useClassAssignedAssessments } from '@/hooks/useClassAssessmentMapping';
-import { WEIGHTAGE, getWeightageLabel } from '@/utils/assessmentWeightageCalculator';
+import { WEIGHTAGE, COLLEGE_WEIGHTAGE, getWeightageLabel } from '@/utils/assessmentWeightageCalculator';
 
 interface ClassAssessmentMappingDialogProps {
   open: boolean;
@@ -29,6 +29,7 @@ interface ClassAssessmentMappingDialogProps {
   className: string;
   institutionId: string;
   academicYear?: string;
+  institutionType?: string;
 }
 
 export function ClassAssessmentMappingDialog({
@@ -38,7 +39,9 @@ export function ClassAssessmentMappingDialog({
   className,
   institutionId,
   academicYear = '2024-25',
+  institutionType,
 }: ClassAssessmentMappingDialogProps) {
+  const isCollege = institutionType === 'college';
   const { mapping, isLoading, saveMapping, isSaving } = useClassAssessmentMapping(classId, academicYear);
   const { data: availableAssessments, isLoading: isLoadingAssessments } = useClassAssignedAssessments(classId);
 
