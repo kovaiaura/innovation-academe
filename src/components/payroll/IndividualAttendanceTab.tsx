@@ -1040,6 +1040,8 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     switch (record.status) {
       case 'present':
         return <Badge className="bg-green-500/10 text-green-700 border-green-500/20">Present</Badge>;
+      case 'checked_in':
+        return <Badge className="bg-amber-500/10 text-amber-700 border-amber-500/20">Checked In</Badge>;
       case 'late':
         return (
           <Badge className="bg-orange-500/10 text-orange-700 border-orange-500/20">
