@@ -41,9 +41,13 @@ export default function AboutIMS() {
               <FileText className="mr-2 h-4 w-4" />
               About IMS
             </TabsTrigger>
-            <TabsTrigger value="weightage">
-              <Calculator className="mr-2 h-4 w-4" />
-              Assessment Weightage
+            <TabsTrigger value="school-weightage">
+              <School className="mr-2 h-4 w-4" />
+              School Assessment Weightage
+            </TabsTrigger>
+            <TabsTrigger value="college-weightage">
+              <GraduationCap className="mr-2 h-4 w-4" />
+              College Assessment Weightage
             </TabsTrigger>
             <TabsTrigger value="gamification">
               <Trophy className="mr-2 h-4 w-4" />
@@ -54,8 +58,11 @@ export default function AboutIMS() {
           <TabsContent value="about">
             <AboutIMSTab pdfUrl={pdfUrl} />
           </TabsContent>
-          <TabsContent value="weightage">
+          <TabsContent value="school-weightage">
             <AssessmentWeightageTab />
+          </TabsContent>
+          <TabsContent value="college-weightage">
+            <CollegeAssessmentWeightageTab />
           </TabsContent>
           <TabsContent value="gamification">
             <GamificationRulesTab />
