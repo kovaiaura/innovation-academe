@@ -525,8 +525,18 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
           dayType = 'holiday';
           status = 'holiday';
         } else if (leave) {
-          dayType = 'leave';
-          status = 'leave';
+          // Half-day leave with attendance = treat as present (with leave info preserved)
+          if (leave.dayValue === 0.5 && attendance) {
+            dayType = 'working';
+            if (attendance.is_late_login) {
+              status = 'present'; // Don't mark late for half-day leave days
+            } else if (attendance.status === 'checked_in' || attendance.status === 'checked_out') {
+              status = 'present';
+            }
+          } else {
+            dayType = 'leave';
+            status = 'leave';
+          }
         } else if (attendance) {
           if (attendance.is_late_login) {
             status = 'late';
