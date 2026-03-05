@@ -1602,9 +1602,20 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
             {/* Attendance Type Selector */}
             <div className="space-y-2">
               <Label>Attendance Type</Label>
+              {/* Info banner for half-day leave days */}
+              {selectedRecord?.leave_day_value === 0.5 && selectedRecord?.leave_id && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    <strong>ℹ️ Half-day leave exists:</strong> This day has a 0.5-day <span className="capitalize">{selectedRecord.leave_type || 'casual'}</span> leave 
+                    {selectedRecord.is_paid_leave ? ' (Paid)' : ' (LOP)'}. 
+                    The remaining half is unchecked — you can add attendance for the other half.
+                  </p>
+                </div>
+              )}
+
               <Select
                 value={correctionData.attendance_type}
-                onValueChange={(value: 'present' | 'paid_leave' | 'lop' | 'leave') => 
+                onValueChange={(value: 'present' | 'paid_leave' | 'lop' | 'leave' | 'half_day_present') => 
                   setCorrectionData((prev) => ({ ...prev, attendance_type: value }))
                 }
               >
@@ -1612,6 +1623,14 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
+                  {selectedRecord?.leave_day_value === 0.5 && selectedRecord?.leave_id && (
+                    <SelectItem value="half_day_present">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-emerald-500" />
+                        Add Attendance for Remaining Half
+                      </div>
+                    </SelectItem>
+                  )}
                   <SelectItem value="present">
                     <div className="flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-green-500" />
