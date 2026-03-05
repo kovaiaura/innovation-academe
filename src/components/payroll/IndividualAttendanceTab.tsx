@@ -1556,7 +1556,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                               </TableCell>
                               <TableCell className="text-center">
                                 {/* Show edit button for present, late, unmarked, or leave statuses - always allow re-editing */}
-                                {(record.status === 'present' || record.status === 'late' || record.status === 'unmarked' || record.status === 'leave') && (
+                                {(record.status === 'present' || record.status === 'late' || record.status === 'unmarked' || record.status === 'leave' || record.status === 'checked_in') && (
                                   <div className="flex items-center justify-center gap-1">
                                     <Button
                                       size="icon"
