@@ -62,8 +62,8 @@ export function ClassAssessmentMappingDialog({
       class_id: classId,
       institution_id: institutionId,
       academic_year: academicYear,
-      fa1_assessment_id: fa1Id,
-      fa2_assessment_id: fa2Id,
+      fa1_assessment_id: isCollege ? null : fa1Id,
+      fa2_assessment_id: isCollege ? null : fa2Id,
       final_assessment_id: finalId,
     });
     onOpenChange(false);
