@@ -48,12 +48,14 @@ export function ClassAssessmentMappingDialog({
   const [fa1Id, setFa1Id] = useState<string | null>(null);
   const [fa2Id, setFa2Id] = useState<string | null>(null);
   const [finalId, setFinalId] = useState<string | null>(null);
+  const [internalId, setInternalId] = useState<string | null>(null);
 
   useEffect(() => {
     if (mapping) {
       setFa1Id(mapping.fa1_assessment_id);
       setFa2Id(mapping.fa2_assessment_id);
       setFinalId(mapping.final_assessment_id);
+      setInternalId((mapping as any).internal_assessment_id || null);
     }
   }, [mapping]);
 
@@ -65,6 +67,7 @@ export function ClassAssessmentMappingDialog({
       fa1_assessment_id: isCollege ? null : fa1Id,
       fa2_assessment_id: isCollege ? null : fa2Id,
       final_assessment_id: finalId,
+      internal_assessment_id: isCollege ? internalId : null,
     });
     onOpenChange(false);
   };
@@ -237,13 +240,43 @@ export function ClassAssessmentMappingDialog({
               )}
             </div>
 
-            {/* Internal Note */}
-            <div className="p-3 rounded-lg bg-muted/50">
-              <p className="text-sm text-muted-foreground">
-                <strong>Internal Assessment ({isCollege ? COLLEGE_WEIGHTAGE.INTERNAL * 100 : WEIGHTAGE.INTERNAL * 100}%)</strong> marks are entered separately 
-                via the "Internal Marks" option.
-              </p>
-            </div>
+            {/* Internal - College: dropdown, School: note */}
+            {isCollege ? (
+              <div className="space-y-2">
+                <Label>Internal Assessment ({COLLEGE_WEIGHTAGE.INTERNAL * 100}%)</Label>
+                <Select value={internalId || 'none'} onValueChange={(v) => setInternalId(v === 'none' ? null : v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select assessment for Internal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-- Not Assigned --</SelectItem>
+                    {availableAssessments?.map((assessment: any) => (
+                      <SelectItem key={assessment.id} value={assessment.id}>
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          {assessment.title}
+                          <Badge variant="outline" className="ml-2">
+                            {assessment.total_points} pts
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {internalId && getAssessmentById(internalId) && (
+                  <p className="text-xs text-muted-foreground">
+                    Total: {getAssessmentById(internalId)?.total_points} points → Weighted to 40%
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-sm text-muted-foreground">
+                  <strong>Internal Assessment ({WEIGHTAGE.INTERNAL * 100}%)</strong> marks are entered separately 
+                  via the "Internal Marks" option.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

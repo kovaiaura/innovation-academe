@@ -110,25 +110,37 @@ export function WeightedAssessmentView({
         finalAttempts = data || [];
       }
 
-      // Fetch internal marks
-      const { data: internalMarks } = await supabase
-        .from('internal_assessment_marks')
-        .select('student_id, marks_obtained, total_marks')
-        .eq('class_id', classId)
-        .eq('academic_year', academicYear);
+      // For college: fetch internal assessment attempts; for school: fetch internal marks
+      let internalAttempts: any[] = [];
+      let internalMarks: any[] = [];
+
+      if (isCollege && (mapping as any)?.internal_assessment_id && studentUserIds.length > 0) {
+        const { data } = await supabase
+          .from('assessment_attempts')
+          .select('student_id, score, total_points, percentage, status')
+          .eq('assessment_id', (mapping as any).internal_assessment_id)
+          .in('student_id', studentUserIds);
+        internalAttempts = data || [];
+      } else if (!isCollege) {
+        const { data } = await supabase
+          .from('internal_assessment_marks')
+          .select('student_id, marks_obtained, total_marks')
+          .eq('class_id', classId)
+          .eq('academic_year', academicYear);
+        internalMarks = data || [];
+      }
 
       // Build scores for each student
       const scores: StudentWeightedScore[] = students
         .filter(s => s.user_id)
         .map(student => {
           const finalAttempt = finalAttempts.find(a => a.student_id === student.user_id);
-          const internal = internalMarks?.find(m => m.student_id === student.user_id);
-          const internalData = internal ? { obtained: internal.marks_obtained, total: internal.total_marks } : null;
 
           if (isCollege) {
+            const internalAttempt = internalAttempts.find(a => a.student_id === student.user_id);
             const result = calculateCollegeWeightedScore(
               finalAttempt || null,
-              internalData
+              internalAttempt || null
             );
             return {
               student_id: student.id,
@@ -151,6 +163,8 @@ export function WeightedAssessmentView({
 
           const fa1Attempt = fa1Attempts.find(a => a.student_id === student.user_id);
           const fa2Attempt = fa2Attempts.find(a => a.student_id === student.user_id);
+          const internal = internalMarks?.find((m: any) => m.student_id === student.user_id);
+          const internalData = internal ? { obtained: internal.marks_obtained, total: internal.total_marks } : null;
 
           const result = calculateWeightedScore(
             fa1Attempt || null,

@@ -10,6 +10,7 @@ export interface ClassAssessmentMapping {
   fa1_assessment_id: string | null;
   fa2_assessment_id: string | null;
   final_assessment_id: string | null;
+  internal_assessment_id: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -19,6 +20,7 @@ export interface MappingWithDetails extends ClassAssessmentMapping {
   fa1_assessment?: { id: string; title: string } | null;
   fa2_assessment?: { id: string; title: string } | null;
   final_assessment?: { id: string; title: string } | null;
+  internal_assessment?: { id: string; title: string } | null;
 }
 
 export function useClassAssessmentMapping(classId: string | undefined, academicYear: string = '2024-25') {
@@ -49,6 +51,7 @@ export function useClassAssessmentMapping(classId: string | undefined, academicY
         mappingData.fa1_assessment_id,
         mappingData.fa2_assessment_id,
         mappingData.final_assessment_id,
+        mappingData.internal_assessment_id,
       ].filter(Boolean);
 
       let assessmentsMap: Record<string, { id: string; title: string }> = {};
@@ -68,6 +71,7 @@ export function useClassAssessmentMapping(classId: string | undefined, academicY
         fa1_assessment: mappingData.fa1_assessment_id ? assessmentsMap[mappingData.fa1_assessment_id] || null : null,
         fa2_assessment: mappingData.fa2_assessment_id ? assessmentsMap[mappingData.fa2_assessment_id] || null : null,
         final_assessment: mappingData.final_assessment_id ? assessmentsMap[mappingData.final_assessment_id] || null : null,
+        internal_assessment: mappingData.internal_assessment_id ? assessmentsMap[mappingData.internal_assessment_id] || null : null,
       };
     },
     enabled: !!classId,
@@ -81,6 +85,7 @@ export function useClassAssessmentMapping(classId: string | undefined, academicY
       fa1_assessment_id: string | null;
       fa2_assessment_id: string | null;
       final_assessment_id: string | null;
+      internal_assessment_id?: string | null;
     }) => {
       const { data: user } = await supabase.auth.getUser();
 
@@ -141,6 +146,7 @@ export function useInstitutionMappings(institutionId: string | undefined, academ
         m.fa1_assessment_id,
         m.fa2_assessment_id,
         m.final_assessment_id,
+        m.internal_assessment_id,
       ]).filter(Boolean) as string[];
 
       let assessmentsMap: Record<string, { id: string; title: string }> = {};
@@ -160,6 +166,7 @@ export function useInstitutionMappings(institutionId: string | undefined, academ
         fa1_assessment: m.fa1_assessment_id ? assessmentsMap[m.fa1_assessment_id] || null : null,
         fa2_assessment: m.fa2_assessment_id ? assessmentsMap[m.fa2_assessment_id] || null : null,
         final_assessment: m.final_assessment_id ? assessmentsMap[m.final_assessment_id] || null : null,
+        internal_assessment: m.internal_assessment_id ? assessmentsMap[m.internal_assessment_id] || null : null,
       }));
     },
     enabled: !!institutionId,

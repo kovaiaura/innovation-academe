@@ -124,7 +124,7 @@ export interface CollegeWeightedScoreResult {
 
 export function calculateCollegeWeightedScore(
   finalAttempt: AssessmentAttempt | null,
-  internalMarks: { obtained: number; total: number } | null
+  internalAttempt: AssessmentAttempt | null
 ): CollegeWeightedScoreResult {
   const getAttemptMetrics = (attempt: AssessmentAttempt | null): WeightageBreakdown => {
     if (!attempt) {
@@ -143,22 +143,9 @@ export function calculateCollegeWeightedScore(
   const final = getAttemptMetrics(finalAttempt);
   final.weighted = final.percentage * COLLEGE_WEIGHTAGE.FINAL;
 
-  // Calculate Internal (40%)
-  let internal: WeightageBreakdown;
-  if (!internalMarks) {
-    internal = { raw: 0, total: 100, percentage: 0, weighted: 0, status: 'pending' };
-  } else {
-    const percentage = internalMarks.total > 0 
-      ? (internalMarks.obtained / internalMarks.total) * 100 
-      : 0;
-    internal = {
-      raw: internalMarks.obtained,
-      total: internalMarks.total,
-      percentage,
-      weighted: percentage * COLLEGE_WEIGHTAGE.INTERNAL,
-      status: 'completed',
-    };
-  }
+  // Calculate Internal (40%) - now from assessment attempt
+  const internal = getAttemptMetrics(internalAttempt);
+  internal.weighted = internal.percentage * COLLEGE_WEIGHTAGE.INTERNAL;
 
   const total_weighted = internal.weighted + final.weighted;
 
