@@ -515,7 +515,9 @@ export default function OfficerAssessmentManagement() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-muted-foreground mb-4">
-                      Map assessments to weightage categories (FA1: 20%, FA2: 20%, Final: 40%, Internal: 20%) for each class.
+                      {institutionType === 'college' 
+                        ? 'Map assessments to weightage categories (Internal: 40%, Final: 60%) for each class.'
+                        : 'Map assessments to weightage categories (FA1: 20%, FA2: 20%, Final: 40%, Internal: 20%) for each class.'}
                     </p>
                     
                     {!classes || classes.length === 0 ? (
