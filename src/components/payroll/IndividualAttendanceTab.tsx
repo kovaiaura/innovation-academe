@@ -67,7 +67,7 @@ interface DayRecord {
   check_in_time: string | null;
   check_out_time: string | null;
   total_hours_worked: number | null;
-  status: 'present' | 'late' | 'unmarked' | 'holiday' | 'weekend' | 'leave' | 'future';
+  status: 'present' | 'late' | 'unmarked' | 'holiday' | 'weekend' | 'leave' | 'future' | 'checked_in';
   
   // Late info
   is_late: boolean;
@@ -528,9 +528,11 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
           // Half-day leave with attendance = treat as present (with leave info preserved)
           if (leave.dayValue === 0.5 && attendance) {
             dayType = 'working';
-            if (attendance.is_late_login) {
+            if (attendance.status === 'checked_in') {
+              status = 'checked_in'; // Not yet checked out — don't count as present
+            } else if (attendance.is_late_login) {
               status = 'present'; // Don't mark late for half-day leave days
-            } else if (attendance.status === 'checked_in' || attendance.status === 'checked_out') {
+            } else if (attendance.status === 'checked_out') {
               status = 'present';
             }
           } else {
@@ -538,9 +540,11 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
             status = 'leave';
           }
         } else if (attendance) {
-          if (attendance.is_late_login) {
+          if (attendance.status === 'checked_in') {
+            status = 'checked_in'; // Not yet checked out — don't count as present
+          } else if (attendance.is_late_login) {
             status = 'late';
-          } else if (attendance.status === 'checked_in' || attendance.status === 'checked_out') {
+          } else if (attendance.status === 'checked_out') {
             status = 'present';
           }
         }
@@ -599,6 +603,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       .reduce((sum, r) => sum + (r.leave_day_value || 1), 0);
     
     const presentDays = dayRecords.filter((r) => r.status === 'present' || r.status === 'late').length;
+    const checkedInDays = dayRecords.filter((r) => r.status === 'checked_in').length;
     const lateDays = dayRecords.filter((r) => r.status === 'late').length;
     const unmarkedDays = dayRecords.filter((r) => r.status === 'unmarked').length;
     const totalHours = dayRecords.reduce((sum, r) => sum + (r.total_hours_worked || 0), 0);
@@ -610,15 +615,15 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     // Total LOP days = approved LOP leaves + unmarked days (unapproved absences)
     const totalLopDays = lopLeaveDays + unmarkedDays;
 
-    // Working Days = Present + Paid Leave + LOP (days the employee was expected to work)
-    const workingDays = presentDays + paidLeaveDays + totalLopDays;
+    // Working Days = Present + Checked-In + Paid Leave + LOP (days the employee was expected to work)
+    const workingDays = presentDays + checkedInDays + paidLeaveDays + totalLopDays;
 
     // Attendance % = ((Total Days - (Paid Leave + LOP)) * 100) / Total Days
     const attendancePercentage = totalDaysInMonth > 0 
       ? parseFloat((((totalDaysInMonth - (paidLeaveDays + totalLopDays)) * 100) / totalDaysInMonth).toFixed(2))
       : 100;
 
-    // Salary Payable Days = Present + Holidays + Weekends + Paid Leave
+    // Salary Payable Days = Present + Holidays + Weekends + Paid Leave (excludes checked_in days until checkout)
     const salaryPayableDays = presentDays + holidays + weekendDays + paidLeaveDays;
 
     return {
@@ -1035,6 +1040,8 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     switch (record.status) {
       case 'present':
         return <Badge className="bg-green-500/10 text-green-700 border-green-500/20">Present</Badge>;
+      case 'checked_in':
+        return <Badge className="bg-amber-500/10 text-amber-700 border-amber-500/20">Checked In</Badge>;
       case 'late':
         return (
           <Badge className="bg-orange-500/10 text-orange-700 border-orange-500/20">
@@ -1549,7 +1556,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                               </TableCell>
                               <TableCell className="text-center">
                                 {/* Show edit button for present, late, unmarked, or leave statuses - always allow re-editing */}
-                                {(record.status === 'present' || record.status === 'late' || record.status === 'unmarked' || record.status === 'leave') && (
+                                {(record.status === 'present' || record.status === 'late' || record.status === 'unmarked' || record.status === 'leave' || record.status === 'checked_in') && (
                                   <div className="flex items-center justify-center gap-1">
                                     <Button
                                       size="icon"
