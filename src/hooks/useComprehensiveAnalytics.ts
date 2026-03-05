@@ -205,8 +205,8 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
           return { fa1_score: 0, fa2_score: 0, final_score: 0, internal_score: 0, total_weighted: 0 };
         }
 
-        // Get FA1 attempt
-        const fa1Attempt = mapping.fa1_assessment_id 
+        // Get FA1 attempt (skip for college)
+        const fa1Attempt = (!isCollege && mapping.fa1_assessment_id)
           ? assessmentAttempts?.find(a => 
               a.student_id === studentUserId && 
               a.assessment_id === mapping.fa1_assessment_id &&
@@ -214,8 +214,8 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
             )
           : null;
 
-        // Get FA2 attempt
-        const fa2Attempt = mapping.fa2_assessment_id
+        // Get FA2 attempt (skip for college)
+        const fa2Attempt = (!isCollege && mapping.fa2_assessment_id)
           ? assessmentAttempts?.find(a => 
               a.student_id === studentUserId && 
               a.assessment_id === mapping.fa2_assessment_id &&
@@ -253,6 +253,20 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
             passed: attempt.passed || false,
           } as AssessmentAttempt;
         };
+
+        if (isCollege) {
+          const result = calculateCollegeWeightedScore(
+            toAttemptFormat(finalAttempt),
+            internalMarksData
+          );
+          return {
+            fa1_score: 0,
+            fa2_score: 0,
+            final_score: result.final_score,
+            internal_score: result.internal_score,
+            total_weighted: result.total_weighted,
+          };
+        }
 
         const result = calculateWeightedScore(
           toAttemptFormat(fa1Attempt),
