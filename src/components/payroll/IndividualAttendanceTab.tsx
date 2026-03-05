@@ -120,7 +120,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
     check_in_time: '',
     check_out_time: '',
     reason: '',
-    attendance_type: 'present' as 'present' | 'paid_leave' | 'lop' | 'leave',
+    attendance_type: 'present' as 'present' | 'paid_leave' | 'lop' | 'leave' | 'half_day_present',
     leave_duration: 'full_day' as 'full_day' | 'half_day',
   });
   
@@ -674,18 +674,42 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
   }, [selectedEmployee?.institution_id]);
 
   const openCorrectionDialog = (record: DayRecord) => {
-    if (!record.attendance_id && record.status !== 'unmarked') return;
+    if (!record.attendance_id && record.status !== 'unmarked' && record.status !== 'leave') return;
     
     setSelectedRecord(record);
+
+    // If this is a half-day leave day without attendance, pre-select half_day_present
+    const isHalfDayLeaveWithoutAttendance = record.leave_day_value === 0.5 && !record.attendance_id;
+    
+    // Determine default check-in/out based on leave half
+    // If first-half leave, pre-fill afternoon times; if second-half leave, pre-fill morning times
+    const leaveHalf = record.leave_type?.toLowerCase().includes('second') ? 'second' : 'first';
+    let defaultCheckIn = `${record.date}T${institutionWorkingHours.check_in_time}`;
+    let defaultCheckOut = `${record.date}T${institutionWorkingHours.check_out_time}`;
+    
+    if (isHalfDayLeaveWithoutAttendance) {
+      if (leaveHalf === 'first') {
+        // First half is leave, so pre-fill afternoon (13:00 to check_out_time)
+        defaultCheckIn = `${record.date}T13:00`;
+        defaultCheckOut = `${record.date}T${institutionWorkingHours.check_out_time}`;
+      } else {
+        // Second half is leave, so pre-fill morning (check_in_time to 13:00)
+        defaultCheckIn = `${record.date}T${institutionWorkingHours.check_in_time}`;
+        defaultCheckOut = `${record.date}T13:00`;
+      }
+    }
+
     setCorrectionData({
       check_in_time: record.check_in_time
         ? format(parseISO(record.check_in_time), "yyyy-MM-dd'T'HH:mm")
-        : `${record.date}T${institutionWorkingHours.check_in_time}`,
+        : defaultCheckIn,
       check_out_time: record.check_out_time
         ? format(parseISO(record.check_out_time), "yyyy-MM-dd'T'HH:mm")
-        : `${record.date}T${institutionWorkingHours.check_out_time}`,
+        : defaultCheckOut,
       reason: '',
-      attendance_type: record.leave_id ? (record.is_paid_leave ? 'paid_leave' : 'lop') : 'present',
+      attendance_type: isHalfDayLeaveWithoutAttendance 
+        ? 'half_day_present' 
+        : record.leave_id ? (record.is_paid_leave ? 'paid_leave' : 'lop') : 'present',
       leave_duration: 'full_day',
     });
     setCorrectionDialogOpen(true);
@@ -705,8 +729,60 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
       const tableName = isOfficer ? 'officer_attendance' : 'staff_attendance';
       const attendanceType = correctionData.attendance_type;
       
+      // Half-day present: create attendance record for the other half while keeping the leave intact
+      if (attendanceType === 'half_day_present') {
+        let totalHoursWorked = null;
+        let overtimeHours = null;
+
+        if (correctionData.check_in_time && correctionData.check_out_time) {
+          const checkIn = new Date(correctionData.check_in_time);
+          const checkOut = new Date(correctionData.check_out_time);
+          totalHoursWorked = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
+          overtimeHours = Math.max(0, totalHoursWorked - (institutionWorkingHours.normal_working_hours / 2));
+        }
+
+        const insertData: Record<string, unknown> = {
+          date: selectedRecord.date,
+          check_in_time: new Date(correctionData.check_in_time).toISOString(),
+          check_out_time: new Date(correctionData.check_out_time).toISOString(),
+          total_hours_worked: Math.round(totalHoursWorked! * 100) / 100,
+          overtime_hours: Math.round(overtimeHours! * 100) / 100,
+          is_manual_correction: true,
+          corrected_by: user.id,
+          correction_reason: correctionData.reason,
+          status: 'checked_out',
+        };
+
+        if (isOfficer) {
+          insertData.officer_id = selectedEmployee.id;
+        } else {
+          insertData.user_id = selectedEmployee.user_id;
+        }
+        if (selectedEmployee.institution_id) {
+          insertData.institution_id = selectedEmployee.institution_id;
+        }
+
+        const { error: insertError } = await supabase
+          .from(tableName)
+          .insert(insertData as never);
+        if (insertError) throw insertError;
+
+        // Log correction
+        await supabase.from('attendance_corrections').insert({
+          attendance_id: null,
+          attendance_type: selectedEmployee.type,
+          field_corrected: 'half_day_check_in',
+          original_value: 'half_day_leave_only',
+          new_value: `${correctionData.check_in_time}, ${correctionData.check_out_time}`,
+          reason: correctionData.reason,
+          corrected_by: user.id,
+          corrected_by_name: user.name,
+        });
+
+        toast.success('Attendance added for remaining half day');
+      }
       // Leave corrections are stored in leave_applications (NOT in officer_attendance.status)
-      if (attendanceType === 'paid_leave' || attendanceType === 'lop' || attendanceType === 'leave') {
+      else if (attendanceType === 'paid_leave' || attendanceType === 'lop' || attendanceType === 'leave') {
         const leaveType = attendanceType === 'leave' ? 'sick' : 'casual';
         const isLop = attendanceType === 'lop';
         const isHalfDay = correctionData.leave_duration === 'half_day';
@@ -1526,9 +1602,20 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
             {/* Attendance Type Selector */}
             <div className="space-y-2">
               <Label>Attendance Type</Label>
+              {/* Info banner for half-day leave days */}
+              {selectedRecord?.leave_day_value === 0.5 && selectedRecord?.leave_id && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    <strong>ℹ️ Half-day leave exists:</strong> This day has a 0.5-day <span className="capitalize">{selectedRecord.leave_type || 'casual'}</span> leave 
+                    {selectedRecord.is_paid_leave ? ' (Paid)' : ' (LOP)'}. 
+                    The remaining half is unchecked — you can add attendance for the other half.
+                  </p>
+                </div>
+              )}
+
               <Select
                 value={correctionData.attendance_type}
-                onValueChange={(value: 'present' | 'paid_leave' | 'lop' | 'leave') => 
+                onValueChange={(value: 'present' | 'paid_leave' | 'lop' | 'leave' | 'half_day_present') => 
                   setCorrectionData((prev) => ({ ...prev, attendance_type: value }))
                 }
               >
@@ -1536,6 +1623,14 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
+                  {selectedRecord?.leave_day_value === 0.5 && selectedRecord?.leave_id && (
+                    <SelectItem value="half_day_present">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-emerald-500" />
+                        Add Attendance for Remaining Half
+                      </div>
+                    </SelectItem>
+                  )}
                   <SelectItem value="present">
                     <div className="flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-green-500" />
@@ -1564,8 +1659,8 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
               </Select>
             </div>
 
-            {/* Check-in/out fields only for Present type */}
-            {correctionData.attendance_type === 'present' && (
+            {/* Check-in/out fields only for Present or Half Day Present type */}
+            {(correctionData.attendance_type === 'present' || correctionData.attendance_type === 'half_day_present') && (
               <>
                 <div className="space-y-2">
                   <Label>Check-in Time</Label>
@@ -1586,8 +1681,17 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
               </>
             )}
 
+            {/* Info for half_day_present */}
+            {correctionData.attendance_type === 'half_day_present' && (
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-md">
+                <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                  The existing half-day leave will be <strong>preserved</strong>. An attendance record will be created for the remaining half of the day.
+                </p>
+              </div>
+            )}
+
             {/* Half-day / Full-day selector for leave types */}
-            {correctionData.attendance_type !== 'present' && (
+            {correctionData.attendance_type !== 'present' && correctionData.attendance_type !== 'half_day_present' && (
               <div className="space-y-2">
                 <Label>Leave Duration</Label>
                 <Select
@@ -1606,7 +1710,7 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
             )}
 
             {/* Info message for leave types */}
-            {correctionData.attendance_type !== 'present' && (
+            {correctionData.attendance_type !== 'present' && correctionData.attendance_type !== 'half_day_present' && (
               <div className="p-3 bg-muted rounded-md">
                 <p className="text-sm text-muted-foreground">
                   {correctionData.attendance_type === 'paid_leave' && (
