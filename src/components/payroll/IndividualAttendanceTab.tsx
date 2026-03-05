@@ -540,9 +540,11 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
             status = 'leave';
           }
         } else if (attendance) {
-          if (attendance.is_late_login) {
+          if (attendance.status === 'checked_in') {
+            status = 'checked_in'; // Not yet checked out — don't count as present
+          } else if (attendance.is_late_login) {
             status = 'late';
-          } else if (attendance.status === 'checked_in' || attendance.status === 'checked_out') {
+          } else if (attendance.status === 'checked_out') {
             status = 'present';
           }
         }
