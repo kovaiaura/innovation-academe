@@ -77,6 +77,7 @@ interface DayRecord {
   leave_type?: string;
   leave_id?: string;
   is_paid_leave?: boolean;
+  leave_day_value?: number; // 0.5 for half-day, 1 for full-day
   
   // Overtime info
   overtime_hours: number | null;
