@@ -5617,6 +5617,8 @@ export type Database = {
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
           employee_id: string | null
+          enable_gps_tracking: boolean | null
+          enable_notifications: boolean | null
           hourly_rate: number | null
           id: string
           institution_id: string | null
@@ -5659,6 +5661,8 @@ export type Database = {
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           employee_id?: string | null
+          enable_gps_tracking?: boolean | null
+          enable_notifications?: boolean | null
           hourly_rate?: number | null
           id: string
           institution_id?: string | null
@@ -5701,6 +5705,8 @@ export type Database = {
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           employee_id?: string | null
+          enable_gps_tracking?: boolean | null
+          enable_notifications?: boolean | null
           hourly_rate?: number | null
           id?: string
           institution_id?: string | null

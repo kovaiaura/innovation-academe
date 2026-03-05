@@ -12,12 +12,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, ArrowRight, Users, GitBranch, Info, Crown, Briefcase, UserCog, Settings, Save, Loader2, MapPin, MapPinOff, AlertCircle, Bell, BellOff } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, Users, GitBranch, Info, Crown, Briefcase, UserCog, Settings, Save, Loader2, MapPin, MapPinOff, AlertCircle, Bell, BellOff, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { approvalHierarchyService } from '@/services/leave.service';
 import { positionService } from '@/services/position.service';
 import { leaveSettingsService, type LeaveSettings } from '@/services/leaveSettings.service';
 import { UserType } from '@/types/leave';
+import { supabase } from '@/integrations/supabase/client';
+import { IndividualProfileControls } from '@/components/settings/IndividualProfileControls';
 
 export default function GlobalApprovalConfig() {
   const queryClient = useQueryClient();
@@ -413,6 +415,10 @@ export default function GlobalApprovalConfig() {
             <TabsTrigger value="settings" className="gap-2">
               <Settings className="h-4 w-4" />
               Leave Settings
+            </TabsTrigger>
+            <TabsTrigger value="individual" className="gap-2">
+              <User className="h-4 w-4" />
+              Individual Controls
             </TabsTrigger>
           </TabsList>
 
@@ -839,6 +845,18 @@ export default function GlobalApprovalConfig() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Individual Profile Controls Tab */}
+          <TabsContent value="individual" className="space-y-6">
+            <Alert className="bg-primary/5 border-primary/20">
+              <Info className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-sm">
+                <strong>Individual Controls</strong> let you enable or disable GPS tracking and email notifications per user. These override the global settings.
+              </AlertDescription>
+            </Alert>
+
+            <IndividualProfileControls />
           </TabsContent>
         </Tabs>
 

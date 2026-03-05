@@ -37,20 +37,27 @@ export function OfficerCheckInCard({ officerId, institutionId, onStatusChange }:
   const [gpsEnabled, setGpsEnabled] = useState(true);
   const [loadingGpsSetting, setLoadingGpsSetting] = useState(true);
 
-  // Fetch GPS enabled setting
+  // Fetch individual GPS setting from profile
+  const { data: profileSettings } = useQuery({
+    queryKey: ['profile-gps-setting', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from('profiles')
+        .select('enable_gps_tracking, enable_notifications')
+        .eq('id', user.id)
+        .single();
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
   useEffect(() => {
-    const loadGpsSetting = async () => {
-      try {
-        const enabled = await leaveSettingsService.isGpsEnabled();
-        setGpsEnabled(enabled);
-      } catch (error) {
-        console.error('Failed to load GPS setting:', error);
-      } finally {
-        setLoadingGpsSetting(false);
-      }
-    };
-    loadGpsSetting();
-  }, []);
+    if (profileSettings !== undefined) {
+      setGpsEnabled(profileSettings?.enable_gps_tracking ?? true);
+      setLoadingGpsSetting(false);
+    }
+  }, [profileSettings]);
 
   // Fetch today's attendance
   const { data: todayAttendance, isLoading: isLoadingAttendance } = useOfficerTodayAttendance(
