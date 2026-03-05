@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Calculator, Trophy } from 'lucide-react';
+import { FileText, Calculator, Trophy, GraduationCap, School } from 'lucide-react';
 import { AboutIMSTab } from '@/components/about-ims/AboutIMSTab';
 import { AssessmentWeightageTab } from '@/components/about-ims/AssessmentWeightageTab';
+import { CollegeAssessmentWeightageTab } from '@/components/about-ims/CollegeAssessmentWeightageTab';
 import { GamificationRulesTab } from '@/components/about-ims/GamificationRulesTab';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -40,9 +41,13 @@ export default function AboutIMS() {
               <FileText className="mr-2 h-4 w-4" />
               About IMS
             </TabsTrigger>
-            <TabsTrigger value="weightage">
-              <Calculator className="mr-2 h-4 w-4" />
-              Assessment Weightage
+            <TabsTrigger value="school-weightage">
+              <School className="mr-2 h-4 w-4" />
+              School Assessment Weightage
+            </TabsTrigger>
+            <TabsTrigger value="college-weightage">
+              <GraduationCap className="mr-2 h-4 w-4" />
+              College Assessment Weightage
             </TabsTrigger>
             <TabsTrigger value="gamification">
               <Trophy className="mr-2 h-4 w-4" />
@@ -53,8 +58,11 @@ export default function AboutIMS() {
           <TabsContent value="about">
             <AboutIMSTab pdfUrl={pdfUrl} />
           </TabsContent>
-          <TabsContent value="weightage">
+          <TabsContent value="school-weightage">
             <AssessmentWeightageTab />
+          </TabsContent>
+          <TabsContent value="college-weightage">
+            <CollegeAssessmentWeightageTab />
           </TabsContent>
           <TabsContent value="gamification">
             <GamificationRulesTab />

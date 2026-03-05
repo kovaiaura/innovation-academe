@@ -29,6 +29,11 @@ export const WEIGHTAGE = {
   INTERNAL: 0.20,
 } as const;
 
+export const COLLEGE_WEIGHTAGE = {
+  INTERNAL: 0.40,
+  FINAL: 0.60,
+} as const;
+
 export function calculateWeightedScore(
   fa1Attempt: AssessmentAttempt | null,
   fa2Attempt: AssessmentAttempt | null,
@@ -107,12 +112,78 @@ export function calculateWeightedScore(
   };
 }
 
+export interface CollegeWeightedScoreResult {
+  internal_score: number;
+  final_score: number;
+  total_weighted: number;
+  breakdown: {
+    internal: WeightageBreakdown;
+    final: WeightageBreakdown;
+  };
+}
+
+export function calculateCollegeWeightedScore(
+  finalAttempt: AssessmentAttempt | null,
+  internalMarks: { obtained: number; total: number } | null
+): CollegeWeightedScoreResult {
+  const getAttemptMetrics = (attempt: AssessmentAttempt | null): WeightageBreakdown => {
+    if (!attempt) {
+      return { raw: 0, total: 0, percentage: 0, weighted: 0, status: 'pending' };
+    }
+    if (attempt.status === 'absent') {
+      return { raw: 0, total: attempt.total_points, percentage: 0, weighted: 0, status: 'absent' };
+    }
+    const percentage = attempt.total_points > 0 
+      ? (attempt.score / attempt.total_points) * 100 
+      : 0;
+    return { raw: attempt.score, total: attempt.total_points, percentage, weighted: 0, status: 'completed' };
+  };
+
+  // Calculate Final (60%)
+  const final = getAttemptMetrics(finalAttempt);
+  final.weighted = final.percentage * COLLEGE_WEIGHTAGE.FINAL;
+
+  // Calculate Internal (40%)
+  let internal: WeightageBreakdown;
+  if (!internalMarks) {
+    internal = { raw: 0, total: 100, percentage: 0, weighted: 0, status: 'pending' };
+  } else {
+    const percentage = internalMarks.total > 0 
+      ? (internalMarks.obtained / internalMarks.total) * 100 
+      : 0;
+    internal = {
+      raw: internalMarks.obtained,
+      total: internalMarks.total,
+      percentage,
+      weighted: percentage * COLLEGE_WEIGHTAGE.INTERNAL,
+      status: 'completed',
+    };
+  }
+
+  const total_weighted = internal.weighted + final.weighted;
+
+  return {
+    internal_score: Math.round(internal.weighted * 10) / 10,
+    final_score: Math.round(final.weighted * 10) / 10,
+    total_weighted: Math.round(total_weighted * 10) / 10,
+    breakdown: { internal, final },
+  };
+}
+
 export function getWeightageLabel(category: 'fa1' | 'fa2' | 'final' | 'internal'): string {
   const labels = {
     fa1: 'Formative Assessment 1 (20%)',
     fa2: 'Formative Assessment 2 (20%)',
     final: 'Final Assessment (40%)',
     internal: 'Internal Assessment (20%)',
+  };
+  return labels[category];
+}
+
+export function getCollegeWeightageLabel(category: 'final' | 'internal'): string {
+  const labels = {
+    final: 'Final Assessment (60%)',
+    internal: 'Internal Assessment (40%)',
   };
   return labels[category];
 }
