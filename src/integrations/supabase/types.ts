@@ -934,6 +934,7 @@ export type Database = {
           final_assessment_id: string | null
           id: string
           institution_id: string
+          internal_assessment_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -946,6 +947,7 @@ export type Database = {
           final_assessment_id?: string | null
           id?: string
           institution_id: string
+          internal_assessment_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -958,6 +960,7 @@ export type Database = {
           final_assessment_id?: string | null
           id?: string
           institution_id?: string
+          internal_assessment_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1001,6 +1004,13 @@ export type Database = {
             columns: ["institution_id"]
             isOneToOne: false
             referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_assessment_mapping_internal_assessment_id_fkey"
+            columns: ["internal_assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessments"
             referencedColumns: ["id"]
           },
         ]

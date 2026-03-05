@@ -1,0 +1,1 @@
+ALTER TABLE public.class_assessment_mapping ADD COLUMN internal_assessment_id UUID REFERENCES public.assessments(id) ON DELETE SET NULL;
