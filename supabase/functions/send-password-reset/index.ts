@@ -58,8 +58,24 @@ async function getEmailTemplateSettings(supabase: any): Promise<EmailTemplateSet
 }
 
 // Send email using Resend API directly
-async function sendEmail(to: string, subject: string, html: string, settings: EmailTemplateSettings): Promise<void> {
-  const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+async function sendEmail(to: string, subject: string, html: string, settings: EmailTemplateSettings, supabase: any): Promise<void> {
+  // Try custom API key from system_configurations first, fall back to env secret
+  let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+  
+  try {
+    const { data: config } = await supabase
+      .from('system_configurations')
+      .select('value')
+      .eq('key', 'resend_api_key')
+      .single();
+    
+    const customKey = (config?.value as any)?.api_key;
+    if (customKey) {
+      RESEND_API_KEY = customKey;
+    }
+  } catch (e) {
+    console.log('No custom Resend API key found, using default');
+  }
   
   if (!RESEND_API_KEY) {
     throw new Error("RESEND_API_KEY is not configured");
