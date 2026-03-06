@@ -45,6 +45,9 @@ verify_jwt = false
 [functions.ask-metova]
 verify_jwt = false
 
+[functions.send-attendance-reminder]
+verify_jwt = false
+
 [functions.send-password-reset]
 verify_jwt = false
 
