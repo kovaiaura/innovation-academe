@@ -39,16 +39,30 @@ export function ResendApiKeyDialog({ isOpen, onOpenChange, onSaved }: ResendApiK
     setIsLoading(true);
     
     try {
-      const { error } = await supabase
+      // Check if record exists
+      const { data: existing } = await supabase
         .from('system_configurations')
-        .upsert(
-          {
-            key: 'resend_api_key',
+        .select('id')
+        .eq('key', 'resend_api_key')
+        .maybeSingle();
+
+      let error;
+      if (existing) {
+        ({ error } = await supabase
+          .from('system_configurations')
+          .update({
             value: { api_key: apiKey.trim() } as any,
             updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'key' }
-        );
+          })
+          .eq('key', 'resend_api_key'));
+      } else {
+        ({ error } = await supabase
+          .from('system_configurations')
+          .insert({
+            key: 'resend_api_key',
+            value: { api_key: apiKey.trim() } as any,
+          }));
+      }
 
       if (error) {
         console.error('Failed to save API key:', error);
