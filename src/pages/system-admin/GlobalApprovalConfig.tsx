@@ -618,7 +618,11 @@ export default function GlobalApprovalConfig() {
                       setIsSavingReminder(true);
                       try {
                         await leaveSettingsService.updateSetting('reminder_minutes_before', leaveSettings.reminder_minutes_before);
-                        toast.success('Reminder timing saved');
+                        // Read back the saved value to confirm persistence
+                        leaveSettingsService.clearCache();
+                        const confirmed = await leaveSettingsService.getSettings();
+                        setLeaveSettings(prev => ({ ...prev, reminder_minutes_before: confirmed.reminder_minutes_before }));
+                        toast.success(`Reminder timing saved: ${confirmed.reminder_minutes_before} minutes before`);
                       } catch (error) {
                         toast.error('Failed to save reminder timing');
                       } finally {

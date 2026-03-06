@@ -683,6 +683,33 @@ export type Database = {
         }
         Relationships: []
       }
+      attendance_reminder_dispatch_log: {
+        Row: {
+          id: string
+          reminder_date: string
+          reminder_type: string
+          scheduled_time: string
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          reminder_date: string
+          reminder_type: string
+          scheduled_time: string
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          reminder_date?: string
+          reminder_type?: string
+          scheduled_time?: string
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       calendar_day_types: {
         Row: {
           calendar_type: string

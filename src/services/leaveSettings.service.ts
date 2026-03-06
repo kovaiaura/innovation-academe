@@ -31,7 +31,6 @@ export const leaveSettingsService = {
 
     if (error) {
       console.error('Failed to fetch leave settings:', error);
-      // Return defaults on error
       return {
         leaves_per_year: 12,
         leaves_per_month: 1,
@@ -122,8 +121,10 @@ export const leaveSettingsService = {
     for (const { key, value } of updates) {
       const { error } = await supabase
         .from('leave_settings')
-        .update({ setting_value: value })
-        .eq('setting_key', key);
+        .upsert(
+          { setting_key: key, setting_value: value },
+          { onConflict: 'setting_key' }
+        );
 
       if (error) throw error;
     }
