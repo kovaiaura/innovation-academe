@@ -587,81 +587,14 @@ export default function GlobalApprovalConfig() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  {(leaveSettings.reminder_enabled_officer || leaveSettings.reminder_enabled_staff) ? (
-                    <Bell className="h-5 w-5 text-primary" />
-                  ) : (
-                    <BellOff className="h-5 w-5 text-muted-foreground" />
-                  )}
+                  <Bell className="h-5 w-5 text-primary" />
                   Attendance Reminder Emails
                 </CardTitle>
                 <CardDescription>
-                  Send email reminders before check-in and check-out times
+                  Send email reminders before check-in and check-out times. Individual notification controls are managed in the Individual Controls tab.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Remind Officers</span>
-                      {leaveSettings.reminder_enabled_officer ? (
-                        <Badge className="bg-green-500">Enabled</Badge>
-                      ) : (
-                        <Badge variant="secondary">Disabled</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Send reminder emails to officers before their check-in/check-out times
-                    </p>
-                  </div>
-                  <Switch
-                    checked={leaveSettings.reminder_enabled_officer}
-                    disabled={isSavingReminder}
-                    onCheckedChange={async (checked) => {
-                      setIsSavingReminder(true);
-                      try {
-                        await leaveSettingsService.updateSetting('reminder_enabled_officer', checked);
-                        setLeaveSettings(prev => ({ ...prev, reminder_enabled_officer: checked }));
-                        toast.success(checked ? 'Officer reminders enabled' : 'Officer reminders disabled');
-                      } catch (error) {
-                        toast.error('Failed to update reminder setting');
-                      } finally {
-                        setIsSavingReminder(false);
-                      }
-                    }}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Remind Staff</span>
-                      {leaveSettings.reminder_enabled_staff ? (
-                        <Badge className="bg-green-500">Enabled</Badge>
-                      ) : (
-                        <Badge variant="secondary">Disabled</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Send reminder emails to staff before their check-in/check-out times
-                    </p>
-                  </div>
-                  <Switch
-                    checked={leaveSettings.reminder_enabled_staff}
-                    disabled={isSavingReminder}
-                    onCheckedChange={async (checked) => {
-                      setIsSavingReminder(true);
-                      try {
-                        await leaveSettingsService.updateSetting('reminder_enabled_staff', checked);
-                        setLeaveSettings(prev => ({ ...prev, reminder_enabled_staff: checked }));
-                        toast.success(checked ? 'Staff reminders enabled' : 'Staff reminders disabled');
-                      } catch (error) {
-                        toast.error('Failed to update reminder setting');
-                      } finally {
-                        setIsSavingReminder(false);
-                      }
-                    }}
-                  />
-                </div>
 
                 <div className="p-4 border rounded-lg space-y-2">
                   <Label htmlFor="reminder_minutes">Minutes Before</Label>
