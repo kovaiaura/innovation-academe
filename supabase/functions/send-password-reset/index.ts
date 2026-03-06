@@ -249,7 +249,7 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    await sendEmail(email, `Reset Your Password - ${emailSettings.company_name}`, emailHtml, emailSettings);
+    await sendEmail(email, `Reset Your Password - ${emailSettings.company_name}`, emailHtml, emailSettings, supabase);
 
     console.log("Password reset email sent successfully to:", email);
 
