@@ -60,6 +60,7 @@ export function ResendApiKeyDialog({ isOpen, onOpenChange, onSaved }: ResendApiK
           .from('system_configurations')
           .insert({
             key: 'resend_api_key',
+            category: 'email',
             value: { api_key: apiKey.trim() } as any,
           }));
       }
