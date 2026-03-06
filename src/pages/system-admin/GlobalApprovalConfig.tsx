@@ -587,15 +587,11 @@ export default function GlobalApprovalConfig() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  {(leaveSettings.reminder_enabled_officer || leaveSettings.reminder_enabled_staff) ? (
-                    <Bell className="h-5 w-5 text-primary" />
-                  ) : (
-                    <BellOff className="h-5 w-5 text-muted-foreground" />
-                  )}
+                  <Bell className="h-5 w-5 text-primary" />
                   Attendance Reminder Emails
                 </CardTitle>
                 <CardDescription>
-                  Send email reminders before check-in and check-out times
+                  Send email reminders before check-in and check-out times. Individual notification controls are managed in the Individual Controls tab.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
