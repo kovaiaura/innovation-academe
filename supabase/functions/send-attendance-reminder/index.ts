@@ -47,8 +47,18 @@ function applyTemplate(
 }
 
 function timeToMinutes(timeStr: string): number {
-  const [h, m] = timeStr.split(":").map(Number);
+  if (!timeStr) return -1;
+  const parts = timeStr.split(":");
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  if (isNaN(h) || isNaN(m)) return -1;
   return h * 60 + m;
+}
+
+function minutesToTimeStr(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 }
 
 async function sendEmail(
@@ -59,22 +69,22 @@ async function sendEmail(
   supabase: any
 ): Promise<void> {
   let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-  
+
   try {
     const { data: config } = await supabase
       .from('system_configurations')
       .select('value')
       .eq('key', 'resend_api_key')
       .single();
-    
+
     const customKey = (config?.value as any)?.api_key;
     if (customKey) {
       RESEND_API_KEY = customKey;
     }
-  } catch (e) {
-    console.log('No custom Resend API key found, using default');
+  } catch (_e) {
+    // Use default key
   }
-  
+
   if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured");
 
   const fromAddress = `${settings.from_name} <${settings.from_email}>`;
@@ -112,9 +122,45 @@ async function isOnLeaveToday(supabase: any, userId: string, todayStr: string): 
     .gte("end_date", todayStr);
 
   if (!leaves || leaves.length === 0) return false;
-
-  // If any approved leave is full_day, they're on leave. Half-day leaves still need reminders.
   return leaves.some((l: any) => l.leave_duration !== 'half_day');
+}
+
+// Check if already dispatched (deduplication)
+async function alreadyDispatched(
+  supabase: any,
+  userId: string,
+  reminderType: string,
+  dateStr: string,
+  scheduledTime: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("attendance_reminder_dispatch_log")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("reminder_type", reminderType)
+    .eq("reminder_date", dateStr)
+    .eq("scheduled_time", scheduledTime)
+    .limit(1);
+
+  return (data && data.length > 0);
+}
+
+// Record dispatch
+async function recordDispatch(
+  supabase: any,
+  userId: string,
+  reminderType: string,
+  dateStr: string,
+  scheduledTime: string
+): Promise<void> {
+  await supabase
+    .from("attendance_reminder_dispatch_log")
+    .upsert({
+      user_id: userId,
+      reminder_type: reminderType,
+      reminder_date: dateStr,
+      scheduled_time: scheduledTime,
+    }, { onConflict: "user_id,reminder_type,reminder_date,scheduled_time" });
 }
 
 serve(async (req: Request) => {
@@ -127,7 +173,18 @@ serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log("[attendance-reminder] Function invoked at", new Date().toISOString());
+    // Check for catch-up mode from request body
+    let catchupMinutes = 0;
+    try {
+      const body = await req.json();
+      if (body?.mode === "catchup") {
+        catchupMinutes = body.catchup_window || 30;
+      }
+    } catch (_) {
+      // No body or invalid JSON - realtime mode
+    }
+
+    console.log(`[attendance-reminder] Function invoked at ${new Date().toISOString()} mode=${catchupMinutes > 0 ? 'catchup(' + catchupMinutes + 'min)' : 'realtime'}`);
 
     // 1. Get current time in IST
     const now = new Date();
@@ -137,7 +194,7 @@ serve(async (req: Request) => {
     const todayStr = istNow.toISOString().split("T")[0];
     const dayOfWeek = istNow.getUTCDay(); // 0=Sun, 6=Sat
 
-    // 2. Weekend check — skip all
+    // 2. Weekend check
     if (dayOfWeek === 0 || dayOfWeek === 6) {
       console.log("[attendance-reminder] Weekend, skipping all reminders.");
       return new Response(
@@ -146,16 +203,7 @@ serve(async (req: Request) => {
       );
     }
 
-    // 3. Company holiday check — skip all
-    const { data: companyHolidays } = await supabase
-      .from("company_holidays")
-      .select("id")
-      .lte("date", todayStr)
-      .or(`end_date.gte.${todayStr},end_date.is.null,date.eq.${todayStr}`);
-
-    // Filter: today must be between date and end_date (or date == today if no end_date)
-    const isCompanyHoliday = companyHolidays?.some((h: any) => true) || false;
-    // More precise check
+    // 3. Company holiday check
     const { data: companyHolidayCheck } = await supabase
       .from("company_holidays")
       .select("id")
@@ -168,7 +216,7 @@ serve(async (req: Request) => {
       .eq("date", todayStr)
       .is("end_date", null);
 
-    if ((companyHolidayCheck && companyHolidayCheck.length > 0) || 
+    if ((companyHolidayCheck && companyHolidayCheck.length > 0) ||
         (singleDayHoliday && singleDayHoliday.length > 0)) {
       console.log("[attendance-reminder] Company holiday today, skipping all reminders.");
       return new Response(
@@ -177,7 +225,7 @@ serve(async (req: Request) => {
       );
     }
 
-    // 4. Fetch reminder settings (only minutes_before now)
+    // 4. Fetch reminder settings
     const { data: settingsData } = await supabase
       .from("leave_settings")
       .select("setting_key, setting_value")
@@ -185,11 +233,13 @@ serve(async (req: Request) => {
 
     const minutesBefore = Number(settingsData?.[0]?.setting_value) || 5;
 
-    const targetMinutesMin = currentMinutesOfDay + minutesBefore - 1;
-    const targetMinutesMax = currentMinutesOfDay + minutesBefore + 1;
+    // In catch-up mode, scan a wider window; in realtime mode, ±1 minute
+    const windowMin = catchupMinutes > 0
+      ? currentMinutesOfDay + minutesBefore - catchupMinutes
+      : currentMinutesOfDay + minutesBefore - 1;
+    const windowMax = currentMinutesOfDay + minutesBefore + 1;
 
-    console.log("[attendance-reminder] IST time:", `${istNow.getUTCHours()}:${istNow.getUTCMinutes()}`,
-      "Minutes before:", minutesBefore, "Target window:", targetMinutesMin, "-", targetMinutesMax);
+    console.log(`[attendance-reminder] IST: ${istNow.getUTCHours()}:${String(istNow.getUTCMinutes()).padStart(2, '0')} minutesBefore=${minutesBefore} window=${windowMin}-${windowMax} (${minutesToTimeStr(windowMin)}-${minutesToTimeStr(windowMax)})`);
 
     // 5. Fetch templates
     const { data: templateData } = await supabase
@@ -213,6 +263,11 @@ serve(async (req: Request) => {
       : defaultEmailSettings;
 
     let emailsSent = 0;
+    let skippedLeave = 0;
+    let skippedNotif = 0;
+    let skippedWindow = 0;
+    let skippedDuplicate = 0;
+    let failedSend = 0;
 
     // 6. Process staff reminders (profile-based times)
     const { data: staffProfiles } = await supabase
@@ -221,36 +276,48 @@ serve(async (req: Request) => {
       .not("email", "is", null)
       .not("check_in_time", "is", null);
 
-    console.log("[attendance-reminder] Staff profiles found:", staffProfiles?.length || 0);
+    console.log(`[attendance-reminder] Staff profiles found: ${staffProfiles?.length || 0}`);
 
     if (staffProfiles) {
       for (const profile of staffProfiles) {
         if (!profile.email) continue;
-        if (profile.enable_notifications === false) continue;
+        if (profile.enable_notifications === false) { skippedNotif++; continue; }
 
-        // Check if on approved full-day leave
         if (await isOnLeaveToday(supabase, profile.id, todayStr)) {
-          console.log(`[attendance-reminder] Skipping ${profile.email} - on leave`);
+          skippedLeave++;
           continue;
         }
 
-        const types: string[] = [];
+        const types: { type: string; time: string }[] = [];
         if (profile.check_in_time) {
           const ciMin = timeToMinutes(profile.check_in_time);
-          if (ciMin >= targetMinutesMin && ciMin <= targetMinutesMax) types.push("Check-in");
+          if (ciMin >= windowMin && ciMin <= windowMax) {
+            types.push({ type: "Check-in", time: profile.check_in_time });
+          } else {
+            skippedWindow++;
+          }
         }
         if (profile.check_out_time) {
           const coMin = timeToMinutes(profile.check_out_time);
-          if (coMin >= targetMinutesMin && coMin <= targetMinutesMax) types.push("Check-out");
+          if (coMin >= windowMin && coMin <= windowMax) {
+            types.push({ type: "Check-out", time: profile.check_out_time });
+          }
         }
 
-        for (const type of types) {
-          const timeStr = type === "Check-in" ? profile.check_in_time : profile.check_out_time;
+        for (const { type, time } of types) {
+          const reminderType = type === "Check-in" ? "check-in" : "check-out";
+
+          // Dedup check
+          if (await alreadyDispatched(supabase, profile.id, reminderType, todayStr, time)) {
+            skippedDuplicate++;
+            continue;
+          }
+
           const vars = {
             name: profile.name || "Employee",
             type,
             type_action: type === "Check-in" ? "check in" : "check out",
-            time: timeStr || "",
+            time: time || "",
             date: todayStr,
           };
 
@@ -258,10 +325,12 @@ serve(async (req: Request) => {
             const subject = applyTemplate(template.subject, vars);
             const body = applyTemplate(template.body, vars);
             await sendEmail(profile.email, subject, body, emailSettings, supabase);
+            await recordDispatch(supabase, profile.id, reminderType, todayStr, time);
             emailsSent++;
-            console.log(`[attendance-reminder] Sent ${type} reminder to ${profile.email}`);
+            console.log(`[attendance-reminder] ✅ Sent ${type} reminder to ${profile.email} (staff)`);
           } catch (err) {
-            console.error(`[attendance-reminder] Failed to send to ${profile.email}:`, err);
+            failedSend++;
+            console.error(`[attendance-reminder] ❌ Failed ${profile.email}:`, err);
           }
         }
       }
@@ -270,28 +339,32 @@ serve(async (req: Request) => {
     // 7. Process officer reminders (institution-based times)
     const { data: institutions } = await supabase
       .from("institutions")
-      .select("id, settings");
+      .select("id, settings, name");
 
-    console.log("[attendance-reminder] Institutions found:", institutions?.length || 0);
+    console.log(`[attendance-reminder] Institutions found: ${institutions?.length || 0}`);
 
     if (institutions) {
       for (const inst of institutions) {
         const s = inst.settings as Record<string, any> | null;
         if (!s) continue;
 
-        const types: string[] = [];
+        const instTypes: { type: string; time: string }[] = [];
         if (s.check_in_time) {
           const ciMin = timeToMinutes(s.check_in_time);
-          if (ciMin >= targetMinutesMin && ciMin <= targetMinutesMax) types.push("Check-in");
+          if (ciMin >= windowMin && ciMin <= windowMax) {
+            instTypes.push({ type: "Check-in", time: s.check_in_time });
+          }
         }
         if (s.check_out_time) {
           const coMin = timeToMinutes(s.check_out_time);
-          if (coMin >= targetMinutesMin && coMin <= targetMinutesMax) types.push("Check-out");
+          if (coMin >= windowMin && coMin <= windowMax) {
+            instTypes.push({ type: "Check-out", time: s.check_out_time });
+          }
         }
 
-        if (types.length === 0) continue;
+        if (instTypes.length === 0) continue;
 
-        // Check institution holiday for this institution
+        // Check institution holidays
         const { data: instHolidayRange } = await supabase
           .from("institution_holidays")
           .select("id")
@@ -308,11 +381,11 @@ serve(async (req: Request) => {
 
         if ((instHolidayRange && instHolidayRange.length > 0) ||
             (instHolidaySingle && instHolidaySingle.length > 0)) {
-          console.log(`[attendance-reminder] Institution ${inst.id} holiday today, skipping officers.`);
+          console.log(`[attendance-reminder] Institution ${inst.name || inst.id} holiday today, skipping.`);
           continue;
         }
 
-        // Also check calendar_day_types for institution holidays
+        // Calendar day type check
         const { data: calendarHoliday } = await supabase
           .from("calendar_day_types")
           .select("id")
@@ -321,13 +394,14 @@ serve(async (req: Request) => {
           .eq("day_type", "holiday");
 
         if (calendarHoliday && calendarHoliday.length > 0) {
-          console.log(`[attendance-reminder] Institution ${inst.id} calendar holiday, skipping officers.`);
+          console.log(`[attendance-reminder] Institution ${inst.name || inst.id} calendar holiday, skipping.`);
           continue;
         }
 
+        // Get officers assigned to this institution (column is full_name, not name)
         const { data: officers } = await supabase
           .from("officers")
-          .select("id, user_id, name, email")
+          .select("id, user_id, full_name, email")
           .contains("assigned_institutions", [inst.id]);
 
         if (!officers) continue;
@@ -335,29 +409,35 @@ serve(async (req: Request) => {
         for (const officer of officers) {
           if (!officer.email) continue;
 
-          // Check individual notification setting
+          // Check notification setting via profile
           if (officer.user_id) {
             const { data: profile } = await supabase
               .from("profiles")
               .select("enable_notifications")
               .eq("id", officer.user_id)
               .single();
-            if (profile?.enable_notifications === false) continue;
+            if (profile?.enable_notifications === false) { skippedNotif++; continue; }
 
-            // Check if officer is on approved full-day leave
             if (await isOnLeaveToday(supabase, officer.user_id, todayStr)) {
-              console.log(`[attendance-reminder] Skipping officer ${officer.email} - on leave`);
+              skippedLeave++;
               continue;
             }
           }
 
-          for (const type of types) {
-            const timeStr = type === "Check-in" ? s.check_in_time : s.check_out_time;
+          for (const { type, time } of instTypes) {
+            const userId = officer.user_id || officer.id;
+            const reminderType = type === "Check-in" ? "check-in" : "check-out";
+
+            if (await alreadyDispatched(supabase, userId, reminderType, todayStr, time)) {
+              skippedDuplicate++;
+              continue;
+            }
+
             const vars = {
-              name: officer.name || "Officer",
+              name: officer.full_name || "Officer",
               type,
               type_action: type === "Check-in" ? "check in" : "check out",
-              time: timeStr || "",
+              time: time || "",
               date: todayStr,
             };
 
@@ -365,20 +445,22 @@ serve(async (req: Request) => {
               const subject = applyTemplate(template.subject, vars);
               const body = applyTemplate(template.body, vars);
               await sendEmail(officer.email, subject, body, emailSettings, supabase);
+              await recordDispatch(supabase, userId, reminderType, todayStr, time);
               emailsSent++;
-              console.log(`[attendance-reminder] Sent ${type} reminder to ${officer.email}`);
+              console.log(`[attendance-reminder] ✅ Sent ${type} reminder to ${officer.email} (officer @ ${inst.name})`);
             } catch (err) {
-              console.error(`[attendance-reminder] Failed to send to ${officer.email}:`, err);
+              failedSend++;
+              console.error(`[attendance-reminder] ❌ Failed ${officer.email}:`, err);
             }
           }
         }
       }
     }
 
-    console.log(`[attendance-reminder] Done. Emails sent: ${emailsSent}`);
+    console.log(`[attendance-reminder] Done. sent=${emailsSent} skipped_leave=${skippedLeave} skipped_notif=${skippedNotif} skipped_window=${skippedWindow} skipped_dup=${skippedDuplicate} failed=${failedSend}`);
 
     return new Response(
-      JSON.stringify({ success: true, emails_sent: emailsSent }),
+      JSON.stringify({ success: true, emails_sent: emailsSent, skipped_leave: skippedLeave, skipped_notif: skippedNotif, skipped_duplicate: skippedDuplicate, failed: failedSend }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
