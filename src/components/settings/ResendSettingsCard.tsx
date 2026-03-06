@@ -2,15 +2,30 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Mail, CheckCircle, Key, AlertCircle } from 'lucide-react';
+import { Mail, CheckCircle, Key, AlertCircle, XCircle } from 'lucide-react';
 import { ResendApiKeyDialog } from './ResendApiKeyDialog';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 export function ResendSettingsCard() {
   const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
   
-  // Resend free tier limits
   const freeMonthlyLimit = 3000;
   const dailyLimit = 100;
+
+  const { data: hasCustomKey, refetch } = useQuery({
+    queryKey: ['resend-api-key-status'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('system_configurations')
+        .select('value')
+        .eq('key', 'resend_api_key')
+        .single();
+      
+      const value = data?.value as any;
+      return !!(value?.api_key);
+    },
+  });
 
   return (
     <>
@@ -26,10 +41,17 @@ export function ResendSettingsCard() {
                 Manage your Resend API key for sending transactional emails
               </CardDescription>
             </div>
-            <Badge variant="default" className="flex items-center gap-1">
-              <CheckCircle className="h-3 w-3" />
-              Configured
-            </Badge>
+            {hasCustomKey ? (
+              <Badge variant="default" className="flex items-center gap-1">
+                <CheckCircle className="h-3 w-3" />
+                Custom Key Configured
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <XCircle className="h-3 w-3" />
+                Using Default
+              </Badge>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -73,11 +95,13 @@ export function ResendSettingsCard() {
               </div>
               <div>
                 <p className="font-medium">API Key</p>
-                <p className="text-sm text-muted-foreground">••••••••••••••••</p>
+                <p className="text-sm text-muted-foreground">
+                  {hasCustomKey ? '••••••••••••••••' : 'No custom key set'}
+                </p>
               </div>
             </div>
             <Button variant="outline" onClick={() => setIsApiKeyDialogOpen(true)}>
-              Update API Key
+              {hasCustomKey ? 'Update API Key' : 'Set API Key'}
             </Button>
           </div>
         </CardContent>
@@ -86,6 +110,7 @@ export function ResendSettingsCard() {
       <ResendApiKeyDialog 
         isOpen={isApiKeyDialogOpen} 
         onOpenChange={setIsApiKeyDialogOpen}
+        onSaved={() => refetch()}
       />
     </>
   );

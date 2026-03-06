@@ -13,13 +13,15 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Key, ExternalLink, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ResendApiKeyDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  onSaved?: () => void;
 }
 
-export function ResendApiKeyDialog({ isOpen, onOpenChange }: ResendApiKeyDialogProps) {
+export function ResendApiKeyDialog({ isOpen, onOpenChange, onSaved }: ResendApiKeyDialogProps) {
   const [apiKey, setApiKey] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -36,16 +38,49 @@ export function ResendApiKeyDialog({ isOpen, onOpenChange }: ResendApiKeyDialogP
 
     setIsLoading(true);
     
-    // Show info about updating secrets
-    toast.info(
-      'To update the Resend API key, please use the Secrets management in the Lovable dashboard. ' +
-      'Go to Settings → Secrets → Update RESEND_API_KEY',
-      { duration: 8000 }
-    );
-    
-    setIsLoading(false);
-    setApiKey('');
-    onOpenChange(false);
+    try {
+      // Check if record exists
+      const { data: existing } = await supabase
+        .from('system_configurations')
+        .select('id')
+        .eq('key', 'resend_api_key')
+        .maybeSingle();
+
+      let error;
+      if (existing) {
+        ({ error } = await supabase
+          .from('system_configurations')
+          .update({
+            value: { api_key: apiKey.trim() } as any,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('key', 'resend_api_key'));
+      } else {
+        ({ error } = await supabase
+          .from('system_configurations')
+          .insert({
+            key: 'resend_api_key',
+            category: 'email',
+            value: { api_key: apiKey.trim() } as any,
+          }));
+      }
+
+      if (error) {
+        console.error('Failed to save API key:', error);
+        toast.error('Failed to save API key. Please try again.');
+        return;
+      }
+
+      toast.success('Resend API key updated successfully');
+      setApiKey('');
+      onOpenChange(false);
+      onSaved?.();
+    } catch (err) {
+      console.error('Error saving API key:', err);
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
