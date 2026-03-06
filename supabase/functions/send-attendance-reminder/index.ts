@@ -224,7 +224,7 @@ serve(async (req: Request) => {
             try {
               const subject = applyTemplate(template.subject, vars);
               const body = applyTemplate(template.body, vars);
-              await sendEmail(profile.email, subject, body, emailSettings);
+              await sendEmail(profile.email, subject, body, emailSettings, supabase);
               emailsSent++;
               console.log(`[attendance-reminder] Sent ${type} reminder to ${profile.email}`);
             } catch (err) {
