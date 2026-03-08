@@ -5,8 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { 
-  Trophy, Award, TrendingUp, BarChart3, Loader2, Users, RefreshCw, Sparkles, FileText, Building2
+  Trophy, Award, TrendingUp, BarChart3, Loader2, Users, RefreshCw, Sparkles, FileText, Building2, CheckCircle
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { StudentPerformanceTable } from "@/components/gamification/StudentPerformanceTable";
