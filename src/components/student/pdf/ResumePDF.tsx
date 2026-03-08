@@ -274,9 +274,10 @@ interface Props {
   extras?: ResumeExtrasForPDF;
   internships?: StudentInternship[];
   certifications?: StudentCertification[];
+  educations?: StudentEducation[];
 }
 
-export function ResumePDF({ data, customSkills = [], extras, internships = [], certifications = [] }: Props) {
+export function ResumePDF({ data, customSkills = [], extras, internships = [], certifications = [], educations = [] }: Props) {
   const allSkills = [...data.skills, ...customSkills];
   
   const formatSdgGoal = (goal: string): { label: string; color: string } => {
