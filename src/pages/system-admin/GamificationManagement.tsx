@@ -140,17 +140,34 @@ export default function GamificationManagement() {
     const instName = isInstitution ? allInstitutions.find(i => i.id === recalcInstitution)?.name : 'ALL';
     
     if (!confirm(`This will reset ${isInstitution ? `"${instName}"` : 'ALL'} student XP, badges, and streaks, then recalculate from scratch. Continue?`)) return;
+    
     setIsRecalculating(true);
     setRecalculateStatus('Starting...');
+    setRecalcProgressDialogOpen(true);
+    setRecalcProgress(null);
+    setRecalcResult(null);
+    
+    const progressCallback = (msg: string | { step: string; current: number; total: number; message: string }) => {
+      if (typeof msg === 'string') {
+        setRecalculateStatus(msg);
+      } else {
+        setRecalcProgress(msg);
+        setRecalculateStatus(msg.message);
+      }
+    };
+    
     try {
       const result = isInstitution
-        ? await gamificationDbService.recalculateForInstitution(recalcInstitution, (msg) => setRecalculateStatus(msg))
-        : await gamificationDbService.recalculateAllXPAndBadges((msg) => setRecalculateStatus(msg));
+        ? await gamificationDbService.recalculateForInstitution(recalcInstitution, progressCallback)
+        : await gamificationDbService.recalculateAllXPAndBadges(progressCallback);
+      
+      setRecalcResult(result);
       toast.success(`Done! ${result.studentsProcessed} students, ${result.totalXP} XP, ${result.badgesAwarded} badges`);
       await loadData();
     } catch (error) {
       console.error('Recalculate error:', error);
       toast.error('Recalculation failed');
+      setRecalcProgressDialogOpen(false);
     } finally {
       setIsRecalculating(false);
       setRecalculateStatus('');
