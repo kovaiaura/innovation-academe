@@ -46,6 +46,8 @@ export function useStudentResumeExtras(studentId: string | null) {
         sports_achievements: (data as any).sports_achievements || [],
         linkedin_url: (data as any).linkedin_url,
         github_url: (data as any).github_url,
+        institution_course: (data as any).institution_course,
+        institution_passed_year: (data as any).institution_passed_year,
       };
     },
     enabled: !!studentId && !!user?.id,
