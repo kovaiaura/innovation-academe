@@ -436,17 +436,30 @@ export default function Resume() {
                 <CardDescription>Your institution records and additional education</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Current LMS institution */}
-                <div className="rounded-lg border p-4">
+                {/* Current LMS institution — editable */}
+                <div className="rounded-lg border p-4 space-y-3">
                   <div className="font-semibold">{resumeData.education.institution}</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Course / Degree</Label>
+                      <Input
+                        placeholder={resumeData.education.className || 'e.g., B.E. Computer Science'}
+                        value={institutionCourse}
+                        onChange={(e) => setInstitutionCourse(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Passed Year / Duration</Label>
+                      <Input
+                        placeholder="e.g., 2022-2025 or 2025"
+                        value={institutionPassedYear}
+                        onChange={(e) => setInstitutionPassedYear(e.target.value)}
+                      />
+                    </div>
+                  </div>
                   {resumeData.skills.length > 0 && (
                     <div className="text-sm text-muted-foreground">
                       Courses: {resumeData.skills.join(', ')}
-                    </div>
-                  )}
-                  {resumeData.education.academicYear && (
-                    <div className="text-sm text-muted-foreground">
-                      Academic Year: {resumeData.education.academicYear}
                     </div>
                   )}
                 </div>
