@@ -266,6 +266,8 @@ interface ResumeExtrasForPDF {
   sports_achievements: string[];
   linkedin_url: string | null;
   github_url: string | null;
+  institution_course: string | null;
+  institution_passed_year: string | null;
 }
 
 interface Props {
