@@ -424,21 +424,104 @@ export default function Resume() {
             {/* Education */}
             <Card>
               <CardHeader>
-                <CardTitle>Education</CardTitle>
-                <CardDescription>From your institution records</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <GraduationCap className="h-5 w-5" /> Education
+                </CardTitle>
+                <CardDescription>Your institution records and additional education</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Current LMS institution */}
                 <div className="rounded-lg border p-4">
                   <div className="font-semibold">{resumeData.education.institution}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {resumeData.education.className}
-                    {resumeData.education.section && ` - Section ${resumeData.education.section}`}
-                  </div>
+                  {resumeData.skills.length > 0 && (
+                    <div className="text-sm text-muted-foreground">
+                      Courses: {resumeData.skills.join(', ')}
+                    </div>
+                  )}
                   {resumeData.education.academicYear && (
                     <div className="text-sm text-muted-foreground">
                       Academic Year: {resumeData.education.academicYear}
                     </div>
                   )}
+                </div>
+
+                {/* Saved additional education entries */}
+                {educations.map((edu) => (
+                  <div key={edu.id} className="rounded-lg border p-4 relative">
+                    <button
+                      onClick={() => deleteEducation.mutate({ id: edu.id, studentId: resumeData.studentId })}
+                      className="absolute top-3 right-3 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                    <div className="font-semibold">{edu.institution_name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {edu.degree_or_course}
+                      {edu.field_of_study && ` in ${edu.field_of_study}`}
+                    </div>
+                    {(edu.start_year || edu.end_year) && (
+                      <div className="text-xs text-muted-foreground">
+                        {edu.start_year && edu.end_year ? `${edu.start_year} - ${edu.end_year}` : edu.end_year || edu.start_year}
+                      </div>
+                    )}
+                    {edu.grade_or_percentage && (
+                      <div className="text-xs text-muted-foreground">Grade: {edu.grade_or_percentage}</div>
+                    )}
+                    {edu.description && (
+                      <p className="text-sm mt-1 text-muted-foreground">{edu.description}</p>
+                    )}
+                  </div>
+                ))}
+
+                <Separator />
+
+                {/* Add education form */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Add Education</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      placeholder="Institution Name *"
+                      value={educationForm.institution_name}
+                      onChange={(e) => setEducationForm(p => ({ ...p, institution_name: e.target.value }))}
+                    />
+                    <Input
+                      placeholder="Degree / Course *"
+                      value={educationForm.degree_or_course}
+                      onChange={(e) => setEducationForm(p => ({ ...p, degree_or_course: e.target.value }))}
+                    />
+                  </div>
+                  <Input
+                    placeholder="Field of Study (e.g., Computer Engineering)"
+                    value={educationForm.field_of_study}
+                    onChange={(e) => setEducationForm(p => ({ ...p, field_of_study: e.target.value }))}
+                  />
+                  <div className="grid grid-cols-3 gap-3">
+                    <Input
+                      placeholder="Start Year"
+                      value={educationForm.start_year}
+                      onChange={(e) => setEducationForm(p => ({ ...p, start_year: e.target.value }))}
+                    />
+                    <Input
+                      placeholder="End Year"
+                      value={educationForm.end_year}
+                      onChange={(e) => setEducationForm(p => ({ ...p, end_year: e.target.value }))}
+                    />
+                    <Input
+                      placeholder="Grade / %"
+                      value={educationForm.grade_or_percentage}
+                      onChange={(e) => setEducationForm(p => ({ ...p, grade_or_percentage: e.target.value }))}
+                    />
+                  </div>
+                  <Textarea
+                    placeholder="Description (optional)"
+                    value={educationForm.description}
+                    onChange={(e) => setEducationForm(p => ({ ...p, description: e.target.value }))}
+                    rows={2}
+                  />
+                  <Button onClick={handleAddEducation} disabled={addEducation.isPending} size="sm">
+                    {addEducation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                    Add Education
+                  </Button>
                 </div>
               </CardContent>
             </Card>
