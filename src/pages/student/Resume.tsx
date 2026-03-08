@@ -204,6 +204,30 @@ export default function Resume() {
     });
   };
 
+  const handleAddEducation = () => {
+    if (!resumeData?.studentId || !user?.id) return;
+    if (!educationForm.institution_name.trim() || !educationForm.degree_or_course.trim()) {
+      toast.error('Please fill in institution name and degree/course');
+      return;
+    }
+
+    addEducation.mutate({
+      student_id: resumeData.studentId,
+      user_id: user.id,
+      institution_name: educationForm.institution_name.trim(),
+      degree_or_course: educationForm.degree_or_course.trim(),
+      field_of_study: educationForm.field_of_study.trim() || null,
+      start_year: educationForm.start_year.trim() || null,
+      end_year: educationForm.end_year.trim() || null,
+      grade_or_percentage: educationForm.grade_or_percentage.trim() || null,
+      description: educationForm.description.trim() || null,
+    }, {
+      onSuccess: () => {
+        setEducationForm({ institution_name: '', degree_or_course: '', field_of_study: '', start_year: '', end_year: '', grade_or_percentage: '', description: '' });
+      }
+    });
+  };
+
   const handleExport = async () => {
     if (!resumeData) {
       toast.error('Resume data not available');
