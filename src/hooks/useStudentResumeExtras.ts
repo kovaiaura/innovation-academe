@@ -75,6 +75,7 @@ export function useUpdateResumeExtras() {
             hobbies: params.hobbies ?? [],
             sports_achievements: params.sports_achievements ?? [],
             linkedin_url: params.linkedin_url ?? null,
+            github_url: params.github_url ?? null,
           } as any,
           { onConflict: 'student_id' }
         )
