@@ -1116,10 +1116,14 @@ export const gamificationDbService = {
     return this._recalculate(onProgress, institutionId);
   },
 
-  async _recalculate(onProgress?: (msg: string) => void, institutionId?: string): Promise<{ studentsProcessed: number; totalXP: number; badgesAwarded: number }> {
-    const log = (msg: string) => {
+  async _recalculate(onProgress?: (msg: string | { step: string; current: number; total: number; message: string }) => void, institutionId?: string): Promise<{ studentsProcessed: number; totalXP: number; badgesAwarded: number }> {
+    const log = (msg: string, progress?: { step: string; current: number; total: number }) => {
       console.log('[Recalculate]', msg);
-      onProgress?.(msg);
+      if (progress) {
+        onProgress?.({ step: progress.step, current: progress.current, total: progress.total, message: msg });
+      } else {
+        onProgress?.(msg);
+      }
     };
 
     const scope = institutionId ? 'institution' : 'all';
