@@ -55,6 +55,8 @@ export default function Resume() {
   const [newAchievement, setNewAchievement] = useState('');
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [githubUrl, setGithubUrl] = useState('');
+  const [institutionCourse, setInstitutionCourse] = useState('');
+  const [institutionPassedYear, setInstitutionPassedYear] = useState('');
 
   // Internship form state
   const [internshipForm, setInternshipForm] = useState({
