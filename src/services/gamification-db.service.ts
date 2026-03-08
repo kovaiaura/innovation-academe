@@ -1273,18 +1273,18 @@ export const gamificationDbService = {
     return { studentsProcessed: allStudents.length, totalXP, badgesAwarded: totalBadges };
   },
 
-  // Direct XP insert without duplicate check (for recalculation)
+  // Direct XP upsert (for recalculation) — uses upsert to handle duplicates gracefully
   async awardXPDirect(studentId: string, institutionId: string, activityType: string, activityId: string, points: number, description: string): Promise<void> {
     const { error } = await supabase
       .from('student_xp_transactions')
-      .insert({
+      .upsert({
         student_id: studentId,
         institution_id: institutionId,
         activity_type: activityType,
         activity_id: activityId,
         points_earned: points,
         description
-      });
+      }, { onConflict: 'student_id,activity_type,activity_id' });
     
     if (error) {
       console.error('Error awarding XP:', error);
