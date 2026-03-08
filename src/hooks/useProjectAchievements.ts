@@ -56,7 +56,8 @@ async function awardProjectAwardXPToMembers(projectId: string, achievementTitle:
         authUserId,
         project.institution_id,
         projectId,
-        achievementTitle
+        achievementTitle,
+        achievementId
       );
     }
     
