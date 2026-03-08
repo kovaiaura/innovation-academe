@@ -58,6 +58,9 @@ export default function GamificationManagement() {
   const [institutionFilter, setInstitutionFilter] = useState<string>("all");
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [recalculateStatus, setRecalculateStatus] = useState('');
+  const [recalcProgressDialogOpen, setRecalcProgressDialogOpen] = useState(false);
+  const [recalcProgress, setRecalcProgress] = useState<{ step: string; current: number; total: number; message: string } | null>(null);
+  const [recalcResult, setRecalcResult] = useState<{ studentsProcessed: number; totalXP: number; badgesAwarded: number } | null>(null);
   const [badgeEarnedCounts, setBadgeEarnedCounts] = useState<Record<string, number>>({});
   const [xpBreakdown, setXpBreakdown] = useState<{ name: string; value: number }[]>([]);
   const [totalBadgesEarned, setTotalBadgesEarned] = useState(0);
