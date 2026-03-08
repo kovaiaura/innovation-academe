@@ -336,18 +336,38 @@ export function ResumePDF({ data, customSkills = [], extras, internships = [], c
         {/* Education Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Education</Text>
+          {/* Current institution from LMS */}
           <View style={styles.educationRow}>
             <View>
               <Text style={styles.institutionName}>{data.education.institution}</Text>
-              <Text style={styles.classInfo}>
-                {data.education.className}
-                {data.education.section && ` - Section ${data.education.section}`}
-              </Text>
+              {data.skills.length > 0 && (
+                <Text style={styles.classInfo}>
+                  Courses: {data.skills.join(', ')}
+                </Text>
+              )}
             </View>
             {data.education.academicYear && (
               <Text style={styles.academicYear}>{data.education.academicYear}</Text>
             )}
           </View>
+          {/* Additional education entries */}
+          {educations.map((edu) => (
+            <View key={edu.id} style={[styles.educationRow, { marginTop: 10 }]}>
+              <View>
+                <Text style={styles.institutionName}>{edu.institution_name}</Text>
+                <Text style={styles.classInfo}>
+                  {edu.degree_or_course}
+                  {edu.field_of_study && ` in ${edu.field_of_study}`}
+                </Text>
+                {edu.grade_or_percentage && (
+                  <Text style={styles.classInfo}>Grade: {edu.grade_or_percentage}</Text>
+                )}
+              </View>
+              <Text style={styles.academicYear}>
+                {edu.start_year && edu.end_year ? `${edu.start_year} - ${edu.end_year}` : edu.end_year || edu.start_year || ''}
+              </Text>
+            </View>
+          ))}
         </View>
 
         {/* Skills Section */}
