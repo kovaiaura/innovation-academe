@@ -55,6 +55,8 @@ export default function Resume() {
   const [newAchievement, setNewAchievement] = useState('');
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [githubUrl, setGithubUrl] = useState('');
+  const [institutionCourse, setInstitutionCourse] = useState('');
+  const [institutionPassedYear, setInstitutionPassedYear] = useState('');
 
   // Internship form state
   const [internshipForm, setInternshipForm] = useState({
@@ -95,6 +97,8 @@ export default function Resume() {
       setSportsAchievements(extras.sports_achievements || []);
       setLinkedinUrl(extras.linkedin_url || '');
       setGithubUrl(extras.github_url || '');
+      setInstitutionCourse(extras.institution_course || '');
+      setInstitutionPassedYear(extras.institution_passed_year || '');
     }
   }, [extras]);
 
@@ -155,6 +159,8 @@ export default function Resume() {
       sports_achievements: sportsAchievements,
       linkedin_url: linkedinUrl || null,
       github_url: githubUrl || null,
+      institution_course: institutionCourse || null,
+      institution_passed_year: institutionPassedYear || null,
     });
   };
 
@@ -246,6 +252,8 @@ export default function Resume() {
             sports_achievements: sportsAchievements,
             linkedin_url: linkedinUrl || null,
             github_url: githubUrl || null,
+            institution_course: institutionCourse || null,
+            institution_passed_year: institutionPassedYear || null,
           }}
           internships={internships}
           certifications={certifications}
@@ -430,17 +438,30 @@ export default function Resume() {
                 <CardDescription>Your institution records and additional education</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Current LMS institution */}
-                <div className="rounded-lg border p-4">
+                {/* Current LMS institution — editable */}
+                <div className="rounded-lg border p-4 space-y-3">
                   <div className="font-semibold">{resumeData.education.institution}</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Course / Degree</Label>
+                      <Input
+                        placeholder={resumeData.education.className || 'e.g., B.E. Computer Science'}
+                        value={institutionCourse}
+                        onChange={(e) => setInstitutionCourse(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Passed Year / Duration</Label>
+                      <Input
+                        placeholder="e.g., 2022-2025 or 2025"
+                        value={institutionPassedYear}
+                        onChange={(e) => setInstitutionPassedYear(e.target.value)}
+                      />
+                    </div>
+                  </div>
                   {resumeData.skills.length > 0 && (
                     <div className="text-sm text-muted-foreground">
                       Courses: {resumeData.skills.join(', ')}
-                    </div>
-                  )}
-                  {resumeData.education.academicYear && (
-                    <div className="text-sm text-muted-foreground">
-                      Academic Year: {resumeData.education.academicYear}
                     </div>
                   )}
                 </div>
@@ -916,11 +937,10 @@ export default function Resume() {
                       <h3 className="font-bold text-meta-dark mb-1">EDUCATION</h3>
                       <div className="text-xs text-gray-700">
                         <div className="font-semibold">{resumeData.education.institution}</div>
+                        {institutionCourse && <div>{institutionCourse}</div>}
+                        {institutionPassedYear && <div>{institutionPassedYear}</div>}
                         {resumeData.skills.length > 0 && (
                           <div>Courses: {resumeData.skills.join(', ')}</div>
-                        )}
-                        {resumeData.education.academicYear && (
-                          <div>{resumeData.education.academicYear}</div>
                         )}
                       </div>
                       {educations.slice(0, 2).map((edu) => (
