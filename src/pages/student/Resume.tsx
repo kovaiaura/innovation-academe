@@ -8,9 +8,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Download, Plus, Trash2, FileText, Loader2, Save, Linkedin } from 'lucide-react';
+import { Download, Plus, Trash2, FileText, Loader2, Save, Linkedin, Github, Briefcase, Award } from 'lucide-react';
 import { useStudentResume } from '@/hooks/useStudentResume';
 import { useStudentResumeExtras, useUpdateResumeExtras } from '@/hooks/useStudentResumeExtras';
+import { useStudentInternships, useAddInternship, useDeleteInternship } from '@/hooks/useStudentInternships';
+import { useStudentCertifications, useAddCertification, useDeleteCertification } from '@/hooks/useStudentCertifications';
 import { useAuth } from '@/contexts/AuthContext';
 import { ResumePDF } from '@/components/student/pdf/ResumePDF';
 import { pdf } from '@react-pdf/renderer';
@@ -29,7 +31,13 @@ export default function Resume() {
   const { user } = useAuth();
   const { data: resumeData, isLoading, error } = useStudentResume();
   const { data: extras, isLoading: extrasLoading } = useStudentResumeExtras(resumeData?.studentId || null);
+  const { data: internships = [], isLoading: internshipsLoading } = useStudentInternships(resumeData?.studentId || null);
+  const { data: certifications = [], isLoading: certificationsLoading } = useStudentCertifications(resumeData?.studentId || null);
   const updateExtras = useUpdateResumeExtras();
+  const addInternship = useAddInternship();
+  const deleteInternship = useDeleteInternship();
+  const addCertification = useAddCertification();
+  const deleteCertification = useDeleteCertification();
 
   const [customSkills, setCustomSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState('');
@@ -42,6 +50,27 @@ export default function Resume() {
   const [sportsAchievements, setSportsAchievements] = useState<string[]>([]);
   const [newAchievement, setNewAchievement] = useState('');
   const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [githubUrl, setGithubUrl] = useState('');
+
+  // Internship form state
+  const [internshipForm, setInternshipForm] = useState({
+    company_name: '',
+    role_title: '',
+    duration: '',
+    responsibilities: '',
+    start_date: '',
+    end_date: '',
+  });
+
+  // Certification form state
+  const [certificationForm, setCertificationForm] = useState({
+    certification_name: '',
+    issuing_organization: '',
+    issue_date: '',
+    expiry_date: '',
+    credential_id: '',
+    credential_url: '',
+  });
 
   // Sync extras data when loaded
   useEffect(() => {
@@ -50,6 +79,7 @@ export default function Resume() {
       setHobbies(extras.hobbies || []);
       setSportsAchievements(extras.sports_achievements || []);
       setLinkedinUrl(extras.linkedin_url || '');
+      setGithubUrl(extras.github_url || '');
     }
   }, [extras]);
 
@@ -92,9 +122,13 @@ export default function Resume() {
       return;
     }
 
-    // Basic LinkedIn URL validation
     if (linkedinUrl && !linkedinUrl.match(/^https?:\/\/(www\.)?linkedin\.com\//i) && !linkedinUrl.match(/^(www\.)?linkedin\.com\//i)) {
       toast.error('Please enter a valid LinkedIn URL');
+      return;
+    }
+
+    if (githubUrl && !githubUrl.match(/^https?:\/\/(www\.)?github\.com\//i) && !githubUrl.match(/^(www\.)?github\.com\//i)) {
+      toast.error('Please enter a valid GitHub URL');
       return;
     }
 
@@ -105,6 +139,53 @@ export default function Resume() {
       hobbies,
       sports_achievements: sportsAchievements,
       linkedin_url: linkedinUrl || null,
+      github_url: githubUrl || null,
+    });
+  };
+
+  const handleAddInternship = () => {
+    if (!resumeData?.studentId || !user?.id) return;
+    if (!internshipForm.company_name.trim() || !internshipForm.role_title.trim() || !internshipForm.duration.trim()) {
+      toast.error('Please fill in company name, role, and duration');
+      return;
+    }
+
+    addInternship.mutate({
+      student_id: resumeData.studentId,
+      user_id: user.id,
+      company_name: internshipForm.company_name.trim(),
+      role_title: internshipForm.role_title.trim(),
+      duration: internshipForm.duration.trim(),
+      responsibilities: internshipForm.responsibilities.trim() || null,
+      start_date: internshipForm.start_date || null,
+      end_date: internshipForm.end_date || null,
+    }, {
+      onSuccess: () => {
+        setInternshipForm({ company_name: '', role_title: '', duration: '', responsibilities: '', start_date: '', end_date: '' });
+      }
+    });
+  };
+
+  const handleAddCertification = () => {
+    if (!resumeData?.studentId || !user?.id) return;
+    if (!certificationForm.certification_name.trim()) {
+      toast.error('Please enter a certification name');
+      return;
+    }
+
+    addCertification.mutate({
+      student_id: resumeData.studentId,
+      user_id: user.id,
+      certification_name: certificationForm.certification_name.trim(),
+      issuing_organization: certificationForm.issuing_organization.trim() || null,
+      issue_date: certificationForm.issue_date || null,
+      expiry_date: certificationForm.expiry_date || null,
+      credential_id: certificationForm.credential_id.trim() || null,
+      credential_url: certificationForm.credential_url.trim() || null,
+    }, {
+      onSuccess: () => {
+        setCertificationForm({ certification_name: '', issuing_organization: '', issue_date: '', expiry_date: '', credential_id: '', credential_url: '' });
+      }
     });
   };
 
@@ -125,7 +206,10 @@ export default function Resume() {
             hobbies,
             sports_achievements: sportsAchievements,
             linkedin_url: linkedinUrl || null,
+            github_url: githubUrl || null,
           }}
+          internships={internships}
+          certifications={certifications}
         />
       ).toBlob();
       const url = URL.createObjectURL(blob);
@@ -145,7 +229,7 @@ export default function Resume() {
     }
   };
 
-  if (isLoading || extrasLoading) {
+  if (isLoading || extrasLoading || internshipsLoading || certificationsLoading) {
     return (
       <Layout>
         <div className="space-y-6">
@@ -256,15 +340,27 @@ export default function Resume() {
                     <Input value={resumeData.personal.address || 'Not provided'} disabled />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1">
-                    <Linkedin className="h-4 w-4" /> LinkedIn URL
-                  </Label>
-                  <Input
-                    placeholder="https://linkedin.com/in/your-profile"
-                    value={linkedinUrl}
-                    onChange={(e) => setLinkedinUrl(e.target.value)}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      <Linkedin className="h-4 w-4" /> LinkedIn URL
+                    </Label>
+                    <Input
+                      placeholder="https://linkedin.com/in/your-profile"
+                      value={linkedinUrl}
+                      onChange={(e) => setLinkedinUrl(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      <Github className="h-4 w-4" /> GitHub URL
+                    </Label>
+                    <Input
+                      placeholder="https://github.com/your-username"
+                      value={githubUrl}
+                      onChange={(e) => setGithubUrl(e.target.value)}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -354,6 +450,172 @@ export default function Resume() {
                       </div>
                     ))}
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Internships */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Briefcase className="h-5 w-5" /> Internship Experience
+                </CardTitle>
+                <CardDescription>Add your internship details</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Existing internships */}
+                {internships.map((intern) => (
+                  <div key={intern.id} className="rounded-lg border p-4 relative">
+                    <button
+                      onClick={() => deleteInternship.mutate({ id: intern.id, studentId: resumeData.studentId })}
+                      className="absolute top-3 right-3 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                    <div className="font-semibold">{intern.role_title}</div>
+                    <div className="text-sm text-muted-foreground">{intern.company_name}</div>
+                    <div className="text-xs text-muted-foreground">{intern.duration}</div>
+                    {intern.responsibilities && (
+                      <p className="text-sm mt-2 text-muted-foreground">{intern.responsibilities}</p>
+                    )}
+                  </div>
+                ))}
+
+                <Separator />
+
+                {/* Add internship form */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Add New Internship</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      placeholder="Company Name *"
+                      value={internshipForm.company_name}
+                      onChange={(e) => setInternshipForm(p => ({ ...p, company_name: e.target.value }))}
+                    />
+                    <Input
+                      placeholder="Role / Title *"
+                      value={internshipForm.role_title}
+                      onChange={(e) => setInternshipForm(p => ({ ...p, role_title: e.target.value }))}
+                    />
+                  </div>
+                  <Input
+                    placeholder="Duration (e.g., 3 months, Jun-Aug 2025) *"
+                    value={internshipForm.duration}
+                    onChange={(e) => setInternshipForm(p => ({ ...p, duration: e.target.value }))}
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Start Date</Label>
+                      <Input
+                        type="date"
+                        value={internshipForm.start_date}
+                        onChange={(e) => setInternshipForm(p => ({ ...p, start_date: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">End Date</Label>
+                      <Input
+                        type="date"
+                        value={internshipForm.end_date}
+                        onChange={(e) => setInternshipForm(p => ({ ...p, end_date: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <Textarea
+                    placeholder="Roles & Responsibilities..."
+                    value={internshipForm.responsibilities}
+                    onChange={(e) => setInternshipForm(p => ({ ...p, responsibilities: e.target.value }))}
+                    rows={3}
+                  />
+                  <Button onClick={handleAddInternship} disabled={addInternship.isPending} size="sm">
+                    {addInternship.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                    Add Internship
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Achievements / Certifications */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Award className="h-5 w-5" /> Achievements & Certifications
+                </CardTitle>
+                <CardDescription>Add your certifications, awards, and other achievements</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Existing certifications */}
+                {certifications.map((cert) => (
+                  <div key={cert.id} className="rounded-lg border p-4 relative">
+                    <button
+                      onClick={() => deleteCertification.mutate({ id: cert.id, studentId: resumeData.studentId })}
+                      className="absolute top-3 right-3 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                    <div className="font-semibold">{cert.certification_name}</div>
+                    {cert.issuing_organization && (
+                      <div className="text-sm text-muted-foreground">{cert.issuing_organization}</div>
+                    )}
+                    <div className="text-xs text-muted-foreground">
+                      {cert.issue_date && `Issued: ${format(new Date(cert.issue_date), 'MMM yyyy')}`}
+                      {cert.expiry_date && ` • Expires: ${format(new Date(cert.expiry_date), 'MMM yyyy')}`}
+                    </div>
+                    {cert.credential_id && (
+                      <div className="text-xs text-muted-foreground">ID: {cert.credential_id}</div>
+                    )}
+                  </div>
+                ))}
+
+                <Separator />
+
+                {/* Add certification form */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Add New Certification / Achievement</Label>
+                  <Input
+                    placeholder="Certification / Achievement Name *"
+                    value={certificationForm.certification_name}
+                    onChange={(e) => setCertificationForm(p => ({ ...p, certification_name: e.target.value }))}
+                  />
+                  <Input
+                    placeholder="Issuing Organization"
+                    value={certificationForm.issuing_organization}
+                    onChange={(e) => setCertificationForm(p => ({ ...p, issuing_organization: e.target.value }))}
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Issue Date</Label>
+                      <Input
+                        type="date"
+                        value={certificationForm.issue_date}
+                        onChange={(e) => setCertificationForm(p => ({ ...p, issue_date: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Expiry Date</Label>
+                      <Input
+                        type="date"
+                        value={certificationForm.expiry_date}
+                        onChange={(e) => setCertificationForm(p => ({ ...p, expiry_date: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      placeholder="Credential ID"
+                      value={certificationForm.credential_id}
+                      onChange={(e) => setCertificationForm(p => ({ ...p, credential_id: e.target.value }))}
+                    />
+                    <Input
+                      placeholder="Credential URL"
+                      value={certificationForm.credential_url}
+                      onChange={(e) => setCertificationForm(p => ({ ...p, credential_url: e.target.value }))}
+                    />
+                  </div>
+                  <Button onClick={handleAddCertification} disabled={addCertification.isPending} size="sm">
+                    {addCertification.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                    Add Certification
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -516,6 +778,9 @@ export default function Resume() {
                     {linkedinUrl && (
                       <p className="text-xs text-blue-600 truncate">{linkedinUrl}</p>
                     )}
+                    {githubUrl && (
+                      <p className="text-xs text-gray-700 truncate">{githubUrl}</p>
+                    )}
                   </div>
                   <div className="space-y-3 text-sm">
                     {aboutMe && (
@@ -541,6 +806,33 @@ export default function Resume() {
                         {allSkills.length > 0 ? allSkills.join(', ') : 'No skills added yet'}
                       </div>
                     </div>
+                    {internships.length > 0 && (
+                      <div>
+                        <h3 className="font-bold text-meta-dark mb-1">INTERNSHIPS</h3>
+                        {internships.slice(0, 2).map((intern) => (
+                          <div key={intern.id} className="text-xs text-gray-700 mb-1">
+                            <div className="font-semibold">{intern.role_title} at {intern.company_name}</div>
+                            <div>{intern.duration}</div>
+                          </div>
+                        ))}
+                        {internships.length > 2 && (
+                          <div className="text-xs text-gray-500">+{internships.length - 2} more</div>
+                        )}
+                      </div>
+                    )}
+                    {certifications.length > 0 && (
+                      <div>
+                        <h3 className="font-bold text-meta-dark mb-1">CERTIFICATIONS</h3>
+                        {certifications.slice(0, 2).map((cert) => (
+                          <div key={cert.id} className="text-xs text-gray-700 mb-1">
+                            {cert.certification_name}
+                          </div>
+                        ))}
+                        {certifications.length > 2 && (
+                          <div className="text-xs text-gray-500">+{certifications.length - 2} more</div>
+                        )}
+                      </div>
+                    )}
                     {hobbies.length > 0 && (
                       <div>
                         <h3 className="font-bold text-meta-dark mb-1">HOBBIES</h3>
