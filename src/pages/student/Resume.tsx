@@ -34,11 +34,14 @@ export default function Resume() {
   const { data: extras, isLoading: extrasLoading } = useStudentResumeExtras(resumeData?.studentId || null);
   const { data: internships = [], isLoading: internshipsLoading } = useStudentInternships(resumeData?.studentId || null);
   const { data: certifications = [], isLoading: certificationsLoading } = useStudentCertifications(resumeData?.studentId || null);
+  const { data: educations = [], isLoading: educationsLoading } = useStudentEducations(resumeData?.studentId || null);
   const updateExtras = useUpdateResumeExtras();
   const addInternship = useAddInternship();
   const deleteInternship = useDeleteInternship();
   const addCertification = useAddCertification();
   const deleteCertification = useDeleteCertification();
+  const addEducation = useAddEducation();
+  const deleteEducation = useDeleteEducation();
 
   const [customSkills, setCustomSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState('');
