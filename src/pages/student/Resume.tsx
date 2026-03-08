@@ -916,12 +916,22 @@ export default function Resume() {
                       <h3 className="font-bold text-meta-dark mb-1">EDUCATION</h3>
                       <div className="text-xs text-gray-700">
                         <div className="font-semibold">{resumeData.education.institution}</div>
-                        <div>
-                          {resumeData.education.className}
-                          {resumeData.education.section && ` - ${resumeData.education.section}`}
-                          {resumeData.education.academicYear && ` • ${resumeData.education.academicYear}`}
-                        </div>
+                        {resumeData.skills.length > 0 && (
+                          <div>Courses: {resumeData.skills.join(', ')}</div>
+                        )}
+                        {resumeData.education.academicYear && (
+                          <div>{resumeData.education.academicYear}</div>
+                        )}
                       </div>
+                      {educations.slice(0, 2).map((edu) => (
+                        <div key={edu.id} className="text-xs text-gray-700 mt-1">
+                          <div className="font-semibold">{edu.institution_name}</div>
+                          <div>{edu.degree_or_course}{edu.field_of_study && ` in ${edu.field_of_study}`}</div>
+                        </div>
+                      ))}
+                      {educations.length > 2 && (
+                        <div className="text-xs text-gray-500">+{educations.length - 2} more</div>
+                      )}
                     </div>
                     <div>
                       <h3 className="font-bold text-meta-dark mb-1">SKILLS</h3>
