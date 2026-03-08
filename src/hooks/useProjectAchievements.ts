@@ -25,7 +25,7 @@ export interface UpdateAchievementInput {
 }
 
 // Helper function to award XP to project members when an achievement is added
-async function awardProjectAwardXPToMembers(projectId: string, achievementTitle: string) {
+async function awardProjectAwardXPToMembers(projectId: string, achievementTitle: string, achievementId?: string) {
   try {
     const { data: project } = await supabase
       .from('projects')
