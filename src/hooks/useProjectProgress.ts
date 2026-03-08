@@ -33,11 +33,27 @@ export function useAddProgressUpdate() {
       
       if (error) throw error;
       
-      // Also update the project's progress if provided
+      // Also update the project's progress and auto-sync status
       if (input.progress_percentage !== undefined) {
+        const newStatus = input.progress_percentage === 100
+          ? 'completed'
+          : input.progress_percentage > 0
+            ? 'ongoing'
+            : 'yet_to_start';
+        
+        const updatePayload: Record<string, unknown> = {
+          progress: input.progress_percentage,
+          status: newStatus,
+        };
+        
+        // Auto-set actual_completion_date when completed
+        if (newStatus === 'completed') {
+          updatePayload.actual_completion_date = new Date().toISOString().split('T')[0];
+        }
+
         const { error: updateError } = await supabase
           .from('projects')
-          .update({ progress: input.progress_percentage })
+          .update(updatePayload)
           .eq('id', input.project_id);
         
         if (updateError) {
