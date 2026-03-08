@@ -43,6 +43,7 @@ export function useStudentResumeExtras(studentId: string | null) {
         hobbies: (data as any).hobbies || [],
         sports_achievements: (data as any).sports_achievements || [],
         linkedin_url: (data as any).linkedin_url,
+        github_url: (data as any).github_url,
       };
     },
     enabled: !!studentId && !!user?.id,
