@@ -1207,7 +1207,7 @@ export const gamificationDbService = {
           .in('project_id', projectIds);
         
         for (const ach of (achievements || [])) {
-          await this.awardXPDirect(studentAuthId, instId, 'project_award', `${ach.project_id}_${ach.title}`, XP_VALUES.project_award, `Project award: ${ach.title}`);
+          await this.awardXPDirect(studentAuthId, instId, 'project_award', ach.id, XP_VALUES.project_award, `Project award: ${ach.title}`);
           totalXP += XP_VALUES.project_award;
         }
       }
