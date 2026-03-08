@@ -258,7 +258,7 @@ export function useOfficerDashboardStats(officerId: string | undefined, institut
         .from('projects')
         .select('*', { count: 'exact', head: true })
         .eq('institution_id', institutionId)
-        .in('status', ['in_progress', 'ongoing', 'submitted']);
+        .eq('status', 'ongoing');
 
       // Get lab equipment count
       const { count: equipmentCount } = await supabase

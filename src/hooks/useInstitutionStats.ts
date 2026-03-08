@@ -147,7 +147,7 @@ export function useInstitutionStats(institutionSlug: string | undefined) {
           // Total projects
           supabase.from('projects').select('*', { count: 'exact', head: true }).eq('institution_id', institutionId),
           // Active projects
-          supabase.from('projects').select('*', { count: 'exact', head: true }).eq('institution_id', institutionId).eq('status', 'active'),
+          supabase.from('projects').select('*', { count: 'exact', head: true }).eq('institution_id', institutionId).eq('status', 'ongoing'),
           // Total unique courses assigned to classes in this institution
           supabase.from('course_class_assignments').select('course_id').eq('institution_id', institutionId),
           // Officers assigned to this institution

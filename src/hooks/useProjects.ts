@@ -231,6 +231,9 @@ export function useCreateProject() {
   
   return useMutation({
     mutationFn: async (input: CreateProjectInput) => {
+      const status = input.status || 'yet_to_start';
+      const progress = status === 'completed' ? 100 : status === 'ongoing' ? 1 : 0;
+      
       const { data, error } = await supabase
         .from('projects')
         .insert({
@@ -238,7 +241,8 @@ export function useCreateProject() {
           title: input.title,
           description: input.description || null,
           category: input.category,
-          status: input.status || 'yet_to_start',
+          status,
+          progress,
           sdg_goals: input.sdg_goals || [],
           remarks: input.remarks || null,
           start_date: input.start_date || null,
@@ -250,6 +254,20 @@ export function useCreateProject() {
         .single();
       
       if (error) throw error;
+
+      // Auto-insert initial progress remark for ongoing/completed
+      if (status === 'ongoing' || status === 'completed') {
+        const remark = status === 'completed' ? 'Completed' : 'Started';
+        await supabase.from('project_progress_updates').insert({
+          project_id: data.id,
+          notes: remark,
+          progress_percentage: progress,
+          updated_by_officer_id: input.created_by_officer_id,
+          updated_by_officer_name: input.created_by_officer_name,
+          attachment_urls: [],
+        });
+      }
+
       return data;
     },
     onSuccess: (_, variables) => {
