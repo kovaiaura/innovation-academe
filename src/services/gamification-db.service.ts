@@ -935,8 +935,9 @@ export const gamificationDbService = {
     await this.awardXP({ studentId, institutionId, activityType: 'project_membership', activityId: projectId, points: XP_VALUES.project_membership, description: 'Joined project team' });
   },
 
-  async awardProjectAwardXP(studentId: string, institutionId: string, projectId: string, awardName: string): Promise<void> {
-    await this.awardXP({ studentId, institutionId, activityType: 'project_award', activityId: `${projectId}_${awardName}`, points: XP_VALUES.project_award, description: `Project award: ${awardName}` });
+  async awardProjectAwardXP(studentId: string, institutionId: string, projectId: string, awardName: string, achievementId?: string): Promise<void> {
+    const activityId = achievementId || `${projectId}_${awardName}`;
+    await this.awardXP({ studentId, institutionId, activityType: 'project_award', activityId, points: XP_VALUES.project_award, description: `Project award: ${awardName}` });
   },
 
   // ============ CERTIFICATE AUTO-ISSUANCE ============
