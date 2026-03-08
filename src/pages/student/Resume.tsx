@@ -159,6 +159,8 @@ export default function Resume() {
       sports_achievements: sportsAchievements,
       linkedin_url: linkedinUrl || null,
       github_url: githubUrl || null,
+      institution_course: institutionCourse || null,
+      institution_passed_year: institutionPassedYear || null,
     });
   };
 
