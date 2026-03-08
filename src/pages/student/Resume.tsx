@@ -269,7 +269,7 @@ export default function Resume() {
     }
   };
 
-  if (isLoading || extrasLoading || internshipsLoading || certificationsLoading) {
+  if (isLoading || extrasLoading || internshipsLoading || certificationsLoading || educationsLoading) {
     return (
       <Layout>
         <div className="space-y-6">
