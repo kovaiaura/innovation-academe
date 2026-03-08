@@ -1273,7 +1273,7 @@ export const gamificationDbService = {
       totalBadges += (badgeCount || 0);
     }
 
-    log(`Done! Processed ${allStudents.length} students, ${totalXP} total XP, ${totalBadges} badges awarded.`);
+    log(`Done! Processed ${allStudents.length} students, ${totalXP} total XP, ${totalBadges} badges awarded.`, { step: 'done', current: allStudents.length, total: allStudents.length });
     return { studentsProcessed: allStudents.length, totalXP, badgesAwarded: totalBadges };
   },
 

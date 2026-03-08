@@ -91,7 +91,7 @@ export function useAddProjectAchievement() {
       if (error) throw error;
       
       // Award XP to team members for ALL achievement types (award, participation, achievement)
-      await awardProjectAwardXPToMembers(input.project_id, input.title);
+      await awardProjectAwardXPToMembers(input.project_id, input.title, data.id);
       
       return data;
     },
