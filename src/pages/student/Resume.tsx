@@ -97,6 +97,8 @@ export default function Resume() {
       setSportsAchievements(extras.sports_achievements || []);
       setLinkedinUrl(extras.linkedin_url || '');
       setGithubUrl(extras.github_url || '');
+      setInstitutionCourse(extras.institution_course || '');
+      setInstitutionPassedYear(extras.institution_passed_year || '');
     }
   }, [extras]);
 
