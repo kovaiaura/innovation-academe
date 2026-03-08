@@ -479,6 +479,68 @@ export default function GamificationManagement() {
           open={performanceModalOpen}
           onOpenChange={setPerformanceModalOpen}
         />
+
+        {/* Recalculation Progress Dialog */}
+        <Dialog open={recalcProgressDialogOpen} onOpenChange={(open) => !isRecalculating && setRecalcProgressDialogOpen(open)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {recalcResult ? (
+                  <><CheckCircle className="h-5 w-5 text-green-500" /> Recalculation Complete</>
+                ) : (
+                  <><Loader2 className="h-5 w-5 animate-spin text-primary" /> Recalculating...</>
+                )}
+              </DialogTitle>
+              <DialogDescription>
+                {recalcResult 
+                  ? 'XP and badges have been recalculated from source records.'
+                  : 'Please wait while we process all students.'}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              {/* Progress bar */}
+              {recalcProgress && !recalcResult && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{recalcProgress.step === 'processing' ? 'Processing students...' : recalcProgress.step}</span>
+                    <span className="font-medium">{recalcProgress.current} / {recalcProgress.total}</span>
+                  </div>
+                  <Progress value={recalcProgress.total > 0 ? (recalcProgress.current / recalcProgress.total) * 100 : 0} className="h-2" />
+                </div>
+              )}
+              
+              {/* Status text */}
+              {recalculateStatus && !recalcResult && (
+                <p className="text-sm text-muted-foreground">{recalculateStatus}</p>
+              )}
+              
+              {/* Result summary */}
+              {recalcResult && (
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center p-3 rounded-lg bg-muted/50">
+                    <div className="text-2xl font-bold text-primary">{recalcResult.studentsProcessed.toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground">Students</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-muted/50">
+                    <div className="text-2xl font-bold text-primary">{recalcResult.totalXP.toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground">Total XP</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-muted/50">
+                    <div className="text-2xl font-bold text-primary">{recalcResult.badgesAwarded.toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground">Badges</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {recalcResult && (
+              <DialogFooter>
+                <Button onClick={() => setRecalcProgressDialogOpen(false)}>Close</Button>
+              </DialogFooter>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
