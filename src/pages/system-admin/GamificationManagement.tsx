@@ -5,8 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { 
-  Trophy, Award, TrendingUp, BarChart3, Loader2, Users, RefreshCw, Sparkles, FileText, Building2
+  Trophy, Award, TrendingUp, BarChart3, Loader2, Users, RefreshCw, Sparkles, FileText, Building2, CheckCircle
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { StudentPerformanceTable } from "@/components/gamification/StudentPerformanceTable";
@@ -56,6 +58,9 @@ export default function GamificationManagement() {
   const [institutionFilter, setInstitutionFilter] = useState<string>("all");
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [recalculateStatus, setRecalculateStatus] = useState('');
+  const [recalcProgressDialogOpen, setRecalcProgressDialogOpen] = useState(false);
+  const [recalcProgress, setRecalcProgress] = useState<{ step: string; current: number; total: number; message: string } | null>(null);
+  const [recalcResult, setRecalcResult] = useState<{ studentsProcessed: number; totalXP: number; badgesAwarded: number } | null>(null);
   const [badgeEarnedCounts, setBadgeEarnedCounts] = useState<Record<string, number>>({});
   const [xpBreakdown, setXpBreakdown] = useState<{ name: string; value: number }[]>([]);
   const [totalBadgesEarned, setTotalBadgesEarned] = useState(0);
@@ -135,17 +140,34 @@ export default function GamificationManagement() {
     const instName = isInstitution ? allInstitutions.find(i => i.id === recalcInstitution)?.name : 'ALL';
     
     if (!confirm(`This will reset ${isInstitution ? `"${instName}"` : 'ALL'} student XP, badges, and streaks, then recalculate from scratch. Continue?`)) return;
+    
     setIsRecalculating(true);
     setRecalculateStatus('Starting...');
+    setRecalcProgressDialogOpen(true);
+    setRecalcProgress(null);
+    setRecalcResult(null);
+    
+    const progressCallback = (msg: string | { step: string; current: number; total: number; message: string }) => {
+      if (typeof msg === 'string') {
+        setRecalculateStatus(msg);
+      } else {
+        setRecalcProgress(msg);
+        setRecalculateStatus(msg.message);
+      }
+    };
+    
     try {
       const result = isInstitution
-        ? await gamificationDbService.recalculateForInstitution(recalcInstitution, (msg) => setRecalculateStatus(msg))
-        : await gamificationDbService.recalculateAllXPAndBadges((msg) => setRecalculateStatus(msg));
+        ? await gamificationDbService.recalculateForInstitution(recalcInstitution, progressCallback)
+        : await gamificationDbService.recalculateAllXPAndBadges(progressCallback);
+      
+      setRecalcResult(result);
       toast.success(`Done! ${result.studentsProcessed} students, ${result.totalXP} XP, ${result.badgesAwarded} badges`);
       await loadData();
     } catch (error) {
       console.error('Recalculate error:', error);
       toast.error('Recalculation failed');
+      setRecalcProgressDialogOpen(false);
     } finally {
       setIsRecalculating(false);
       setRecalculateStatus('');
@@ -457,6 +479,68 @@ export default function GamificationManagement() {
           open={performanceModalOpen}
           onOpenChange={setPerformanceModalOpen}
         />
+
+        {/* Recalculation Progress Dialog */}
+        <Dialog open={recalcProgressDialogOpen} onOpenChange={(open) => !isRecalculating && setRecalcProgressDialogOpen(open)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {recalcResult ? (
+                  <><CheckCircle className="h-5 w-5 text-green-500" /> Recalculation Complete</>
+                ) : (
+                  <><Loader2 className="h-5 w-5 animate-spin text-primary" /> Recalculating...</>
+                )}
+              </DialogTitle>
+              <DialogDescription>
+                {recalcResult 
+                  ? 'XP and badges have been recalculated from source records.'
+                  : 'Please wait while we process all students.'}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              {/* Progress bar */}
+              {recalcProgress && !recalcResult && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{recalcProgress.step === 'processing' ? 'Processing students...' : recalcProgress.step}</span>
+                    <span className="font-medium">{recalcProgress.current} / {recalcProgress.total}</span>
+                  </div>
+                  <Progress value={recalcProgress.total > 0 ? (recalcProgress.current / recalcProgress.total) * 100 : 0} className="h-2" />
+                </div>
+              )}
+              
+              {/* Status text */}
+              {recalculateStatus && !recalcResult && (
+                <p className="text-sm text-muted-foreground">{recalculateStatus}</p>
+              )}
+              
+              {/* Result summary */}
+              {recalcResult && (
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center p-3 rounded-lg bg-muted/50">
+                    <div className="text-2xl font-bold text-primary">{recalcResult.studentsProcessed.toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground">Students</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-muted/50">
+                    <div className="text-2xl font-bold text-primary">{recalcResult.totalXP.toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground">Total XP</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-muted/50">
+                    <div className="text-2xl font-bold text-primary">{recalcResult.badgesAwarded.toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground">Badges</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {recalcResult && (
+              <DialogFooter>
+                <Button onClick={() => setRecalcProgressDialogOpen(false)}>Close</Button>
+              </DialogFooter>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

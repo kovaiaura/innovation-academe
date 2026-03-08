@@ -25,7 +25,7 @@ export interface UpdateAchievementInput {
 }
 
 // Helper function to award XP to project members when an achievement is added
-async function awardProjectAwardXPToMembers(projectId: string, achievementTitle: string) {
+async function awardProjectAwardXPToMembers(projectId: string, achievementTitle: string, achievementId?: string) {
   try {
     const { data: project } = await supabase
       .from('projects')
@@ -56,7 +56,8 @@ async function awardProjectAwardXPToMembers(projectId: string, achievementTitle:
         authUserId,
         project.institution_id,
         projectId,
-        achievementTitle
+        achievementTitle,
+        achievementId
       );
     }
     
@@ -90,7 +91,7 @@ export function useAddProjectAchievement() {
       if (error) throw error;
       
       // Award XP to team members for ALL achievement types (award, participation, achievement)
-      await awardProjectAwardXPToMembers(input.project_id, input.title);
+      await awardProjectAwardXPToMembers(input.project_id, input.title, data.id);
       
       return data;
     },

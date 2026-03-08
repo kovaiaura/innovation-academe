@@ -935,8 +935,9 @@ export const gamificationDbService = {
     await this.awardXP({ studentId, institutionId, activityType: 'project_membership', activityId: projectId, points: XP_VALUES.project_membership, description: 'Joined project team' });
   },
 
-  async awardProjectAwardXP(studentId: string, institutionId: string, projectId: string, awardName: string): Promise<void> {
-    await this.awardXP({ studentId, institutionId, activityType: 'project_award', activityId: `${projectId}_${awardName}`, points: XP_VALUES.project_award, description: `Project award: ${awardName}` });
+  async awardProjectAwardXP(studentId: string, institutionId: string, projectId: string, awardName: string, achievementId?: string): Promise<void> {
+    const activityId = achievementId || `${projectId}_${awardName}`;
+    await this.awardXP({ studentId, institutionId, activityType: 'project_award', activityId, points: XP_VALUES.project_award, description: `Project award: ${awardName}` });
   },
 
   // ============ CERTIFICATE AUTO-ISSUANCE ============
@@ -1115,10 +1116,14 @@ export const gamificationDbService = {
     return this._recalculate(onProgress, institutionId);
   },
 
-  async _recalculate(onProgress?: (msg: string) => void, institutionId?: string): Promise<{ studentsProcessed: number; totalXP: number; badgesAwarded: number }> {
-    const log = (msg: string) => {
+  async _recalculate(onProgress?: (msg: string | { step: string; current: number; total: number; message: string }) => void, institutionId?: string): Promise<{ studentsProcessed: number; totalXP: number; badgesAwarded: number }> {
+    const log = (msg: string, progress?: { step: string; current: number; total: number }) => {
       console.log('[Recalculate]', msg);
-      onProgress?.(msg);
+      if (progress) {
+        onProgress?.({ step: progress.step, current: progress.current, total: progress.total, message: msg });
+      } else {
+        onProgress?.(msg);
+      }
     };
 
     const scope = institutionId ? 'institution' : 'all';
@@ -1169,7 +1174,7 @@ export const gamificationDbService = {
       return { studentsProcessed: 0, totalXP: 0, badgesAwarded: 0 };
     }
 
-    log(`Found ${allStudents.length} students to process...`);
+    log(`Found ${allStudents.length} students to process...`, { step: 'fetch', current: 0, total: allStudents.length });
 
     let totalXP = 0;
     let totalBadges = 0;
@@ -1179,7 +1184,7 @@ export const gamificationDbService = {
       if (!student.user_id || !student.institution_id) continue;
       
       if (i % 50 === 0 || i === allStudents.length - 1) {
-        log(`Processing student ${i + 1}/${allStudents.length}...`);
+        log(`Processing student ${i + 1}/${allStudents.length}...`, { step: 'processing', current: i + 1, total: allStudents.length });
       }
       
       const studentAuthId = student.user_id;
@@ -1206,7 +1211,7 @@ export const gamificationDbService = {
           .in('project_id', projectIds);
         
         for (const ach of (achievements || [])) {
-          await this.awardXPDirect(studentAuthId, instId, 'project_award', `${ach.project_id}_${ach.title}`, XP_VALUES.project_award, `Project award: ${ach.title}`);
+          await this.awardXPDirect(studentAuthId, instId, 'project_award', ach.id, XP_VALUES.project_award, `Project award: ${ach.title}`);
           totalXP += XP_VALUES.project_award;
         }
       }
@@ -1268,22 +1273,22 @@ export const gamificationDbService = {
       totalBadges += (badgeCount || 0);
     }
 
-    log(`Done! Processed ${allStudents.length} students, ${totalXP} total XP, ${totalBadges} badges awarded.`);
+    log(`Done! Processed ${allStudents.length} students, ${totalXP} total XP, ${totalBadges} badges awarded.`, { step: 'done', current: allStudents.length, total: allStudents.length });
     return { studentsProcessed: allStudents.length, totalXP, badgesAwarded: totalBadges };
   },
 
-  // Direct XP insert without duplicate check (for recalculation)
+  // Direct XP upsert (for recalculation) — uses upsert to handle duplicates gracefully
   async awardXPDirect(studentId: string, institutionId: string, activityType: string, activityId: string, points: number, description: string): Promise<void> {
     const { error } = await supabase
       .from('student_xp_transactions')
-      .insert({
+      .upsert({
         student_id: studentId,
         institution_id: institutionId,
         activity_type: activityType,
         activity_id: activityId,
         points_earned: points,
         description
-      });
+      }, { onConflict: 'student_id,activity_type,activity_id' });
     
     if (error) {
       console.error('Error awarding XP:', error);
