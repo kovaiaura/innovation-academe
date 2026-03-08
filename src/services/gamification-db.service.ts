@@ -80,7 +80,7 @@ async function fetchAllRows<T>(tableName: string, selectQuery: string, filters?:
   let hasMore = true;
 
   while (hasMore) {
-    let query = supabase.from(tableName).select(selectQuery).range(from, from + PAGE_SIZE - 1);
+    let query = (supabase.from(tableName) as any).select(selectQuery).range(from, from + PAGE_SIZE - 1);
     if (filters) {
       for (const f of filters) {
         query = query.eq(f.column, f.value);
