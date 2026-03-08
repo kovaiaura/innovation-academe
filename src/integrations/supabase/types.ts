@@ -6724,6 +6724,59 @@ export type Database = {
           },
         ]
       }
+      student_educations: {
+        Row: {
+          created_at: string
+          degree_or_course: string
+          description: string | null
+          end_year: string | null
+          field_of_study: string | null
+          grade_or_percentage: string | null
+          id: string
+          institution_name: string
+          start_year: string | null
+          student_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          degree_or_course: string
+          description?: string | null
+          end_year?: string | null
+          field_of_study?: string | null
+          grade_or_percentage?: string | null
+          id?: string
+          institution_name: string
+          start_year?: string | null
+          student_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          degree_or_course?: string
+          description?: string | null
+          end_year?: string | null
+          field_of_study?: string | null
+          grade_or_percentage?: string | null
+          id?: string
+          institution_name?: string
+          start_year?: string | null
+          student_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_educations_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_feedback: {
         Row: {
           admin_response: string | null
