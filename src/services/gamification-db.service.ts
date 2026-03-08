@@ -72,15 +72,16 @@ const BADGE_DEFINITIONS = [
   { name: '20 Assignments', category: 'assignment', icon: '📄', type: 'assignments' as const, threshold: 20, description: 'Completed 20 assignments' },
 ];
 
-// Helper: paginated fetch for any table
-async function fetchAllRows<T>(tableName: string, selectQuery: string, filters?: { column: string; value: any }[]): Promise<T[]> {
+async function fetchAllRows<T = any>(tableName: string, selectQuery: string, filters?: { column: string; value: any }[]): Promise<T[]> {
   const PAGE_SIZE = 1000;
-  let allRows: T[] = [];
+  const allRows: any[] = [];
   let from = 0;
   let hasMore = true;
 
   while (hasMore) {
-    let query = (supabase.from(tableName) as any).select(selectQuery).range(from, from + PAGE_SIZE - 1);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const builder = (supabase as any).from(tableName).select(selectQuery).range(from, from + PAGE_SIZE - 1);
+    let query = builder;
     if (filters) {
       for (const f of filters) {
         query = query.eq(f.column, f.value);
@@ -91,7 +92,7 @@ async function fetchAllRows<T>(tableName: string, selectQuery: string, filters?:
     if (!data || data.length === 0) {
       hasMore = false;
     } else {
-      allRows = allRows.concat(data as T[]);
+      allRows.push(...data);
       if (data.length < PAGE_SIZE) {
         hasMore = false;
       } else {
@@ -99,7 +100,7 @@ async function fetchAllRows<T>(tableName: string, selectQuery: string, filters?:
       }
     }
   }
-  return allRows;
+  return allRows as T[];
 }
 
 export const gamificationDbService = {
