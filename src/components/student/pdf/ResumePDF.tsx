@@ -342,15 +342,20 @@ export function ResumePDF({ data, customSkills = [], extras, internships = [], c
           <View style={styles.educationRow}>
             <View>
               <Text style={styles.institutionName}>{data.education.institution}</Text>
+              {extras?.institution_course && (
+                <Text style={styles.classInfo}>{extras.institution_course}</Text>
+              )}
               {data.skills.length > 0 && (
                 <Text style={styles.classInfo}>
                   Courses: {data.skills.join(', ')}
                 </Text>
               )}
             </View>
-            {data.education.academicYear && (
+            {extras?.institution_passed_year ? (
+              <Text style={styles.academicYear}>{extras.institution_passed_year}</Text>
+            ) : data.education.academicYear ? (
               <Text style={styles.academicYear}>{data.education.academicYear}</Text>
-            )}
+            ) : null}
           </View>
           {/* Additional education entries */}
           {educations.map((edu) => (

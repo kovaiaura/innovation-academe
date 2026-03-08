@@ -937,11 +937,10 @@ export default function Resume() {
                       <h3 className="font-bold text-meta-dark mb-1">EDUCATION</h3>
                       <div className="text-xs text-gray-700">
                         <div className="font-semibold">{resumeData.education.institution}</div>
+                        {institutionCourse && <div>{institutionCourse}</div>}
+                        {institutionPassedYear && <div>{institutionPassedYear}</div>}
                         {resumeData.skills.length > 0 && (
                           <div>Courses: {resumeData.skills.join(', ')}</div>
-                        )}
-                        {resumeData.education.academicYear && (
-                          <div>{resumeData.education.academicYear}</div>
                         )}
                       </div>
                       {educations.slice(0, 2).map((edu) => (
