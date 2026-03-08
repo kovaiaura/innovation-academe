@@ -6946,6 +6946,8 @@ export type Database = {
           github_url: string | null
           hobbies: string[] | null
           id: string
+          institution_course: string | null
+          institution_passed_year: string | null
           linkedin_url: string | null
           sports_achievements: string[] | null
           student_id: string
@@ -6958,6 +6960,8 @@ export type Database = {
           github_url?: string | null
           hobbies?: string[] | null
           id?: string
+          institution_course?: string | null
+          institution_passed_year?: string | null
           linkedin_url?: string | null
           sports_achievements?: string[] | null
           student_id: string
@@ -6970,6 +6974,8 @@ export type Database = {
           github_url?: string | null
           hobbies?: string[] | null
           id?: string
+          institution_course?: string | null
+          institution_passed_year?: string | null
           linkedin_url?: string | null
           sports_achievements?: string[] | null
           student_id?: string
