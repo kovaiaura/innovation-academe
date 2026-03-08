@@ -76,6 +76,17 @@ export default function Resume() {
     credential_url: '',
   });
 
+  // Education form state
+  const [educationForm, setEducationForm] = useState({
+    institution_name: '',
+    degree_or_course: '',
+    field_of_study: '',
+    start_year: '',
+    end_year: '',
+    grade_or_percentage: '',
+    description: '',
+  });
+
   // Sync extras data when loaded
   useEffect(() => {
     if (extras) {
