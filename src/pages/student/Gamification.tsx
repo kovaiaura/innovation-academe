@@ -4,11 +4,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trophy, Award, TrendingUp, Flame, Medal, Lock, Loader2 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Trophy, Award, TrendingUp, Flame, Medal, Lock, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { gamificationDbService } from '@/services/gamification-db.service';
 import { useStudentStreak } from '@/hooks/useStudentStreak';
+
+interface XPTransaction {
+  activity_type: string;
+  activity_id: string | null;
+  points_earned: number;
+  description: string;
+  earned_at: string;
+}
 
 interface GamificationData {
   total_points: number;
@@ -37,6 +46,7 @@ interface GamificationData {
     assignments: number;
     daily_login: number;
   };
+  xp_details: XPTransaction[];
 }
 
 interface LeaderboardEntry {
@@ -48,14 +58,42 @@ interface LeaderboardEntry {
   class_name?: string;
 }
 
+const CATEGORY_MAP: Record<string, string> = {
+  'project_membership': 'projects',
+  'project_completion': 'projects',
+  'project_award': 'achievements',
+  'assessment_completion': 'assessments',
+  'assessment_perfect_score': 'assessments',
+  'assignment_submission': 'assignments',
+  'assignment_perfect_score': 'assignments',
+  'assignment_pass': 'assignments',
+  'daily_streak': 'daily_login',
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  projects: 'Projects',
+  achievements: 'Achievements / Awards',
+  assessments: 'Assessments',
+  assignments: 'Assignments',
+  daily_login: 'Daily Login',
+};
+
+const CATEGORY_ICONS: Record<string, string> = {
+  projects: '🎯',
+  achievements: '🏆',
+  assessments: '📝',
+  assignments: '📄',
+  daily_login: '🔥',
+};
+
 export default function Gamification() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<GamificationData | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardScope, setLeaderboardScope] = useState<'class' | 'institution'>('class');
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   
-  // Use realtime streak hook
   const { streak: realtimeStreak } = useStudentStreak(user?.id, user?.institution_id);
 
   useEffect(() => {
@@ -64,13 +102,21 @@ export default function Gamification() {
     }
   }, [user?.id, leaderboardScope]);
 
+  const toggleCategory = (cat: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
+  };
+
   const loadGamificationData = async () => {
     if (!user?.id) return;
     
     try {
       setLoading(true);
       
-      // Get student profile
       const { data: profile } = await supabase
         .from('profiles')
         .select('id, institution_id, class_id')
@@ -81,7 +127,6 @@ export default function Gamification() {
       const institutionId = profile?.institution_id;
       const classId = profile?.class_id;
       
-      // Fetch all data in parallel
       const [
         totalXP,
         xpBreakdown,
@@ -89,7 +134,7 @@ export default function Gamification() {
         streak,
         allBadges,
         leaderboardData,
-        xpTransactionsResult
+        xpDetails
       ] = await Promise.all([
         gamificationDbService.getStudentTotalXP(studentId),
         gamificationDbService.getStudentXPBreakdown(studentId),
@@ -99,29 +144,13 @@ export default function Gamification() {
         leaderboardScope === 'class' && classId
           ? gamificationDbService.getClassLeaderboard(institutionId!, classId, 20)
           : gamificationDbService.getInstitutionLeaderboard(institutionId!, 20),
-        supabase.from('student_xp_transactions').select('activity_type, activity_id').eq('student_id', studentId)
+        gamificationDbService.getStudentXPDetails(studentId)
       ]);
       
-      // Build activity counts
-      const activityCounts: Record<string, number> = {};
-      const uniqueActivities: Record<string, Set<string>> = {};
-      xpTransactionsResult.data?.forEach(t => {
-        activityCounts[t.activity_type] = (activityCounts[t.activity_type] || 0) + 1;
-        if (!uniqueActivities[t.activity_type]) {
-          uniqueActivities[t.activity_type] = new Set();
-        }
-        if (t.activity_id) {
-          uniqueActivities[t.activity_type].add(t.activity_id);
-        }
-      });
-      
-      // Calculate rank
       const myRank = leaderboardData.findIndex(s => s.student_id === studentId) + 1 || leaderboardData.length + 1;
       
-      // Process earned badges
       const earnedBadgeIds = new Set(studentBadges.map(b => b.badge?.id));
       
-      // Calculate locked badges with progress based on actual counts
       const counts = await gamificationDbService.getStudentActivityCounts(studentId);
       
       const lockedBadges = allBadges
@@ -132,18 +161,10 @@ export default function Gamification() {
           let current = 0;
           
           switch (criteria?.type) {
-            case 'projects':
-              current = counts.projects;
-              break;
-            case 'achievements':
-              current = counts.achievements;
-              break;
-            case 'assessments':
-              current = counts.assessments;
-              break;
-            case 'assignments':
-              current = counts.assignments;
-              break;
+            case 'projects': current = counts.projects; break;
+            case 'achievements': current = counts.achievements; break;
+            case 'assessments': current = counts.assessments; break;
+            case 'assignments': current = counts.assignments; break;
           }
           
           const progress = Math.min(100, Math.round((current / threshold) * 100));
@@ -171,10 +192,10 @@ export default function Gamification() {
           earned_at: b.earned_at
         })),
         badges_locked: lockedBadges,
-        points_breakdown: gamificationDbService.getCategorizedBreakdown(xpBreakdown)
+        points_breakdown: gamificationDbService.getCategorizedBreakdown(xpBreakdown),
+        xp_details: xpDetails
       });
       
-      // Build leaderboard
       const displayLeaderboard: LeaderboardEntry[] = leaderboardData.map((s, idx) => ({
         rank: idx + 1,
         name: s.student_id === studentId ? 'You' : s.student_name,
@@ -191,6 +212,15 @@ export default function Gamification() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Group XP details by category
+  const getDetailsByCategory = (category: string): XPTransaction[] => {
+    if (!data?.xp_details) return [];
+    return data.xp_details.filter(t => {
+      const cat = CATEGORY_MAP[t.activity_type] || 'other';
+      return cat === category;
+    });
   };
 
   if (loading) {
@@ -415,22 +445,61 @@ export default function Gamification() {
             <Card>
               <CardHeader>
                 <CardTitle>Points Breakdown</CardTitle>
-                <CardDescription>See where your points come from</CardDescription>
+                <CardDescription>See where your points come from — click a category for details</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4">
                 {data && Object.entries(data.points_breakdown).map(([category, points]) => {
                   const percentage = (points / totalBreakdown) * 100;
+                  const details = getDetailsByCategory(category);
+                  const isExpanded = expandedCategories.has(category);
+                  
                   return (
-                    <div key={category}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="capitalize font-medium">{category}</span>
-                        <span className="font-bold text-primary">{points} pts</span>
-                      </div>
-                      <Progress value={percentage} className="h-2" />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {percentage.toFixed(1)}% of total points
-                      </p>
-                    </div>
+                    <Collapsible key={category} open={isExpanded} onOpenChange={() => toggleCategory(category)}>
+                      <CollapsibleTrigger className="w-full text-left">
+                        <div className="rounded-lg border p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">{CATEGORY_ICONS[category] || '📊'}</span>
+                              <span className="font-medium">{CATEGORY_LABELS[category] || category}</span>
+                              {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                            </div>
+                            <span className="font-bold text-primary">{points} pts</span>
+                          </div>
+                          <Progress value={percentage} className="h-2" />
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-xs text-muted-foreground">
+                              {percentage.toFixed(1)}% of total points
+                            </p>
+                            {details.length > 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                {details.length} {details.length === 1 ? 'activity' : 'activities'}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        {details.length > 0 ? (
+                          <div className="ml-4 mt-2 space-y-1 border-l-2 border-primary/20 pl-4">
+                            {details.map((detail, idx) => (
+                              <div key={`${detail.activity_type}-${detail.activity_id}-${idx}`} className="flex items-center justify-between py-2 px-3 rounded bg-muted/30 text-sm">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">{detail.description || detail.activity_type}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {new Date(detail.earned_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <Badge variant="secondary" className="ml-2 shrink-0">+{detail.points_earned} XP</Badge>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="ml-4 mt-2 pl-4 text-sm text-muted-foreground py-2">
+                            No activities yet in this category
+                          </div>
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
                   );
                 })}
               </CardContent>
