@@ -72,6 +72,37 @@ const BADGE_DEFINITIONS = [
   { name: '20 Assignments', category: 'assignment', icon: '📄', type: 'assignments' as const, threshold: 20, description: 'Completed 20 assignments' },
 ];
 
+async function fetchAllRows<T = any>(tableName: string, selectQuery: string, filters?: { column: string; value: any }[]): Promise<T[]> {
+  const PAGE_SIZE = 1000;
+  const allRows: any[] = [];
+  let from = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const builder = (supabase as any).from(tableName).select(selectQuery).range(from, from + PAGE_SIZE - 1);
+    let query = builder;
+    if (filters) {
+      for (const f of filters) {
+        query = query.eq(f.column, f.value);
+      }
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      hasMore = false;
+    } else {
+      allRows.push(...data);
+      if (data.length < PAGE_SIZE) {
+        hasMore = false;
+      } else {
+        from += PAGE_SIZE;
+      }
+    }
+  }
+  return allRows as T[];
+}
+
 export const gamificationDbService = {
   // ============ BADGES ============
   async getBadges(): Promise<DBBadge[]> {
@@ -94,7 +125,7 @@ export const gamificationDbService = {
         icon: badge.icon || 'Award',
         category: badge.category || 'achievement',
         unlock_criteria: badge.unlock_criteria || {},
-        xp_reward: 0, // No XP for badges
+        xp_reward: 0,
         is_active: badge.is_active ?? true,
         created_by: user?.user?.id
       })
@@ -114,7 +145,7 @@ export const gamificationDbService = {
         icon: badge.icon,
         category: badge.category,
         unlock_criteria: badge.unlock_criteria,
-        xp_reward: 0, // No XP for badges
+        xp_reward: 0,
         is_active: badge.is_active
       })
       .eq('id', id)
@@ -183,6 +214,24 @@ export const gamificationDbService = {
     return breakdown;
   },
 
+  // Get detailed XP transactions grouped by category with descriptions
+  async getStudentXPDetails(studentId: string): Promise<Array<{
+    activity_type: string;
+    activity_id: string | null;
+    points_earned: number;
+    description: string;
+    earned_at: string;
+  }>> {
+    const { data, error } = await supabase
+      .from('student_xp_transactions')
+      .select('activity_type, activity_id, points_earned, description, earned_at')
+      .eq('student_id', studentId)
+      .order('earned_at', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
+  },
+
   // Get categorized breakdown for display
   getCategorizedBreakdown(xpBreakdown: Record<string, number>): {
     projects: number;
@@ -192,10 +241,10 @@ export const gamificationDbService = {
     daily_login: number;
   } {
     return {
-      projects: xpBreakdown['project_membership'] || 0,
+      projects: (xpBreakdown['project_membership'] || 0) + (xpBreakdown['project_completion'] || 0),
       achievements: xpBreakdown['project_award'] || 0,
       assessments: (xpBreakdown['assessment_completion'] || 0) + (xpBreakdown['assessment_perfect_score'] || 0),
-      assignments: (xpBreakdown['assignment_submission'] || 0) + (xpBreakdown['assignment_perfect_score'] || 0),
+      assignments: (xpBreakdown['assignment_submission'] || 0) + (xpBreakdown['assignment_perfect_score'] || 0) + (xpBreakdown['assignment_pass'] || 0),
       daily_login: xpBreakdown['daily_streak'] || 0,
     };
   },
@@ -249,7 +298,14 @@ export const gamificationDbService = {
       const earnedBadgeNames = new Set(studentBadges.map(b => b.badge?.name));
       
       // Get all active badges from DB
-      const allBadges = await this.getBadges();
+      let allBadges = await this.getBadges();
+      
+      // Auto-seed badges if none exist
+      if (allBadges.length === 0) {
+        console.log('No badges found, auto-seeding badge definitions...');
+        await this.seedBadgeDefinitions();
+        allBadges = await this.getBadges();
+      }
       
       // Get actual counts from source tables
       const counts = await this.getStudentActivityCounts(studentId);
@@ -412,7 +468,6 @@ export const gamificationDbService = {
           last_activity_date: today
         });
       
-      // Award 1 XP for first streak day
       if (institutionId) {
         const alreadyAwarded = await this.hasStreakXPToday(studentId, today);
         if (!alreadyAwarded) {
@@ -450,7 +505,6 @@ export const gamificationDbService = {
       })
       .eq('student_id', studentId);
     
-    // Award 1 XP for daily login - no milestone bonuses
     if (institutionId) {
       const alreadyAwarded = await this.hasStreakXPToday(studentId, today);
       if (!alreadyAwarded) {
@@ -516,23 +570,17 @@ export const gamificationDbService = {
 
   // ============ LEADERBOARD ============
   async getLeaderboard(institutionId?: string, limit: number = 10, classId?: string): Promise<StudentPerformance[]> {
-    let query = supabase
-      .from('student_xp_transactions')
-      .select(`
-        student_id,
-        points_earned,
-        activity_type,
-        institution_id,
-        profiles!student_id (id, name, class_id, institution_id),
-        institutions (name)
-      `);
-    
+    // Use paginated fetch to get all transactions
+    const filters: { column: string; value: any }[] = [];
     if (institutionId) {
-      query = query.eq('institution_id', institutionId);
+      filters.push({ column: 'institution_id', value: institutionId });
     }
     
-    const { data: transactions, error } = await query;
-    if (error) throw error;
+    const transactions = await fetchAllRows<any>(
+      'student_xp_transactions',
+      'student_id, points_earned, activity_type, institution_id, profiles!student_id (id, name, class_id, institution_id), institutions (name)',
+      filters.length > 0 ? filters : undefined
+    );
     
     const studentMap = new Map<string, {
       student_id: string;
@@ -607,7 +655,6 @@ export const gamificationDbService = {
       });
     }
     
-    // Fetch actual last activity timestamps from XP transactions
     const leaderboardStudentIds = sorted.map(s => s.student_id);
     const lastActivityMap: Record<string, string> = {};
     if (leaderboardStudentIds.length > 0) {
@@ -650,18 +697,18 @@ export const gamificationDbService = {
 
   // ============ STATS ============
   async getGamificationStats(): Promise<GamificationStats> {
-    const { data: studentData } = await supabase
-      .from('student_xp_transactions')
-      .select('student_id')
-      .limit(1000);
+    // Get actual total student count from students table
+    const { count: totalStudentCount } = await supabase
+      .from('students')
+      .select('*', { count: 'exact', head: true });
     
-    const uniqueStudents = new Set(studentData?.map(s => s.student_id));
+    // Get total points using paginated fetch
+    const allTransactions = await fetchAllRows<{ points_earned: number; student_id: string; institution_id: string | null }>(
+      'student_xp_transactions',
+      'points_earned, student_id, institution_id'
+    );
     
-    const { data: pointsData } = await supabase
-      .from('student_xp_transactions')
-      .select('points_earned');
-    
-    const totalPoints = pointsData?.reduce((sum, p) => sum + p.points_earned, 0) || 0;
+    const totalPoints = allTransactions.reduce((sum, p) => sum + p.points_earned, 0);
     
     const { count: activeBadges } = await supabase
       .from('gamification_badges')
@@ -672,17 +719,21 @@ export const gamificationDbService = {
       .from('student_certificates')
       .select('*', { count: 'exact', head: true });
     
-    const { data: instData } = await supabase
-      .from('student_xp_transactions')
-      .select(`
-        institution_id,
-        points_earned,
-        student_id,
-        institutions (name)
-      `);
-    
+    // Build institution stats from transactions
     const instMap = new Map<string, { name: string; totalPoints: number; students: Set<string> }>();
-    instData?.forEach(d => {
+    
+    // Fetch institution names
+    const instIds = [...new Set(allTransactions.map(t => t.institution_id).filter(Boolean))] as string[];
+    const instNameMap: Record<string, string> = {};
+    if (instIds.length > 0) {
+      const { data: instData } = await supabase
+        .from('institutions')
+        .select('id, name')
+        .in('id', instIds);
+      instData?.forEach(i => { instNameMap[i.id] = i.name; });
+    }
+    
+    allTransactions.forEach(d => {
       if (!d.institution_id) return;
       const existing = instMap.get(d.institution_id);
       if (existing) {
@@ -690,7 +741,7 @@ export const gamificationDbService = {
         existing.students.add(d.student_id);
       } else {
         instMap.set(d.institution_id, {
-          name: (d.institutions as any)?.name || 'Unknown',
+          name: instNameMap[d.institution_id] || 'Unknown',
           totalPoints: d.points_earned,
           students: new Set([d.student_id])
         });
@@ -708,7 +759,7 @@ export const gamificationDbService = {
       .slice(0, 5);
     
     return {
-      total_students: uniqueStudents.size,
+      total_students: totalStudentCount || 0,
       total_points_distributed: totalPoints,
       active_badges: activeBadges || 0,
       total_rewards_claimed: certificatesIssued || 0,
@@ -864,10 +915,8 @@ export const gamificationDbService = {
   // ============ XP AWARDING HELPERS (Fixed values) ============
   async awardAssessmentXP(studentId: string, institutionId: string, assessmentId: string, passed: boolean, percentage: number): Promise<void> {
     if (percentage === 100) {
-      // Perfect score: 100 XP (replaces base 50)
       await this.awardXP({ studentId, institutionId, activityType: 'assessment_perfect_score', activityId: assessmentId, points: XP_VALUES.assessment_perfect_score, description: 'Assessment completed with perfect score!' });
     } else {
-      // Normal completion: 50 XP
       await this.awardXP({ studentId, institutionId, activityType: 'assessment_completion', activityId: assessmentId, points: XP_VALUES.assessment_completion, description: 'Assessment completed' });
     }
   },
@@ -876,10 +925,8 @@ export const gamificationDbService = {
     const isPerfect = marksObtained !== null && totalMarks !== null && totalMarks > 0 && marksObtained === totalMarks;
     
     if (isPerfect) {
-      // Perfect score: 100 XP (replaces base 50)
       await this.awardXP({ studentId, institutionId, activityType: 'assignment_perfect_score', activityId: assignmentId, points: XP_VALUES.assignment_perfect_score, description: 'Assignment completed with perfect score!' });
     } else {
-      // Normal submission: 50 XP
       await this.awardXP({ studentId, institutionId, activityType: 'assignment_submission', activityId: assignmentId, points: XP_VALUES.assignment_submission, description: 'Assignment submitted' });
     }
   },
@@ -1060,32 +1107,69 @@ export const gamificationDbService = {
 
   // ============ RECALCULATE ALL XP AND BADGES ============
   async recalculateAllXPAndBadges(onProgress?: (msg: string) => void): Promise<{ studentsProcessed: number; totalXP: number; badgesAwarded: number }> {
+    return this._recalculate(onProgress);
+  },
+
+  // Recalculate for a specific institution only
+  async recalculateForInstitution(institutionId: string, onProgress?: (msg: string) => void): Promise<{ studentsProcessed: number; totalXP: number; badgesAwarded: number }> {
+    return this._recalculate(onProgress, institutionId);
+  },
+
+  async _recalculate(onProgress?: (msg: string) => void, institutionId?: string): Promise<{ studentsProcessed: number; totalXP: number; badgesAwarded: number }> {
     const log = (msg: string) => {
       console.log('[Recalculate]', msg);
       onProgress?.(msg);
     };
 
-    log('Step 1: Clearing existing XP transactions...');
-    await supabase.from('student_xp_transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    
-    log('Step 2: Clearing existing badges...');
-    await supabase.from('student_badges').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    
-    log('Step 3: Clearing streaks...');
-    await supabase.from('student_streaks').delete().neq('student_id', '00000000-0000-0000-0000-000000000000');
+    const scope = institutionId ? 'institution' : 'all';
+
+    if (institutionId) {
+      log('Step 1: Clearing XP transactions for institution...');
+      await supabase.from('student_xp_transactions').delete().eq('institution_id', institutionId);
+      
+      log('Step 2: Clearing badges for institution...');
+      await supabase.from('student_badges').delete().eq('institution_id', institutionId);
+      
+      log('Step 3: Clearing streaks for institution students...');
+      // Get student user_ids for this institution
+      const instStudents = await fetchAllRows<{ user_id: string | null }>('students', 'user_id', [{ column: 'institution_id', value: institutionId }]);
+      const instUserIds = instStudents.map(s => s.user_id).filter(Boolean) as string[];
+      if (instUserIds.length > 0) {
+        // Delete in batches
+        for (let i = 0; i < instUserIds.length; i += 100) {
+          const batch = instUserIds.slice(i, i + 100);
+          await supabase.from('student_streaks').delete().in('student_id', batch);
+        }
+      }
+    } else {
+      log('Step 1: Clearing existing XP transactions...');
+      await supabase.from('student_xp_transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      log('Step 2: Clearing existing badges...');
+      await supabase.from('student_badges').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      log('Step 3: Clearing streaks...');
+      await supabase.from('student_streaks').delete().neq('student_id', '00000000-0000-0000-0000-000000000000');
+    }
 
     log('Step 4: Seeding badge definitions...');
     await this.seedBadgeDefinitions();
 
-    log('Step 5: Fetching all students...');
-    const { data: allStudents } = await supabase
-      .from('students')
-      .select('id, user_id, institution_id');
+    log('Step 5: Fetching students...');
+    // Paginated fetch of all students
+    const filters = institutionId ? [{ column: 'institution_id', value: institutionId }] : undefined;
+    const allStudents = await fetchAllRows<{ id: string; user_id: string | null; institution_id: string | null }>(
+      'students',
+      'id, user_id, institution_id',
+      filters
+    );
     
-    if (!allStudents || allStudents.length === 0) {
+    if (allStudents.length === 0) {
       log('No students found.');
       return { studentsProcessed: 0, totalXP: 0, badgesAwarded: 0 };
     }
+
+    log(`Found ${allStudents.length} students to process...`);
 
     let totalXP = 0;
     let totalBadges = 0;
@@ -1094,10 +1178,12 @@ export const gamificationDbService = {
       const student = allStudents[i];
       if (!student.user_id || !student.institution_id) continue;
       
-      log(`Processing student ${i + 1}/${allStudents.length}: ${student.id}`);
+      if (i % 50 === 0 || i === allStudents.length - 1) {
+        log(`Processing student ${i + 1}/${allStudents.length}...`);
+      }
       
       const studentAuthId = student.user_id;
-      const institutionId = student.institution_id;
+      const instId = student.institution_id;
       const studentRecordId = student.id;
 
       // 1. Projects: 100 XP each
@@ -1107,7 +1193,7 @@ export const gamificationDbService = {
         .eq('student_id', studentRecordId);
       
       for (const p of (projects || [])) {
-        await this.awardXPDirect(studentAuthId, institutionId, 'project_membership', p.project_id, XP_VALUES.project_membership, 'Joined project team');
+        await this.awardXPDirect(studentAuthId, instId, 'project_membership', p.project_id, XP_VALUES.project_membership, 'Joined project team');
         totalXP += XP_VALUES.project_membership;
       }
 
@@ -1120,7 +1206,7 @@ export const gamificationDbService = {
           .in('project_id', projectIds);
         
         for (const ach of (achievements || [])) {
-          await this.awardXPDirect(studentAuthId, institutionId, 'project_award', `${ach.project_id}_${ach.title}`, XP_VALUES.project_award, `Project award: ${ach.title}`);
+          await this.awardXPDirect(studentAuthId, instId, 'project_award', `${ach.project_id}_${ach.title}`, XP_VALUES.project_award, `Project award: ${ach.title}`);
           totalXP += XP_VALUES.project_award;
         }
       }
@@ -1134,10 +1220,10 @@ export const gamificationDbService = {
       
       for (const att of (attempts || [])) {
         if (att.percentage === 100) {
-          await this.awardXPDirect(studentAuthId, institutionId, 'assessment_perfect_score', att.assessment_id, XP_VALUES.assessment_perfect_score, 'Assessment completed with perfect score!');
+          await this.awardXPDirect(studentAuthId, instId, 'assessment_perfect_score', att.assessment_id, XP_VALUES.assessment_perfect_score, 'Assessment completed with perfect score!');
           totalXP += XP_VALUES.assessment_perfect_score;
         } else {
-          await this.awardXPDirect(studentAuthId, institutionId, 'assessment_completion', att.assessment_id, XP_VALUES.assessment_completion, 'Assessment completed');
+          await this.awardXPDirect(studentAuthId, instId, 'assessment_completion', att.assessment_id, XP_VALUES.assessment_completion, 'Assessment completed');
           totalXP += XP_VALUES.assessment_completion;
         }
       }
@@ -1150,7 +1236,6 @@ export const gamificationDbService = {
         .in('status', ['submitted', 'graded']);
       
       if (submissions && submissions.length > 0) {
-        // Get total marks for assignments
         const assignmentIds = [...new Set(submissions.map(s => s.assignment_id))];
         const { data: assignmentDetails } = await supabase
           .from('assignments')
@@ -1164,19 +1249,18 @@ export const gamificationDbService = {
           const isPerfect = sub.marks_obtained !== null && totalMarks !== null && totalMarks > 0 && sub.marks_obtained === totalMarks;
           
           if (isPerfect) {
-            await this.awardXPDirect(studentAuthId, institutionId, 'assignment_perfect_score', sub.assignment_id, XP_VALUES.assignment_perfect_score, 'Assignment completed with perfect score!');
+            await this.awardXPDirect(studentAuthId, instId, 'assignment_perfect_score', sub.assignment_id, XP_VALUES.assignment_perfect_score, 'Assignment completed with perfect score!');
             totalXP += XP_VALUES.assignment_perfect_score;
           } else {
-            await this.awardXPDirect(studentAuthId, institutionId, 'assignment_submission', sub.assignment_id, XP_VALUES.assignment_submission, 'Assignment submitted');
+            await this.awardXPDirect(studentAuthId, instId, 'assignment_submission', sub.assignment_id, XP_VALUES.assignment_submission, 'Assignment submitted');
             totalXP += XP_VALUES.assignment_submission;
           }
         }
       }
 
       // 5. Check and award badges
-      await this.checkAndAwardBadges(studentAuthId, institutionId);
+      await this.checkAndAwardBadges(studentAuthId, instId);
       
-      // Count badges awarded
       const { count: badgeCount } = await supabase
         .from('student_badges')
         .select('*', { count: 'exact', head: true })
@@ -1206,12 +1290,41 @@ export const gamificationDbService = {
     }
   },
 
-  // Seed the fixed badge definitions
+  // Seed the fixed badge definitions (upsert, not delete-recreate)
   async seedBadgeDefinitions(): Promise<void> {
-    // Delete all existing badges first
-    await supabase.from('gamification_badges').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    // Check if badges already exist
+    const { data: existing } = await supabase
+      .from('gamification_badges')
+      .select('name')
+      .limit(1);
     
-    // Insert new fixed badges
+    if (existing && existing.length > 0) {
+      // Badges already seeded, just ensure all definitions exist
+      const { data: allExisting } = await supabase
+        .from('gamification_badges')
+        .select('name');
+      
+      const existingNames = new Set((allExisting || []).map(b => b.name));
+      
+      for (const def of BADGE_DEFINITIONS) {
+        if (!existingNames.has(def.name)) {
+          await supabase
+            .from('gamification_badges')
+            .insert({
+              name: def.name,
+              description: def.description,
+              icon: def.icon,
+              category: def.category,
+              unlock_criteria: { type: def.type, threshold: def.threshold, description: def.description },
+              xp_reward: 0,
+              is_active: true,
+            });
+        }
+      }
+      return;
+    }
+    
+    // No badges exist, insert all
     for (const def of BADGE_DEFINITIONS) {
       await supabase
         .from('gamification_badges')

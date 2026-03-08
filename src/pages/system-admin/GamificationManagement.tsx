@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  Trophy, Award, TrendingUp, BarChart3, Loader2, Users, RefreshCw, Sparkles, FileText
+  Trophy, Award, TrendingUp, BarChart3, Loader2, Users, RefreshCw, Sparkles, FileText, Building2
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { StudentPerformanceTable } from "@/components/gamification/StudentPerformanceTable";
@@ -59,10 +59,21 @@ export default function GamificationManagement() {
   const [badgeEarnedCounts, setBadgeEarnedCounts] = useState<Record<string, number>>({});
   const [xpBreakdown, setXpBreakdown] = useState<{ name: string; value: number }[]>([]);
   const [totalBadgesEarned, setTotalBadgesEarned] = useState(0);
+  const [allInstitutions, setAllInstitutions] = useState<{ id: string; name: string }[]>([]);
+  const [recalcInstitution, setRecalcInstitution] = useState<string>("all");
 
   useEffect(() => {
     loadData();
+    loadInstitutions();
   }, []);
+
+  const loadInstitutions = async () => {
+    const { data } = await supabase
+      .from('institutions')
+      .select('id, name')
+      .order('name');
+    setAllInstitutions(data || []);
+  };
 
   const loadData = async () => {
     try {
@@ -84,10 +95,10 @@ export default function GamificationManagement() {
         const categoryMap: Record<string, number> = {};
         xpData.forEach(t => {
           let cat = t.activity_type;
-          if (cat === 'project_membership') cat = 'Projects';
+          if (cat === 'project_membership' || cat === 'project_completion') cat = 'Projects';
           else if (cat === 'project_award') cat = 'Achievements';
           else if (cat === 'assessment_completion' || cat === 'assessment_perfect_score') cat = 'Assessments';
-          else if (cat === 'assignment_submission' || cat === 'assignment_perfect_score') cat = 'Assignments';
+          else if (cat === 'assignment_submission' || cat === 'assignment_perfect_score' || cat === 'assignment_pass') cat = 'Assignments';
           else if (cat === 'daily_streak') cat = 'Daily Login';
           else cat = 'Other';
           categoryMap[cat] = (categoryMap[cat] || 0) + t.points_earned;
@@ -120,11 +131,16 @@ export default function GamificationManagement() {
   };
 
   const handleRecalculate = async () => {
-    if (!confirm('This will reset ALL student XP, badges, and streaks, then recalculate from scratch. Continue?')) return;
+    const isInstitution = recalcInstitution !== 'all';
+    const instName = isInstitution ? allInstitutions.find(i => i.id === recalcInstitution)?.name : 'ALL';
+    
+    if (!confirm(`This will reset ${isInstitution ? `"${instName}"` : 'ALL'} student XP, badges, and streaks, then recalculate from scratch. Continue?`)) return;
     setIsRecalculating(true);
     setRecalculateStatus('Starting...');
     try {
-      const result = await gamificationDbService.recalculateAllXPAndBadges((msg) => setRecalculateStatus(msg));
+      const result = isInstitution
+        ? await gamificationDbService.recalculateForInstitution(recalcInstitution, (msg) => setRecalculateStatus(msg))
+        : await gamificationDbService.recalculateAllXPAndBadges((msg) => setRecalculateStatus(msg));
       toast.success(`Done! ${result.studentsProcessed} students, ${result.totalXP} XP, ${result.badgesAwarded} badges`);
       await loadData();
     } catch (error) {
@@ -203,7 +219,7 @@ export default function GamificationManagement() {
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats?.total_students || 0}</div>
+                  <div className="text-2xl font-bold">{(stats?.total_students || 0).toLocaleString()}</div>
                   <p className="text-xs text-muted-foreground">Across all institutions</p>
                 </CardContent>
               </Card>
@@ -247,23 +263,37 @@ export default function GamificationManagement() {
                   Recalculate XP & Badges
                 </CardTitle>
                 <CardDescription>
-                  Reset all student XP, badges, and streaks, then recalculate from existing records (projects, assessments, assignments, awards)
+                  Reset student XP, badges, and streaks, then recalculate from existing records. You can recalculate all or by institution.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <Button
-                  variant="destructive"
-                  disabled={isRecalculating}
-                  onClick={handleRecalculate}
-                >
-                  {isRecalculating ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Recalculating...</>
-                  ) : (
-                    <><RefreshCw className="mr-2 h-4 w-4" /> Recalculate All XP & Badges</>
-                  )}
-                </Button>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Select value={recalcInstitution} onValueChange={setRecalcInstitution}>
+                    <SelectTrigger className="w-[300px]">
+                      <Building2 className="h-4 w-4 mr-2" />
+                      <SelectValue placeholder="Select scope" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Institutions</SelectItem>
+                      {allInstitutions.map(inst => (
+                        <SelectItem key={inst.id} value={inst.id}>{inst.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="destructive"
+                    disabled={isRecalculating}
+                    onClick={handleRecalculate}
+                  >
+                    {isRecalculating ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Recalculating...</>
+                    ) : (
+                      <><RefreshCw className="mr-2 h-4 w-4" /> Recalculate {recalcInstitution === 'all' ? 'All' : 'Institution'}</>
+                    )}
+                  </Button>
+                </div>
                 {recalculateStatus && (
-                  <p className="text-sm text-muted-foreground mt-2">{recalculateStatus}</p>
+                  <p className="text-sm text-muted-foreground">{recalculateStatus}</p>
                 )}
               </CardContent>
             </Card>
