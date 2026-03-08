@@ -11,6 +11,7 @@ export interface ResumeExtras {
   hobbies: string[];
   sports_achievements: string[];
   linkedin_url: string | null;
+  github_url: string | null;
 }
 
 export function useStudentResumeExtras(studentId: string | null) {
@@ -42,6 +43,7 @@ export function useStudentResumeExtras(studentId: string | null) {
         hobbies: (data as any).hobbies || [],
         sports_achievements: (data as any).sports_achievements || [],
         linkedin_url: (data as any).linkedin_url,
+        github_url: (data as any).github_url,
       };
     },
     enabled: !!studentId && !!user?.id,
@@ -55,6 +57,7 @@ interface UpsertExtrasParams {
   hobbies?: string[];
   sports_achievements?: string[];
   linkedin_url?: string | null;
+  github_url?: string | null;
 }
 
 export function useUpdateResumeExtras() {
@@ -72,6 +75,7 @@ export function useUpdateResumeExtras() {
             hobbies: params.hobbies ?? [],
             sports_achievements: params.sports_achievements ?? [],
             linkedin_url: params.linkedin_url ?? null,
+            github_url: params.github_url ?? null,
           } as any,
           { onConflict: 'student_id' }
         )

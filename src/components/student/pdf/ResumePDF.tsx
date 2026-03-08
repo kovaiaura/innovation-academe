@@ -1,5 +1,7 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { ResumeData } from '@/hooks/useStudentResume';
+import { StudentInternship } from '@/hooks/useStudentInternships';
+import { StudentCertification } from '@/hooks/useStudentCertifications';
 import { format } from 'date-fns';
 
 // SDG Goal info for display
@@ -62,6 +64,10 @@ const styles = StyleSheet.create({
   linkedinItem: {
     fontSize: 9,
     color: '#0077B5',
+  },
+  githubItem: {
+    fontSize: 9,
+    color: '#333333',
   },
   section: {
     marginBottom: 18,
@@ -187,6 +193,52 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: '#888888',
   },
+  internshipItem: {
+    marginBottom: 10,
+    paddingLeft: 10,
+    borderLeft: '2 solid #2c5f6e',
+  },
+  internshipRole: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginBottom: 2,
+  },
+  internshipCompany: {
+    fontSize: 10,
+    color: '#555555',
+    marginBottom: 2,
+  },
+  internshipDuration: {
+    fontSize: 9,
+    color: '#888888',
+    marginBottom: 3,
+  },
+  internshipResponsibilities: {
+    fontSize: 9,
+    color: '#555555',
+    lineHeight: 1.4,
+  },
+  userCertItem: {
+    marginBottom: 8,
+    paddingLeft: 10,
+    borderLeft: '2 solid #4C9F38',
+  },
+  userCertName: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginBottom: 2,
+  },
+  userCertOrg: {
+    fontSize: 10,
+    color: '#555555',
+    marginBottom: 2,
+  },
+  userCertDate: {
+    fontSize: 9,
+    color: '#888888',
+  },
   emptyState: {
     fontSize: 9,
     color: '#999999',
@@ -212,15 +264,18 @@ interface ResumeExtrasForPDF {
   hobbies: string[];
   sports_achievements: string[];
   linkedin_url: string | null;
+  github_url: string | null;
 }
 
 interface Props {
   data: ResumeData;
   customSkills?: string[];
   extras?: ResumeExtrasForPDF;
+  internships?: StudentInternship[];
+  certifications?: StudentCertification[];
 }
 
-export function ResumePDF({ data, customSkills = [], extras }: Props) {
+export function ResumePDF({ data, customSkills = [], extras, internships = [], certifications = [] }: Props) {
   const allSkills = [...data.skills, ...customSkills];
   
   const formatSdgGoal = (goal: string): { label: string; color: string } => {
@@ -257,6 +312,12 @@ export function ResumePDF({ data, customSkills = [], extras }: Props) {
               <>
                 <Text style={styles.contactSeparator}>|</Text>
                 <Text style={styles.linkedinItem}>{extras.linkedin_url}</Text>
+              </>
+            )}
+            {extras?.github_url && (
+              <>
+                <Text style={styles.contactSeparator}>|</Text>
+                <Text style={styles.githubItem}>{extras.github_url}</Text>
               </>
             )}
           </View>
@@ -300,6 +361,43 @@ export function ResumePDF({ data, customSkills = [], extras }: Props) {
             <Text style={styles.emptyState}>Skills will be added as you complete courses</Text>
           )}
         </View>
+
+        {/* Internship Experience Section */}
+        {internships.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Internship Experience</Text>
+            {internships.map((intern) => (
+              <View key={intern.id} style={styles.internshipItem}>
+                <Text style={styles.internshipRole}>{intern.role_title}</Text>
+                <Text style={styles.internshipCompany}>{intern.company_name}</Text>
+                <Text style={styles.internshipDuration}>{intern.duration}</Text>
+                {intern.responsibilities && (
+                  <Text style={styles.internshipResponsibilities}>{intern.responsibilities}</Text>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Achievements & Certifications Section (user-added) */}
+        {certifications.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Achievements & Certifications</Text>
+            {certifications.map((cert) => (
+              <View key={cert.id} style={styles.userCertItem}>
+                <Text style={styles.userCertName}>{cert.certification_name}</Text>
+                {cert.issuing_organization && (
+                  <Text style={styles.userCertOrg}>{cert.issuing_organization}</Text>
+                )}
+                <Text style={styles.userCertDate}>
+                  {cert.issue_date && `Issued: ${format(new Date(cert.issue_date), 'MMM yyyy')}`}
+                  {cert.expiry_date && ` • Expires: ${format(new Date(cert.expiry_date), 'MMM yyyy')}`}
+                  {cert.credential_id && ` • ID: ${cert.credential_id}`}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Hobbies Section */}
         {extras?.hobbies && extras.hobbies.length > 0 && (
@@ -360,7 +458,7 @@ export function ResumePDF({ data, customSkills = [], extras }: Props) {
           )}
         </View>
 
-        {/* Certificates Section */}
+        {/* Certificates Section (LMS-earned) */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Certificates</Text>
           {data.certificates.length > 0 ? (

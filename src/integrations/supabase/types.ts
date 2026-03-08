@@ -6625,6 +6625,56 @@ export type Database = {
           },
         ]
       }
+      student_certifications: {
+        Row: {
+          certification_name: string
+          created_at: string
+          credential_id: string | null
+          credential_url: string | null
+          expiry_date: string | null
+          id: string
+          issue_date: string | null
+          issuing_organization: string | null
+          student_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          certification_name: string
+          created_at?: string
+          credential_id?: string | null
+          credential_url?: string | null
+          expiry_date?: string | null
+          id?: string
+          issue_date?: string | null
+          issuing_organization?: string | null
+          student_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          certification_name?: string
+          created_at?: string
+          credential_id?: string | null
+          credential_url?: string | null
+          expiry_date?: string | null
+          id?: string
+          issue_date?: string | null
+          issuing_organization?: string | null
+          student_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_certifications_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_content_completions: {
         Row: {
           class_assignment_id: string
@@ -6786,10 +6836,61 @@ export type Database = {
           },
         ]
       }
+      student_internships: {
+        Row: {
+          company_name: string
+          created_at: string
+          duration: string
+          end_date: string | null
+          id: string
+          responsibilities: string | null
+          role_title: string
+          start_date: string | null
+          student_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_name: string
+          created_at?: string
+          duration: string
+          end_date?: string | null
+          id?: string
+          responsibilities?: string | null
+          role_title: string
+          start_date?: string | null
+          student_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_name?: string
+          created_at?: string
+          duration?: string
+          end_date?: string | null
+          id?: string
+          responsibilities?: string | null
+          role_title?: string
+          start_date?: string | null
+          student_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_internships_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_resume_extras: {
         Row: {
           about_me: string | null
           created_at: string
+          github_url: string | null
           hobbies: string[] | null
           id: string
           linkedin_url: string | null
@@ -6801,6 +6902,7 @@ export type Database = {
         Insert: {
           about_me?: string | null
           created_at?: string
+          github_url?: string | null
           hobbies?: string[] | null
           id?: string
           linkedin_url?: string | null
@@ -6812,6 +6914,7 @@ export type Database = {
         Update: {
           about_me?: string | null
           created_at?: string
+          github_url?: string | null
           hobbies?: string[] | null
           id?: string
           linkedin_url?: string | null
