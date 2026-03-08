@@ -1174,7 +1174,7 @@ export const gamificationDbService = {
       return { studentsProcessed: 0, totalXP: 0, badgesAwarded: 0 };
     }
 
-    log(`Found ${allStudents.length} students to process...`);
+    log(`Found ${allStudents.length} students to process...`, { step: 'fetch', current: 0, total: allStudents.length });
 
     let totalXP = 0;
     let totalBadges = 0;
@@ -1184,7 +1184,7 @@ export const gamificationDbService = {
       if (!student.user_id || !student.institution_id) continue;
       
       if (i % 50 === 0 || i === allStudents.length - 1) {
-        log(`Processing student ${i + 1}/${allStudents.length}...`);
+        log(`Processing student ${i + 1}/${allStudents.length}...`, { step: 'processing', current: i + 1, total: allStudents.length });
       }
       
       const studentAuthId = student.user_id;
