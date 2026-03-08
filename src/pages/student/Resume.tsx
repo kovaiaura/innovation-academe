@@ -249,6 +249,7 @@ export default function Resume() {
           }}
           internships={internships}
           certifications={certifications}
+          educations={educations}
         />
       ).toBlob();
       const url = URL.createObjectURL(blob);
