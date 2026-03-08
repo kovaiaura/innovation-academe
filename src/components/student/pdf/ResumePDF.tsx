@@ -2,6 +2,7 @@ import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { ResumeData } from '@/hooks/useStudentResume';
 import { StudentInternship } from '@/hooks/useStudentInternships';
 import { StudentCertification } from '@/hooks/useStudentCertifications';
+import { StudentEducation } from '@/hooks/useStudentEducations';
 import { format } from 'date-fns';
 
 // SDG Goal info for display
