@@ -2266,7 +2266,7 @@ async function fetchStudentContext(userId?: string): Promise<{ context: string; 
     console.error('Student context error:', e);
   }
   
-  return { context: parts.join('\n'), sources };
+  return { context: parts.join('\n'), sources, institutionType };
 }
 
 // ==================== SYSTEM PROMPTS ====================
