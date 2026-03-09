@@ -459,7 +459,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
                     levelSessions.map((session, index) => (
                       <Card key={session.id} className="p-3">
                         <div className="flex items-start gap-3">
-                          <PlayCircle className="h-4 w-4 text-blue-500 mt-1" />
+                          <PlayCircle className="h-4 w-4 text-primary mt-1" />
                           <div className="flex-1 space-y-2">
                             <div className="space-y-1">
                               <Label className="text-xs">Title</Label>
