@@ -16,11 +16,6 @@ import { useCreateEvent, useUploadBrochure, useUploadAttachment, usePublishEvent
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { InstitutionClassSelector, ClassSelection } from './InstitutionClassSelector';
-import { cn } from '@/lib/utils';
-import { ActivityEventType, EVENT_TYPE_LABELS } from '@/types/events';
-import { useCreateEvent, useUploadBrochure, useUploadAttachment, usePublishEvent } from '@/hooks/useEvents';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 interface CreateEventFormProps {
   onSuccess?: () => void;
