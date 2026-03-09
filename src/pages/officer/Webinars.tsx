@@ -7,8 +7,10 @@ import { WebinarCard } from '@/components/webinars/WebinarCard';
 import { WebinarViewDialog } from '@/components/webinars/WebinarViewDialog';
 import { Search, Video } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function OfficerWebinars() {
+  const { user } = useAuth();
   const [webinars, setWebinars] = useState<Webinar[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -19,7 +21,9 @@ export default function OfficerWebinars() {
     const loadWebinars = async () => {
       try {
         setLoading(true);
-        const data = await webinarService.getWebinars();
+        const data = user?.institution_id
+          ? await webinarService.getWebinarsForInstitution(user.institution_id)
+          : await webinarService.getWebinars();
         setWebinars(data);
       } catch (error) {
         console.error('Error loading webinars:', error);

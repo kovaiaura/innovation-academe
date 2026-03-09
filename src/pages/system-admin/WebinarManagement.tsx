@@ -3,7 +3,7 @@ import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { webinarService, Webinar, WebinarFormData } from '@/services/webinar.service';
+import { webinarService, Webinar, WebinarFormData, WebinarAssignment } from '@/services/webinar.service';
 import { WebinarCard } from '@/components/webinars/WebinarCard';
 import { WebinarFormDialog } from '@/components/webinars/WebinarFormDialog';
 import { WebinarViewDialog } from '@/components/webinars/WebinarViewDialog';
@@ -66,13 +66,15 @@ export default function WebinarManagement() {
     setDeleteDialogOpen(true);
   };
 
-  const handleSubmit = async (data: WebinarFormData) => {
+  const handleSubmit = async (data: WebinarFormData, assignments: WebinarAssignment[]) => {
     try {
       if (selectedWebinar) {
         await webinarService.updateWebinar(selectedWebinar.id, data);
+        await webinarService.saveWebinarAssignments(selectedWebinar.id, assignments);
         toast.success('Event updated successfully');
       } else {
-        await webinarService.createWebinar(data);
+        const created = await webinarService.createWebinar(data);
+        await webinarService.saveWebinarAssignments(created.id, assignments);
         toast.success('Event created successfully');
       }
       loadWebinars();
