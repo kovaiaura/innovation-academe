@@ -192,6 +192,14 @@ export function EventsListDB() {
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setEditEvent(event)}
+                                title="Edit Event"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
                               {event.status === 'published' && (
                                 <Button
                                   variant="ghost"
