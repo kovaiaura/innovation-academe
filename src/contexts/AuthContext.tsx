@@ -154,6 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           tenant_id: institutionId || undefined, // Add tenant_id for sidebar routing
           class_id: profileData.class_id || undefined,
           created_at: profileData.created_at || '',
+          annual_salary: profileData.annual_salary || undefined,
           hourly_rate: profileData.hourly_rate || undefined,
           overtime_rate_multiplier: profileData.overtime_rate_multiplier || undefined,
           normal_working_hours: profileData.normal_working_hours || undefined,
