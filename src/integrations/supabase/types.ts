@@ -7030,6 +7030,68 @@ export type Database = {
           },
         ]
       }
+      student_transfers: {
+        Row: {
+          from_class_id: string | null
+          id: string
+          institution_id: string
+          reason: string | null
+          student_id: string
+          to_class_id: string
+          transferred_at: string
+          transferred_by: string | null
+        }
+        Insert: {
+          from_class_id?: string | null
+          id?: string
+          institution_id: string
+          reason?: string | null
+          student_id: string
+          to_class_id: string
+          transferred_at?: string
+          transferred_by?: string | null
+        }
+        Update: {
+          from_class_id?: string | null
+          id?: string
+          institution_id?: string
+          reason?: string | null
+          student_id?: string
+          to_class_id?: string
+          transferred_at?: string
+          transferred_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_transfers_from_class_id_fkey"
+            columns: ["from_class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_transfers_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_transfers_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_transfers_to_class_id_fkey"
+            columns: ["to_class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_xp_transactions: {
         Row: {
           activity_id: string | null

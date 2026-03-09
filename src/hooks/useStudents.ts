@@ -482,6 +482,58 @@ export function useStudents(institutionId?: string, classId?: string) {
     },
   });
 
+  // Transfer student to another class
+  const transferStudentMutation = useMutation({
+    mutationFn: async ({ studentId, fromClassId, toClassId, institutionId: instId, reason }: {
+      studentId: string;
+      fromClassId: string | null;
+      toClassId: string;
+      institutionId: string;
+      reason: string;
+    }) => {
+      console.log('[Students] Transferring student:', studentId, 'from', fromClassId, 'to', toClassId);
+      
+      const authCheck = await verifyAuth();
+      if (!authCheck.isValid) throw new Error(authCheck.error);
+
+      // Update student's class_id
+      const { error: updateError } = await supabase
+        .from('students')
+        .update({ class_id: toClassId })
+        .eq('id', studentId);
+
+      if (updateError) throw new Error(`Failed to transfer student: ${updateError.message}`);
+
+      // Log the transfer
+      const { error: logError } = await supabase
+        .from('student_transfers')
+        .insert({
+          student_id: studentId,
+          institution_id: instId,
+          from_class_id: fromClassId,
+          to_class_id: toClassId,
+          transferred_by: authCheck.userId,
+          reason: reason || null,
+        });
+
+      if (logError) {
+        console.warn('[Students] Failed to log transfer (student was moved):', logError);
+      }
+
+      return { studentId, toClassId };
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to transfer student');
+    },
+    onSuccess: () => {
+      toast.success('Student transferred successfully');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: ['classes-with-counts'] });
+    },
+  });
+
   // Get student count for institution
   const getStudentCount = async (instId: string): Promise<number> => {
     console.log('[Students] Getting count for institution:', instId);
@@ -509,10 +561,12 @@ export function useStudents(institutionId?: string, classId?: string) {
     updateStudent: updateStudentMutation.mutateAsync,
     deleteStudent: deleteStudentMutation.mutateAsync,
     bulkCreateStudents: bulkCreateStudentsMutation.mutateAsync,
+    transferStudent: transferStudentMutation.mutateAsync,
     getStudentCount,
     isCreating: createStudentMutation.isPending,
     isUpdating: updateStudentMutation.isPending,
     isDeleting: deleteStudentMutation.isPending,
     isBulkCreating: bulkCreateStudentsMutation.isPending,
+    isTransferring: transferStudentMutation.isPending,
   };
 }

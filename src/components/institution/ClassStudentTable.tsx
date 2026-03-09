@@ -6,17 +6,21 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search, Download, Edit, Phone, Mail } from 'lucide-react';
+import { Search, Download, Edit, Phone, Mail, ArrowRightLeft } from 'lucide-react';
 import { getStatusColor, filterStudents, sortStudents, exportStudentsToCSV } from '@/utils/studentHelpers';
+import { TransferStudentDialog } from '@/components/student/TransferStudentDialog';
+import { useClasses, ClassWithStudentCount } from '@/hooks/useClasses';
+import { useStudents } from '@/hooks/useStudents';
 
 interface ClassStudentTableProps {
   students: Student[];
   onEditStudent: (student: Student) => void;
   institutionCode: string;
+  institutionId: string;
   className: string;
 }
 
-export function ClassStudentTable({ students, onEditStudent, institutionCode, className }: ClassStudentTableProps) {
+export function ClassStudentTable({ students, onEditStudent, institutionCode, institutionId, className }: ClassStudentTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sectionFilter, setSectionFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -24,7 +28,29 @@ export function ClassStudentTable({ students, onEditStudent, institutionCode, cl
   const [sortBy, setSortBy] = useState<'name' | 'roll_number' | 'admission_date'>('roll_number');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [transferTarget, setTransferTarget] = useState<Student | null>(null);
   const studentsPerPage = 50;
+
+  const { classesWithCounts } = useClasses(institutionId || undefined);
+  const { transferStudent, isTransferring } = useStudents(institutionId || undefined);
+
+  const handleTransferClick = (student: Student, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setTransferTarget(student);
+    setTransferDialogOpen(true);
+  };
+
+  const handleTransfer = async (toClassId: string, reason: string) => {
+    if (!transferTarget || !institutionId) return;
+    await transferStudent({
+      studentId: transferTarget.id,
+      fromClassId: transferTarget.class_id || null,
+      toClassId,
+      institutionId,
+      reason,
+    });
+  };
 
   const sections = [...new Set(students.map(s => s.section))].sort();
 
@@ -168,16 +194,26 @@ export function ClassStudentTable({ students, onEditStudent, institutionCode, cl
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditStudent(student);
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditStudent(student);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleTransferClick(student, e)}
+                        title="Transfer to another class"
+                      >
+                        <ArrowRightLeft className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -207,6 +243,21 @@ export function ClassStudentTable({ students, onEditStudent, institutionCode, cl
             Next
           </Button>
         </div>
+      )}
+
+      {transferTarget && (
+        <TransferStudentDialog
+          isOpen={transferDialogOpen}
+          onOpenChange={setTransferDialogOpen}
+          studentName={transferTarget.student_name}
+          studentId={transferTarget.id}
+          currentClassId={transferTarget.class_id || null}
+          currentClassName={className}
+          institutionId={institutionId}
+          classes={classesWithCounts}
+          onTransfer={handleTransfer}
+          isTransferring={isTransferring}
+        />
       )}
     </div>
   );

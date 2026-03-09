@@ -7,12 +7,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { StudentDetailsDialog } from "@/components/student/StudentDetailsDialog";
+import { TransferStudentDialog } from "@/components/student/TransferStudentDialog";
 import { 
   getStatusColor, 
   calculateAge, 
   exportStudentsToCSV
 } from "@/utils/studentHelpers";
-import { Download, Search, Users, UserCheck, UserX, GraduationCap, Phone, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { Download, Search, Users, UserCheck, UserX, GraduationCap, Phone, ChevronDown, ChevronRight, Loader2, ArrowRightLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Layout } from "@/components/layout/Layout";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
@@ -53,11 +54,13 @@ export default function Students() {
   const { institution, institutionId, isLoading: isLoadingInstitution } = useCurrentUserInstitutionDetails();
   
   // Fetch students and classes for the institution
-  const { students: dbStudents, isLoading: isLoadingStudents } = useStudents(institutionId || undefined);
+  const { students: dbStudents, isLoading: isLoadingStudents, transferStudent, isTransferring } = useStudents(institutionId || undefined);
   const { classesWithCounts, isLoading: isLoadingClasses } = useClasses(institutionId || undefined);
 
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [transferTarget, setTransferTarget] = useState<{ id: string; name: string; classId: string | null; className: string } | null>(null);
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
 
   // Filters
@@ -174,6 +177,29 @@ export default function Students() {
   const handleStudentClick = (student: Student) => {
     setSelectedStudent(student);
     setDetailsDialogOpen(true);
+  };
+
+  const handleTransferClick = (student: Student, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const classInfo = student.class_id ? classMap.get(student.class_id) : null;
+    setTransferTarget({
+      id: student.id,
+      name: student.student_name,
+      classId: student.class_id || null,
+      className: classInfo?.class_name || 'Unassigned',
+    });
+    setTransferDialogOpen(true);
+  };
+
+  const handleTransfer = async (toClassId: string, reason: string) => {
+    if (!transferTarget || !institutionId) return;
+    await transferStudent({
+      studentId: transferTarget.id,
+      fromClassId: transferTarget.classId,
+      toClassId,
+      institutionId,
+      reason,
+    });
   };
 
   const handleExportStudents = () => {
@@ -446,6 +472,17 @@ export default function Students() {
                                         </div>
                                       )}
                                     </div>
+                                    <div className="mt-2 flex justify-end">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-xs h-7"
+                                        onClick={(e) => handleTransferClick(student, e)}
+                                      >
+                                        <ArrowRightLeft className="h-3 w-3 mr-1" />
+                                        Transfer
+                                      </Button>
+                                    </div>
                                   </div>
                                 </div>
                               </CardContent>
@@ -475,13 +512,28 @@ export default function Students() {
           </div>
         )}
 
-        {/* Dialog */}
+        {/* Dialogs */}
         <StudentDetailsDialog
           isOpen={detailsDialogOpen}
           onOpenChange={setDetailsDialogOpen}
           student={selectedStudent}
           readOnly={true}
         />
+
+        {transferTarget && (
+          <TransferStudentDialog
+            isOpen={transferDialogOpen}
+            onOpenChange={setTransferDialogOpen}
+            studentName={transferTarget.name}
+            studentId={transferTarget.id}
+            currentClassId={transferTarget.classId}
+            currentClassName={transferTarget.className}
+            institutionId={institutionId || ''}
+            classes={classesWithCounts}
+            onTransfer={handleTransfer}
+            isTransferring={isTransferring}
+          />
+        )}
       </div>
     </Layout>
   );
