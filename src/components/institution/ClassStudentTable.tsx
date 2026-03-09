@@ -20,7 +20,7 @@ interface ClassStudentTableProps {
   className: string;
 }
 
-export function ClassStudentTable({ students, onEditStudent, institutionCode, className }: ClassStudentTableProps) {
+export function ClassStudentTable({ students, onEditStudent, institutionCode, institutionId, className }: ClassStudentTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sectionFilter, setSectionFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -28,7 +28,29 @@ export function ClassStudentTable({ students, onEditStudent, institutionCode, cl
   const [sortBy, setSortBy] = useState<'name' | 'roll_number' | 'admission_date'>('roll_number');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [transferTarget, setTransferTarget] = useState<Student | null>(null);
   const studentsPerPage = 50;
+
+  const { classesWithCounts } = useClasses(institutionId || undefined);
+  const { transferStudent, isTransferring } = useStudents(institutionId || undefined);
+
+  const handleTransferClick = (student: Student, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setTransferTarget(student);
+    setTransferDialogOpen(true);
+  };
+
+  const handleTransfer = async (toClassId: string, reason: string) => {
+    if (!transferTarget || !institutionId) return;
+    await transferStudent({
+      studentId: transferTarget.id,
+      fromClassId: transferTarget.class_id || null,
+      toClassId,
+      institutionId,
+      reason,
+    });
+  };
 
   const sections = [...new Set(students.map(s => s.section))].sort();
 
