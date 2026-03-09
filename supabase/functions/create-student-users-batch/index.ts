@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { students, mode } = await req.json() as { students: StudentInput[]; mode?: string };
+    const { students, mode, defaultPassword } = await req.json() as { students: StudentInput[]; mode?: string; defaultPassword?: string };
 
     if (!students || !Array.isArray(students) || students.length === 0) {
       return new Response(JSON.stringify({ error: 'No students provided' }),
