@@ -54,11 +54,13 @@ export default function Students() {
   const { institution, institutionId, isLoading: isLoadingInstitution } = useCurrentUserInstitutionDetails();
   
   // Fetch students and classes for the institution
-  const { students: dbStudents, isLoading: isLoadingStudents } = useStudents(institutionId || undefined);
+  const { students: dbStudents, isLoading: isLoadingStudents, transferStudent, isTransferring } = useStudents(institutionId || undefined);
   const { classesWithCounts, isLoading: isLoadingClasses } = useClasses(institutionId || undefined);
 
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [transferTarget, setTransferTarget] = useState<{ id: string; name: string; classId: string | null; className: string } | null>(null);
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
 
   // Filters
