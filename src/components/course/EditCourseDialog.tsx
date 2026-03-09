@@ -504,59 +504,98 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
             </TabsContent>
 
             {/* Content Tab */}
-            <TabsContent value="content" className="p-4">
-              <div className="grid grid-cols-4 gap-4 h-[500px]">
+            <TabsContent value="content" className="p-4 h-full">
+              <div className="grid grid-cols-[1fr_1.2fr_2.5fr] gap-4 h-[calc(90vh-220px)]">
                 {/* Level Selection */}
-                <div className="border rounded-lg p-3 space-y-2 overflow-y-auto">
-                  <h4 className="font-medium text-sm">Levels</h4>
-                  {levels.map((level, index) => (
-                    <Button
-                      key={level.id}
-                      variant={selectedLevelId === level.id ? 'default' : 'ghost'}
-                      className="w-full justify-start text-left text-xs"
-                      onClick={() => {
-                        setSelectedLevelId(level.id);
-                        setSelectedSessionId(null);
-                      }}
-                    >
-                      <Layers className="h-3 w-3 mr-1" />
-                      {level.title || `Level ${index + 1}`}
-                    </Button>
-                  ))}
+                <div className="border rounded-lg p-3 flex flex-col min-h-0">
+                  <h4 className="font-medium text-sm mb-2">Levels</h4>
+                  <ScrollArea className="flex-1">
+                    <div className="space-y-1">
+                      {levels.map((level, index) => (
+                        <Button
+                          key={level.id}
+                          variant={selectedLevelId === level.id ? 'default' : 'ghost'}
+                          className="w-full justify-start text-left text-xs"
+                          onClick={() => {
+                            setSelectedLevelId(level.id);
+                            setSelectedSessionId(null);
+                          }}
+                        >
+                          <Layers className="h-3 w-3 mr-1" />
+                          {level.title || `Level ${index + 1}`}
+                        </Button>
+                      ))}
+                    </div>
+                  </ScrollArea>
                 </div>
 
                 {/* Session Selection */}
-                <div className="border rounded-lg p-3 space-y-2 overflow-y-auto">
-                  <h4 className="font-medium text-sm">Sessions</h4>
-                  {levelSessions.map((session, index) => (
-                    <Button
-                      key={session.id}
-                      variant={selectedSessionId === session.id ? 'default' : 'ghost'}
-                      className="w-full justify-start text-left text-xs"
-                      onClick={() => setSelectedSessionId(session.id)}
-                    >
-                      <PlayCircle className="h-3 w-3 mr-1" />
-                      {session.title || `Session ${index + 1}`}
-                    </Button>
-                  ))}
+                <div className="border rounded-lg p-3 flex flex-col min-h-0">
+                  <h4 className="font-medium text-sm mb-2">Sessions</h4>
+                  <ScrollArea className="flex-1">
+                    <div className="space-y-1">
+                      {levelSessions.map((session, index) => (
+                        <Button
+                          key={session.id}
+                          variant={selectedSessionId === session.id ? 'default' : 'ghost'}
+                          className="w-full justify-start text-left text-xs"
+                          onClick={() => setSelectedSessionId(session.id)}
+                        >
+                          <PlayCircle className="h-3 w-3 mr-1" />
+                          {session.title || `Session ${index + 1}`}
+                        </Button>
+                      ))}
+                    </div>
+                  </ScrollArea>
                 </div>
 
                 {/* Content List */}
-                <div className="col-span-2 border rounded-lg p-3 space-y-2 overflow-y-auto">
+                <div className="border rounded-lg p-3 flex flex-col min-h-0">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-sm">Content Items</h4>
                   </div>
-                  {!selectedSessionId ? (
-                    <p className="text-sm text-muted-foreground">Select a session to view content</p>
-                  ) : sessionContent.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No content in this session</p>
-                  ) : (
-                    sessionContent.map((content) => (
-                      <Card key={content.id} className="p-3">
-                        <div className="flex items-start gap-3">
-                          <FileText className="h-4 w-4 text-primary mt-1" />
-                          <div className="flex-1 space-y-2">
-                            <div className="grid grid-cols-2 gap-2">
+                  <ScrollArea className="flex-1">
+                    <div className="space-y-2 pr-2">
+                      {!selectedSessionId ? (
+                        <p className="text-sm text-muted-foreground">Select a session to view content</p>
+                      ) : sessionContent.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No content in this session</p>
+                      ) : (
+                        sessionContent.map((content) => (
+                          <Card key={content.id} className="p-3">
+                            <div className="space-y-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <FileText className="h-4 w-4 text-primary flex-shrink-0" />
+                                  <Badge variant="outline" className="text-xs">{content.type.toUpperCase()}</Badge>
+                                </div>
+                                {/* Delete with confirmation */}
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                      <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Content</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete "{content.title}"? This will remove the content but won't affect student progress records.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleDeleteContent(content.id)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+
                               <div className="space-y-1">
                                 <Label className="text-xs">Title</Label>
                                 <Input
@@ -565,6 +604,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
                                   placeholder="Content title"
                                 />
                               </div>
+
                               <div className="space-y-1">
                                 <Label className="text-xs">Type</Label>
                                 <Select
@@ -583,71 +623,48 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
                                   </SelectContent>
                                 </Select>
                               </div>
-                            </div>
-                            {content.type === 'youtube' && (
-                              <div className="space-y-1">
-                                <Label className="text-xs">YouTube URL</Label>
-                                <Input
-                                  value={content.youtube_url || ''}
-                                  onChange={(e) => handleUpdateContent(content.id, 'youtube_url', e.target.value)}
-                                  placeholder="https://youtube.com/..."
-                                />
-                              </div>
-                            )}
-                            {/* File indicator and replace for PDF/PPT */}
-                            {['pdf', 'ppt'].includes(content.type) && (
-                              <div className="flex items-center gap-2">
-                                <div className="flex-1 text-xs text-muted-foreground truncate">
-                                  {content.file_path
-                                    ? `📄 ${content.file_path.split('/').pop()}`
-                                    : 'No file uploaded'}
-                                  {content.file_size_mb && ` (${content.file_size_mb.toFixed(1)} MB)`}
+
+                              {content.type === 'youtube' && (
+                                <div className="space-y-1">
+                                  <Label className="text-xs">YouTube URL</Label>
+                                  <Input
+                                    value={content.youtube_url || ''}
+                                    onChange={(e) => handleUpdateContent(content.id, 'youtube_url', e.target.value)}
+                                    placeholder="https://youtube.com/..."
+                                  />
                                 </div>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-xs h-7"
-                                  disabled={replacingContentId === content.id}
-                                  onClick={() => {
-                                    setReplacingContentId(content.id);
-                                    fileReplaceInputRef.current?.click();
-                                  }}
-                                >
-                                  <RefreshCw className={`h-3 w-3 mr-1 ${replacingContentId === content.id ? 'animate-spin' : ''}`} />
-                                  {replacingContentId === content.id ? 'Replacing...' : 'Replace File'}
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                          {/* Delete with confirmation */}
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Content</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{content.title}"? This will remove the content but won't affect student progress records.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteContent(content.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </Card>
-                    ))
-                  )}
+                              )}
+
+                              {/* File indicator and replace for PDF/PPT */}
+                              {['pdf', 'ppt'].includes(content.type) && (
+                                <div className="space-y-1">
+                                  <div className="text-xs text-muted-foreground truncate">
+                                    {content.file_path
+                                      ? `📄 ${content.file_path.split('/').pop()}`
+                                      : 'No file uploaded'}
+                                    {content.file_size_mb && ` (${content.file_size_mb.toFixed(1)} MB)`}
+                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-xs h-7 w-full"
+                                    disabled={replacingContentId === content.id}
+                                    onClick={() => {
+                                      setReplacingContentId(content.id);
+                                      fileReplaceInputRef.current?.click();
+                                    }}
+                                  >
+                                    <RefreshCw className={`h-3 w-3 mr-1 ${replacingContentId === content.id ? 'animate-spin' : ''}`} />
+                                    {replacingContentId === content.id ? 'Replacing...' : 'Replace File'}
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
                 </div>
               </div>
 
