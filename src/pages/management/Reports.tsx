@@ -12,8 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
-import { getInstitutionBySlug } from "@/data/mockInstitutionData";
 import { useLocation } from "react-router-dom";
+import { useInstitutionStats } from "@/hooks/useInstitutionStats";
 import { usePublishedReports } from "@/hooks/usePublishedReports";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
