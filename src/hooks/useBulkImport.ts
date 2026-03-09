@@ -106,12 +106,22 @@ export function useBulkImportStudents(institutionId: string, classId: string) {
         let counterOffset = 0;
         
         for (const batch of batches) {
+          // Prepare student records and collect those needing auth
+          const studentsNeedingAuth: Array<{
+            email: string;
+            password: string;
+            student_name: string;
+            institution_id: string;
+            class_id: string;
+            batchIndex: number;
+          }> = [];
+          
           const studentsToInsert: any[] = [];
+          const batchUserIds: Map<string, string> = new Map(); // email -> user_id
           
           for (let i = 0; i < batch.length; i++) {
             const student = batch[i];
             
-            // Check for duplicates by email
             const studentEmail = student.email?.toLowerCase();
             const isDuplicate = studentEmail && existingEmails.has(studentEmail);
             
@@ -121,7 +131,6 @@ export function useBulkImportStudents(institutionId: string, classId: string) {
               continue;
             }
 
-            // Add to existing emails set to prevent duplicates within the same import
             if (studentEmail) {
               existingEmails.add(studentEmail);
             }
@@ -130,36 +139,21 @@ export function useBulkImportStudents(institutionId: string, classId: string) {
             const rollCounter = rollStartCounter + counterOffset;
             counterOffset++;
 
-            // Generate student ID
             const studentId = `${institutionCode}-${currentYear}-${String(counter).padStart(4, '0')}`;
-            
-            // Generate roll number using settings prefix/suffix
             const rollNumber = rollSuffix 
               ? `${rollPrefix}-${currentYear}-${String(rollCounter).padStart(4, '0')}-${rollSuffix}`
               : `${rollPrefix}-${currentYear}-${String(rollCounter).padStart(4, '0')}`;
 
-            // Create auth user if option enabled and email/password provided
-            let userId: string | null = null;
+            // Collect students needing auth creation
             if (options.createAuthUsers && student.email && student.password) {
-              try {
-                const response = await supabase.functions.invoke('create-student-user', {
-                  body: {
-                    email: student.email,
-                    password: student.password,
-                    student_name: student.student_name,
-                    institution_id: institutionId,
-                    class_id: classId,
-                  },
-                });
-                
-                if (response.data?.user_id) {
-                  userId = response.data.user_id;
-                } else if (response.error) {
-                  console.error('[BulkImport] Failed to create auth user for:', student.email, response.error);
-                }
-              } catch (err) {
-                console.error('[BulkImport] Error creating auth user for:', student.email, err);
-              }
+              studentsNeedingAuth.push({
+                email: student.email,
+                password: student.password,
+                student_name: student.student_name,
+                institution_id: institutionId,
+                class_id: classId,
+                batchIndex: studentsToInsert.length,
+              });
             }
 
             studentsToInsert.push({
@@ -168,8 +162,8 @@ export function useBulkImportStudents(institutionId: string, classId: string) {
               student_id: studentId,
               student_name: student.student_name,
               email: student.email || null,
-              user_id: userId,
-              roll_number: rollNumber, // Auto-generated
+              user_id: null, // Will be filled from batch response
+              roll_number: rollNumber,
               admission_number: `ADM-${currentYear}-${String(counter).padStart(4, '0')}`,
               date_of_birth: student.date_of_birth || null,
               gender: student.gender?.toLowerCase() || 'male',
@@ -181,6 +175,41 @@ export function useBulkImportStudents(institutionId: string, classId: string) {
               previous_school: student.previous_school || null,
               status: 'active',
             });
+          }
+
+          // Batch create auth users if any need it
+          if (studentsNeedingAuth.length > 0) {
+            try {
+              const response = await supabase.functions.invoke('create-student-users-batch', {
+                body: {
+                  students: studentsNeedingAuth.map(s => ({
+                    email: s.email,
+                    password: s.password,
+                    student_name: s.student_name,
+                    institution_id: s.institution_id,
+                    class_id: s.class_id,
+                  })),
+                },
+              });
+
+              if (response.data?.results) {
+                for (const r of response.data.results) {
+                  if (r.success && r.user_id) {
+                    batchUserIds.set(r.email.toLowerCase(), r.user_id);
+                  }
+                }
+              }
+            } catch (err) {
+              console.error('[BulkImport] Batch auth creation error:', err);
+            }
+
+            // Map user_ids back to student records
+            for (const authStudent of studentsNeedingAuth) {
+              const userId = batchUserIds.get(authStudent.email.toLowerCase());
+              if (userId && studentsToInsert[authStudent.batchIndex]) {
+                studentsToInsert[authStudent.batchIndex].user_id = userId;
+              }
+            }
           }
 
           if (studentsToInsert.length > 0) {
