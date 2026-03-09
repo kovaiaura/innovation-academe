@@ -129,7 +129,7 @@ export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
       setAttachments([]);
       setSelectedClasses([]);
       setShowPublishing(false);
-      setExpandedInstitutions(new Set());
+      
 
       onSuccess?.();
     } catch (error) {
