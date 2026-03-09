@@ -230,7 +230,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
+      <DialogContent className="max-w-7xl h-[90vh] flex flex-col p-0">
         <DialogHeader className="p-4 border-b">
           <div className="flex items-center justify-between">
             <DialogTitle>Edit Course: {course.title}</DialogTitle>
