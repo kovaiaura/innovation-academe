@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
           // Try to create - if exists, we'll get an error and handle it
           const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
             email: student.email,
-            password: student.password || crypto.randomUUID().slice(0, 16) + 'Aa1!',
+            password: student.password || defaultPassword || crypto.randomUUID().slice(0, 16) + 'Aa1!',
             email_confirm: true,
             user_metadata: {
               name: student.student_name,

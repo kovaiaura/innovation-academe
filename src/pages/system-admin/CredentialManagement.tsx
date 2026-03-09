@@ -907,7 +907,7 @@ export default function CredentialManagement() {
                         <Button
                           size="sm"
                           variant="default"
-                          onClick={handleRepairAccounts}
+                          onClick={openRepairDialog}
                           disabled={isRepairing}
                         >
                           {isRepairing ? (
