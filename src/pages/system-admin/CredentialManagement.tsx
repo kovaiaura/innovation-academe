@@ -68,6 +68,11 @@ export default function CredentialManagement() {
   const [isRepairing, setIsRepairing] = useState(false);
   const [repairProgress, setRepairProgress] = useState<{ current: number; total: number; success: number; failed: number }>({ current: 0, total: 0, success: 0, failed: 0 });
 
+  // Repair Password Dialog State
+  const [repairPasswordDialogOpen, setRepairPasswordDialogOpen] = useState(false);
+  const [repairDefaultPassword, setRepairDefaultPassword] = useState('');
+  const [showRepairPassword, setShowRepairPassword] = useState(false);
+
   // Fetch data using React Query hooks
   const { data: metaEmployees = [], isLoading: metaLoading, refetch: refetchMeta } = useMetaEmployees();
   const { data: officers = [], isLoading: officersLoading, refetch: refetchOfficers } = useOfficers();
