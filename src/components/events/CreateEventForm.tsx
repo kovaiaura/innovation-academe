@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useStateact';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,8 +13,7 @@ import { CalendarIcon, Upload, X, FileText, Loader2, Building, ChevronDown, Chev
 import { cn } from '@/lib/utils';
 import { ActivityEventType, EVENT_TYPE_LABELS } from '@/types/events';
 import { useCreateEvent, useUploadBrochure, useUploadAttachment, usePublishEvent } from '@/hooks/useEvents';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { suoast } from 'sonner';
 import { InstitutionClassSelector, ClassSelection } from './InstitutionClassSelector';
 
 interface CreateEventFormProps {
