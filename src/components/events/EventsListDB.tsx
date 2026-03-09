@@ -241,6 +241,13 @@ export function EventsListDB() {
         </CardContent>
       </Card>
 
+      {/* Edit Dialog */}
+      <EditEventDialog
+        event={editEvent}
+        open={!!editEvent}
+        onOpenChange={(open) => !open && setEditEvent(null)}
+      />
+
       {/* Publish Dialog */}
       <PublishEventDialog
         open={!!publishEvent}
