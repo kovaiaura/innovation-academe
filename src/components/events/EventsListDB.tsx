@@ -5,12 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, Eye, Trash2, Send, FileText, ExternalLink, Loader2, Users } from 'lucide-react';
+import { Search, Eye, Trash2, Send, FileText, ExternalLink, Loader2, Users, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { Event, ActivityEventType, EventStatus, EVENT_TYPE_LABELS, EVENT_STATUS_LABELS } from '@/types/events';
 import { useEvents, useDeleteEvent } from '@/hooks/useEvents';
 import { PublishEventDialog } from './PublishEventDialog';
 import { EventUpdatesPanel } from './EventUpdatesPanel';
+import { EditEventDialog } from './EditEventDialog';
 import { CEOInterestedStudentsDialog } from './CEOInterestedStudentsDialog';
 import {
   AlertDialog,
@@ -37,6 +38,7 @@ export function EventsListDB() {
   const [publishEvent, setPublishEvent] = useState<Event | null>(null);
   const [viewEvent, setViewEvent] = useState<Event | null>(null);
   const [viewInterestsEventId, setViewInterestsEventId] = useState<string | null>(null);
+  const [editEvent, setEditEvent] = useState<Event | null>(null);
 
   const { data: events, isLoading } = useEvents();
   const deleteEventMutation = useDeleteEvent();
@@ -190,6 +192,14 @@ export function EventsListDB() {
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setEditEvent(event)}
+                                title="Edit Event"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
                               {event.status === 'published' && (
                                 <Button
                                   variant="ghost"
@@ -230,6 +240,13 @@ export function EventsListDB() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <EditEventDialog
+        event={editEvent}
+        open={!!editEvent}
+        onOpenChange={(open) => !open && setEditEvent(null)}
+      />
 
       {/* Publish Dialog */}
       <PublishEventDialog

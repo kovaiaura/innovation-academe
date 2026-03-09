@@ -28,7 +28,7 @@ export function EventsListTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<ActivityEventType | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState<EventStatus | 'all'>('all');
-  const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<ActivityEvent | null>(null);
   const [viewEventId, setViewEventId] = useState<string | null>(null);
   const [deleteEventId, setDeleteEventId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -166,7 +166,7 @@ export function EventsListTab() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => setSelectedEvent(event.id)}
+                          onClick={() => setSelectedEvent(event as any)}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -197,7 +197,7 @@ export function EventsListTab() {
       {/* Edit Dialog */}
       {selectedEvent && (
         <EditEventDialog
-          eventId={selectedEvent}
+          event={selectedEvent as any}
           open={!!selectedEvent}
           onOpenChange={(open) => {
             if (!open) {
