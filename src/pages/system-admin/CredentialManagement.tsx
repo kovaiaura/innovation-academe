@@ -868,6 +868,39 @@ export default function CredentialManagement() {
                       </Button>
                     </div>
 
+                    {/* Repair Missing Accounts Banner */}
+                    {studentsWithNoAccount > 0 && (
+                      <div className="flex items-center justify-between p-4 bg-amber-500/10 rounded-lg border border-amber-200">
+                        <div>
+                          <p className="text-sm font-medium text-amber-800">
+                            {studentsWithNoAccount} student(s) have email but no linked account
+                          </p>
+                          <p className="text-xs text-amber-600 mt-1">
+                            This creates or links auth accounts for students showing "No Account" status
+                          </p>
+                          {isRepairing && (
+                            <p className="text-xs text-amber-600 mt-1">
+                              Progress: {repairProgress.current}/{repairProgress.total} — 
+                              ✓ {repairProgress.success} linked, ✗ {repairProgress.failed} failed
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={handleRepairAccounts}
+                          disabled={isRepairing}
+                        >
+                          {isRepairing ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Wrench className="h-4 w-4 mr-2" />
+                          )}
+                          {isRepairing ? 'Repairing...' : 'Repair Missing Accounts'}
+                        </Button>
+                      </div>
+                    )}
+
                     {/* Bulk Action Bar */}
                     {selectedStudents.size > 0 && (
                       <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
