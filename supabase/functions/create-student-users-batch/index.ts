@@ -64,8 +64,8 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    if (students.length > 100) {
-      return new Response(JSON.stringify({ error: 'Maximum 100 students per batch' }),
+    if (students.length > 25) {
+      return new Response(JSON.stringify({ error: 'Maximum 25 students per batch' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -164,9 +164,12 @@ Deno.serve(async (req) => {
         results.push({ email: student.email, user_id: userId, success: true, error: null, already_existed: false });
 
       } catch (err: any) {
-        console.error(`[BatchCreate] Error for ${student.email}:`, err);
+        console.error(`[BatchCreate] Error for ${student.email}:`, err?.message || err);
         results.push({ email: student.email, user_id: null, success: false, error: err.message || 'Unexpected error', already_existed: false });
       }
+
+      // Add delay between students to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
 
     const successCount = results.filter(r => r.success).length;

@@ -375,11 +375,16 @@ export const credentialService = {
     let failCount = 0;
     const errors: Array<{ email: string; error: string }> = [];
 
-    // Process in batches of 50
-    const batchSize = 50;
+    // Process in batches of 20 (smaller to avoid edge function timeouts)
+    const batchSize = 20;
     for (let i = 0; i < students.length; i += batchSize) {
       const batch = students.slice(i, i + batchSize);
       
+      // Add delay between batches to avoid rate limiting
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
       try {
         const response = await supabase.functions.invoke('create-student-users-batch', {
           body: {
