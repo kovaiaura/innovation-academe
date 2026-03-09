@@ -48,7 +48,7 @@ const Performance = () => {
   
   const location = useLocation();
   const institutionSlug = location.pathname.split('/')[2];
-  const institution = getInstitutionBySlug(institutionSlug);
+  const { institution: dbInstitution, stats: instStats, assignedOfficers } = useInstitutionStats(institutionSlug);
   const institutionId = user?.institution_id;
 
   useEffect(() => {
