@@ -13,7 +13,7 @@ import { CalendarIcon, Upload, X, FileText, Loader2, Building, ChevronDown, Chev
 import { cn } from '@/lib/utils';
 import { ActivityEventType, EVENT_TYPE_LABELS } from '@/types/events';
 import { useCreateEvent, useUploadBrochure, useUploadAttachment, usePublishEvent } from '@/hooks/useEvents';
-import { suoast } from 'sonner';
+import { toast } from 'sonner';
 import { InstitutionClassSelector, ClassSelection } from './InstitutionClassSelector';
 
 interface CreateEventFormProps {
