@@ -7,12 +7,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { StudentDetailsDialog } from "@/components/student/StudentDetailsDialog";
+import { TransferStudentDialog } from "@/components/student/TransferStudentDialog";
 import { 
   getStatusColor, 
   calculateAge, 
   exportStudentsToCSV
 } from "@/utils/studentHelpers";
-import { Download, Search, Users, UserCheck, UserX, GraduationCap, Phone, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { Download, Search, Users, UserCheck, UserX, GraduationCap, Phone, ChevronDown, ChevronRight, Loader2, ArrowRightLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Layout } from "@/components/layout/Layout";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
