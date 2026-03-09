@@ -252,7 +252,7 @@ export const credentialService = {
       }
     }
 
-    return students.map(student => {
+    return allStudents.map(student => {
       const classInfo = student.classes as any;
       return {
         id: student.id,
