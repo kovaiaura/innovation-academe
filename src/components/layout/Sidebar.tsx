@@ -197,29 +197,26 @@ export function Sidebar() {
   const { user, logout } = useAuth();
   const { branding } = useBranding();
   const location = useLocation();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const savedScrollTop = useRef(0);
 
-  const handleSidebarScroll = useCallback((e: Event) => {
-    savedScrollTop.current = (e.target as HTMLDivElement).scrollTop;
-  }, []);
-
   useEffect(() => {
-    const viewport = scrollRef.current;
-    if (viewport) {
-      viewport.addEventListener('scroll', handleSidebarScroll);
-    }
-    requestAnimationFrame(() => {
-      if (scrollRef.current) {
-        scrollRef.current.scrollTop = savedScrollTop.current;
-      }
-    });
-    return () => {
-      if (viewport) {
-        viewport.removeEventListener('scroll', handleSidebarScroll);
-      }
+    const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement | null;
+    if (!viewport) return;
+
+    const handleScroll = () => {
+      savedScrollTop.current = viewport.scrollTop;
     };
-  }, [location.pathname, handleSidebarScroll]);
+    viewport.addEventListener('scroll', handleScroll);
+
+    requestAnimationFrame(() => {
+      viewport.scrollTop = savedScrollTop.current;
+    });
+
+    return () => {
+      viewport.removeEventListener('scroll', handleScroll);
+    };
+  }, [location.pathname]);
   const [officerProfile, setOfficerProfile] = useState<OfficerDetails | null>(null);
   const [teacherProfile, setTeacherProfile] = useState<SchoolTeacher | null>(null);
   const [staffDesignation, setStaffDesignation] = useState<string | null>(null);
