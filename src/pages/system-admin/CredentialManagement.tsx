@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Key, Mail, Check, AlertCircle, RefreshCw, Loader2, X, Download, Wrench } from 'lucide-react';
+import { Search, Key, Mail, Check, AlertCircle, RefreshCw, Loader2, X, Download, Wrench, Eye, EyeOff } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { SetPasswordDialog } from '@/components/auth/SetPasswordDialog';
 import { BulkResetDialog } from '@/components/credential/BulkResetDialog';
 import { passwordService } from '@/services/password.service';
