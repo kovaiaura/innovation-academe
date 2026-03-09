@@ -1063,6 +1063,54 @@ export default function CredentialManagement() {
         />
       )}
 
+      {/* Repair Password Dialog */}
+      <Dialog open={repairPasswordDialogOpen} onOpenChange={setRepairPasswordDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Set Default Password for New Accounts</DialogTitle>
+            <DialogDescription>
+              Enter a default password that will be used for all students who don't have an account yet. Students will be required to change this password on their first login.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="relative">
+              <Input
+                type={showRepairPassword ? 'text' : 'password'}
+                placeholder="Enter default password..."
+                value={repairDefaultPassword}
+                onChange={(e) => setRepairDefaultPassword(e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                onClick={() => setShowRepairPassword(!showRepairPassword)}
+              >
+                {showRepairPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+            <div className="text-xs space-y-1 text-muted-foreground">
+              <p className={repairDefaultPassword.length >= 8 ? 'text-green-600' : ''}>• At least 8 characters</p>
+              <p className={/[A-Z]/.test(repairDefaultPassword) ? 'text-green-600' : ''}>• One uppercase letter</p>
+              <p className={/[a-z]/.test(repairDefaultPassword) ? 'text-green-600' : ''}>• One lowercase letter</p>
+              <p className={/[0-9]/.test(repairDefaultPassword) ? 'text-green-600' : ''}>• One number</p>
+              <p className={/[^A-Za-z0-9]/.test(repairDefaultPassword) ? 'text-green-600' : ''}>• One special character</p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setRepairPasswordDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => handleRepairAccounts(repairDefaultPassword)}
+              disabled={!repairPasswordValid}
+            >
+              <Wrench className="h-4 w-4 mr-2" />
+              Start Repair
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Bulk Reset Dialog */}
       <BulkResetDialog
         open={bulkResetDialogOpen}
