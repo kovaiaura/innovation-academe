@@ -500,68 +500,12 @@ export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
                     If none selected, the event will be saved as a draft.
                   </p>
                   
-                  {loadingInstitutions ? (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    </div>
-                  ) : (
-                    <ScrollArea className="h-[250px]">
-                      <div className="space-y-3">
-                        {institutions.map((institution) => (
-                          <div key={institution.id} className="border rounded-lg p-3">
-                            <div className="flex items-center gap-3">
-                              <Checkbox
-                                id={`create-inst-${institution.id}`}
-                                checked={isAllClassesSelected(institution)}
-                                onCheckedChange={() => toggleAllClassesInInstitution(institution)}
-                              />
-                              <div
-                                className="flex items-center gap-2 flex-1 cursor-pointer"
-                                onClick={() => toggleInstitutionExpand(institution.id)}
-                              >
-                                <Building className="h-4 w-4 text-muted-foreground" />
-                                <Label className="cursor-pointer font-medium text-sm">
-                                  {institution.name}
-                                </Label>
-                                <span className="text-xs text-muted-foreground">
-                                  ({institution.classes.length} classes)
-                                </span>
-                                {expandedInstitutions.has(institution.id) ? (
-                                  <ChevronDown className="h-4 w-4 ml-auto" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4 ml-auto" />
-                                )}
-                              </div>
-                            </div>
-
-                            {expandedInstitutions.has(institution.id) && institution.classes.length > 0 && (
-                              <div className="ml-8 mt-3 space-y-2">
-                                {institution.classes.map((cls) => (
-                                  <div key={cls.id} className="flex items-center gap-3">
-                                    <Checkbox
-                                      id={`create-class-${cls.id}`}
-                                      checked={isClassSelected(institution.id, cls.id)}
-                                      onCheckedChange={() => toggleClass(institution.id, cls.id)}
-                                    />
-                                    <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                                    <Label htmlFor={`create-class-${cls.id}`} className="cursor-pointer text-sm">
-                                      {cls.class_name} {cls.section ? `- ${cls.section}` : ''}
-                                    </Label>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-
-                        {institutions.length === 0 && (
-                          <p className="text-center text-muted-foreground py-4 text-sm">
-                            No institutions found
-                          </p>
-                        )}
-                      </div>
-                    </ScrollArea>
-                  )}
+                  <InstitutionClassSelector
+                    selectedClasses={selectedClasses}
+                    onSelectionChange={setSelectedClasses}
+                    height="250px"
+                    idPrefix="create-event"
+                  />
                   
                   {selectedClasses.length > 0 && (
                     <p className="text-sm text-muted-foreground mt-3">
