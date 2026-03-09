@@ -165,10 +165,9 @@ const MonthlyReportsTab = ({ institutionId }: { institutionId: string | undefine
 };
 
 const Reports = () => {
-  // Extract institution from URL
   const location = useLocation();
   const institutionSlug = location.pathname.split('/')[2];
-  const institution = getInstitutionBySlug(institutionSlug);
+  const { institution, stats, assignedOfficers } = useInstitutionStats(institutionSlug);
   
   // Get real institution ID from database
   const { data: institutionId } = useInstitutionId(institutionSlug);
@@ -179,12 +178,12 @@ const Reports = () => {
         {institution && (
           <InstitutionHeader 
             institutionName={institution.name}
-            establishedYear={institution.established_year}
-            location={institution.location}
-            totalStudents={institution.total_students}
-            academicYear={institution.academic_year}
+            establishedYear={institution.settings?.established_year}
+            location={institution.address?.city || institution.address?.location}
+            totalStudents={stats.totalStudents}
+            academicYear={institution.settings?.academic_year || "2025-26"}
             userRole="Management Portal"
-            assignedOfficers={institution.assigned_officers.map(o => o.officer_name)}
+            assignedOfficers={assignedOfficers}
           />
         )}
         
@@ -193,7 +192,7 @@ const Reports = () => {
           <p className="text-muted-foreground">Monthly reports</p>
         </div>
 
-        <MonthlyReportsTab institutionId={institutionId} />
+        <MonthlyReportsTab institutionId={institutionId || institution?.id} />
       </div>
     </Layout>
   );

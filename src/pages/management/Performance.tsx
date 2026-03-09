@@ -196,15 +196,15 @@ const Performance = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        {institution && (
+        {dbInstitution && (
           <InstitutionHeader 
-            institutionName={institution.name}
-            establishedYear={institution.established_year}
-            location={institution.location}
-            totalStudents={institution.total_students}
-            academicYear={institution.academic_year}
+            institutionName={dbInstitution.name}
+            establishedYear={dbInstitution.settings?.established_year}
+            location={dbInstitution.address?.city || dbInstitution.address?.location}
+            totalStudents={instStats.totalStudents}
+            academicYear={dbInstitution.settings?.academic_year || "2025-26"}
             userRole="Management Portal"
-            assignedOfficers={institution.assigned_officers.map(o => o.officer_name)}
+            assignedOfficers={assignedOfficers}
           />
         )}
         
