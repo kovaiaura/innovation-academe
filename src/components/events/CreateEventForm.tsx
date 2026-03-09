@@ -43,10 +43,7 @@ export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
   
   // Institution/Class selection
   const [showPublishing, setShowPublishing] = useState(false);
-  const [institutions, setInstitutions] = useState<Institution[]>([]);
-  const [loadingInstitutions, setLoadingInstitutions] = useState(false);
-  const [selectedClasses, setSelectedClasses] = useState<{ institution_id: string; class_id: string }[]>([]);
-  const [expandedInstitutions, setExpandedInstitutions] = useState<Set<string>>(new Set());
+  const [selectedClasses, setSelectedClasses] = useState<ClassSelection[]>([]);
 
   const createEvent = useCreateEvent();
   const uploadBrochure = useUploadBrochure();
