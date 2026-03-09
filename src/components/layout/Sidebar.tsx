@@ -14,7 +14,7 @@ import {
   LayoutDashboard, CheckSquare, ListTodo, Key, Star, History, CalendarDays
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { UserRole } from '@/types';
 import { SystemAdminFeature } from '@/types/permissions';
 import { canAccessFeature, isCEO } from '@/utils/permissionHelpers';
