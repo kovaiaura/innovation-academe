@@ -64,8 +64,8 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    if (students.length > 100) {
-      return new Response(JSON.stringify({ error: 'Maximum 100 students per batch' }),
+    if (students.length > 25) {
+      return new Response(JSON.stringify({ error: 'Maximum 25 students per batch' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
