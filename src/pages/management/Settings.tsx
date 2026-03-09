@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -5,14 +6,56 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Building2, Award, Mail, Save, Shield } from "lucide-react";
+import { Award, Save, Shield, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
-import { getInstitutionBySlug } from "@/data/mockInstitutionData";
 import { useLocation } from "react-router-dom";
 import { AccountSettingsSection } from "@/components/settings/AccountSettingsSection";
+import { useInstitutionStats } from "@/hooks/useInstitutionStats";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
-const InstitutionProfileTab = () => {
+interface InstitutionProfileTabProps {
+  institutionId: string | undefined;
+  currentSettings: Record<string, any> | null;
+  institutionName: string;
+}
+
+const InstitutionProfileTab = ({ institutionId, currentSettings, institutionName }: InstitutionProfileTabProps) => {
+  const [academicYear, setAcademicYear] = useState(currentSettings?.academic_year || "2025-26");
+  const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (currentSettings?.academic_year) {
+      setAcademicYear(currentSettings.academic_year);
+    }
+  }, [currentSettings]);
+
+  const handleSave = async () => {
+    if (!institutionId) return;
+    setSaving(true);
+    try {
+      const mergedSettings = { ...currentSettings, academic_year: academicYear };
+      const { error } = await supabase
+        .from('institutions')
+        .update({ settings: mergedSettings as any })
+        .eq('id', institutionId);
+      
+      if (error) throw error;
+      
+      // Invalidate all institution stats queries so headers refresh
+      queryClient.invalidateQueries({ queryKey: ['institution-stats'] });
+      toast.success('Settings saved successfully');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast.error('Failed to save settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -24,42 +67,25 @@ const InstitutionProfileTab = () => {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="inst-name">Institution Name</Label>
-              <Input id="inst-name" defaultValue="Engineering College - Main Campus" />
+              <Input id="inst-name" value={institutionName} disabled />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="inst-code">Institution Code</Label>
-              <Input id="inst-code" defaultValue="EC-MC-001" />
+              <Label htmlFor="academic-year">Academic Year</Label>
+              <Input 
+                id="academic-year" 
+                value={academicYear}
+                onChange={(e) => setAcademicYear(e.target.value)}
+                placeholder="e.g. 2025-26"
+              />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="address">Address</Label>
-            <Textarea id="address" defaultValue="123 Education Street, Tech City, State - 560001" />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="phone">Contact Phone</Label>
-              <Input id="phone" defaultValue="+91 80 1234 5678" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Contact Email</Label>
-              <Input id="email" type="email" defaultValue="info@college.edu" />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="academic-year">Academic Year</Label>
-            <Input id="academic-year" defaultValue="2025-2026" />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="logo">Institution Logo URL</Label>
-            <Input id="logo" placeholder="https://example.com/logo.png" />
-          </div>
-
-          <Button>
-            <Save className="h-4 w-4 mr-2" />
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
             Save Changes
           </Button>
         </CardContent>
@@ -220,10 +246,9 @@ const IntegrationsTab = () => {
 };
 
 const Settings = () => {
-  // Extract institution from URL
   const location = useLocation();
   const institutionSlug = location.pathname.split('/')[2];
-  const institution = getInstitutionBySlug(institutionSlug);
+  const { institution, loading, assignedOfficers, stats } = useInstitutionStats(institutionSlug);
 
   return (
     <Layout>
@@ -231,12 +256,12 @@ const Settings = () => {
         {institution && (
           <InstitutionHeader 
             institutionName={institution.name}
-            establishedYear={institution.established_year}
-            location={institution.location}
-            totalStudents={institution.total_students}
-            academicYear={institution.academic_year}
+            establishedYear={institution.settings?.established_year}
+            location={institution.address?.city || institution.address?.location}
+            totalStudents={stats.totalStudents}
+            academicYear={institution.settings?.academic_year || "2025-26"}
             userRole="Management Portal"
-            assignedOfficers={institution.assigned_officers.map(o => o.officer_name)}
+            assignedOfficers={assignedOfficers}
           />
         )}
         
@@ -260,7 +285,11 @@ const Settings = () => {
             <AccountSettingsSection />
           </TabsContent>
           <TabsContent value="profile" className="mt-6">
-            <InstitutionProfileTab />
+            <InstitutionProfileTab 
+              institutionId={institution?.id}
+              currentSettings={institution?.settings || null}
+              institutionName={institution?.name || ""}
+            />
           </TabsContent>
           <TabsContent value="branding" className="mt-6">
             <BrandingTab />

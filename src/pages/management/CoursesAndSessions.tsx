@@ -1,14 +1,13 @@
 import { Layout } from "@/components/layout/Layout";
 import { ManagementCoursesView } from "@/components/management/ManagementCoursesView";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
-import { getInstitutionBySlug } from "@/data/mockInstitutionData";
+import { useInstitutionStats } from "@/hooks/useInstitutionStats";
 import { useLocation } from "react-router-dom";
 
 const CoursesAndSessions = () => {
-  // Extract institution from URL for header display
   const location = useLocation();
   const institutionSlug = location.pathname.split('/')[2];
-  const institution = getInstitutionBySlug(institutionSlug);
+  const { institution, stats, assignedOfficers } = useInstitutionStats(institutionSlug);
 
   return (
     <Layout>
@@ -16,12 +15,12 @@ const CoursesAndSessions = () => {
         {institution && (
           <InstitutionHeader 
             institutionName={institution.name}
-            establishedYear={institution.established_year}
-            location={institution.location}
-            totalStudents={institution.total_students}
-            academicYear={institution.academic_year}
+            establishedYear={institution.settings?.established_year}
+            location={institution.address?.city || institution.address?.location}
+            totalStudents={stats.totalStudents}
+            academicYear={institution.settings?.academic_year || "2025-26"}
             userRole="Management Portal"
-            assignedOfficers={institution.assigned_officers.map(o => o.officer_name)}
+            assignedOfficers={assignedOfficers}
           />
         )}
         
@@ -30,7 +29,6 @@ const CoursesAndSessions = () => {
           <p className="text-muted-foreground">View all published courses</p>
         </div>
 
-        {/* Course catalog - view only */}
         <ManagementCoursesView />
       </div>
     </Layout>

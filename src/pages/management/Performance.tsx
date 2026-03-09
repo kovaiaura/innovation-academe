@@ -12,8 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
-import { getInstitutionBySlug } from "@/data/mockInstitutionData";
 import { useLocation } from "react-router-dom";
+import { useInstitutionStats } from "@/hooks/useInstitutionStats";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -48,7 +48,7 @@ const Performance = () => {
   
   const location = useLocation();
   const institutionSlug = location.pathname.split('/')[2];
-  const institution = getInstitutionBySlug(institutionSlug);
+  const { institution: dbInstitution, stats: instStats, assignedOfficers } = useInstitutionStats(institutionSlug);
   const institutionId = user?.institution_id;
 
   useEffect(() => {
@@ -196,15 +196,15 @@ const Performance = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        {institution && (
+        {dbInstitution && (
           <InstitutionHeader 
-            institutionName={institution.name}
-            establishedYear={institution.established_year}
-            location={institution.location}
-            totalStudents={institution.total_students}
-            academicYear={institution.academic_year}
+            institutionName={dbInstitution.name}
+            establishedYear={dbInstitution.settings?.established_year}
+            location={dbInstitution.address?.city || dbInstitution.address?.location}
+            totalStudents={instStats.totalStudents}
+            academicYear={dbInstitution.settings?.academic_year || "2025-26"}
             userRole="Management Portal"
-            assignedOfficers={institution.assigned_officers.map(o => o.officer_name)}
+            assignedOfficers={assignedOfficers}
           />
         )}
         
