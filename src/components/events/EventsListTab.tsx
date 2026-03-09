@@ -197,7 +197,7 @@ export function EventsListTab() {
       {/* Edit Dialog */}
       {selectedEvent && (
         <EditEventDialog
-          eventId={selectedEvent}
+          event={selectedEvent as any}
           open={!!selectedEvent}
           onOpenChange={(open) => {
             if (!open) {
