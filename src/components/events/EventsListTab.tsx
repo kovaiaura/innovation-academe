@@ -166,7 +166,7 @@ export function EventsListTab() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => setSelectedEvent(event.id)}
+                          onClick={() => setSelectedEvent(event as any)}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
