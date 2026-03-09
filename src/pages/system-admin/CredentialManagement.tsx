@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Key, Mail, Check, AlertCircle, RefreshCw, Loader2, X, Download } from 'lucide-react';
+import { Search, Key, Mail, Check, AlertCircle, RefreshCw, Loader2, X, Download, Wrench } from 'lucide-react';
 import { SetPasswordDialog } from '@/components/auth/SetPasswordDialog';
 import { BulkResetDialog } from '@/components/credential/BulkResetDialog';
 import { passwordService } from '@/services/password.service';
@@ -62,6 +62,10 @@ export default function CredentialManagement() {
   const [bulkResetType, setBulkResetType] = useState<'meta_employee' | 'officer' | 'institution_admin' | 'student'>('meta_employee');
   const [bulkResetProgress, setBulkResetProgress] = useState<{ current: number; total: number; errors: Array<{ email: string; error: string }> }>({ current: 0, total: 0, errors: [] });
   const [isBulkResetting, setIsBulkResetting] = useState(false);
+
+  // Repair Accounts State
+  const [isRepairing, setIsRepairing] = useState(false);
+  const [repairProgress, setRepairProgress] = useState<{ current: number; total: number; success: number; failed: number }>({ current: 0, total: 0, success: 0, failed: 0 });
 
   // Fetch data using React Query hooks
   const { data: metaEmployees = [], isLoading: metaLoading, refetch: refetchMeta } = useMetaEmployees();
@@ -279,6 +283,41 @@ export default function CredentialManagement() {
   const closeBulkResetDialog = () => {
     if (!isBulkResetting) {
       setBulkResetDialogOpen(false);
+    }
+  };
+
+  // Count students with missing accounts for the selected institution
+  const studentsWithNoAccount = students.filter(s => !s.user_id && s.email).length;
+
+  const handleRepairAccounts = async () => {
+    if (!selectedInstitution) return;
+    setIsRepairing(true);
+    setRepairProgress({ current: 0, total: 0, success: 0, failed: 0 });
+
+    try {
+      const result = await credentialService.repairStudentAccounts(
+        selectedInstitution,
+        (current, total, success, failed) => {
+          setRepairProgress({ current, total, success, failed });
+        }
+      );
+
+      if (result.success > 0) {
+        toast.success(`Repaired ${result.success} student account(s)`, {
+          description: result.failed > 0 ? `${result.failed} failed` : undefined,
+        });
+      } else if (result.failed > 0) {
+        toast.error(`Failed to repair ${result.failed} account(s)`);
+      } else {
+        toast.info('No students with missing accounts found');
+      }
+
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: ['credential-students'] });
+    } catch (err) {
+      toast.error('Repair process failed');
+    } finally {
+      setIsRepairing(false);
     }
   };
 
@@ -828,6 +867,39 @@ export default function CredentialManagement() {
                         Export CSV
                       </Button>
                     </div>
+
+                    {/* Repair Missing Accounts Banner */}
+                    {studentsWithNoAccount > 0 && (
+                      <div className="flex items-center justify-between p-4 bg-amber-500/10 rounded-lg border border-amber-200">
+                        <div>
+                          <p className="text-sm font-medium text-amber-800">
+                            {studentsWithNoAccount} student(s) have email but no linked account
+                          </p>
+                          <p className="text-xs text-amber-600 mt-1">
+                            This creates or links auth accounts for students showing "No Account" status
+                          </p>
+                          {isRepairing && (
+                            <p className="text-xs text-amber-600 mt-1">
+                              Progress: {repairProgress.current}/{repairProgress.total} — 
+                              ✓ {repairProgress.success} linked, ✗ {repairProgress.failed} failed
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={handleRepairAccounts}
+                          disabled={isRepairing}
+                        >
+                          {isRepairing ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Wrench className="h-4 w-4 mr-2" />
+                          )}
+                          {isRepairing ? 'Repairing...' : 'Repair Missing Accounts'}
+                        </Button>
+                      </div>
+                    )}
 
                     {/* Bulk Action Bar */}
                     {selectedStudents.size > 0 && (
