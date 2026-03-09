@@ -2698,7 +2698,7 @@ serve(async (req) => {
       const result = await fetchStudentContext(userId);
       dataContext = result.context;
       dataSources = result.sources;
-      basePrompt = studentPrompt;
+      basePrompt = result.institutionType === 'college' ? collegeStudentPrompt : schoolStudentPrompt;
     }
 
     const systemPrompt = basePrompt + dataGroundingRules + `
