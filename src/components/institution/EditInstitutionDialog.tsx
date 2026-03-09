@@ -24,6 +24,7 @@ interface Institution {
   };
   attendance_radius_meters?: number;
   normal_working_hours?: number;
+  settings?: Record<string, any>;
 }
 
 interface EditInstitutionDialogProps {
