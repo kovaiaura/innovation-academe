@@ -21,11 +21,6 @@ interface CreateEventFormProps {
   onSuccess?: () => void;
 }
 
-interface Institution {
-  id: string;
-  name: string;
-  classes: { id: string; class_name: string; section?: string }[];
-}
 
 export function CreateEventForm({ onSuccess }: CreateEventFormProps) {
   const [title, setTitle] = useState('');
