@@ -219,7 +219,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
   if (isLoading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-5xl h-[90vh] flex items-center justify-center">
+        <DialogContent className="max-w-7xl h-[90vh] flex items-center justify-center">
           <p>Loading course data...</p>
         </DialogContent>
       </Dialog>
