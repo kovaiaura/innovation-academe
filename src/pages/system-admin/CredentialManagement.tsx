@@ -295,14 +295,27 @@ export default function CredentialManagement() {
   // Count students with missing accounts for the selected institution
   const studentsWithNoAccount = students.filter(s => !s.user_id && s.email).length;
 
-  const handleRepairAccounts = async () => {
+  const openRepairDialog = () => {
+    setRepairDefaultPassword('');
+    setShowRepairPassword(false);
+    setRepairPasswordDialogOpen(true);
+  };
+
+  const repairPasswordValid = useMemo(() => {
+    const p = repairDefaultPassword;
+    return p.length >= 8 && /[A-Z]/.test(p) && /[a-z]/.test(p) && /[0-9]/.test(p) && /[^A-Za-z0-9]/.test(p);
+  }, [repairDefaultPassword]);
+
+  const handleRepairAccounts = async (defaultPassword: string) => {
     if (!selectedInstitution) return;
+    setRepairPasswordDialogOpen(false);
     setIsRepairing(true);
     setRepairProgress({ current: 0, total: 0, success: 0, failed: 0 });
 
     try {
       const result = await credentialService.repairStudentAccounts(
         selectedInstitution,
+        defaultPassword,
         (current, total, success, failed) => {
           setRepairProgress({ current, total, success, failed });
         }
