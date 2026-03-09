@@ -34,7 +34,7 @@ export default function ManagementWebinars() {
 
   useEffect(() => {
     loadWebinars();
-  }, [institutionId]);
+  }, [user?.institution_id]);
 
   const handleView = (webinar: Webinar) => {
     setSelectedWebinar(webinar);
