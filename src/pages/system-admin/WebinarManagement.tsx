@@ -3,7 +3,7 @@ import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { webinarService, Webinar, WebinarFormData } from '@/services/webinar.service';
+import { webinarService, Webinar, WebinarFormData, WebinarAssignment } from '@/services/webinar.service';
 import { WebinarCard } from '@/components/webinars/WebinarCard';
 import { WebinarFormDialog } from '@/components/webinars/WebinarFormDialog';
 import { WebinarViewDialog } from '@/components/webinars/WebinarViewDialog';

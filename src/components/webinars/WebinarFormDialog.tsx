@@ -5,21 +5,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Webinar, WebinarFormData, MetaEventType, EVENT_TYPE_LABELS, webinarService } from '@/services/webinar.service';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Webinar, WebinarFormData, MetaEventType, EVENT_TYPE_LABELS, WebinarAssignment, webinarService } from '@/services/webinar.service';
+import { InstitutionClassSelector, ClassSelection } from '@/components/events/InstitutionClassSelector';
 import { toast } from 'sonner';
-import { Upload, X, ImageIcon } from 'lucide-react';
+import { Upload, X, ImageIcon, ChevronDown, Building } from 'lucide-react';
 
 interface WebinarFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   webinar?: Webinar | null;
-  onSubmit: (data: WebinarFormData) => Promise<void>;
+  onSubmit: (data: WebinarFormData, assignments: WebinarAssignment[]) => Promise<void>;
 }
 
 export function WebinarFormDialog({ open, onOpenChange, webinar, onSubmit }: WebinarFormDialogProps) {
   const [loading, setLoading] = useState(false);
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [selectedClasses, setSelectedClasses] = useState<ClassSelection[]>([]);
   const thumbnailRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
@@ -48,6 +52,14 @@ export function WebinarFormDialog({ open, onOpenChange, webinar, onSubmit }: Web
         thumbnail_url: webinar.thumbnail_url || '',
         gallery_urls: webinar.gallery_urls || [],
       });
+      // Load existing assignments
+      webinarService.getWebinarAssignments(webinar.id).then(assignments => {
+        setSelectedClasses(assignments.map(a => ({
+          institution_id: a.institution_id,
+          class_id: a.class_id,
+        })));
+        if (assignments.length > 0) setAssignOpen(true);
+      });
     } else {
       setFormData({
         title: '',
@@ -60,6 +72,8 @@ export function WebinarFormDialog({ open, onOpenChange, webinar, onSubmit }: Web
         thumbnail_url: '',
         gallery_urls: [],
       });
+      setSelectedClasses([]);
+      setAssignOpen(false);
     }
   }, [webinar, open]);
 
@@ -129,13 +143,18 @@ export function WebinarFormDialog({ open, onOpenChange, webinar, onSubmit }: Web
       }
     }
 
+    const assignments: WebinarAssignment[] = selectedClasses.map(c => ({
+      institution_id: c.institution_id,
+      class_id: c.class_id,
+    }));
+
     setLoading(true);
     try {
       await onSubmit({
         ...formData,
         youtube_url: isWebinar ? formData.youtube_url : undefined,
         webinar_date: new Date(formData.webinar_date).toISOString()
-      });
+      }, assignments);
       onOpenChange(false);
     } catch (error) {
       console.error('Error saving:', error);
@@ -305,6 +324,35 @@ export function WebinarFormDialog({ open, onOpenChange, webinar, onSubmit }: Web
               required
             />
           </div>
+
+          {/* Institution & Class Assignment */}
+          <Collapsible open={assignOpen} onOpenChange={setAssignOpen}>
+            <CollapsibleTrigger asChild>
+              <Button type="button" variant="outline" className="w-full justify-between">
+                <span className="flex items-center gap-2">
+                  <Building className="h-4 w-4" />
+                  Assign to Institutions & Classes
+                  {selectedClasses.length > 0 && (
+                    <span className="text-xs bg-primary text-primary-foreground rounded-full px-2 py-0.5">
+                      {selectedClasses.length}
+                    </span>
+                  )}
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${assignOpen ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-3">
+              <p className="text-xs text-muted-foreground mb-2">
+                Select which institutions and classes can see this event. Leave empty to make it visible to all.
+              </p>
+              <InstitutionClassSelector
+                selectedClasses={selectedClasses}
+                onSelectionChange={setSelectedClasses}
+                height="200px"
+                idPrefix="webinar-ics"
+              />
+            </CollapsibleContent>
+          </Collapsible>
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

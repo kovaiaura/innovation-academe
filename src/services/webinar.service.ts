@@ -31,6 +31,11 @@ export interface WebinarFormData {
   gallery_urls?: string[];
 }
 
+export interface WebinarAssignment {
+  institution_id: string;
+  class_id: string;
+}
+
 export const EVENT_TYPE_LABELS: Record<MetaEventType, string> = {
   webinar: 'Webinar',
   seminar: 'Seminar',
@@ -47,6 +52,39 @@ export const webinarService = {
     
     if (error) throw error;
     return (data || []) as Webinar[];
+  },
+
+  async getWebinarsForInstitution(institutionId: string): Promise<Webinar[]> {
+    // Get all active webinars
+    const { data: allWebinars, error } = await (supabase as any)
+      .from('webinars')
+      .select('*')
+      .eq('is_active', true)
+      .order('webinar_date', { ascending: false });
+    
+    if (error) throw error;
+
+    // Get webinar IDs that have any assignments
+    const { data: assignments, error: aError } = await (supabase as any)
+      .from('webinar_institution_assignments')
+      .select('webinar_id, institution_id');
+    
+    if (aError) throw aError;
+
+    const assignmentsByWebinar = new Map<string, string[]>();
+    for (const a of assignments || []) {
+      if (!assignmentsByWebinar.has(a.webinar_id)) {
+        assignmentsByWebinar.set(a.webinar_id, []);
+      }
+      assignmentsByWebinar.get(a.webinar_id)!.push(a.institution_id);
+    }
+
+    // Filter: show webinars with no assignments (global) or assigned to this institution
+    return (allWebinars || []).filter((w: Webinar) => {
+      const assignedInsts = assignmentsByWebinar.get(w.id);
+      if (!assignedInsts || assignedInsts.length === 0) return true; // global
+      return assignedInsts.includes(institutionId);
+    });
   },
 
   async getAllWebinars(): Promise<Webinar[]> {
@@ -68,6 +106,45 @@ export const webinarService = {
     
     if (error) throw error;
     return data as Webinar;
+  },
+
+  async getWebinarAssignments(webinarId: string): Promise<WebinarAssignment[]> {
+    const { data, error } = await (supabase as any)
+      .from('webinar_institution_assignments')
+      .select('institution_id, class_id')
+      .eq('webinar_id', webinarId);
+    
+    if (error) throw error;
+    return (data || []).map((a: any) => ({
+      institution_id: a.institution_id,
+      class_id: a.class_id,
+    }));
+  },
+
+  async saveWebinarAssignments(webinarId: string, assignments: WebinarAssignment[]): Promise<void> {
+    const { data: user } = await supabase.auth.getUser();
+
+    // Delete existing
+    await (supabase as any)
+      .from('webinar_institution_assignments')
+      .delete()
+      .eq('webinar_id', webinarId);
+
+    // Insert new
+    if (assignments.length > 0) {
+      const rows = assignments.map(a => ({
+        webinar_id: webinarId,
+        institution_id: a.institution_id,
+        class_id: a.class_id,
+        assigned_by: user?.user?.id,
+      }));
+
+      const { error } = await (supabase as any)
+        .from('webinar_institution_assignments')
+        .insert(rows);
+      
+      if (error) throw error;
+    }
   },
 
   async createWebinar(webinar: WebinarFormData): Promise<Webinar> {
@@ -130,6 +207,12 @@ export const webinarService = {
   },
 
   async hardDeleteWebinar(id: string): Promise<void> {
+    // Delete assignments first (cascade should handle, but be safe)
+    await (supabase as any)
+      .from('webinar_institution_assignments')
+      .delete()
+      .eq('webinar_id', id);
+
     const { error } = await (supabase as any)
       .from('webinars')
       .delete()
@@ -155,7 +238,6 @@ export const webinarService = {
     return urlData.publicUrl;
   },
 
-  // Extract YouTube video ID from URL
   getYouTubeVideoId(url: string | null): string | null {
     if (!url) return null;
     const patterns = [
@@ -170,7 +252,6 @@ export const webinarService = {
     return null;
   },
 
-  // Get embed URL for YouTube video
   getEmbedUrl(url: string | null): string | null {
     if (!url) return null;
     const videoId = this.getYouTubeVideoId(url);
