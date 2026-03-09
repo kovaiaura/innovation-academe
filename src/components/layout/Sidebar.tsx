@@ -14,7 +14,7 @@ import {
   LayoutDashboard, CheckSquare, ListTodo, Key, Star, History, CalendarDays
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { UserRole } from '@/types';
 import { SystemAdminFeature } from '@/types/permissions';
 import { canAccessFeature, isCEO } from '@/utils/permissionHelpers';
@@ -197,6 +197,26 @@ export function Sidebar() {
   const { user, logout } = useAuth();
   const { branding } = useBranding();
   const location = useLocation();
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const savedScrollTop = useRef(0);
+
+  useEffect(() => {
+    const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement | null;
+    if (!viewport) return;
+
+    const handleScroll = () => {
+      savedScrollTop.current = viewport.scrollTop;
+    };
+    viewport.addEventListener('scroll', handleScroll);
+
+    requestAnimationFrame(() => {
+      viewport.scrollTop = savedScrollTop.current;
+    });
+
+    return () => {
+      viewport.removeEventListener('scroll', handleScroll);
+    };
+  }, [location.pathname]);
   const [officerProfile, setOfficerProfile] = useState<OfficerDetails | null>(null);
   const [teacherProfile, setTeacherProfile] = useState<SchoolTeacher | null>(null);
   const [staffDesignation, setStaffDesignation] = useState<string | null>(null);
@@ -494,7 +514,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <ScrollArea className="flex-1 px-2 py-4">
+      <ScrollArea ref={scrollAreaRef} className="flex-1 px-2 py-4">
         <div className="space-y-1">
           {visibleMenuItems.map((item) => {
             // Determine the appropriate role for this item's path

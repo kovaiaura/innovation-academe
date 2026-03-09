@@ -1,43 +1,17 @@
 
+# Remove Performance Analytics Tab from Management Reports
 
-# Plan: Preserve Sidebar Scroll Position on Navigation
+## Overview
+Remove the Performance Analytics tab from the Management Reports page, keeping only the Monthly Reports content as the main view (no tabs needed).
 
-## Problem
-When navigating to a menu item near the bottom of the sidebar, the page loads correctly but the sidebar's `ScrollArea` resets its scroll position to the top. This forces users to scroll down again to find where they were.
+## Changes
 
-## Root Cause
-The sidebar uses a `<ScrollArea>` component (line 497 of `Sidebar.tsx`). On every route change, React re-renders the sidebar and the ScrollArea resets to the top.
+**File: `src/pages/management/Reports.tsx`**
 
-## Solution
-Store the sidebar scroll position in a `ref` and restore it after navigation. Specifically:
+1. Remove the `PerformanceAnalyticsTab` component entirely (lines 47-130)
+2. Remove the `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` wrapper -- since there's only one section now, no tabs are needed
+3. Render the `MonthlyReportsTab` content directly
+4. Remove unused imports: `Tabs`, `TabsContent`, `TabsList`, `TabsTrigger`, `useState` (from PerformanceAnalyticsTab), `useInstitutionPerformanceMetrics`, `Badge` (if only used in analytics)
+5. Update the page subtitle from "Performance analytics and reports" to just "Monthly reports"
 
-### Changes to `src/components/layout/Sidebar.tsx`
-1. Add a `ref` to capture the scrollable viewport inside `ScrollArea`.
-2. On the scroll event, save the current `scrollTop` to a module-level variable (persists across re-renders without triggering them).
-3. After route changes (detected via `useLocation`), restore the saved `scrollTop` in a `useEffect` with a small `requestAnimationFrame` delay to ensure the DOM has updated.
-
-The key code pattern:
-```typescript
-const scrollRef = useRef<HTMLDivElement>(null);
-const savedScrollTop = useRef(0);
-
-// Save scroll position on scroll
-const handleScroll = (e: Event) => {
-  savedScrollTop.current = (e.target as HTMLDivElement).scrollTop;
-};
-
-// Restore after route change
-useEffect(() => {
-  requestAnimationFrame(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = savedScrollTop.current;
-    }
-  });
-}, [location.pathname]);
-```
-
-The `ScrollArea` viewport ref is accessed via `<ScrollArea><div ref={scrollRef}>` — we'll attach the ref to the ScrollArea's viewport using the component's built-in ref forwarding or by wrapping the content div.
-
-### Files Modified
-- `src/components/layout/Sidebar.tsx` — add scroll position persistence logic
-
+The page will simply show the "Published Reports" list directly without any tab navigation.
