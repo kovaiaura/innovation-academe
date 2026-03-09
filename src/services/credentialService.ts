@@ -356,6 +356,7 @@ export const credentialService = {
    */
   repairStudentAccounts: async (
     institutionId: string,
+    defaultPassword: string,
     onProgress?: (current: number, total: number, successCount: number, failCount: number) => void
   ): Promise<{ success: number; failed: number; errors: Array<{ email: string; error: string }> }> => {
     // Fetch all students with missing accounts
@@ -383,9 +384,10 @@ export const credentialService = {
         const response = await supabase.functions.invoke('create-student-users-batch', {
           body: {
             mode: 'repair',
+            defaultPassword,
             students: batch.map(s => ({
               email: s.email,
-              password: '', // Will be auto-generated in repair mode
+              password: '',
               student_name: s.student_name,
               institution_id: s.institution_id,
               class_id: s.class_id || '',

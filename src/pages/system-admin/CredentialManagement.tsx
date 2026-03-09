@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Key, Mail, Check, AlertCircle, RefreshCw, Loader2, X, Download, Wrench } from 'lucide-react';
+import { Search, Key, Mail, Check, AlertCircle, RefreshCw, Loader2, X, Download, Wrench, Eye, EyeOff } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { SetPasswordDialog } from '@/components/auth/SetPasswordDialog';
 import { BulkResetDialog } from '@/components/credential/BulkResetDialog';
 import { passwordService } from '@/services/password.service';
@@ -66,6 +67,11 @@ export default function CredentialManagement() {
   // Repair Accounts State
   const [isRepairing, setIsRepairing] = useState(false);
   const [repairProgress, setRepairProgress] = useState<{ current: number; total: number; success: number; failed: number }>({ current: 0, total: 0, success: 0, failed: 0 });
+
+  // Repair Password Dialog State
+  const [repairPasswordDialogOpen, setRepairPasswordDialogOpen] = useState(false);
+  const [repairDefaultPassword, setRepairDefaultPassword] = useState('');
+  const [showRepairPassword, setShowRepairPassword] = useState(false);
 
   // Fetch data using React Query hooks
   const { data: metaEmployees = [], isLoading: metaLoading, refetch: refetchMeta } = useMetaEmployees();
@@ -289,14 +295,27 @@ export default function CredentialManagement() {
   // Count students with missing accounts for the selected institution
   const studentsWithNoAccount = students.filter(s => !s.user_id && s.email).length;
 
-  const handleRepairAccounts = async () => {
+  const openRepairDialog = () => {
+    setRepairDefaultPassword('');
+    setShowRepairPassword(false);
+    setRepairPasswordDialogOpen(true);
+  };
+
+  const repairPasswordValid = useMemo(() => {
+    const p = repairDefaultPassword;
+    return p.length >= 8 && /[A-Z]/.test(p) && /[a-z]/.test(p) && /[0-9]/.test(p) && /[^A-Za-z0-9]/.test(p);
+  }, [repairDefaultPassword]);
+
+  const handleRepairAccounts = async (defaultPassword: string) => {
     if (!selectedInstitution) return;
+    setRepairPasswordDialogOpen(false);
     setIsRepairing(true);
     setRepairProgress({ current: 0, total: 0, success: 0, failed: 0 });
 
     try {
       const result = await credentialService.repairStudentAccounts(
         selectedInstitution,
+        defaultPassword,
         (current, total, success, failed) => {
           setRepairProgress({ current, total, success, failed });
         }
@@ -888,7 +907,7 @@ export default function CredentialManagement() {
                         <Button
                           size="sm"
                           variant="default"
-                          onClick={handleRepairAccounts}
+                          onClick={openRepairDialog}
                           disabled={isRepairing}
                         >
                           {isRepairing ? (
@@ -1043,6 +1062,54 @@ export default function CredentialManagement() {
           }}
         />
       )}
+
+      {/* Repair Password Dialog */}
+      <Dialog open={repairPasswordDialogOpen} onOpenChange={setRepairPasswordDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Set Default Password for New Accounts</DialogTitle>
+            <DialogDescription>
+              Enter a default password that will be used for all students who don't have an account yet. Students will be required to change this password on their first login.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="relative">
+              <Input
+                type={showRepairPassword ? 'text' : 'password'}
+                placeholder="Enter default password..."
+                value={repairDefaultPassword}
+                onChange={(e) => setRepairDefaultPassword(e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                onClick={() => setShowRepairPassword(!showRepairPassword)}
+              >
+                {showRepairPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+            <div className="text-xs space-y-1 text-muted-foreground">
+              <p className={repairDefaultPassword.length >= 8 ? 'text-green-600' : ''}>• At least 8 characters</p>
+              <p className={/[A-Z]/.test(repairDefaultPassword) ? 'text-green-600' : ''}>• One uppercase letter</p>
+              <p className={/[a-z]/.test(repairDefaultPassword) ? 'text-green-600' : ''}>• One lowercase letter</p>
+              <p className={/[0-9]/.test(repairDefaultPassword) ? 'text-green-600' : ''}>• One number</p>
+              <p className={/[^A-Za-z0-9]/.test(repairDefaultPassword) ? 'text-green-600' : ''}>• One special character</p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setRepairPasswordDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => handleRepairAccounts(repairDefaultPassword)}
+              disabled={!repairPasswordValid}
+            >
+              <Wrench className="h-4 w-4 mr-2" />
+              Start Repair
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Bulk Reset Dialog */}
       <BulkResetDialog
