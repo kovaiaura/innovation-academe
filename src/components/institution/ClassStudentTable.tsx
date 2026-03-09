@@ -6,8 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search, Download, Edit, Phone, Mail } from 'lucide-react';
+import { Search, Download, Edit, Phone, Mail, ArrowRightLeft } from 'lucide-react';
 import { getStatusColor, filterStudents, sortStudents, exportStudentsToCSV } from '@/utils/studentHelpers';
+import { TransferStudentDialog } from '@/components/student/TransferStudentDialog';
+import { useClasses, ClassWithStudentCount } from '@/hooks/useClasses';
+import { useStudents } from '@/hooks/useStudents';
 
 interface ClassStudentTableProps {
   students: Student[];
