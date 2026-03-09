@@ -358,7 +358,7 @@ export const credentialService = {
     institutionId: string,
     defaultPassword: string,
     onProgress?: (current: number, total: number, successCount: number, failCount: number) => void
-  ): Promise<{ success: number; failed: number; errors: Array<{ email: string; error: string }> }> => {
+  ): Promise<{ success: number; failed: number; errors: Array<{ email: string; error: string; error_code?: string }> }> => {
     // Fetch all students with missing accounts
     const { data: students, error } = await supabase
       .from('students')
@@ -373,16 +373,16 @@ export const credentialService = {
 
     let successCount = 0;
     let failCount = 0;
-    const errors: Array<{ email: string; error: string }> = [];
+    const errors: Array<{ email: string; error: string; error_code?: string }> = [];
 
-    // Process in batches of 20 (smaller to avoid edge function timeouts)
-    const batchSize = 20;
+    // Process in batches of 10 (small to stay well within limits)
+    const batchSize = 10;
     for (let i = 0; i < students.length; i += batchSize) {
       const batch = students.slice(i, i + batchSize);
       
       // Add delay between batches to avoid rate limiting
       if (i > 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
 
       try {
@@ -391,6 +391,7 @@ export const credentialService = {
             mode: 'repair',
             defaultPassword,
             students: batch.map(s => ({
+              student_id: s.id, // Pass DB row ID for backend linking
               email: s.email,
               password: '',
               student_name: s.student_name,
@@ -400,36 +401,48 @@ export const credentialService = {
           },
         });
 
+        // Check for function-level errors (e.g., 401, 500)
+        if (response.error) {
+          console.error('[Repair] Function invoke error:', response.error.message);
+          failCount += batch.length;
+          for (const s of batch) {
+            errors.push({ email: s.email || '', error: 'Backend error: ' + response.error.message, error_code: 'invoke_error' });
+          }
+          onProgress?.(Math.min(i + batch.length, students.length), students.length, successCount, failCount);
+          continue;
+        }
+
         if (response.data?.results) {
           for (const result of response.data.results) {
-            const student = batch.find(s => s.email?.toLowerCase() === result.email?.toLowerCase());
-            if (result.success && result.user_id && student) {
-              // Link user_id back to student record
-              const { error: updateError } = await supabase
-                .from('students')
-                .update({ user_id: result.user_id })
-                .eq('id', student.id);
-
-              if (updateError) {
-                failCount++;
-                errors.push({ email: result.email, error: 'Created account but failed to link: ' + updateError.message });
-              } else {
-                successCount++;
-              }
-            } else if (!result.success) {
+            if (result.success) {
+              // Backend already linked user_id to student record
+              successCount++;
+            } else {
               failCount++;
-              errors.push({ email: result.email, error: result.error || 'Unknown error' });
+              errors.push({ 
+                email: result.email, 
+                error: result.error || 'Unknown error',
+                error_code: result.error_code || 'unknown'
+              });
             }
+          }
+        } else if (response.data?.error) {
+          // Function returned a top-level error
+          console.error('[Repair] Function error:', response.data.error);
+          failCount += batch.length;
+          for (const s of batch) {
+            errors.push({ email: s.email || '', error: response.data.error, error_code: 'function_error' });
           }
         }
       } catch (err: any) {
+        console.error('[Repair] Catch error:', err);
         failCount += batch.length;
         for (const s of batch) {
-          errors.push({ email: s.email || '', error: err.message || 'Batch request failed' });
+          errors.push({ email: s.email || '', error: err.message || 'Batch request failed', error_code: 'network_error' });
         }
       }
 
-      onProgress?.(i + batch.length, students.length, successCount, failCount);
+      onProgress?.(Math.min(i + batch.length, students.length), students.length, successCount, failCount);
     }
 
     return { success: successCount, failed: failCount, errors };
