@@ -472,6 +472,17 @@ export default function Students() {
                                         </div>
                                       )}
                                     </div>
+                                    <div className="mt-2 flex justify-end">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-xs h-7"
+                                        onClick={(e) => handleTransferClick(student, e)}
+                                      >
+                                        <ArrowRightLeft className="h-3 w-3 mr-1" />
+                                        Transfer
+                                      </Button>
+                                    </div>
                                   </div>
                                 </div>
                               </CardContent>
