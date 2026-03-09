@@ -297,26 +297,129 @@ export const credentialService = {
   ): Promise<{ success: boolean; error?: string }> => {
     try {
       const { data, error } = await supabase.functions.invoke('set-user-password', {
-        body: {
-          user_id: userId,
-          password,
-          user_type: userType,
-        },
+        body: { user_id: userId, password, user_type: userType },
       });
 
-      if (error) {
-        console.error('Error setting password:', error);
-        return { success: false, error: error.message };
-      }
-
-      if (data?.error) {
-        return { success: false, error: data.error };
-      }
-
+      if (error) return { success: false, error: error.message };
+      if (data?.error) return { success: false, error: data.error };
       return { success: true };
     } catch (error: any) {
-      console.error('Error calling set-user-password:', error);
       return { success: false, error: error.message || 'Failed to set password' };
     }
+  },
+
+  /**
+   * Get students with missing accounts (user_id = null) for a given institution
+   */
+  fetchStudentsWithMissingAccounts: async (institutionId: string): Promise<CredentialStudent[]> => {
+    const { data, error } = await supabase
+      .from('students')
+      .select(`
+        id, user_id, student_id, roll_number, student_name, email, parent_email, 
+        class_id, institution_id,
+        classes:class_id (class_name)
+      `)
+      .eq('institution_id', institutionId)
+      .is('user_id', null)
+      .not('email', 'is', null)
+      .order('student_name');
+
+    if (error || !data) return [];
+
+    return data.map(student => {
+      const classInfo = student.classes as any;
+      return {
+        id: student.id,
+        user_id: null,
+        student_id: student.student_id || '',
+        roll_number: student.roll_number || '',
+        student_name: student.student_name,
+        email: student.email,
+        parent_email: student.parent_email,
+        class_id: student.class_id,
+        class_name: classInfo?.class_name || null,
+        institution_id: student.institution_id,
+        password_changed: false,
+        must_change_password: false,
+      };
+    });
+  },
+
+  /**
+   * Repair missing student accounts in batch
+   * Creates auth users and links them back to student records
+   */
+  repairStudentAccounts: async (
+    institutionId: string,
+    onProgress?: (current: number, total: number, successCount: number, failCount: number) => void
+  ): Promise<{ success: number; failed: number; errors: Array<{ email: string; error: string }> }> => {
+    // Fetch all students with missing accounts
+    const { data: students, error } = await supabase
+      .from('students')
+      .select('id, student_name, email, class_id, institution_id')
+      .eq('institution_id', institutionId)
+      .is('user_id', null)
+      .not('email', 'is', null);
+
+    if (error || !students || students.length === 0) {
+      return { success: 0, failed: 0, errors: [] };
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+    const errors: Array<{ email: string; error: string }> = [];
+
+    // Process in batches of 50
+    const batchSize = 50;
+    for (let i = 0; i < students.length; i += batchSize) {
+      const batch = students.slice(i, i + batchSize);
+      
+      try {
+        const response = await supabase.functions.invoke('create-student-users-batch', {
+          body: {
+            mode: 'repair',
+            students: batch.map(s => ({
+              email: s.email,
+              password: '', // Will be auto-generated in repair mode
+              student_name: s.student_name,
+              institution_id: s.institution_id,
+              class_id: s.class_id || '',
+            })),
+          },
+        });
+
+        if (response.data?.results) {
+          for (const result of response.data.results) {
+            const student = batch.find(s => s.email?.toLowerCase() === result.email?.toLowerCase());
+            if (result.success && result.user_id && student) {
+              // Link user_id back to student record
+              const { error: updateError } = await supabase
+                .from('students')
+                .update({ user_id: result.user_id })
+                .eq('id', student.id);
+
+              if (updateError) {
+                failCount++;
+                errors.push({ email: result.email, error: 'Created account but failed to link: ' + updateError.message });
+              } else {
+                successCount++;
+              }
+            } else if (!result.success) {
+              failCount++;
+              errors.push({ email: result.email, error: result.error || 'Unknown error' });
+            }
+          }
+        }
+      } catch (err: any) {
+        failCount += batch.length;
+        for (const s of batch) {
+          errors.push({ email: s.email || '', error: err.message || 'Batch request failed' });
+        }
+      }
+
+      onProgress?.(i + batch.length, students.length, successCount, failCount);
+    }
+
+    return { success: successCount, failed: failCount, errors };
   },
 };
