@@ -38,6 +38,7 @@ export function EventsListDB() {
   const [publishEvent, setPublishEvent] = useState<Event | null>(null);
   const [viewEvent, setViewEvent] = useState<Event | null>(null);
   const [viewInterestsEventId, setViewInterestsEventId] = useState<string | null>(null);
+  const [editEvent, setEditEvent] = useState<Event | null>(null);
 
   const { data: events, isLoading } = useEvents();
   const deleteEventMutation = useDeleteEvent();
