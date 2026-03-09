@@ -7,8 +7,8 @@ import { Search, UserCheck, Mail, BookOpen, Users, Award, Phone, Plus } from "lu
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
-import { getInstitutionBySlug } from "@/data/mockInstitutionData";
 import { useLocation } from "react-router-dom";
+import { useInstitutionStats } from "@/hooks/useInstitutionStats";
 import {
   Select,
   SelectContent,
