@@ -1671,12 +1671,13 @@ async function fetchManagementContext(institutionId?: string): Promise<{ context
 }
 
 // Student comprehensive context with STEM learning support
-async function fetchStudentContext(userId?: string): Promise<{ context: string; sources: string[] }> {
+async function fetchStudentContext(userId?: string): Promise<{ context: string; sources: string[]; institutionType: string }> {
   const supabase = getSupabaseClient();
   const parts: string[] = [];
   const sources: string[] = [];
   let institutionId: string | undefined;
   let classId: string | undefined;
+  let institutionType = 'school';
   
   try {
     // ==================== CLASS RANKING & PROFILE ====================
@@ -1684,6 +1685,14 @@ async function fetchStudentContext(userId?: string): Promise<{ context: string; 
       const { data: profile } = await supabase.from('profiles').select('institution_id, class_id').eq('id', userId).single();
       institutionId = profile?.institution_id;
       classId = profile?.class_id;
+      
+      // Fetch institution type
+      if (institutionId) {
+        const { data: institution } = await supabase.from('institutions').select('type').eq('id', institutionId).single();
+        if (institution?.type) {
+          institutionType = institution.type;
+        }
+      }
       
       if (classId && institutionId) {
         // Get all students in the same class
