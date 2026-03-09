@@ -512,13 +512,28 @@ export default function Students() {
           </div>
         )}
 
-        {/* Dialog */}
+        {/* Dialogs */}
         <StudentDetailsDialog
           isOpen={detailsDialogOpen}
           onOpenChange={setDetailsDialogOpen}
           student={selectedStudent}
           readOnly={true}
         />
+
+        {transferTarget && (
+          <TransferStudentDialog
+            isOpen={transferDialogOpen}
+            onOpenChange={setTransferDialogOpen}
+            studentName={transferTarget.name}
+            studentId={transferTarget.id}
+            currentClassId={transferTarget.classId}
+            currentClassName={transferTarget.className}
+            institutionId={institutionId || ''}
+            classes={classesWithCounts}
+            onTransfer={handleTransfer}
+            isTransferring={isTransferring}
+          />
+        )}
       </div>
     </Layout>
   );
