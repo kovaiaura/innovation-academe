@@ -189,6 +189,28 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
     await deleteContent.mutateAsync({ contentId, courseId });
   };
 
+  const handleReplaceFile = async (file: File, contentItem: DbCourseContent) => {
+    if (!courseId) return;
+    const contentType = contentItem.type === 'ppt' ? 'ppt' : 'pdf';
+    try {
+      setReplacingContentId(contentItem.id);
+      const result = await uploadCourseContent(file, courseId, contentType as 'pdf' | 'ppt');
+      await updateContent.mutateAsync({
+        contentId: contentItem.id,
+        courseId,
+        updates: {
+          file_path: result.path,
+          file_size_mb: result.fileSizeMb
+        }
+      });
+      toast.success('File replaced successfully');
+    } catch (error) {
+      toast.error('Failed to replace file');
+    } finally {
+      setReplacingContentId(null);
+    }
+  };
+
   const levels = course?.modules || [];
   const selectedLevel = levels.find(l => l.id === selectedLevelId);
   const levelSessions = selectedLevel?.sessions || [];
