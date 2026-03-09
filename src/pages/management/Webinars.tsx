@@ -20,8 +20,8 @@ export default function ManagementWebinars() {
   const loadWebinars = async () => {
     try {
       setLoading(true);
-      const data = institutionId
-        ? await webinarService.getWebinarsForInstitution(institutionId)
+      const data = user?.institution_id
+        ? await webinarService.getWebinarsForInstitution(user.institution_id)
         : await webinarService.getWebinars();
       setWebinars(data);
     } catch (error) {
