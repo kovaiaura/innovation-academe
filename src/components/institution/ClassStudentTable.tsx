@@ -16,6 +16,7 @@ interface ClassStudentTableProps {
   students: Student[];
   onEditStudent: (student: Student) => void;
   institutionCode: string;
+  institutionId: string;
   className: string;
 }
 
