@@ -514,8 +514,8 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <ScrollArea className="flex-1 px-2 py-4">
-        <div ref={scrollRef} className="space-y-1" style={{ overflowY: 'auto', height: '100%' }}>
+      <ScrollArea ref={scrollAreaRef} className="flex-1 px-2 py-4">
+        <div className="space-y-1">
           {visibleMenuItems.map((item) => {
             // Determine the appropriate role for this item's path
             // For multi-role users, use the matching role from the item's roles
