@@ -244,6 +244,21 @@ export function ClassStudentTable({ students, onEditStudent, institutionCode, in
           </Button>
         </div>
       )}
+
+      {transferTarget && (
+        <TransferStudentDialog
+          isOpen={transferDialogOpen}
+          onOpenChange={setTransferDialogOpen}
+          studentName={transferTarget.student_name}
+          studentId={transferTarget.id}
+          currentClassId={transferTarget.class_id || null}
+          currentClassName={className}
+          institutionId={institutionId}
+          classes={classesWithCounts}
+          onTransfer={handleTransfer}
+          isTransferring={isTransferring}
+        />
+      )}
     </div>
   );
 }
