@@ -425,70 +425,80 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
             </TabsContent>
 
             {/* Sessions Tab */}
-            <TabsContent value="sessions" className="p-4">
-              <div className="grid grid-cols-3 gap-4 h-[500px]">
+            <TabsContent value="sessions" className="p-4 h-full">
+              <div className="grid grid-cols-[1fr_2.5fr] gap-4 h-[calc(90vh-220px)]">
                 {/* Level Selection */}
-                <div className="border rounded-lg p-3 space-y-2">
-                  <h4 className="font-medium text-sm">Select Level</h4>
-                  {levels.map((level, index) => (
-                    <Button
-                      key={level.id}
-                      variant={selectedLevelId === level.id ? 'default' : 'ghost'}
-                      className="w-full justify-start text-left"
-                      onClick={() => {
-                        setSelectedLevelId(level.id);
-                        setSelectedSessionId(null);
-                      }}
-                    >
-                      <Layers className="h-4 w-4 mr-2" />
-                      Level {index + 1}: {level.title || 'Untitled'}
-                    </Button>
-                  ))}
+                <div className="border rounded-lg p-3 flex flex-col min-h-0">
+                  <h4 className="font-medium text-sm mb-2">Select Level</h4>
+                  <ScrollArea className="flex-1">
+                    <div className="space-y-1">
+                      {levels.map((level, index) => (
+                        <Button
+                          key={level.id}
+                          variant={selectedLevelId === level.id ? 'default' : 'ghost'}
+                          className="w-full justify-start text-left"
+                          onClick={() => {
+                            setSelectedLevelId(level.id);
+                            setSelectedSessionId(null);
+                          }}
+                        >
+                          <Layers className="h-4 w-4 mr-2" />
+                          Level {index + 1}: {level.title || 'Untitled'}
+                        </Button>
+                      ))}
+                    </div>
+                  </ScrollArea>
                 </div>
 
                 {/* Sessions List */}
-                <div className="col-span-2 border rounded-lg p-3 space-y-2 overflow-y-auto">
+                <div className="border rounded-lg p-3 flex flex-col min-h-0">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-sm">
                       Sessions in {selectedLevel?.title || 'Level'}
                     </h4>
                   </div>
-                  {levelSessions.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No sessions in this module</p>
-                  ) : (
-                    levelSessions.map((session, index) => (
-                      <Card key={session.id} className="p-3">
-                        <div className="flex items-start gap-3">
-                          <PlayCircle className="h-4 w-4 text-primary mt-1" />
-                          <div className="flex-1 space-y-2">
-                            <div className="space-y-1">
-                              <Label className="text-xs">Title</Label>
-                              <Input
-                                value={session.title}
-                                onChange={(e) => handleUpdateSession(session.id, 'title', e.target.value)}
-                                placeholder="Session title"
-                              />
+                  <ScrollArea className="flex-1">
+                    <div className="space-y-2 pr-2">
+                      {levelSessions.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No sessions in this module</p>
+                      ) : (
+                        levelSessions.map((session, index) => (
+                          <Card key={session.id} className="p-3">
+                            <div className="flex items-start gap-3">
+                              <PlayCircle className="h-4 w-4 text-primary mt-1" />
+                              <div className="flex-1 space-y-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div className="space-y-1">
+                                    <Label className="text-xs">Title</Label>
+                                    <Input
+                                      value={session.title}
+                                      onChange={(e) => handleUpdateSession(session.id, 'title', e.target.value)}
+                                      placeholder="Session title"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-xs">Description</Label>
+                                    <Input
+                                      value={session.description || ''}
+                                      onChange={(e) => handleUpdateSession(session.id, 'description', e.target.value)}
+                                      placeholder="Session description"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteSession(session.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Description</Label>
-                              <Input
-                                value={session.description || ''}
-                                onChange={(e) => handleUpdateSession(session.id, 'description', e.target.value)}
-                                placeholder="Session description"
-                              />
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteSession(session.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </Card>
-                    ))
-                  )}
+                          </Card>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
                 </div>
               </div>
             </TabsContent>
