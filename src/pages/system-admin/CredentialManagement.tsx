@@ -286,6 +286,41 @@ export default function CredentialManagement() {
     }
   };
 
+  // Count students with missing accounts for the selected institution
+  const studentsWithNoAccount = students.filter(s => !s.user_id && s.email).length;
+
+  const handleRepairAccounts = async () => {
+    if (!selectedInstitution) return;
+    setIsRepairing(true);
+    setRepairProgress({ current: 0, total: 0, success: 0, failed: 0 });
+
+    try {
+      const result = await credentialService.repairStudentAccounts(
+        selectedInstitution,
+        (current, total, success, failed) => {
+          setRepairProgress({ current, total, success, failed });
+        }
+      );
+
+      if (result.success > 0) {
+        toast.success(`Repaired ${result.success} student account(s)`, {
+          description: result.failed > 0 ? `${result.failed} failed` : undefined,
+        });
+      } else if (result.failed > 0) {
+        toast.error(`Failed to repair ${result.failed} account(s)`);
+      } else {
+        toast.info('No students with missing accounts found');
+      }
+
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: ['credential-students'] });
+    } catch (err) {
+      toast.error('Repair process failed');
+    } finally {
+      setIsRepairing(false);
+    }
+  };
+
   const getCredentialStatusBadge = (passwordChanged: boolean, mustChangePassword: boolean, hasUserId: boolean) => {
     if (!hasUserId) {
       return (
