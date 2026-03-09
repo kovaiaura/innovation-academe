@@ -239,16 +239,19 @@ export const credentialService = {
     let profileMap = new Map<string, { password_changed: boolean; must_change_password: boolean }>();
     
     if (userIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, password_changed, must_change_password')
-        .in('id', userIds);
-
-      if (profiles) {
-        profileMap = new Map(profiles.map(p => [p.id, { 
-          password_changed: p.password_changed || false, 
-          must_change_password: p.must_change_password || false 
-        }]));
+      const chunkSize = 200;
+      for (let i = 0; i < userIds.length; i += chunkSize) {
+        const chunk = userIds.slice(i, i + chunkSize);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, password_changed, must_change_password')
+          .in('id', chunk);
+        if (profiles) {
+          profiles.forEach(p => profileMap.set(p.id, {
+            password_changed: p.password_changed || false,
+            must_change_password: p.must_change_password || false,
+          }));
+        }
       }
     }
 
