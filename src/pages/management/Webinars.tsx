@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function ManagementWebinars() {
+  const { institutionId } = useAuth();
   const [webinars, setWebinars] = useState<Webinar[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -19,7 +20,9 @@ export default function ManagementWebinars() {
   const loadWebinars = async () => {
     try {
       setLoading(true);
-      const data = await webinarService.getWebinars();
+      const data = institutionId
+        ? await webinarService.getWebinarsForInstitution(institutionId)
+        : await webinarService.getWebinars();
       setWebinars(data);
     } catch (error) {
       console.error('Error loading webinars:', error);
@@ -31,7 +34,7 @@ export default function ManagementWebinars() {
 
   useEffect(() => {
     loadWebinars();
-  }, []);
+  }, [institutionId]);
 
   const handleView = (webinar: Webinar) => {
     setSelectedWebinar(webinar);
