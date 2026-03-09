@@ -7788,6 +7788,48 @@ export type Database = {
         }
         Relationships: []
       }
+      webinar_institution_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          class_id: string
+          id: string
+          institution_id: string
+          webinar_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          class_id: string
+          id?: string
+          institution_id: string
+          webinar_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          class_id?: string
+          id?: string
+          institution_id?: string
+          webinar_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webinar_institution_assignments_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webinar_institution_assignments_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webinars: {
         Row: {
           created_at: string
