@@ -7,6 +7,7 @@ import { WebinarCard } from '@/components/webinars/WebinarCard';
 import { WebinarViewDialog } from '@/components/webinars/WebinarViewDialog';
 import { Search, Video } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function StudentWebinars() {
   const [webinars, setWebinars] = useState<Webinar[]>([]);
