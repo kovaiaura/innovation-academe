@@ -66,13 +66,15 @@ export default function WebinarManagement() {
     setDeleteDialogOpen(true);
   };
 
-  const handleSubmit = async (data: WebinarFormData) => {
+  const handleSubmit = async (data: WebinarFormData, assignments: WebinarAssignment[]) => {
     try {
       if (selectedWebinar) {
         await webinarService.updateWebinar(selectedWebinar.id, data);
+        await webinarService.saveWebinarAssignments(selectedWebinar.id, assignments);
         toast.success('Event updated successfully');
       } else {
-        await webinarService.createWebinar(data);
+        const created = await webinarService.createWebinar(data);
+        await webinarService.saveWebinarAssignments(created.id, assignments);
         toast.success('Event created successfully');
       }
       loadWebinars();
