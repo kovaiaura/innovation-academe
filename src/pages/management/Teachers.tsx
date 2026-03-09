@@ -28,10 +28,9 @@ import { toast } from "sonner";
 const Teachers = () => {
   const { tenantId } = useParams();
   
-  // Extract institution from URL
   const location = useLocation();
   const institutionSlug = location.pathname.split('/')[2];
-  const institution = getInstitutionBySlug(institutionSlug);
+  const { institution: dbInstitution, stats: instStats, assignedOfficers } = useInstitutionStats(institutionSlug);
   
   const [teachers, setTeachers] = useState(mockTeachers);
   const [timetables, setTimetables] = useState<TeacherTimetable[]>(mockTimetables);
