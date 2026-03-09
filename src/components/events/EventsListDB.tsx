@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, Eye, Trash2, Send, FileText, ExternalLink, Loader2, Users } from 'lucide-react';
+import { Search, Eye, Trash2, Send, FileText, ExternalLink, Loader2, Users, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { Event, ActivityEventType, EventStatus, EVENT_TYPE_LABELS, EVENT_STATUS_LABELS } from '@/types/events';
 import { useEvents, useDeleteEvent } from '@/hooks/useEvents';
