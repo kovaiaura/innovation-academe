@@ -233,8 +233,8 @@ export const credentialService = {
 
     if (allStudents.length === 0) return [];
 
-    // Get profile info for students with user_ids
-    const userIds = students.filter(s => s.user_id).map(s => s.user_id!);
+    const userIds = allStudents.filter(s => s.user_id).map(s => s.user_id!);
+    
     
     let profileMap = new Map<string, { password_changed: boolean; must_change_password: boolean }>();
     
