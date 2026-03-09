@@ -561,10 +561,12 @@ export function useStudents(institutionId?: string, classId?: string) {
     updateStudent: updateStudentMutation.mutateAsync,
     deleteStudent: deleteStudentMutation.mutateAsync,
     bulkCreateStudents: bulkCreateStudentsMutation.mutateAsync,
+    transferStudent: transferStudentMutation.mutateAsync,
     getStudentCount,
     isCreating: createStudentMutation.isPending,
     isUpdating: updateStudentMutation.isPending,
     isDeleting: deleteStudentMutation.isPending,
     isBulkCreating: bulkCreateStudentsMutation.isPending,
+    isTransferring: transferStudentMutation.isPending,
   };
 }
