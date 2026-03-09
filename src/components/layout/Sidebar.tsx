@@ -197,6 +197,29 @@ export function Sidebar() {
   const { user, logout } = useAuth();
   const { branding } = useBranding();
   const location = useLocation();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const savedScrollTop = useRef(0);
+
+  const handleSidebarScroll = useCallback((e: Event) => {
+    savedScrollTop.current = (e.target as HTMLDivElement).scrollTop;
+  }, []);
+
+  useEffect(() => {
+    const viewport = scrollRef.current;
+    if (viewport) {
+      viewport.addEventListener('scroll', handleSidebarScroll);
+    }
+    requestAnimationFrame(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = savedScrollTop.current;
+      }
+    });
+    return () => {
+      if (viewport) {
+        viewport.removeEventListener('scroll', handleSidebarScroll);
+      }
+    };
+  }, [location.pathname, handleSidebarScroll]);
   const [officerProfile, setOfficerProfile] = useState<OfficerDetails | null>(null);
   const [teacherProfile, setTeacherProfile] = useState<SchoolTeacher | null>(null);
   const [staffDesignation, setStaffDesignation] = useState<string | null>(null);
