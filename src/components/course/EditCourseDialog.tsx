@@ -544,7 +544,7 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
                     sessionContent.map((content) => (
                       <Card key={content.id} className="p-3">
                         <div className="flex items-start gap-3">
-                          <FileText className="h-4 w-4 text-orange-500 mt-1" />
+                          <FileText className="h-4 w-4 text-primary mt-1" />
                           <div className="flex-1 space-y-2">
                             <div className="grid grid-cols-2 gap-2">
                               <div className="space-y-1">
@@ -584,20 +584,78 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
                                 />
                               </div>
                             )}
+                            {/* File indicator and replace for PDF/PPT */}
+                            {['pdf', 'ppt'].includes(content.type) && (
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 text-xs text-muted-foreground truncate">
+                                  {content.file_path
+                                    ? `📄 ${content.file_path.split('/').pop()}`
+                                    : 'No file uploaded'}
+                                  {content.file_size_mb && ` (${content.file_size_mb.toFixed(1)} MB)`}
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-xs h-7"
+                                  disabled={replacingContentId === content.id}
+                                  onClick={() => {
+                                    setReplacingContentId(content.id);
+                                    fileReplaceInputRef.current?.click();
+                                  }}
+                                >
+                                  <RefreshCw className={`h-3 w-3 mr-1 ${replacingContentId === content.id ? 'animate-spin' : ''}`} />
+                                  {replacingContentId === content.id ? 'Replacing...' : 'Replace File'}
+                                </Button>
+                              </div>
+                            )}
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteContent(content.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {/* Delete with confirmation */}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Content</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{content.title}"? This will remove the content but won't affect student progress records.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteContent(content.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </Card>
                     ))
                   )}
                 </div>
               </div>
+
+              {/* Hidden file input for replacing files */}
+              <input
+                ref={fileReplaceInputRef}
+                type="file"
+                accept=".pdf,.ppt,.pptx"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  const contentItem = sessionContent.find(c => c.id === replacingContentId);
+                  if (file && contentItem) {
+                    handleReplaceFile(file, contentItem);
+                  }
+                  e.target.value = '';
+                }}
+              />
             </TabsContent>
           </ScrollArea>
 
