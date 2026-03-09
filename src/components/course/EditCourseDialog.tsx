@@ -39,6 +39,8 @@ export function EditCourseDialog({ open, onOpenChange, courseId, onSave }: EditC
   const [activeTab, setActiveTab] = useState('basic');
   const [selectedLevelId, setSelectedLevelId] = useState<string | null>(null);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [replacingContentId, setReplacingContentId] = useState<string | null>(null);
+  const fileReplaceInputRef = useRef<HTMLInputElement>(null);
   
   // Local state for editing
   const [courseTitle, setCourseTitle] = useState('');
