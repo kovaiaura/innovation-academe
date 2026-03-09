@@ -63,6 +63,10 @@ export default function CredentialManagement() {
   const [bulkResetProgress, setBulkResetProgress] = useState<{ current: number; total: number; errors: Array<{ email: string; error: string }> }>({ current: 0, total: 0, errors: [] });
   const [isBulkResetting, setIsBulkResetting] = useState(false);
 
+  // Repair Accounts State
+  const [isRepairing, setIsRepairing] = useState(false);
+  const [repairProgress, setRepairProgress] = useState<{ current: number; total: number; success: number; failed: number }>({ current: 0, total: 0, success: 0, failed: 0 });
+
   // Fetch data using React Query hooks
   const { data: metaEmployees = [], isLoading: metaLoading, refetch: refetchMeta } = useMetaEmployees();
   const { data: officers = [], isLoading: officersLoading, refetch: refetchOfficers } = useOfficers();
