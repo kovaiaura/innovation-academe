@@ -203,33 +203,35 @@ export const credentialService = {
    * Fetch Students by institution with their credential status
    */
   fetchStudentsByInstitution: async (institutionId: string): Promise<CredentialStudent[]> => {
-    const { data: students, error: studentError } = await supabase
-      .from('students')
-      .select(`
-        id,
-        user_id,
-        student_id,
-        roll_number,
-        student_name,
-        email,
-        parent_email,
-        class_id,
-        institution_id,
-        classes:class_id (
-          class_name
-        )
-      `)
-      .eq('institution_id', institutionId)
-      .order('student_name');
+    // Use pagination to fetch all students (Supabase default limit is 1000)
+    let allStudents: any[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    
+    while (true) {
+      const { data, error } = await supabase
+        .from('students')
+        .select(`
+          id, user_id, student_id, roll_number, student_name, email, parent_email,
+          class_id, institution_id,
+          classes:class_id (class_name)
+        `)
+        .eq('institution_id', institutionId)
+        .order('student_name')
+        .range(from, from + pageSize - 1);
 
-    if (studentError) {
-      console.error('Error fetching students:', studentError);
-      return [];
+      if (error) {
+        console.error('Error fetching students:', error);
+        break;
+      }
+      
+      if (!data || data.length === 0) break;
+      allStudents = allStudents.concat(data);
+      if (data.length < pageSize) break;
+      from += pageSize;
     }
 
-    if (!students || students.length === 0) {
-      return [];
-    }
+    if (allStudents.length === 0) return [];
 
     // Get profile info for students with user_ids
     const userIds = students.filter(s => s.user_id).map(s => s.user_id!);
