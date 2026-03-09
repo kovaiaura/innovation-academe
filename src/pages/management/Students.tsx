@@ -179,6 +179,29 @@ export default function Students() {
     setDetailsDialogOpen(true);
   };
 
+  const handleTransferClick = (student: Student, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const classInfo = student.class_id ? classMap.get(student.class_id) : null;
+    setTransferTarget({
+      id: student.id,
+      name: student.student_name,
+      classId: student.class_id || null,
+      className: classInfo?.class_name || 'Unassigned',
+    });
+    setTransferDialogOpen(true);
+  };
+
+  const handleTransfer = async (toClassId: string, reason: string) => {
+    if (!transferTarget || !institutionId) return;
+    await transferStudent({
+      studentId: transferTarget.id,
+      fromClassId: transferTarget.classId,
+      toClassId,
+      institutionId,
+      reason,
+    });
+  };
+
   const handleExportStudents = () => {
     exportStudentsToCSV(filteredStudents, `students-${institutionId}-${new Date().toISOString().split('T')[0]}.csv`);
     toast.success('Students exported successfully');
