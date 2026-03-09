@@ -141,6 +141,20 @@ export function EditInstitutionDialog({
             </div>
           </div>
 
+          <div className="grid gap-2">
+            <Label htmlFor="academic_year">Academic Year</Label>
+            <Input
+              id="academic_year"
+              value={formData.settings?.academic_year || ''}
+              onChange={(e) => setFormData({ 
+                ...formData, 
+                settings: { ...(formData.settings || {}), academic_year: e.target.value }
+              })}
+              placeholder="e.g., 2025-26"
+            />
+            <p className="text-xs text-muted-foreground">Used across management portal headers</p>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="contact_email">Contact Email</Label>
