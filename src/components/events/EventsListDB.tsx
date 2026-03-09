@@ -11,6 +11,7 @@ import { Event, ActivityEventType, EventStatus, EVENT_TYPE_LABELS, EVENT_STATUS_
 import { useEvents, useDeleteEvent } from '@/hooks/useEvents';
 import { PublishEventDialog } from './PublishEventDialog';
 import { EventUpdatesPanel } from './EventUpdatesPanel';
+import { EditEventDialog } from './EditEventDialog';
 import { CEOInterestedStudentsDialog } from './CEOInterestedStudentsDialog';
 import {
   AlertDialog,
