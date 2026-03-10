@@ -1,0 +1,1 @@
+ALTER TABLE public.webinar_institution_assignments ALTER COLUMN class_id DROP NOT NULL;
