@@ -334,11 +334,10 @@ export const mockPayrollData: PayrollRecord[] = [
     days_leave: 1,
     salary_components: [
       { component_type: 'basic_pay', amount: 26000, is_taxable: true, calculation_type: 'fixed' },
-      { component_type: 'hra', amount: 13000, is_taxable: true, calculation_type: 'fixed' },
-      { component_type: 'da', amount: 6500, is_taxable: true, calculation_type: 'fixed' },
-      { component_type: 'transport_allowance', amount: 3250, is_taxable: false, calculation_type: 'fixed' },
-      { component_type: 'special_allowance', amount: 13000, is_taxable: true, calculation_type: 'fixed' },
-      { component_type: 'medical_allowance', amount: 3250, is_taxable: false, calculation_type: 'fixed' },
+      { component_type: 'da', amount: 5200, is_taxable: true, calculation_type: 'fixed' },
+      { component_type: 'hra', amount: 10400, is_taxable: true, calculation_type: 'fixed' },
+      { component_type: 'cca', amount: 2600, is_taxable: false, calculation_type: 'fixed' },
+      { component_type: 'special_allowance', amount: 20800, is_taxable: true, calculation_type: 'fixed' },
     ],
     total_earnings: 65000,
     deductions: [
