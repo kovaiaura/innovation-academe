@@ -7792,7 +7792,7 @@ export type Database = {
         Row: {
           assigned_at: string
           assigned_by: string | null
-          class_id: string
+          class_id: string | null
           id: string
           institution_id: string
           webinar_id: string
@@ -7800,7 +7800,7 @@ export type Database = {
         Insert: {
           assigned_at?: string
           assigned_by?: string | null
-          class_id: string
+          class_id?: string | null
           id?: string
           institution_id: string
           webinar_id: string
@@ -7808,7 +7808,7 @@ export type Database = {
         Update: {
           assigned_at?: string
           assigned_by?: string | null
-          class_id?: string
+          class_id?: string | null
           id?: string
           institution_id?: string
           webinar_id?: string
