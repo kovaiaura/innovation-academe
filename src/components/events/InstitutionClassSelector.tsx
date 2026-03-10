@@ -102,6 +102,20 @@ export function InstitutionClassSelector({
   };
 
   const toggleAllClassesInInstitution = (institution: Institution) => {
+    if (institution.classes.length === 0) {
+      // No classes — toggle institution-wide assignment with null class_id
+      const exists = selectedClasses.some(
+        (s) => s.institution_id === institution.id && s.class_id === null
+      );
+      if (exists) {
+        onSelectionChange(selectedClasses.filter((s) => s.institution_id !== institution.id));
+      } else {
+        const filtered = selectedClasses.filter((s) => s.institution_id !== institution.id);
+        onSelectionChange([...filtered, { institution_id: institution.id, class_id: null }]);
+      }
+      return;
+    }
+
     const allSelected = institution.classes.every((cls) =>
       selectedClasses.some((s) => s.institution_id === institution.id && s.class_id === cls.id)
     );
