@@ -14,9 +14,9 @@ interface PayslipPDFData {
   month: number;
   year: number;
   basic_salary: number;
+  da: number;
   hra: number;
-  conveyance_allowance: number;
-  medical_allowance: number;
+  cca: number;
   special_allowance: number;
   overtime_pay: number;
   overtime_hours: number;
