@@ -910,7 +910,8 @@ export default function MetaStaffDetail() {
                             </p>
                           )}
                         </div>
-                      )
+                        );
+                      }
                     )}
                   </div>
                 </div>
