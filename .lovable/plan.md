@@ -1,55 +1,45 @@
 
 
-# Fix: Create Missing `webinar_institution_assignments` Table
+# Update Salary Structure: Replace Old Components with New Formula
 
-## Problem
-The `webinar_institution_assignments` table does not exist in the database. The code references it, and a migration to alter it was created, but the original CREATE TABLE migration was never executed. This is the root cause of the "Failed to load webinars" error.
+## New Salary Formula
+```text
+Gross Salary = Actual Salary (per month)
 
-## Solution
-Run a single migration that creates the table (with `class_id` already nullable), adds RLS policies, and drops the orphaned ALTER migration.
+Basic     = 50% of Gross
+DA        = Basic × 20%
+HRA       = Basic × 40%
+CCA       = Basic × 10%
+SPL       = Gross - (Basic + DA + HRA + CCA)
 
-### Migration SQL
-```sql
-CREATE TABLE IF NOT EXISTS public.webinar_institution_assignments (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  webinar_id uuid NOT NULL REFERENCES public.webinars(id) ON DELETE CASCADE,
-  institution_id uuid NOT NULL REFERENCES public.institutions(id) ON DELETE CASCADE,
-  class_id uuid REFERENCES public.classes(id) ON DELETE CASCADE,  -- nullable by design
-  assigned_by uuid,
-  assigned_at timestamptz DEFAULT now()
-);
-
-ALTER TABLE public.webinar_institution_assignments ENABLE ROW LEVEL SECURITY;
-
--- System admins and CEO can manage assignments
-CREATE POLICY "Admins can manage webinar assignments"
-  ON public.webinar_institution_assignments
-  FOR ALL
-  TO authenticated
-  USING (
-    public.has_role(auth.uid(), 'system_admin') OR
-    public.has_role(auth.uid(), 'super_admin') OR
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_ceo = true)
-  )
-  WITH CHECK (
-    public.has_role(auth.uid(), 'system_admin') OR
-    public.has_role(auth.uid(), 'super_admin') OR
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_ceo = true)
-  );
-
--- All authenticated users can read assignments (needed for filtering)
-CREATE POLICY "Authenticated users can read webinar assignments"
-  ON public.webinar_institution_assignments
-  FOR SELECT
-  TO authenticated
-  USING (true);
+Earnings (pro-rated):
+Each component = (Gross component / total days in month) × salary payable days
 ```
 
-### Also
-- Delete the now-unnecessary `20260310043700` migration file (it tried to ALTER a non-existent table).
+## What Changes
+
+The old structure used: Basic (50%), HRA (20% of CTC), Conveyance (fixed ₹1,600), Medical (fixed ₹1,250), Special (remainder). The new structure replaces Conveyance and Medical with DA and CCA, all percentage-based off Basic.
+
+## Files to Modify
 
 | File | Change |
 |------|--------|
-| **New migration** | CREATE TABLE + RLS policies |
-| `supabase/migrations/20260310043700_*.sql` | Delete (redundant ALTER) |
+| `src/types/payroll.ts` | Replace `conveyance_allowance` and `medical_allowance` with `da` and `cca` in `SalaryStructure`. Update `PayrollConfig` defaults. Update `calculateSalaryBreakdown()`. |
+| `src/services/payrollConfig.service.ts` | Update default breakdown formula in both `getOfficerSalaryDetails()` and `getStaffSalaryDetails()` to use new formula (DA=Basic×20%, HRA=Basic×40%, CCA=Basic×10%, SPL=remainder). |
+| `src/utils/payrollCalculations.ts` | Update `generatePayrollCalculation()` fallback percentages and component list to use DA, HRA, CCA, SPL instead of old components. Pro-rate each as `(gross component / total days) × paid days`. |
+| `src/data/mockStaffPayroll.ts` | Update mock salary breakdown to match new formula. |
+| `src/data/mockAttendanceData.ts` | Update mock `salary_components` arrays to use new component types. |
+| `src/components/payroll/PayslipDialog.tsx` | Replace `conveyance_allowance` and `medical_allowance` with `da` and `cca` in `PayslipData` interface and earnings display. Labels: "Dearness Allowance (DA)", "City Compensatory Allowance (CCA)". |
+| `src/components/payroll/pdf/PayslipPDF.tsx` | Same as PayslipDialog — update interface and earnings labels. |
+| `src/components/payroll/IndividualAttendanceTab.tsx` | Update payslip generation to pass `da` and `cca` instead of `conveyance_allowance` and `medical_allowance`. |
+| `src/components/officer/EditOfficerDialog.tsx` | Update "Auto Calculate" to use new formula. Replace Transport/Medical input fields with DA/CCA fields. |
+| `src/components/officer/OfficerDetailsDialog.tsx` | Replace Transport Allowance and Medical Allowance display with DA and CCA. |
+| `src/pages/system-admin/MetaStaffDetail.tsx` | Update `calculateSalary()` to use new formula. Replace input fields for salary breakdown. |
+| `src/components/attendance/OfficerPayrollTab.tsx` | Update component type references if needed. |
+
+## Summary
+- **Remove**: `conveyance_allowance`, `medical_allowance`, `transport_allowance` as salary components
+- **Add**: `da` (Dearness Allowance = Basic × 20%), `cca` (City Compensatory Allowance = Basic × 10%)
+- **Keep**: `basic_pay` (50% of Gross), `hra` (Basic × 40%), `special_allowance` (Gross - Basic - DA - HRA - CCA)
+- All earnings pro-rated: `(Gross component / total days in month) × salary payable days`
 
