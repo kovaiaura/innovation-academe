@@ -98,9 +98,9 @@ export function PayslipDialog({
 
   const earnings = [
     { label: 'Basic Salary', amount: safe(payslipData.basic_salary) },
+    { label: 'Dearness Allowance (DA)', amount: safe(payslipData.da) },
     { label: 'House Rent Allowance (HRA)', amount: safe(payslipData.hra) },
-    { label: 'Conveyance Allowance', amount: safe(payslipData.conveyance_allowance) },
-    { label: 'Medical Allowance', amount: safe(payslipData.medical_allowance) },
+    { label: 'City Compensatory Allowance (CCA)', amount: safe(payslipData.cca) },
     { label: 'Special Allowance', amount: safe(payslipData.special_allowance) },
     ...(safe(payslipData.overtime_pay) > 0 ? [{ label: `Overtime Pay (${safe(payslipData.overtime_hours)}h)`, amount: safe(payslipData.overtime_pay) }] : []),
     ...(safe(payslipData.other_earnings) > 0 ? [{ label: 'Other Earnings', amount: safe(payslipData.other_earnings) }] : []),
