@@ -336,10 +336,10 @@ export default function MetaStaffDetail() {
 
     const monthly = annualSalary / 12;
     const basic = monthly * 0.5;
-    const hra = monthly * 0.2;
-    const conveyance = 1600;
-    const medical = 1250;
-    const special = Math.max(0, monthly - basic - hra - conveyance - medical);
+    const da = basic * 0.2;
+    const hra = basic * 0.4;
+    const cca = basic * 0.1;
+    const special = Math.max(0, monthly - (basic + da + hra + cca));
     const hourlyRate = monthly / 22 / 8;
 
     setFormData((prev) => ({
@@ -349,11 +349,10 @@ export default function MetaStaffDetail() {
         ...prev.salary_structure,
         annual_ctc: annualSalary,
         basic_pay: Math.round(basic * 100) / 100,
+        da: Math.round(da * 100) / 100,
         hra: Math.round(hra * 100) / 100,
-        transport_allowance: conveyance,
-        medical_allowance: medical,
+        cca: Math.round(cca * 100) / 100,
         special_allowance: Math.round(special * 100) / 100,
-        da: 0,
       },
     }));
     toast.success('Salary breakdown calculated');
