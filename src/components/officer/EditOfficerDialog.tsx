@@ -400,7 +400,21 @@ export default function EditOfficerDialog({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="hra" className="text-xs">HRA (20%)</Label>
+                  <Label htmlFor="da" className="text-xs">DA (Basic × 20%)</Label>
+                  <Input
+                    id="da"
+                    type="number"
+                    step="0.01"
+                    value={formData.salary_structure?.da || ''}
+                    onChange={(e) => handleChange('salary_structure', {
+                      ...formData.salary_structure,
+                      da: Number(e.target.value)
+                    })}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="hra" className="text-xs">HRA (Basic × 40%)</Label>
                   <Input
                     id="hra"
                     type="number"
@@ -414,31 +428,17 @@ export default function EditOfficerDialog({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="transport" className="text-xs">Transport/Conveyance</Label>
+                  <Label htmlFor="cca" className="text-xs">CCA (Basic × 10%)</Label>
                   <Input
-                    id="transport"
+                    id="cca"
                     type="number"
                     step="0.01"
-                    value={formData.salary_structure?.transport_allowance || ''}
+                    value={formData.salary_structure?.cca || ''}
                     onChange={(e) => handleChange('salary_structure', {
                       ...formData.salary_structure,
-                      transport_allowance: Number(e.target.value)
+                      cca: Number(e.target.value)
                     })}
-                    placeholder="1600"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="medical" className="text-xs">Medical</Label>
-                  <Input
-                    id="medical"
-                    type="number"
-                    step="0.01"
-                    value={formData.salary_structure?.medical_allowance || ''}
-                    onChange={(e) => handleChange('salary_structure', {
-                      ...formData.salary_structure,
-                      medical_allowance: Number(e.target.value)
-                    })}
-                    placeholder="1250"
+                    placeholder="0.00"
                   />
                 </div>
                 <div>
@@ -455,29 +455,14 @@ export default function EditOfficerDialog({
                     placeholder="0.00"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="da" className="text-xs">DA (Optional)</Label>
-                  <Input
-                    id="da"
-                    type="number"
-                    step="0.01"
-                    value={formData.salary_structure?.da || ''}
-                    onChange={(e) => handleChange('salary_structure', {
-                      ...formData.salary_structure,
-                      da: Number(e.target.value)
-                    })}
-                    placeholder="0.00"
-                  />
-                </div>
               </div>
               <div className="text-xs text-muted-foreground mt-2">
                 Total Monthly: ₹{(
                   (formData.salary_structure?.basic_pay || 0) +
+                  (formData.salary_structure?.da || 0) +
                   (formData.salary_structure?.hra || 0) +
-                  (formData.salary_structure?.transport_allowance || 0) +
-                  (formData.salary_structure?.medical_allowance || 0) +
-                  (formData.salary_structure?.special_allowance || 0) +
-                  (formData.salary_structure?.da || 0)
+                  (formData.salary_structure?.cca || 0) +
+                  (formData.salary_structure?.special_allowance || 0)
                 ).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
               </div>
             </div>

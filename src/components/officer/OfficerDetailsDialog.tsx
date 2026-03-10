@@ -266,24 +266,20 @@ export function OfficerDetailsDialog({
                         <p className="font-medium">₹{officer.salary_structure.basic_pay}</p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">HRA</p>
-                        <p className="font-medium">₹{officer.salary_structure.hra}</p>
-                      </div>
-                      <div>
                         <p className="text-muted-foreground">DA</p>
                         <p className="font-medium">₹{officer.salary_structure.da}</p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Transport Allowance</p>
-                        <p className="font-medium">₹{officer.salary_structure.transport_allowance}</p>
+                        <p className="text-muted-foreground">HRA</p>
+                        <p className="font-medium">₹{officer.salary_structure.hra}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">CCA</p>
+                        <p className="font-medium">₹{(officer.salary_structure as any).cca || 0}</p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Special Allowance</p>
                         <p className="font-medium">₹{officer.salary_structure.special_allowance}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Medical Allowance</p>
-                        <p className="font-medium">₹{officer.salary_structure.medical_allowance}</p>
                       </div>
                     </div>
                   </CardContent>
