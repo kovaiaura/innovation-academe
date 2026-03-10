@@ -7,6 +7,7 @@ export type SalaryComponentType =
   | 'basic_pay' 
   | 'hra' 
   | 'da' 
+  | 'cca'
   | 'transport_allowance' 
   | 'special_allowance' 
   | 'medical_allowance' 

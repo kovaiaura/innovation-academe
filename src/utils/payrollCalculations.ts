@@ -110,7 +110,6 @@ export const generatePayrollCalculation = (
   const paidDays = daysPresent + daysLeave;
   
   // Use salary structure or fallback to total salary using new formula
-  // New formula: Basic=50%, DA=Basic×20%, HRA=Basic×40%, CCA=Basic×10%, SPL=remainder
   const grossSalaryMonthly = officer.salary;
   const fallbackBasic = grossSalaryMonthly * 0.5;
   const fallbackDA = fallbackBasic * 0.2;
@@ -118,7 +117,7 @@ export const generatePayrollCalculation = (
   const fallbackCCA = fallbackBasic * 0.1;
   const fallbackSPL = grossSalaryMonthly - (fallbackBasic + fallbackDA + fallbackHRA + fallbackCCA);
   
-  const salaryStructure = officer.salary_structure || {
+  const rawSS = officer.salary_structure || {
     basic_pay: fallbackBasic,
     da: fallbackDA,
     hra: fallbackHRA,
@@ -127,11 +126,11 @@ export const generatePayrollCalculation = (
   };
   
   // Calculate pro-rated salary components: (Gross component / total days) × paid days
-  const basicPay = ((salaryStructure.basic_pay || 0) / totalDays) * paidDays;
-  const da = ((salaryStructure.da || 0) / totalDays) * paidDays;
-  const hra = ((salaryStructure.hra || 0) / totalDays) * paidDays;
-  const ccaAmount = ((salaryStructure.cca || 0) / totalDays) * paidDays;
-  const specialAllowance = ((salaryStructure.special_allowance || 0) / totalDays) * paidDays;
+  const basicPay = ((rawSS.basic_pay || 0) / totalDays) * paidDays;
+  const da = ((rawSS.da || 0) / totalDays) * paidDays;
+  const hra = ((rawSS.hra || 0) / totalDays) * paidDays;
+  const ccaAmount = (((rawSS as any).cca || 0) / totalDays) * paidDays;
+  const specialAllowance = ((rawSS.special_allowance || 0) / totalDays) * paidDays;
   
   // Overtime calculation
   const overtimePay = overtimeHours * (basicPay / 208) * 2;
