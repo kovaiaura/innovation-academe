@@ -64,27 +64,32 @@ export const webinarService = {
     
     if (error) throw error;
 
-    // Get webinar IDs that have any assignments
-    const { data: assignments, error: aError } = await (supabase as any)
-      .from('webinar_institution_assignments')
-      .select('webinar_id, institution_id');
-    
-    if (aError) throw aError;
+    try {
+      // Get webinar IDs that have any assignments
+      const { data: assignments, error: aError } = await (supabase as any)
+        .from('webinar_institution_assignments')
+        .select('webinar_id, institution_id');
+      
+      if (aError) throw aError;
 
-    const assignmentsByWebinar = new Map<string, string[]>();
-    for (const a of assignments || []) {
-      if (!assignmentsByWebinar.has(a.webinar_id)) {
-        assignmentsByWebinar.set(a.webinar_id, []);
+      const assignmentsByWebinar = new Map<string, string[]>();
+      for (const a of assignments || []) {
+        if (!assignmentsByWebinar.has(a.webinar_id)) {
+          assignmentsByWebinar.set(a.webinar_id, []);
+        }
+        assignmentsByWebinar.get(a.webinar_id)!.push(a.institution_id);
       }
-      assignmentsByWebinar.get(a.webinar_id)!.push(a.institution_id);
-    }
 
-    // Filter: show webinars with no assignments (global) or assigned to this institution
-    return (allWebinars || []).filter((w: Webinar) => {
-      const assignedInsts = assignmentsByWebinar.get(w.id);
-      if (!assignedInsts || assignedInsts.length === 0) return true; // global
-      return assignedInsts.includes(institutionId);
-    });
+      // Filter: show webinars with no assignments (global) or assigned to this institution
+      return (allWebinars || []).filter((w: Webinar) => {
+        const assignedInsts = assignmentsByWebinar.get(w.id);
+        if (!assignedInsts || assignedInsts.length === 0) return true; // global
+        return assignedInsts.includes(institutionId);
+      });
+    } catch (assignmentError) {
+      console.error('Error fetching webinar assignments, falling back to all webinars:', assignmentError);
+      return (allWebinars || []) as Webinar[];
+    }
   },
 
   async getAllWebinars(): Promise<Webinar[]> {
