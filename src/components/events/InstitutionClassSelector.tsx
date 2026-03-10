@@ -139,7 +139,10 @@ export function InstitutionClassSelector({
   };
 
   const isAllClassesSelected = (institution: Institution) => {
-    return institution.classes.length > 0 && institution.classes.every((cls) =>
+    if (institution.classes.length === 0) {
+      return selectedClasses.some((s) => s.institution_id === institution.id && s.class_id === null);
+    }
+    return institution.classes.every((cls) =>
       selectedClasses.some((s) => s.institution_id === institution.id && s.class_id === cls.id)
     );
   };

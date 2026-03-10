@@ -33,7 +33,7 @@ export interface WebinarFormData {
 
 export interface WebinarAssignment {
   institution_id: string;
-  class_id: string;
+  class_id: string | null;
 }
 
 export const EVENT_TYPE_LABELS: Record<MetaEventType, string> = {
