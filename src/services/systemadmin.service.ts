@@ -140,7 +140,7 @@ export interface OfficerDetails extends Officer {
     basic_pay: number;
     hra: number;
     da: number;
-    cca: number;
+    cca?: number;
     special_allowance: number;
     transport_allowance?: number;
     medical_allowance?: number;
