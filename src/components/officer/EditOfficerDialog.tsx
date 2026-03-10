@@ -62,11 +62,10 @@ export default function EditOfficerDialog({
         // Include salary structure and statutory info from officer
         salary_structure: officer.salary_structure ?? {
           basic_pay: 0,
-          hra: 0,
           da: 0,
-          transport_allowance: 0,
+          hra: 0,
+          cca: 0,
           special_allowance: 0,
-          medical_allowance: 0,
         },
         statutory_info: officer.statutory_info ?? {
           pf_applicable: true,
