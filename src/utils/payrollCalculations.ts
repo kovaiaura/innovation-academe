@@ -109,23 +109,28 @@ export const generatePayrollCalculation = (
   const totalDays = daysPresent + daysAbsent + daysLeave;
   const paidDays = daysPresent + daysLeave;
   
-  // Use salary structure or fallback to total salary
-  const salaryStructure = officer.salary_structure || {
-    basic_pay: officer.salary * 0.4,
-    hra: officer.salary * 0.2,
-    da: officer.salary * 0.1,
-    transport_allowance: officer.salary * 0.05,
-    special_allowance: officer.salary * 0.2,
-    medical_allowance: officer.salary * 0.05,
+  // Use salary structure or fallback to total salary using new formula
+  const grossSalaryMonthly = officer.salary;
+  const fallbackBasic = grossSalaryMonthly * 0.5;
+  const fallbackDA = fallbackBasic * 0.2;
+  const fallbackHRA = fallbackBasic * 0.4;
+  const fallbackCCA = fallbackBasic * 0.1;
+  const fallbackSPL = grossSalaryMonthly - (fallbackBasic + fallbackDA + fallbackHRA + fallbackCCA);
+  
+  const rawSS = officer.salary_structure || {
+    basic_pay: fallbackBasic,
+    da: fallbackDA,
+    hra: fallbackHRA,
+    cca: fallbackCCA,
+    special_allowance: Math.max(0, fallbackSPL),
   };
   
-  // Calculate pro-rated salary components
-  const basicPay = (salaryStructure.basic_pay / totalDays) * paidDays;
-  const hra = (salaryStructure.hra / totalDays) * paidDays;
-  const da = (salaryStructure.da / totalDays) * paidDays;
-  const transportAllowance = (salaryStructure.transport_allowance / totalDays) * paidDays;
-  const specialAllowance = (salaryStructure.special_allowance / totalDays) * paidDays;
-  const medicalAllowance = (salaryStructure.medical_allowance / totalDays) * paidDays;
+  // Calculate pro-rated salary components: (Gross component / total days) × paid days
+  const basicPay = ((rawSS.basic_pay || 0) / totalDays) * paidDays;
+  const da = ((rawSS.da || 0) / totalDays) * paidDays;
+  const hra = ((rawSS.hra || 0) / totalDays) * paidDays;
+  const ccaAmount = (((rawSS as any).cca || 0) / totalDays) * paidDays;
+  const specialAllowance = ((rawSS.special_allowance || 0) / totalDays) * paidDays;
   
   // Overtime calculation
   const overtimePay = overtimeHours * (basicPay / 208) * 2;
@@ -133,11 +138,10 @@ export const generatePayrollCalculation = (
   // Build salary components
   const components: SalaryComponent[] = [
     { component_type: 'basic_pay', amount: Math.round(basicPay), is_taxable: true, calculation_type: 'fixed' },
-    { component_type: 'hra', amount: Math.round(hra), is_taxable: true, calculation_type: 'fixed' },
     { component_type: 'da', amount: Math.round(da), is_taxable: true, calculation_type: 'fixed' },
-    { component_type: 'transport_allowance', amount: Math.round(transportAllowance), is_taxable: false, calculation_type: 'fixed' },
+    { component_type: 'hra', amount: Math.round(hra), is_taxable: true, calculation_type: 'fixed' },
+    { component_type: 'cca', amount: Math.round(ccaAmount), is_taxable: false, calculation_type: 'fixed' },
     { component_type: 'special_allowance', amount: Math.round(specialAllowance), is_taxable: true, calculation_type: 'fixed' },
-    { component_type: 'medical_allowance', amount: Math.round(medicalAllowance), is_taxable: false, calculation_type: 'fixed' },
   ];
   
   if (overtimePay > 0) {

@@ -1,17 +1,30 @@
 /**
  * Payroll Types
  * Salary structure, statutory info, and payroll configuration types
+ * 
+ * NEW FORMULA:
+ * Gross Salary = Actual Salary (per month)
+ * Basic = 50% of Gross
+ * DA = Basic × 20%
+ * HRA = Basic × 40%
+ * CCA = Basic × 10%
+ * SPL = Gross - (Basic + DA + HRA + CCA)
+ * 
+ * Pro-rated Earnings:
+ * Each component = (Gross component / total days in month) × salary payable days
  */
 
 export interface SalaryStructure {
-  basic_pay: number;           // 50% of CTC by default
-  hra: number;                 // House Rent Allowance (20% of CTC)
-  conveyance_allowance: number; // Fixed amount
-  medical_allowance: number;    // Fixed amount
-  special_allowance: number;    // Balance amount
-  da?: number;                  // Dearness Allowance (optional)
-  transport_allowance?: number; // Transport (optional)
+  basic_pay: number;           // 50% of Gross
+  da: number;                  // Dearness Allowance (Basic × 20%)
+  hra: number;                 // House Rent Allowance (Basic × 40%)
+  cca: number;                 // City Compensatory Allowance (Basic × 10%)
+  special_allowance: number;   // Gross - (Basic + DA + HRA + CCA)
   other_allowances?: number;
+  // Legacy fields kept for backward compat with stored data
+  conveyance_allowance?: number;
+  medical_allowance?: number;
+  transport_allowance?: number;
 }
 
 export interface StatutoryInfo {
@@ -23,6 +36,7 @@ export interface StatutoryInfo {
   pt_state?: string;
   uan_number?: string;          // Universal Account Number
   pan_number?: string;
+  pf_number?: string;
 }
 
 export interface PayrollConfig {
@@ -39,10 +53,13 @@ export interface PayrollConfig {
   };
   salary_components: {
     basic_percentage: number;
-    hra_percentage: number;
-    conveyance_allowance: number;
-    medical_allowance: number;
-    special_allowance_percentage: number;
+    da_percentage: number;       // DA as % of Basic (20%)
+    hra_percentage: number;      // HRA as % of Basic (40%)
+    cca_percentage: number;      // CCA as % of Basic (10%)
+    // Legacy - kept for config compat
+    conveyance_allowance?: number;
+    medical_allowance?: number;
+    special_allowance_percentage?: number;
   };
   overtime_settings: {
     default_multiplier: number;
@@ -62,11 +79,10 @@ export const DEFAULT_PAYROLL_CONFIG: PayrollConfig = {
     professional_tax_state: 'maharashtra',
   },
   salary_components: {
-    basic_percentage: 50,
-    hra_percentage: 20,
-    conveyance_allowance: 1600,
-    medical_allowance: 1250,
-    special_allowance_percentage: 15,
+    basic_percentage: 50,        // 50% of Gross
+    da_percentage: 20,           // 20% of Basic
+    hra_percentage: 40,          // 40% of Basic
+    cca_percentage: 10,          // 10% of Basic
   },
   overtime_settings: {
     default_multiplier: 1.5,
@@ -74,23 +90,21 @@ export const DEFAULT_PAYROLL_CONFIG: PayrollConfig = {
   },
 };
 
-// Calculate salary breakdown from CTC
+// Calculate salary breakdown from monthly gross salary
 export const calculateSalaryBreakdown = (
-  annualCTC: number, 
-  config: PayrollConfig['salary_components']
+  monthlySalary: number
 ): SalaryStructure => {
-  const monthlyCTC = annualCTC / 12;
-  const basic = monthlyCTC * (config.basic_percentage / 100);
-  const hra = monthlyCTC * (config.hra_percentage / 100);
-  const conveyance = config.conveyance_allowance;
-  const medical = config.medical_allowance;
-  const special = monthlyCTC - basic - hra - conveyance - medical;
+  const basic = monthlySalary * 0.5;
+  const da = basic * 0.2;
+  const hra = basic * 0.4;
+  const cca = basic * 0.1;
+  const special = monthlySalary - (basic + da + hra + cca);
   
   return {
     basic_pay: Math.round(basic * 100) / 100,
+    da: Math.round(da * 100) / 100,
     hra: Math.round(hra * 100) / 100,
-    conveyance_allowance: conveyance,
-    medical_allowance: medical,
+    cca: Math.round(cca * 100) / 100,
     special_allowance: Math.round(Math.max(0, special) * 100) / 100,
   };
 };
@@ -118,4 +132,34 @@ export const calculatePFDeduction = (basicSalary: number, pfRate: number = 12): 
 export const calculateESIDeduction = (grossSalary: number, esiRate: number = 0.75, wageLimit: number = 21000): number => {
   if (grossSalary > wageLimit) return 0; // Not applicable above wage limit
   return Math.round(grossSalary * (esiRate / 100));
+};
+
+// Migrate legacy salary structure to new format
+export const migrateSalaryStructure = (raw: Record<string, number>, grossSalary?: number): SalaryStructure => {
+  // If it already has cca, it's in new format
+  if (raw.cca !== undefined && raw.cca > 0) {
+    return {
+      basic_pay: raw.basic_pay || 0,
+      da: raw.da || 0,
+      hra: raw.hra || 0,
+      cca: raw.cca || 0,
+      special_allowance: raw.special_allowance || 0,
+      other_allowances: raw.other_allowances || 0,
+    };
+  }
+  
+  // Legacy format: recalculate from gross
+  const total = grossSalary || Object.values(raw).reduce((s, v) => s + (Number(v) || 0), 0);
+  if (total > 0) {
+    return calculateSalaryBreakdown(total);
+  }
+  
+  return {
+    basic_pay: raw.basic_pay || 0,
+    da: raw.da || 0,
+    hra: raw.hra || 0,
+    cca: 0,
+    special_allowance: raw.special_allowance || 0,
+    other_allowances: raw.other_allowances || 0,
+  };
 };

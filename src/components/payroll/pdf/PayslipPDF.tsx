@@ -14,9 +14,9 @@ interface PayslipPDFData {
   month: number;
   year: number;
   basic_salary: number;
+  da: number;
   hra: number;
-  conveyance_allowance: number;
-  medical_allowance: number;
+  cca: number;
   special_allowance: number;
   overtime_pay: number;
   overtime_hours: number;
@@ -117,9 +117,9 @@ export function PayslipPDF({ data, companyName, companyAddress, logoUrl }: Paysl
 
   const earnings = [
     { label: 'Basic Salary', amount: safe(data.basic_salary) },
+    { label: 'Dearness Allowance (DA)', amount: safe(data.da) },
     { label: 'House Rent Allowance (HRA)', amount: safe(data.hra) },
-    { label: 'Conveyance Allowance', amount: safe(data.conveyance_allowance) },
-    { label: 'Medical Allowance', amount: safe(data.medical_allowance) },
+    { label: 'City Compensatory Allowance (CCA)', amount: safe(data.cca) },
     { label: 'Special Allowance', amount: safe(data.special_allowance) },
     ...(safe(data.overtime_pay) > 0 ? [{ label: `Overtime Pay (${safe(data.overtime_hours)}h)`, amount: safe(data.overtime_pay) }] : []),
     ...(safe(data.other_earnings) > 0 ? [{ label: 'Other Earnings', amount: safe(data.other_earnings) }] : []),

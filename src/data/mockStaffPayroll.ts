@@ -54,17 +54,26 @@ const generateSalaryComponents = (
   const config = staffSalaryConfig[position];
   const monthlySalary = config.monthly_salary;
   
-  // Pro-rated salary based on attendance
-  const basicPay = (monthlySalary * 0.4 * presentDays) / totalDays;
-  const hra = (monthlySalary * 0.3 * presentDays) / totalDays;
-  const da = (monthlySalary * 0.1 * presentDays) / totalDays;
-  const specialAllowance = (monthlySalary * 0.2 * presentDays) / totalDays;
+  // New formula: Basic=50%, DA=Basic×20%, HRA=Basic×40%, CCA=Basic×10%, SPL=remainder
+  const basicPay = (monthlySalary * 0.5 * presentDays) / totalDays;
+  const da = (basicPay * 0.2 * totalDays / presentDays * presentDays) / totalDays; // simplifies to basicPay * 0.2
+  const daGross = monthlySalary * 0.5 * 0.2;
+  const hraGross = monthlySalary * 0.5 * 0.4;
+  const ccaGross = monthlySalary * 0.5 * 0.1;
+  const splGross = monthlySalary - (monthlySalary * 0.5 + daGross + hraGross + ccaGross);
+  
+  const basicProRated = (monthlySalary * 0.5 * presentDays) / totalDays;
+  const daProRated = (daGross * presentDays) / totalDays;
+  const hraProRated = (hraGross * presentDays) / totalDays;
+  const ccaProRated = (ccaGross * presentDays) / totalDays;
+  const splProRated = (splGross * presentDays) / totalDays;
   
   const components: SalaryComponent[] = [
-    { component_type: 'basic_pay', amount: Math.round(basicPay), is_taxable: true, calculation_type: 'fixed' },
-    { component_type: 'hra', amount: Math.round(hra), is_taxable: true, calculation_type: 'fixed' },
-    { component_type: 'da', amount: Math.round(da), is_taxable: true, calculation_type: 'fixed' },
-    { component_type: 'special_allowance', amount: Math.round(specialAllowance), is_taxable: true, calculation_type: 'fixed' },
+    { component_type: 'basic_pay', amount: Math.round(basicProRated), is_taxable: true, calculation_type: 'fixed' },
+    { component_type: 'da', amount: Math.round(daProRated), is_taxable: true, calculation_type: 'fixed' },
+    { component_type: 'hra', amount: Math.round(hraProRated), is_taxable: true, calculation_type: 'fixed' },
+    { component_type: 'cca', amount: Math.round(ccaProRated), is_taxable: false, calculation_type: 'fixed' },
+    { component_type: 'special_allowance', amount: Math.round(splProRated), is_taxable: true, calculation_type: 'fixed' },
   ];
   
   // Add overtime if any

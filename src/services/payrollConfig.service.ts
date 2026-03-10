@@ -4,7 +4,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import { PayrollConfig, DEFAULT_PAYROLL_CONFIG, SalaryStructure, StatutoryInfo } from '@/types/payroll';
+import { PayrollConfig, DEFAULT_PAYROLL_CONFIG, SalaryStructure, StatutoryInfo, calculateSalaryBreakdown, migrateSalaryStructure } from '@/types/payroll';
 
 // Fetch company payroll configuration
 export const getPayrollConfig = async (): Promise<PayrollConfig> => {
@@ -66,51 +66,22 @@ export const getOfficerSalaryDetails = async (officerId: string): Promise<{
   
   const annualSalary = data?.annual_salary || 0;
   
-  // Use stored salary structure or calculate from CTC
   let salaryStructure: SalaryStructure;
   let monthlySalary: number;
   
   const rawSS = data?.salary_structure as unknown as Record<string, number> | null;
-  // Check if stored structure has meaningful values (sum > 0), also map transport_allowance -> conveyance_allowance
   const hasStoredStructure = rawSS && typeof rawSS === 'object' && Object.keys(rawSS).length > 0;
   const storedSum = hasStoredStructure ? Object.values(rawSS).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
   
   if (hasStoredStructure && storedSum > 0) {
-    // Map transport_allowance to conveyance_allowance if needed
-    const conveyance = (rawSS.conveyance_allowance || 0) || (rawSS.transport_allowance || 0);
-    salaryStructure = {
-      basic_pay: rawSS.basic_pay || 0,
-      hra: rawSS.hra || 0,
-      conveyance_allowance: conveyance,
-      medical_allowance: rawSS.medical_allowance || 0,
-      special_allowance: rawSS.special_allowance || 0,
-      da: rawSS.da || 0,
-      transport_allowance: rawSS.transport_allowance || 0,
-      other_allowances: rawSS.other_allowances || 0,
-    };
-    monthlySalary = (salaryStructure.basic_pay || 0) +
-      (salaryStructure.hra || 0) +
-      (salaryStructure.conveyance_allowance || 0) +
-      (salaryStructure.medical_allowance || 0) +
-      (salaryStructure.special_allowance || 0) +
-      (salaryStructure.da || 0) +
-      (salaryStructure.other_allowances || 0);
+    // Migrate legacy structure to new format
+    salaryStructure = migrateSalaryStructure(rawSS, storedSum);
+    monthlySalary = salaryStructure.basic_pay + salaryStructure.da + salaryStructure.hra + 
+      salaryStructure.cca + salaryStructure.special_allowance + (salaryStructure.other_allowances || 0);
   } else {
-    // Calculate default breakdown from CTC
+    // Calculate default breakdown from CTC using new formula
     monthlySalary = Math.round(annualSalary / 12 * 100) / 100;
-    const basic = monthlySalary * (config.salary_components.basic_percentage / 100);
-    const hra = monthlySalary * (config.salary_components.hra_percentage / 100);
-    const conveyance = config.salary_components.conveyance_allowance;
-    const medical = config.salary_components.medical_allowance;
-    const special = monthlySalary - basic - hra - conveyance - medical;
-    
-    salaryStructure = {
-      basic_pay: Math.round(basic * 100) / 100,
-      hra: Math.round(hra * 100) / 100,
-      conveyance_allowance: conveyance,
-      medical_allowance: medical,
-      special_allowance: Math.round(Math.max(0, special) * 100) / 100,
-    };
+    salaryStructure = calculateSalaryBreakdown(monthlySalary);
   }
   
   // Use stored statutory info or defaults
@@ -162,37 +133,19 @@ export const getStaffSalaryDetails = async (userId: string): Promise<{
   const hourlyRate = data?.hourly_rate || 500;
   const annualSalary = data?.annual_salary || (hourlyRate * 8 * 22 * 12);
   
-  // Use stored salary structure or calculate from CTC
   let salaryStructure: SalaryStructure;
   let monthlySalary: number;
   
   if (data?.salary_structure && typeof data.salary_structure === 'object' && Object.keys(data.salary_structure).length > 0) {
-    salaryStructure = data.salary_structure as unknown as SalaryStructure;
-    // Monthly salary = sum of all salary components
-    monthlySalary = (salaryStructure.basic_pay || 0) +
-      (salaryStructure.hra || 0) +
-      (salaryStructure.conveyance_allowance || 0) +
-      (salaryStructure.medical_allowance || 0) +
-      (salaryStructure.special_allowance || 0) +
-      (salaryStructure.da || 0) +
-      (salaryStructure.transport_allowance || 0) +
-      (salaryStructure.other_allowances || 0);
+    const rawSS = data.salary_structure as unknown as Record<string, number>;
+    const storedSum = Object.values(rawSS).reduce((s, v) => s + (Number(v) || 0), 0);
+    salaryStructure = migrateSalaryStructure(rawSS, storedSum);
+    monthlySalary = salaryStructure.basic_pay + salaryStructure.da + salaryStructure.hra + 
+      salaryStructure.cca + salaryStructure.special_allowance + (salaryStructure.other_allowances || 0);
   } else {
-    // Calculate default breakdown from CTC
+    // Calculate default breakdown from CTC using new formula
     monthlySalary = Math.round(annualSalary / 12 * 100) / 100;
-    const basic = monthlySalary * (config.salary_components.basic_percentage / 100);
-    const hra = monthlySalary * (config.salary_components.hra_percentage / 100);
-    const conveyance = config.salary_components.conveyance_allowance;
-    const medical = config.salary_components.medical_allowance;
-    const special = monthlySalary - basic - hra - conveyance - medical;
-    
-    salaryStructure = {
-      basic_pay: Math.round(basic * 100) / 100,
-      hra: Math.round(hra * 100) / 100,
-      conveyance_allowance: conveyance,
-      medical_allowance: medical,
-      special_allowance: Math.round(Math.max(0, special) * 100) / 100,
-    };
+    salaryStructure = calculateSalaryBreakdown(monthlySalary);
   }
   
   // Use stored statutory info or defaults

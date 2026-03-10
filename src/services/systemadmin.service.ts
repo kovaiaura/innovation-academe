@@ -140,9 +140,10 @@ export interface OfficerDetails extends Officer {
     basic_pay: number;
     hra: number;
     da: number;
-    transport_allowance: number;
+    cca?: number;
     special_allowance: number;
-    medical_allowance: number;
+    transport_allowance?: number;
+    medical_allowance?: number;
   };
   
   qualifications?: string[];

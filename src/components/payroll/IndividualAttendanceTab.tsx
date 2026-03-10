@@ -1354,16 +1354,16 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                                 
                                 // Calculate statutory deductions using real info
                                 const basicPay = ss.basic_pay || 0;
+                                const daAmt = ss.da || 0;
                                 const hraAmt = ss.hra || 0;
-                                const conveyanceAmt = ss.conveyance_allowance || 0;
-                                const medicalAmt = ss.medical_allowance || 0;
+                                const ccaAmt = ss.cca || 0;
                                 const specialAmt = ss.special_allowance || 0;
                                 
                                 const pfDeduction = si.pf_applicable ? calculatePFDeduction(basicPay) : 0;
                                 const esiDeduction = si.esi_applicable ? calculateESIDeduction(salaryData.monthlySalary) : 0;
                                 const ptDeduction = si.pt_applicable ? calculateProfessionalTax(salaryData.monthlySalary, si.pt_state) : 0;
                                 
-                                const grossEarnings = basicPay + hraAmt + conveyanceAmt + medicalAmt + specialAmt + overtimePay;
+                                const grossEarnings = basicPay + daAmt + hraAmt + ccaAmt + specialAmt + overtimePay;
                                 const totalDeductions = lopDeduction + pfDeduction + esiDeduction + ptDeduction;
                                 
                                 const payslip = {
@@ -1375,9 +1375,9 @@ export function IndividualAttendanceTab({ month, year }: IndividualAttendanceTab
                                   year: localYear,
                                   // Use real salary structure
                                   basic_salary: basicPay,
+                                  da: daAmt,
                                   hra: hraAmt,
-                                  conveyance_allowance: conveyanceAmt,
-                                  medical_allowance: medicalAmt,
+                                  cca: ccaAmt,
                                   special_allowance: specialAmt,
                                   overtime_pay: overtimePay,
                                   // Use real statutory deductions
