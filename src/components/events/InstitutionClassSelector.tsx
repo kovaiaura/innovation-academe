@@ -14,7 +14,7 @@ export interface Institution {
 
 export interface ClassSelection {
   institution_id: string;
-  class_id: string;
+  class_id: string | null;
 }
 
 interface InstitutionClassSelectorProps {
