@@ -270,16 +270,25 @@ serve(async (req: Request) => {
     let failedSend = 0;
 
     // 6. Process staff reminders (profile-based times)
+    // Fetch student user IDs to exclude from reminders
+    const { data: studentRoles } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "student");
+    const studentUserIds = new Set((studentRoles || []).map((r: any) => r.user_id));
+
     const { data: staffProfiles } = await supabase
       .from("profiles")
       .select("id, name, email, check_in_time, check_out_time, enable_notifications")
       .not("email", "is", null)
       .not("check_in_time", "is", null);
 
-    console.log(`[attendance-reminder] Staff profiles found: ${staffProfiles?.length || 0}`);
+    console.log(`[attendance-reminder] Staff profiles found: ${staffProfiles?.length || 0}, excluded students: ${studentUserIds.size}`);
 
     if (staffProfiles) {
       for (const profile of staffProfiles) {
+        // Skip students — only staff and officers should receive reminders
+        if (studentUserIds.has(profile.id)) continue;
         if (!profile.email) continue;
         if (profile.enable_notifications === false) { skippedNotif++; continue; }
 
