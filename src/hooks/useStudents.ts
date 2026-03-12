@@ -267,6 +267,34 @@ export function useStudents(institutionId?: string, classId?: string) {
         throw new Error(authCheck.error);
       }
 
+      // Check if email has changed — if so, update auth login email first
+      if (formData.email) {
+        const { data: currentStudent } = await supabase
+          .from('students')
+          .select('email, user_id')
+          .eq('id', id)
+          .single();
+
+        if (currentStudent?.user_id && currentStudent.email !== formData.email) {
+          console.log('[Students] Email changed, updating auth email via edge function');
+          const { data: emailResult, error: emailError } = await supabase.functions.invoke('update-student-email', {
+            body: { student_id: id, new_email: formData.email },
+          });
+
+          if (emailError) {
+            console.error('[Students] Email update edge function error:', emailError);
+            throw new Error(emailError.message || 'Failed to update student login email');
+          }
+
+          if (emailResult?.error) {
+            console.error('[Students] Email update error:', emailResult.error);
+            throw new Error(emailResult.error);
+          }
+
+          console.log('[Students] Auth email updated successfully');
+        }
+      }
+
       const { data, error } = await supabase
         .from('students')
         .update({

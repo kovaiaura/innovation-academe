@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.create-student-users-batch]
 verify_jwt = false
+
+[functions.update-student-email]
+verify_jwt = false
