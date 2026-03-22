@@ -518,7 +518,21 @@ export default function SystemAdminCourseDetail() {
                                       </div>
                                     )}
                                   </div>
-                                  <div className="flex gap-2">
+                                  <div className="flex gap-1">
+                                    {(() => {
+                                      const sorted = [...module.sessions].sort((a, b) => a.display_order - b.display_order);
+                                      const idx = sorted.findIndex(s => s.id === session.id);
+                                      return (
+                                        <>
+                                          <Button variant="ghost" size="sm" disabled={idx === 0 || reorderSessions.isPending} onClick={(e) => { e.stopPropagation(); handleMoveSession(module, session, 'up'); }}>
+                                            <ChevronUp className="h-3 w-3" />
+                                          </Button>
+                                          <Button variant="ghost" size="sm" disabled={idx === sorted.length - 1 || reorderSessions.isPending} onClick={(e) => { e.stopPropagation(); handleMoveSession(module, session, 'down'); }}>
+                                            <ChevronDown className="h-3 w-3" />
+                                          </Button>
+                                        </>
+                                      );
+                                    })()}
                                     <Button variant="ghost" size="sm" onClick={(e) => handleEditSession(e, session)}>
                                       <Edit className="h-3 w-3" />
                                     </Button>
