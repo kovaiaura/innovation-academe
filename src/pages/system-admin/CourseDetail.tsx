@@ -516,7 +516,7 @@ export default function SystemAdminCourseDetail() {
                             No sessions yet. Click below to add sessions.
                           </p>
                         ) : (
-                          module.sessions.map((session) => (
+                          [...module.sessions].sort((a, b) => a.display_order - b.display_order).map((session, sessionIdx, sortedSessions) => (
                             <Card key={session.id} className="border-l-4 border-l-primary">
                               <CardHeader>
                                 <div className="flex justify-between items-start">
