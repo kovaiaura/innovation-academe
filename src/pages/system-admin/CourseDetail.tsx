@@ -61,9 +61,11 @@ export default function SystemAdminCourseDetail() {
   const [isEditContentOpen, setIsEditContentOpen] = useState(false);
   const [isDeleteModuleOpen, setIsDeleteModuleOpen] = useState(false);
   const [isDeleteSessionOpen, setIsDeleteSessionOpen] = useState(false);
+  const [isReorderSessionsOpen, setIsReorderSessionsOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState<DbCourseModule | null>(null);
   const [selectedSession, setSelectedSession] = useState<DbCourseSession | null>(null);
   const [selectedContent, setSelectedContent] = useState<DbCourseContent | null>(null);
+  const [reorderModule, setReorderModule] = useState<typeof modules[0] | null>(null);
 
   // Convert DB types to UI types
   const mapDbModuleToUi = (m: DbCourseModule): CourseModule => ({
