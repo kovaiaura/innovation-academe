@@ -240,6 +240,22 @@ export default function SystemAdminCourseDetail() {
     setIsAddContentOpen(true);
   };
 
+  const handleMoveSession = async (module: typeof modules[0], session: DbCourseSession, direction: 'up' | 'down') => {
+    if (!courseId) return;
+    const sorted = [...module.sessions].sort((a, b) => a.display_order - b.display_order);
+    const idx = sorted.findIndex(s => s.id === session.id);
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= sorted.length) return;
+    const target = sorted[targetIdx];
+    await reorderSessions.mutateAsync({
+      courseId,
+      swaps: [
+        { id: session.id, display_order: target.display_order },
+        { id: target.id, display_order: session.display_order },
+      ],
+    });
+  };
+
   const handleSaveContent = async (contentData: {
     title?: string;
     type?: string;
