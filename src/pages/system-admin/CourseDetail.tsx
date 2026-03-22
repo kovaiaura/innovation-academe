@@ -242,18 +242,34 @@ export default function SystemAdminCourseDetail() {
 
   const handleMoveSession = async (module: typeof modules[0], session: DbCourseSession, direction: 'up' | 'down') => {
     if (!courseId) return;
-    const sorted = [...module.sessions].sort((a, b) => a.display_order - b.display_order);
-    const idx = sorted.findIndex(s => s.id === session.id);
-    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (targetIdx < 0 || targetIdx >= sorted.length) return;
-    const target = sorted[targetIdx];
-    await reorderSessions.mutateAsync({
-      courseId,
-      swaps: [
-        { id: session.id, display_order: target.display_order },
-        { id: target.id, display_order: session.display_order },
-      ],
-    });
+    try {
+      const sorted = [...module.sessions].sort((a, b) => a.display_order - b.display_order);
+      const idx = sorted.findIndex(s => s.id === session.id);
+      const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= sorted.length) return;
+      const target = sorted[targetIdx];
+      
+      // If display_orders are the same, use index-based values to force a difference
+      const currentOrder = session.display_order;
+      const targetOrder = target.display_order;
+      const newCurrentOrder = currentOrder === targetOrder 
+        ? (direction === 'up' ? targetIdx : idx) 
+        : targetOrder;
+      const newTargetOrder = currentOrder === targetOrder 
+        ? (direction === 'up' ? idx : targetIdx) 
+        : currentOrder;
+
+      await reorderSessions.mutateAsync({
+        courseId,
+        swaps: [
+          { id: session.id, display_order: newCurrentOrder },
+          { id: target.id, display_order: newTargetOrder },
+        ],
+      });
+      toast.success('Session order updated');
+    } catch (error: any) {
+      toast.error(`Failed to move session: ${error.message}`);
+    }
   };
 
   const handleSaveContent = async (contentData: {
