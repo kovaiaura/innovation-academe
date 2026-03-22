@@ -1,17 +1,28 @@
 
-# Remove Performance Analytics Tab from Management Reports
 
-## Overview
-Remove the Performance Analytics tab from the Management Reports page, keeping only the Monthly Reports content as the main view (no tabs needed).
+# Add Session Reorder (Drag & Drop) in Course Detail
 
-## Changes
+## What You'll Get
+Up/down arrow buttons next to each session within a level, allowing you to rearrange session order. The new order is saved to the database immediately.
 
-**File: `src/pages/management/Reports.tsx`**
+## Technical Approach
 
-1. Remove the `PerformanceAnalyticsTab` component entirely (lines 47-130)
-2. Remove the `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` wrapper -- since there's only one section now, no tabs are needed
-3. Render the `MonthlyReportsTab` content directly
-4. Remove unused imports: `Tabs`, `TabsContent`, `TabsList`, `TabsTrigger`, `useState` (from PerformanceAnalyticsTab), `useInstitutionPerformanceMetrics`, `Badge` (if only used in analytics)
-5. Update the page subtitle from "Performance analytics and reports" to just "Monthly reports"
+### File: `src/pages/system-admin/CourseDetail.tsx`
+- Add **Move Up / Move Down** arrow buttons next to each session's edit/delete buttons
+- When clicked, swap the `display_order` of the target session with its neighbor
+- Use the existing `useUpdateSession` hook to persist both swapped sessions' `display_order` values
+- Disable "Move Up" on the first session and "Move Down" on the last session in each module
 
-The page will simply show the "Published Reports" list directly without any tab navigation.
+### File: `src/hooks/useCourses.ts`
+- Add a new `useReorderSessions` mutation that accepts an array of `{ id, display_order }` pairs and batch-updates them in a single call (using multiple `.update()` calls or a small RPC)
+- Alternatively, reuse `useUpdateSession` twice in sequence — simpler, slightly less atomic
+
+### UI Detail
+Each session card's header will gain two small icon buttons (ChevronUp / ChevronDown) placed before the Edit and Delete buttons. Clicking triggers an immediate swap of `display_order` with the adjacent session and invalidates the course query to reflect the new order.
+
+### Files to Modify
+| File | Change |
+|------|--------|
+| `src/pages/system-admin/CourseDetail.tsx` | Add up/down reorder buttons per session, implement swap handler |
+| `src/hooks/useCourses.ts` | Add `useReorderSessions` batch mutation |
+
