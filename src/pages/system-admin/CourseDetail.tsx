@@ -651,6 +651,14 @@ export default function SystemAdminCourseDetail() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <ReorderSessionsDialog
+          open={isReorderSessionsOpen}
+          onOpenChange={setIsReorderSessionsOpen}
+          sessions={reorderModule?.sessions.map(s => ({ id: s.id, title: s.title, display_order: s.display_order })) || []}
+          moduleName={reorderModule?.title || ''}
+          onSave={handleSaveSessionOrder}
+        />
       </div>
     </Layout>
   );
