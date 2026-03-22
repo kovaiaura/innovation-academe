@@ -243,36 +243,15 @@ export default function SystemAdminCourseDetail() {
     setIsAddContentOpen(true);
   };
 
-  const handleMoveSession = async (module: typeof modules[0], session: DbCourseSession, direction: 'up' | 'down') => {
-    if (!courseId) return;
-    try {
-      const sorted = [...module.sessions].sort((a, b) => a.display_order - b.display_order);
-      const idx = sorted.findIndex(s => s.id === session.id);
-      const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
-      if (targetIdx < 0 || targetIdx >= sorted.length) return;
-      const target = sorted[targetIdx];
-      
-      // If display_orders are the same, use index-based values to force a difference
-      const currentOrder = session.display_order;
-      const targetOrder = target.display_order;
-      const newCurrentOrder = currentOrder === targetOrder 
-        ? (direction === 'up' ? targetIdx : idx) 
-        : targetOrder;
-      const newTargetOrder = currentOrder === targetOrder 
-        ? (direction === 'up' ? idx : targetIdx) 
-        : currentOrder;
+  const handleOpenReorderSessions = (module: typeof modules[0]) => {
+    setReorderModule(module);
+    setIsReorderSessionsOpen(true);
+  };
 
-      await reorderSessions.mutateAsync({
-        courseId,
-        swaps: [
-          { id: session.id, display_order: newCurrentOrder },
-          { id: target.id, display_order: newTargetOrder },
-        ],
-      });
-      toast.success('Session order updated');
-    } catch (error: any) {
-      toast.error(`Failed to move session: ${error.message}`);
-    }
+  const handleSaveSessionOrder = async (swaps: { id: string; display_order: number }[]) => {
+    if (!courseId) return;
+    await reorderSessions.mutateAsync({ courseId, swaps });
+    toast.success('Session order updated');
   };
 
   const handleSaveContent = async (contentData: {
