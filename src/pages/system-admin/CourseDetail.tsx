@@ -13,6 +13,7 @@ import { AddModuleDialog } from '@/components/course/AddModuleDialog';
 import { AddSessionDialog } from '@/components/course/AddSessionDialog';
 import { AddContentDialog } from '@/components/course/AddContentDialog';
 import { EditContentDialog } from '@/components/course/EditContentDialog';
+import { ReorderSessionsDialog } from '@/components/course/ReorderSessionsDialog';
 import { StorageImage } from '@/components/course/StorageImage';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { 
