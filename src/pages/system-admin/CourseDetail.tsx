@@ -6,14 +6,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { ArrowLeft, Users, Clock, BarChart3, Plus, Edit, Trash2, Loader2, ArrowUpDown } from 'lucide-react';
+import { ArrowLeft, Users, Clock, BarChart3, Plus, Edit, Trash2, Loader2, ChevronUp, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { ContentItem } from '@/components/course/ContentItem';
 import { AddModuleDialog } from '@/components/course/AddModuleDialog';
 import { AddSessionDialog } from '@/components/course/AddSessionDialog';
 import { AddContentDialog } from '@/components/course/AddContentDialog';
 import { EditContentDialog } from '@/components/course/EditContentDialog';
-import { ReorderSessionsDialog } from '@/components/course/ReorderSessionsDialog';
 import { StorageImage } from '@/components/course/StorageImage';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { 
@@ -61,11 +60,9 @@ export default function SystemAdminCourseDetail() {
   const [isEditContentOpen, setIsEditContentOpen] = useState(false);
   const [isDeleteModuleOpen, setIsDeleteModuleOpen] = useState(false);
   const [isDeleteSessionOpen, setIsDeleteSessionOpen] = useState(false);
-  const [isReorderSessionsOpen, setIsReorderSessionsOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState<DbCourseModule | null>(null);
   const [selectedSession, setSelectedSession] = useState<DbCourseSession | null>(null);
   const [selectedContent, setSelectedContent] = useState<DbCourseContent | null>(null);
-  const [reorderModule, setReorderModule] = useState<typeof modules[0] | null>(null);
 
   // Convert DB types to UI types
   const mapDbModuleToUi = (m: DbCourseModule): CourseModule => ({
@@ -243,15 +240,36 @@ export default function SystemAdminCourseDetail() {
     setIsAddContentOpen(true);
   };
 
-  const handleOpenReorderSessions = (module: typeof modules[0]) => {
-    setReorderModule(module);
-    setIsReorderSessionsOpen(true);
-  };
-
-  const handleSaveSessionOrder = async (swaps: { id: string; display_order: number }[]) => {
+  const handleMoveSession = async (module: typeof modules[0], session: DbCourseSession, direction: 'up' | 'down') => {
     if (!courseId) return;
-    await reorderSessions.mutateAsync({ courseId, swaps });
-    toast.success('Session order updated');
+    try {
+      const sorted = [...module.sessions].sort((a, b) => a.display_order - b.display_order);
+      const idx = sorted.findIndex(s => s.id === session.id);
+      const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= sorted.length) return;
+      const target = sorted[targetIdx];
+      
+      // If display_orders are the same, use index-based values to force a difference
+      const currentOrder = session.display_order;
+      const targetOrder = target.display_order;
+      const newCurrentOrder = currentOrder === targetOrder 
+        ? (direction === 'up' ? targetIdx : idx) 
+        : targetOrder;
+      const newTargetOrder = currentOrder === targetOrder 
+        ? (direction === 'up' ? idx : targetIdx) 
+        : currentOrder;
+
+      await reorderSessions.mutateAsync({
+        courseId,
+        swaps: [
+          { id: session.id, display_order: newCurrentOrder },
+          { id: target.id, display_order: newTargetOrder },
+        ],
+      });
+      toast.success('Session order updated');
+    } catch (error: any) {
+      toast.error(`Failed to move session: ${error.message}`);
+    }
   };
 
   const handleSaveContent = async (contentData: {
@@ -479,12 +497,6 @@ export default function SystemAdminCourseDetail() {
                           <h3 className="font-semibold text-lg">{module.title}</h3>
                         </div>
                         <div className="flex gap-2">
-                          {module.sessions.length > 1 && (
-                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleOpenReorderSessions(module); }}>
-                              <ArrowUpDown className="h-4 w-4 mr-1" />
-                              Reorder
-                            </Button>
-                          )}
                           <Button variant="ghost" size="sm" onClick={(e) => handleEditModule(e, module)}>
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -504,7 +516,7 @@ export default function SystemAdminCourseDetail() {
                             No sessions yet. Click below to add sessions.
                           </p>
                         ) : (
-                          [...module.sessions].sort((a, b) => a.display_order - b.display_order).map((session) => (
+                          [...module.sessions].sort((a, b) => a.display_order - b.display_order).map((session, sessionIdx, sortedSessions) => (
                             <Card key={session.id} className="border-l-4 border-l-primary">
                               <CardHeader>
                                 <div className="flex justify-between items-start">
@@ -523,6 +535,12 @@ export default function SystemAdminCourseDetail() {
                                     )}
                                   </div>
                                   <div className="flex gap-1">
+                                    <Button variant="ghost" size="sm" disabled={sessionIdx === 0 || reorderSessions.isPending} onClick={() => handleMoveSession(module, session, 'up')}>
+                                      <ChevronUp className="h-3 w-3" />
+                                    </Button>
+                                    <Button variant="ghost" size="sm" disabled={sessionIdx === sortedSessions.length - 1 || reorderSessions.isPending} onClick={() => handleMoveSession(module, session, 'down')}>
+                                      <ChevronDown className="h-3 w-3" />
+                                    </Button>
                                     <Button variant="ghost" size="sm" onClick={(e) => handleEditSession(e, session)}>
                                       <Edit className="h-3 w-3" />
                                     </Button>
@@ -651,14 +669,6 @@ export default function SystemAdminCourseDetail() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-        <ReorderSessionsDialog
-          open={isReorderSessionsOpen}
-          onOpenChange={setIsReorderSessionsOpen}
-          sessions={reorderModule?.sessions.map(s => ({ id: s.id, title: s.title, display_order: s.display_order })) || []}
-          moduleName={reorderModule?.title || ''}
-          onSave={handleSaveSessionOrder}
-        />
       </div>
     </Layout>
   );
