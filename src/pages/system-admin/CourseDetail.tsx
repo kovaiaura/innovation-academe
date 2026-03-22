@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { ArrowLeft, Users, Clock, BarChart3, Plus, Edit, Trash2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Users, Clock, BarChart3, Plus, Edit, Trash2, Loader2, ChevronUp, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { ContentItem } from '@/components/course/ContentItem';
 import { AddModuleDialog } from '@/components/course/AddModuleDialog';

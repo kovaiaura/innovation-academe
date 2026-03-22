@@ -431,6 +431,28 @@ export function useDeleteSession() {
   });
 }
 
+export function useReorderSessions() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ swaps, courseId }: { swaps: { id: string; display_order: number }[]; courseId: string }) => {
+      for (const swap of swaps) {
+        const { error } = await supabase
+          .from('course_sessions')
+          .update({ display_order: swap.display_order })
+          .eq('id', swap.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['course', variables.courseId] });
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to reorder sessions: ${error.message}`);
+    }
+  });
+}
+
 // ========== CONTENT HOOKS ==========
 
 export function useCreateContent() {
