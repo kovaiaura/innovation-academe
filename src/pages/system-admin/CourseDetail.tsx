@@ -479,6 +479,12 @@ export default function SystemAdminCourseDetail() {
                           <h3 className="font-semibold text-lg">{module.title}</h3>
                         </div>
                         <div className="flex gap-2">
+                          {module.sessions.length > 1 && (
+                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleOpenReorderSessions(module); }}>
+                              <ArrowUpDown className="h-4 w-4 mr-1" />
+                              Reorder
+                            </Button>
+                          )}
                           <Button variant="ghost" size="sm" onClick={(e) => handleEditModule(e, module)}>
                             <Edit className="h-4 w-4" />
                           </Button>
