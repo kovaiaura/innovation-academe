@@ -242,18 +242,34 @@ export default function SystemAdminCourseDetail() {
 
   const handleMoveSession = async (module: typeof modules[0], session: DbCourseSession, direction: 'up' | 'down') => {
     if (!courseId) return;
-    const sorted = [...module.sessions].sort((a, b) => a.display_order - b.display_order);
-    const idx = sorted.findIndex(s => s.id === session.id);
-    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (targetIdx < 0 || targetIdx >= sorted.length) return;
-    const target = sorted[targetIdx];
-    await reorderSessions.mutateAsync({
-      courseId,
-      swaps: [
-        { id: session.id, display_order: target.display_order },
-        { id: target.id, display_order: session.display_order },
-      ],
-    });
+    try {
+      const sorted = [...module.sessions].sort((a, b) => a.display_order - b.display_order);
+      const idx = sorted.findIndex(s => s.id === session.id);
+      const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= sorted.length) return;
+      const target = sorted[targetIdx];
+      
+      // If display_orders are the same, use index-based values to force a difference
+      const currentOrder = session.display_order;
+      const targetOrder = target.display_order;
+      const newCurrentOrder = currentOrder === targetOrder 
+        ? (direction === 'up' ? targetIdx : idx) 
+        : targetOrder;
+      const newTargetOrder = currentOrder === targetOrder 
+        ? (direction === 'up' ? idx : targetIdx) 
+        : currentOrder;
+
+      await reorderSessions.mutateAsync({
+        courseId,
+        swaps: [
+          { id: session.id, display_order: newCurrentOrder },
+          { id: target.id, display_order: newTargetOrder },
+        ],
+      });
+      toast.success('Session order updated');
+    } catch (error: any) {
+      toast.error(`Failed to move session: ${error.message}`);
+    }
   };
 
   const handleSaveContent = async (contentData: {
@@ -500,7 +516,7 @@ export default function SystemAdminCourseDetail() {
                             No sessions yet. Click below to add sessions.
                           </p>
                         ) : (
-                          module.sessions.map((session) => (
+                          [...module.sessions].sort((a, b) => a.display_order - b.display_order).map((session, sessionIdx, sortedSessions) => (
                             <Card key={session.id} className="border-l-4 border-l-primary">
                               <CardHeader>
                                 <div className="flex justify-between items-start">
@@ -519,20 +535,12 @@ export default function SystemAdminCourseDetail() {
                                     )}
                                   </div>
                                   <div className="flex gap-1">
-                                    {(() => {
-                                      const sorted = [...module.sessions].sort((a, b) => a.display_order - b.display_order);
-                                      const idx = sorted.findIndex(s => s.id === session.id);
-                                      return (
-                                        <>
-                                          <Button variant="ghost" size="sm" disabled={idx === 0 || reorderSessions.isPending} onClick={(e) => { e.stopPropagation(); handleMoveSession(module, session, 'up'); }}>
-                                            <ChevronUp className="h-3 w-3" />
-                                          </Button>
-                                          <Button variant="ghost" size="sm" disabled={idx === sorted.length - 1 || reorderSessions.isPending} onClick={(e) => { e.stopPropagation(); handleMoveSession(module, session, 'down'); }}>
-                                            <ChevronDown className="h-3 w-3" />
-                                          </Button>
-                                        </>
-                                      );
-                                    })()}
+                                    <Button variant="ghost" size="sm" disabled={sessionIdx === 0 || reorderSessions.isPending} onClick={() => handleMoveSession(module, session, 'up')}>
+                                      <ChevronUp className="h-3 w-3" />
+                                    </Button>
+                                    <Button variant="ghost" size="sm" disabled={sessionIdx === sortedSessions.length - 1 || reorderSessions.isPending} onClick={() => handleMoveSession(module, session, 'down')}>
+                                      <ChevronDown className="h-3 w-3" />
+                                    </Button>
                                     <Button variant="ghost" size="sm" onClick={(e) => handleEditSession(e, session)}>
                                       <Edit className="h-3 w-3" />
                                     </Button>
