@@ -49,6 +49,7 @@ export default function SystemAdminCourseDetail() {
   const createContent = useCreateContent();
   const updateContent = useUpdateContent();
   const deleteContentMutation = useDeleteContent();
+  const reorderSessions = useReorderSessions();
 
   // Dialog states
   const [isAddModuleOpen, setIsAddModuleOpen] = useState(false);
