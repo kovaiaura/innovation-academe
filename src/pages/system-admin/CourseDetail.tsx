@@ -523,12 +523,6 @@ export default function SystemAdminCourseDetail() {
                                     )}
                                   </div>
                                   <div className="flex gap-1">
-                                    <Button variant="ghost" size="sm" disabled={sessionIdx === 0 || reorderSessions.isPending} onClick={() => handleMoveSession(module, session, 'up')}>
-                                      <ChevronUp className="h-3 w-3" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm" disabled={sessionIdx === sortedSessions.length - 1 || reorderSessions.isPending} onClick={() => handleMoveSession(module, session, 'down')}>
-                                      <ChevronDown className="h-3 w-3" />
-                                    </Button>
                                     <Button variant="ghost" size="sm" onClick={(e) => handleEditSession(e, session)}>
                                       <Edit className="h-3 w-3" />
                                     </Button>
