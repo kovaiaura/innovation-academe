@@ -26,6 +26,7 @@ import {
   useCreateContent,
   useUpdateContent,
   useDeleteContent,
+  useReorderSessions,
   DbCourseModule,
   DbCourseSession,
   DbCourseContent
