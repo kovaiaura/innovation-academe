@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ChevronUp, ChevronDown, GripVertical, Loader2 } from 'lucide-react';
@@ -21,15 +21,13 @@ export function ReorderSessionsDialog({ open, onOpenChange, sessions, moduleName
   const [orderedSessions, setOrderedSessions] = useState<SessionItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Reset state when dialog opens
-  const handleOpenChange = (isOpen: boolean) => {
-    if (isOpen) {
+  useEffect(() => {
+    if (open) {
       setOrderedSessions(
         [...sessions].sort((a, b) => a.display_order - b.display_order)
       );
     }
-    onOpenChange(isOpen);
-  };
+  }, [open, sessions]);
 
   const moveItem = (index: number, direction: 'up' | 'down') => {
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
@@ -57,7 +55,7 @@ export function ReorderSessionsDialog({ open, onOpenChange, sessions, moduleName
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Reorder Sessions — {moduleName}</DialogTitle>
