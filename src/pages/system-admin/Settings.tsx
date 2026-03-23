@@ -8,7 +8,7 @@ import { AISettingsTab } from '@/components/settings/AISettingsTab';
 import { SystemPreferencesTab } from '@/components/settings/SystemPreferencesTab';
 import { ResendSettingsCard } from '@/components/settings/ResendSettingsCard';
 import { EmailTemplateSettingsCard } from '@/components/settings/EmailTemplateSettingsCard';
-import { AttendanceReminderTemplateCard } from '@/components/settings/AttendanceReminderTemplateCard';
+
 
 const EmailConfigurationTab = () => {
   return (
@@ -19,8 +19,6 @@ const EmailConfigurationTab = () => {
       {/* Email Template Settings */}
       <EmailTemplateSettingsCard />
 
-      {/* Attendance Reminder Email Template */}
-      <AttendanceReminderTemplateCard />
     </div>
   );
 };

@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, ArrowRight, Users, GitBranch, Info, Crown, Briefcase, UserCog, Settings, Save, Loader2, MapPin, MapPinOff, AlertCircle, Bell, BellOff, User } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, Users, GitBranch, Info, Crown, Briefcase, UserCog, Settings, Save, Loader2, MapPin, MapPinOff, AlertCircle, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { approvalHierarchyService } from '@/services/leave.service';
 import { positionService } from '@/services/position.service';
@@ -38,13 +38,9 @@ export default function GlobalApprovalConfig() {
     max_carry_forward: 1,
     max_leaves_per_month: 2,
     gps_checkin_enabled: true,
-    reminder_enabled_officer: false,
-    reminder_enabled_staff: false,
-    reminder_minutes_before: 5
   });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isSavingGps, setIsSavingGps] = useState(false);
-  const [isSavingReminder, setIsSavingReminder] = useState(false);
 
   const { data: allPositions = [] } = useQuery({
     queryKey: ['positions'],
@@ -583,59 +579,7 @@ export default function GlobalApprovalConfig() {
               </CardContent>
             </Card>
 
-            {/* Attendance Reminder Settings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bell className="h-5 w-5 text-primary" />
-                  Attendance Reminder Emails
-                </CardTitle>
-                <CardDescription>
-                  Send email reminders before check-in and check-out times. Individual notification controls are managed in the Individual Controls tab.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
 
-                <div className="p-4 border rounded-lg space-y-2">
-                  <Label htmlFor="reminder_minutes">Minutes Before</Label>
-                  <div className="flex items-center gap-3">
-                    <Input
-                      id="reminder_minutes"
-                      type="number"
-                      min="1"
-                      max="30"
-                      className="w-24"
-                      value={leaveSettings.reminder_minutes_before}
-                      onChange={(e) => setLeaveSettings(prev => ({ ...prev, reminder_minutes_before: parseInt(e.target.value) || 5 }))}
-                    />
-                    <span className="text-sm text-muted-foreground">minutes before check-in/check-out</span>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={isSavingReminder}
-                    onClick={async () => {
-                      setIsSavingReminder(true);
-                      try {
-                        await leaveSettingsService.updateSetting('reminder_minutes_before', leaveSettings.reminder_minutes_before);
-                        // Read back the saved value to confirm persistence
-                        leaveSettingsService.clearCache();
-                        const confirmed = await leaveSettingsService.getSettings();
-                        setLeaveSettings(prev => ({ ...prev, reminder_minutes_before: confirmed.reminder_minutes_before }));
-                        toast.success(`Reminder timing saved: ${confirmed.reminder_minutes_before} minutes before`);
-                      } catch (error) {
-                        toast.error('Failed to save reminder timing');
-                      } finally {
-                        setIsSavingReminder(false);
-                      }
-                    }}
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    Save
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
 
             <Alert className="bg-green-500/10 border-green-500/20">
               <Info className="h-4 w-4 text-green-600" />
