@@ -34,9 +34,6 @@ export const leaveSettingsService = {
         max_carry_forward: 1,
         max_leaves_per_month: 2,
         gps_checkin_enabled: true,
-        reminder_enabled_officer: false,
-        reminder_enabled_staff: false,
-        reminder_minutes_before: 5
       };
     }
 
