@@ -38,13 +38,9 @@ export default function GlobalApprovalConfig() {
     max_carry_forward: 1,
     max_leaves_per_month: 2,
     gps_checkin_enabled: true,
-    reminder_enabled_officer: false,
-    reminder_enabled_staff: false,
-    reminder_minutes_before: 5
   });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isSavingGps, setIsSavingGps] = useState(false);
-  const [isSavingReminder, setIsSavingReminder] = useState(false);
 
   const { data: allPositions = [] } = useQuery({
     queryKey: ['positions'],
