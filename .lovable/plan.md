@@ -1,28 +1,26 @@
 
 
-# Add Session Reorder (Drag & Drop) in Course Detail
+# Fix: Reorder Sessions Dialog Shows Empty
 
-## What You'll Get
-Up/down arrow buttons next to each session within a level, allowing you to rearrange session order. The new order is saved to the database immediately.
+## Root Cause
+In `ReorderSessionsDialog.tsx`, `orderedSessions` starts as `[]`. The component tries to populate it inside `handleOpenChange`, but that callback only fires when the Dialog *itself* triggers a change (e.g., closing). When the parent sets `open=true`, the Dialog renders but `handleOpenChange` is never called, so sessions remain empty.
 
-## Technical Approach
+## Fix
+**File: `src/components/course/ReorderSessionsDialog.tsx`**
 
-### File: `src/pages/system-admin/CourseDetail.tsx`
-- Add **Move Up / Move Down** arrow buttons next to each session's edit/delete buttons
-- When clicked, swap the `display_order` of the target session with its neighbor
-- Use the existing `useUpdateSession` hook to persist both swapped sessions' `display_order` values
-- Disable "Move Up" on the first session and "Move Down" on the last session in each module
+Replace the `handleOpenChange` approach with a `useEffect` that watches the `open` prop. When `open` becomes `true`, copy and sort the `sessions` prop into local state.
 
-### File: `src/hooks/useCourses.ts`
-- Add a new `useReorderSessions` mutation that accepts an array of `{ id, display_order }` pairs and batch-updates them in a single call (using multiple `.update()` calls or a small RPC)
-- Alternatively, reuse `useUpdateSession` twice in sequence — simpler, slightly less atomic
+```tsx
+useEffect(() => {
+  if (open) {
+    setOrderedSessions(
+      [...sessions].sort((a, b) => a.display_order - b.display_order)
+    );
+  }
+}, [open, sessions]);
+```
 
-### UI Detail
-Each session card's header will gain two small icon buttons (ChevronUp / ChevronDown) placed before the Edit and Delete buttons. Clicking triggers an immediate swap of `display_order` with the adjacent session and invalidates the course query to reflect the new order.
+Remove the custom `handleOpenChange` wrapper and pass `onOpenChange` directly to the Dialog.
 
-### Files to Modify
-| File | Change |
-|------|--------|
-| `src/pages/system-admin/CourseDetail.tsx` | Add up/down reorder buttons per session, implement swap handler |
-| `src/hooks/useCourses.ts` | Add `useReorderSessions` batch mutation |
+Single file change, ~5 lines modified.
 
