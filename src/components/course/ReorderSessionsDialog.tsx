@@ -55,7 +55,7 @@ export function ReorderSessionsDialog({ open, onOpenChange, sessions, moduleName
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Reorder Sessions — {moduleName}</DialogTitle>
