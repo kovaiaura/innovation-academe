@@ -43,18 +43,12 @@ export const leaveSettingsService = {
       max_carry_forward: 1,
       max_leaves_per_month: 2,
       gps_checkin_enabled: true,
-      reminder_enabled_officer: false,
-      reminder_enabled_staff: false,
-      reminder_minutes_before: 5
     };
 
     data?.forEach(row => {
-      if (row.setting_key === 'gps_checkin_enabled' || row.setting_key === 'reminder_enabled_officer' || row.setting_key === 'reminder_enabled_staff') {
+      if (row.setting_key === 'gps_checkin_enabled') {
         const value = row.setting_value;
-        const boolValue = value === true || value === 'true';
-        if (row.setting_key === 'gps_checkin_enabled') settings.gps_checkin_enabled = boolValue;
-        if (row.setting_key === 'reminder_enabled_officer') settings.reminder_enabled_officer = boolValue;
-        if (row.setting_key === 'reminder_enabled_staff') settings.reminder_enabled_staff = boolValue;
+        settings.gps_checkin_enabled = value === true || value === 'true';
       } else {
         const value = typeof row.setting_value === 'string' 
           ? parseInt(row.setting_value) 
@@ -72,9 +66,6 @@ export const leaveSettingsService = {
             break;
           case 'max_leaves_per_month':
             settings.max_leaves_per_month = value;
-            break;
-          case 'reminder_minutes_before':
-            settings.reminder_minutes_before = value || 5;
             break;
         }
       }
