@@ -14,6 +14,7 @@ import { ClassSelector } from '@/components/officer/ClassSelector';
 import { ClassCourseLauncher } from '@/components/officer/ClassCourseLauncher';
 import { ClassStudentsList } from '@/components/officer/ClassStudentsList';
 import { ClassTeachingReport } from '@/components/officer/ClassTeachingReport';
+import { BulkMarkCompleteTab } from '@/components/officer/BulkMarkCompleteTab';
 import { updateTaskInDb, addTaskComment, getTaskStatistics } from '@/services/task.service';
 import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
 import { useAuth } from '@/contexts/AuthContext';
