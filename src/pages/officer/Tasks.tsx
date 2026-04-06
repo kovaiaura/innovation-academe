@@ -14,6 +14,7 @@ import { ClassSelector } from '@/components/officer/ClassSelector';
 import { ClassCourseLauncher } from '@/components/officer/ClassCourseLauncher';
 import { ClassStudentsList } from '@/components/officer/ClassStudentsList';
 import { ClassTeachingReport } from '@/components/officer/ClassTeachingReport';
+import { BulkMarkCompleteTab } from '@/components/officer/BulkMarkCompleteTab';
 import { updateTaskInDb, addTaskComment, getTaskStatistics } from '@/services/task.service';
 import { useRealtimeTasks } from '@/hooks/useRealtimeTasks';
 import { useAuth } from '@/contexts/AuthContext';
@@ -212,6 +213,7 @@ export default function OfficerTasks() {
                         <TabsTrigger value="courses">Courses</TabsTrigger>
                         <TabsTrigger value="students">Students</TabsTrigger>
                         <TabsTrigger value="report">Teaching Report</TabsTrigger>
+                        <TabsTrigger value="bulk-mark">Bulk Mark</TabsTrigger>
                       </TabsList>
 
                       <TabsContent value="courses">
@@ -234,6 +236,13 @@ export default function OfficerTasks() {
                           classId={selectedClassId}
                           className={selectedClassName}
                           officerId={officerId}
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="bulk-mark">
+                        <BulkMarkCompleteTab
+                          classId={selectedClassId}
+                          className={selectedClassName}
                         />
                       </TabsContent>
                     </Tabs>
