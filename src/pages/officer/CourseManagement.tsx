@@ -75,6 +75,7 @@ export default function OfficerCourseManagement() {
                     <TabsTrigger value="courses">Courses</TabsTrigger>
                     <TabsTrigger value="students">Students</TabsTrigger>
                     <TabsTrigger value="report">Report</TabsTrigger>
+                    <TabsTrigger value="bulk-mark">Bulk Mark</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="courses">
@@ -97,6 +98,13 @@ export default function OfficerCourseManagement() {
                       classId={selectedClassId}
                       className={selectedClassName}
                       officerId={officerId}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="bulk-mark">
+                    <BulkMarkCompleteTab
+                      classId={selectedClassId}
+                      className={selectedClassName}
                     />
                   </TabsContent>
                 </Tabs>
