@@ -10,6 +10,7 @@ import { ClassSelector } from '@/components/officer/ClassSelector';
 import { ClassCourseLauncher } from '@/components/officer/ClassCourseLauncher';
 import { ClassStudentsList } from '@/components/officer/ClassStudentsList';
 import { ClassTeachingReport } from '@/components/officer/ClassTeachingReport';
+import { BulkMarkCompleteTab } from '@/components/officer/BulkMarkCompleteTab';
 
 export default function OfficerCourseManagement() {
   const { tenantId } = useParams();
@@ -74,6 +75,7 @@ export default function OfficerCourseManagement() {
                     <TabsTrigger value="courses">Courses</TabsTrigger>
                     <TabsTrigger value="students">Students</TabsTrigger>
                     <TabsTrigger value="report">Report</TabsTrigger>
+                    <TabsTrigger value="bulk-mark">Bulk Mark</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="courses">
@@ -96,6 +98,13 @@ export default function OfficerCourseManagement() {
                       classId={selectedClassId}
                       className={selectedClassName}
                       officerId={officerId}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="bulk-mark">
+                    <BulkMarkCompleteTab
+                      classId={selectedClassId}
+                      className={selectedClassName}
                     />
                   </TabsContent>
                 </Tabs>
