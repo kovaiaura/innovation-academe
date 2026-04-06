@@ -238,6 +238,13 @@ export default function OfficerTasks() {
                           officerId={officerId}
                         />
                       </TabsContent>
+
+                      <TabsContent value="bulk-mark">
+                        <BulkMarkCompleteTab
+                          classId={selectedClassId}
+                          className={selectedClassName}
+                        />
+                      </TabsContent>
                     </Tabs>
                   </div>
                 )}
