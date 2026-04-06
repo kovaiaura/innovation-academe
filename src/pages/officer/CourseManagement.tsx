@@ -10,6 +10,7 @@ import { ClassSelector } from '@/components/officer/ClassSelector';
 import { ClassCourseLauncher } from '@/components/officer/ClassCourseLauncher';
 import { ClassStudentsList } from '@/components/officer/ClassStudentsList';
 import { ClassTeachingReport } from '@/components/officer/ClassTeachingReport';
+import { BulkMarkCompleteTab } from '@/components/officer/BulkMarkCompleteTab';
 
 export default function OfficerCourseManagement() {
   const { tenantId } = useParams();
