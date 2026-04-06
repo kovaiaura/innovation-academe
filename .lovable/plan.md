@@ -1,33 +1,45 @@
 
 
-# Remove Attendance Reminder Email Feature
+# Bulk Mark Sessions Complete — Officer Teaching
 
-## What Changes
-Remove all attendance check-in/check-out reminder email functionality from the platform — UI settings, email template card, edge function, and related leave settings fields.
+## What You'll Get
+A new **"Bulk Mark"** tab inside the officer's class teaching view (alongside Courses, Students, Report). Officers can select multiple sessions across multiple levels of a course, pick students, and mark all selected sessions as completed in one action. Certificate generation triggers automatically just like the normal flow.
 
-## Files to Modify
+## How It Works (User Flow)
 
-### 1. `src/pages/system-admin/Settings.tsx`
-- Remove the `AttendanceReminderTemplateCard` import and usage from the Email tab
+1. Officer navigates to **Start Teaching → Select Class**
+2. A new **"Bulk Mark"** sub-tab appears next to Courses / Students / Report
+3. Officer selects a **course** from a dropdown (courses assigned to this class)
+4. The UI shows all **levels and sessions** as a tree of checkboxes — officer ticks whichever sessions to mark complete
+5. Below, the **student list** appears with Select All / individual checkboxes
+6. Officer clicks **"Mark Selected Sessions Complete"** — all selected sessions are marked done for all selected students
+7. Certificate issuance triggers for each completed level (same edge function as today)
 
-### 2. `src/pages/system-admin/GlobalApprovalConfig.tsx`
-- Remove the "Attendance Reminder Emails" card (lines ~586–638) with the minutes-before setting
+## Technical Plan
 
-### 3. `src/services/leaveSettings.service.ts`
-- Remove `reminder_enabled_officer`, `reminder_enabled_staff`, and `reminder_minutes_before` from the `LeaveSettings` interface, defaults, fetch parsing, and `updateAllSettings`
+### 1. New Component: `src/components/officer/BulkMarkCompleteTab.tsx`
+- **Course selector**: Dropdown of courses assigned to this class (query `course_class_assignments` + `courses`)
+- **Level/Session tree**: For the selected course, fetch `class_module_assignments` → `class_session_assignments` with their content. Render as expandable levels with session checkboxes. Show completion status (already done = disabled + green tick)
+- **Student panel**: Fetch students in the class, show checkboxes with Select All
+- **Submit handler**: Loop through each selected session and call the existing `markSessionComplete()` from `useSessionCompletion` hook. This ensures:
+  - `student_content_completions` records are created
+  - `class_session_attendance` records are created
+  - Certificate issuance edge function (`issue-completion-certificates`) is triggered per module
+- **Progress indicator**: Show a progress bar during bulk operation (e.g., "Completing 3/10 sessions...")
 
-### 4. `src/components/settings/AttendanceReminderTemplateCard.tsx`
-- Delete this file entirely
+### 2. Modify: `src/pages/officer/CourseManagement.tsx`
+- Add a fourth sub-tab `"Bulk Mark"` to the class sub-tabs (next to Courses, Students, Report)
+- Render `<BulkMarkCompleteTab classId={...} className={...} />`
 
-### 5. `src/components/payroll/LeaveManagementTab.tsx` & `src/components/leave/LeaveOverviewTab.tsx`
-- Remove `reminder_enabled_officer`, `reminder_enabled_staff`, `reminder_minutes_before` from any local defaults/state
+### 3. Certificate Flow (No Changes Needed)
+The existing `useSessionCompletion.markSessionComplete()` already calls `triggerCertificateIssuance()` which invokes the `issue-completion-certificates` edge function. By reusing this same function per session, certificates will be issued automatically when a level's sessions are all completed — identical to the current single-session flow.
 
-### 6. `supabase/functions/send-attendance-reminder/index.ts`
-- Delete this edge function entirely
+## Files Summary
 
-### 7. Database cleanup (migration)
-- Remove the `attendance_reminder_dispatch_log` table
-- Remove related `leave_settings` rows (`reminder_enabled_officer`, `reminder_enabled_staff`, `reminder_minutes_before`)
-- Remove the `attendance_reminder_template` row from `system_configurations`
-- Unschedule any pg_cron job for `send-attendance-reminder`
+| File | Change |
+|------|--------|
+| `src/components/officer/BulkMarkCompleteTab.tsx` | **New** — full bulk mark UI |
+| `src/pages/officer/CourseManagement.tsx` | Add "Bulk Mark" sub-tab |
+
+No database changes, no new edge functions — reuses existing completion + certificate infrastructure.
 
