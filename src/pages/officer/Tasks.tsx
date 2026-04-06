@@ -213,6 +213,7 @@ export default function OfficerTasks() {
                         <TabsTrigger value="courses">Courses</TabsTrigger>
                         <TabsTrigger value="students">Students</TabsTrigger>
                         <TabsTrigger value="report">Teaching Report</TabsTrigger>
+                        <TabsTrigger value="bulk-mark">Bulk Mark</TabsTrigger>
                       </TabsList>
 
                       <TabsContent value="courses">
