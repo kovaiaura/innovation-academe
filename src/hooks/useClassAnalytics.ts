@@ -156,8 +156,10 @@ export function useClassAnalytics(classId: string | undefined, institutionId?: s
           performance_distribution: performanceDistribution,
         },
         course_metrics: {
-          total_courses_assigned: 0,
-          overall_completion_rate: 0,
+          total_courses_assigned: courseAssignments?.length || 0,
+          overall_completion_rate: totalContentEntries > 0
+            ? Math.round((totalCompletedContentEntries / totalContentEntries) * 1000) / 10
+            : 0,
           average_modules_completed: 0,
           assignment_submission_rate: 0,
           quiz_attempt_rate: 0,
