@@ -2,7 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PlayCircle, CheckCircle, BookOpen, Lock, Loader2 } from 'lucide-react';
+import { PlayCircle, CheckCircle, Circle, BookOpen, Lock, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ThumbnailImage } from '@/components/officer/ThumbnailImage';
@@ -108,10 +108,56 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
     enabled: !!moduleAssignments?.length
   });
 
+  // Fetch completion data to determine session/module status
+  const { data: completionData } = useQuery({
+    queryKey: ['class-completion-status', classId, classAssignments],
+    queryFn: async () => {
+      if (!classAssignments?.length) return { completedSessions: new Set<string>() };
+
+      const assignmentIds = classAssignments.map(ca => ca.id);
+
+      // Get all content grouped by session for assigned courses
+      const courseIds = classAssignments.map(ca => ca.course_id);
+      const { data: allContent } = await supabase
+        .from('course_content')
+        .select('id, session_id')
+        .in('course_id', courseIds);
+
+      if (!allContent || allContent.length === 0) return { completedSessions: new Set<string>() };
+
+      // Group content by session
+      const contentBySession: Record<string, string[]> = {};
+      allContent.forEach(c => {
+        if (!contentBySession[c.session_id]) contentBySession[c.session_id] = [];
+        contentBySession[c.session_id].push(c.id);
+      });
+
+      // Get all completions for these assignments
+      const { data: completions } = await supabase
+        .from('student_content_completions')
+        .select('content_id, class_assignment_id')
+        .in('class_assignment_id', assignmentIds);
+
+      const completedContentIds = new Set((completions || []).map(c => c.content_id));
+
+      // A session is "completed" if ALL its content has at least one completion
+      const completedSessions = new Set<string>();
+      Object.entries(contentBySession).forEach(([sessionId, contentIds]) => {
+        if (contentIds.length > 0 && contentIds.every(id => completedContentIds.has(id))) {
+          completedSessions.add(sessionId);
+        }
+      });
+
+      return { completedSessions };
+    },
+    enabled: !!classAssignments?.length
+  });
+
+  const completedSessions = completionData?.completedSessions || new Set<string>();
+
   const isLoading = loadingAssignments || loadingModules || loadingSessions;
 
   const handleLaunchCourse = (courseId: string, classAssignmentId: string) => {
-    // Navigate to the teaching session page with class context
     const url = `/tenant/${tenantId}/officer/teaching/${courseId}?class_id=${classId}&class_name=${encodeURIComponent(className)}&assignment_id=${classAssignmentId}`;
     navigate(url);
   };
@@ -128,6 +174,15 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
     assignment: ca,
     course: ca.courses
   })).filter(item => item.course) || [];
+
+  // Helper to determine if a module is completed (all its unlocked sessions are completed)
+  const isModuleCompleted = (moduleAssignmentId: string) => {
+    const sessions = sessionAssignments?.filter(
+      s => s.class_module_assignment_id === moduleAssignmentId
+    ) || [];
+    if (sessions.length === 0) return false;
+    return sessions.every(s => completedSessions.has(s.session_id));
+  };
 
   return (
     <div className="space-y-6">
@@ -154,7 +209,6 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
 
       <div className="grid gap-6 md:grid-cols-2">
         {assignedCourses.map(({ assignment, course }) => {
-          // Get modules assigned to this class for this course
           const courseModules = moduleAssignments?.filter(
             m => m.class_assignment_id === assignment.id
           ) || [];
@@ -163,7 +217,6 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
           const unlockedModules = courseModules.filter(m => m.is_unlocked);
           const lockedModules = courseModules.filter(m => !m.is_unlocked);
 
-          // Get sessions for each module
           const getModuleSessions = (moduleAssignmentId: string) => {
             return sessionAssignments?.filter(
               s => s.class_module_assignment_id === moduleAssignmentId
@@ -195,7 +248,6 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {/* Module Progress */}
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm">
                       <BookOpen className="h-4 w-4 text-primary" />
@@ -204,7 +256,6 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
                       </span>
                     </div>
                     
-                    {/* Locked Modules Warning */}
                     {lockedModules.length > 0 && (
                       <div className="flex items-center gap-2 text-sm p-2 bg-amber-50 dark:bg-amber-950 rounded-md">
                         <Lock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
@@ -215,12 +266,22 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
                     )}
                   </div>
 
-                  {/* Module & Session List */}
                   <div className="space-y-2 max-h-48 overflow-y-auto">
                     {courseModules.map((moduleAssignment) => {
                       const sessions = getModuleSessions(moduleAssignment.id);
-                      const unlockedSessions = sessions.filter(s => s.is_unlocked);
+                      const moduleCompleted = moduleAssignment.is_unlocked && isModuleCompleted(moduleAssignment.id);
                       
+                      // Module icon: locked (amber) / unlocked-not-completed (blue) / completed (green)
+                      const renderModuleIcon = () => {
+                        if (!moduleAssignment.is_unlocked) {
+                          return <Lock className="h-4 w-4 text-amber-500" />;
+                        }
+                        if (moduleCompleted) {
+                          return <CheckCircle className="h-4 w-4 text-green-600" />;
+                        }
+                        return <Circle className="h-4 w-4 text-blue-500" />;
+                      };
+
                       return (
                         <div 
                           key={moduleAssignment.id}
@@ -231,11 +292,7 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
                           }`}
                         >
                           <div className="flex items-center gap-2">
-                            {moduleAssignment.is_unlocked ? (
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                            ) : (
-                              <Lock className="h-4 w-4 text-muted-foreground" />
-                            )}
+                            {renderModuleIcon()}
                             <span className={`text-sm font-medium ${
                               !moduleAssignment.is_unlocked ? 'text-muted-foreground' : ''
                             }`}>
@@ -244,19 +301,30 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
                           </div>
                           {moduleAssignment.is_unlocked && sessions.length > 0 && (
                             <div className="ml-6 mt-1 space-y-1">
-                              {sessions.map(session => (
-                                <div 
-                                  key={session.id}
-                                  className="flex items-center gap-2 text-xs text-muted-foreground"
-                                >
-                                  {session.is_unlocked ? (
-                                    <CheckCircle className="h-3 w-3 text-green-500" />
-                                  ) : (
-                                    <Lock className="h-3 w-3" />
-                                  )}
-                                  <span>{session.course_sessions?.title || 'Session'}</span>
-                                </div>
-                              ))}
+                              {sessions.map(session => {
+                                const sessionCompleted = completedSessions.has(session.session_id);
+                                
+                                // Session icon: locked (amber) / unlocked-not-completed (blue) / completed (green)
+                                const renderSessionIcon = () => {
+                                  if (!session.is_unlocked) {
+                                    return <Lock className="h-3 w-3 text-amber-500" />;
+                                  }
+                                  if (sessionCompleted) {
+                                    return <CheckCircle className="h-3 w-3 text-green-500" />;
+                                  }
+                                  return <Circle className="h-3 w-3 text-blue-500" />;
+                                };
+
+                                return (
+                                  <div 
+                                    key={session.id}
+                                    className="flex items-center gap-2 text-xs text-muted-foreground"
+                                  >
+                                    {renderSessionIcon()}
+                                    <span>{session.course_sessions?.title || 'Session'}</span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
@@ -264,7 +332,6 @@ export function ClassCourseLauncher({ classId, className, officerId }: ClassCour
                     })}
                   </div>
 
-                  {/* Action Button */}
                   <div className="pt-2">
                     <Button
                       className="w-full"

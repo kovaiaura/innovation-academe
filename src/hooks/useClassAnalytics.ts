@@ -35,6 +35,52 @@ export function useClassAnalytics(classId: string | undefined, institutionId?: s
 
       if (assessmentError) throw assessmentError;
 
+      // Fetch course class assignments for this class
+      const { data: courseAssignments, error: courseAssignError } = await supabase
+        .from('course_class_assignments')
+        .select('id, course_id')
+        .eq('class_id', classId);
+
+      if (courseAssignError) throw courseAssignError;
+
+      // Fetch total allocated sessions and completion data
+      let totalCompletedContentEntries = 0;
+      let totalContentEntries = 0;
+      const assignmentIds = courseAssignments?.map(ca => ca.id) || [];
+
+      if (assignmentIds.length > 0) {
+        const { data: moduleAssigns } = await supabase
+          .from('class_module_assignments')
+          .select('id')
+          .in('class_assignment_id', assignmentIds);
+
+        const moduleAssignIds = moduleAssigns?.map(m => m.id) || [];
+
+        if (moduleAssignIds.length > 0) {
+          const { data: sessionAssigns } = await supabase
+            .from('class_session_assignments')
+            .select('id, session_id')
+            .in('class_module_assignment_id', moduleAssignIds);
+
+          if (sessionAssigns && sessionAssigns.length > 0) {
+            const sessionIds = sessionAssigns.map(s => s.session_id);
+            const { data: contentItems } = await supabase
+              .from('course_content')
+              .select('id, session_id')
+              .in('session_id', sessionIds);
+
+            totalContentEntries = (contentItems?.length || 0) * (students?.length || 1);
+
+            const { data: completions } = await supabase
+              .from('student_content_completions')
+              .select('id')
+              .in('class_assignment_id', assignmentIds);
+
+            totalCompletedContentEntries = completions?.length || 0;
+          }
+        }
+      }
+
       // Fetch XP transactions for top students
       const studentUserIds = students?.map(s => s.user_id).filter(Boolean) || [];
       let xpData: { student_id: string; points_earned: number }[] = [];
@@ -79,7 +125,6 @@ export function useClassAnalytics(classId: string | undefined, institutionId?: s
         const totalPercentage = assessmentAttempts.reduce((sum, a) => sum + (a.percentage || 0), 0);
         averageGrade = Math.round((totalPercentage / assessmentAttempts.length) * 10) / 10;
 
-        // Performance distribution based on percentage
         assessmentAttempts.forEach(a => {
           const pct = a.percentage || 0;
           if (pct >= 85) performanceDistribution.excellent++;
@@ -156,8 +201,10 @@ export function useClassAnalytics(classId: string | undefined, institutionId?: s
           performance_distribution: performanceDistribution,
         },
         course_metrics: {
-          total_courses_assigned: 0,
-          overall_completion_rate: 0,
+          total_courses_assigned: courseAssignments?.length || 0,
+          overall_completion_rate: totalContentEntries > 0
+            ? Math.round((totalCompletedContentEntries / totalContentEntries) * 1000) / 10
+            : 0,
           average_modules_completed: 0,
           assignment_submission_rate: 0,
           quiz_attempt_rate: 0,
@@ -176,6 +223,6 @@ export function useClassAnalytics(classId: string | undefined, institutionId?: s
       return analytics;
     },
     enabled: !!classId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 }

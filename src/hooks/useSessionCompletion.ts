@@ -90,7 +90,9 @@ export function useSessionCompletion(): SessionCompletionResult {
       await createAttendanceRecord(classId, studentIds, sessionId, timetableAssignmentId);
 
       // 5. Trigger certificate issuance via edge function (if module/course info available)
+      // Small delay to ensure upserted completions are committed before the edge function checks
       if (moduleId && courseId) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
         await triggerCertificateIssuance(studentIds, classAssignmentId, moduleId, courseId);
       }
 
