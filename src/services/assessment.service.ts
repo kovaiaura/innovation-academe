@@ -808,7 +808,7 @@ export const assessmentService = {
   async getAssessmentAttempts(assessmentId: string, filters?: { institution_id?: string; class_id?: string }): Promise<AssessmentAttempt[]> {
     let query = supabase
       .from('assessment_attempts')
-      .select('*, profiles:student_id(id, name), institutions:institution_id(id, name), classes:class_id(id, class_name)')
+      .select('*, profiles:student_id(id, name), institutions:institution_id(id, name), classes:class_id(id, class_name), assessment_answers(*)')
       .eq('assessment_id', assessmentId);
 
     if (filters?.institution_id) {
@@ -826,7 +826,16 @@ export const assessmentService = {
       return [];
     }
 
-    return attempts.map(a => transformAttempt(a as unknown as DbAttempt));
+    return attempts.map(a => {
+      const answers = ((a as any).assessment_answers || []).map((ans: any) => ({
+        question_id: ans.question_id,
+        selected_option_id: ans.selected_option_id,
+        is_correct: ans.is_correct,
+        points_earned: ans.points_earned || 0,
+        time_spent_seconds: ans.time_spent_seconds || 0,
+      }));
+      return transformAttempt(a as unknown as DbAttempt, answers);
+    });
   },
 
   async getAssessmentAnalytics(assessmentId: string) {
