@@ -30,6 +30,9 @@ export default function StudentAssessments() {
 
       setIsLoading(true);
       try {
+        // Cleanup stale attempts first
+        await assessmentService.cleanupStaleAttempts();
+        
         const [loadedAssessments, loadedAttempts] = await Promise.all([
           assessmentService.getStudentAssessments(studentId, studentClassId, studentInstitutionId),
           assessmentService.getStudentAttempts(studentId)
