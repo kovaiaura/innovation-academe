@@ -67,9 +67,13 @@ export default function AssessmentManagement() {
   const [editManualDialogOpen, setEditManualDialogOpen] = useState(false);
   const [manualAssessmentToEdit, setManualAssessmentToEdit] = useState<Assessment | null>(null);
 
-  // Load assessments from database
+  // Load assessments from database (cleanup stale attempts first)
   useEffect(() => {
-    loadAssessments();
+    const init = async () => {
+      await assessmentService.cleanupStaleAttempts();
+      loadAssessments();
+    };
+    init();
   }, []);
 
   const loadAssessments = async () => {

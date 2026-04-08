@@ -16,6 +16,7 @@ import { useLocation } from "react-router-dom";
 import { useInstitutionStats } from "@/hooks/useInstitutionStats";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { assessmentService } from "@/services/assessment.service";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface PerformanceData {
@@ -53,7 +54,11 @@ const Performance = () => {
 
   useEffect(() => {
     if (institutionId) {
-      loadPerformanceData();
+      const init = async () => {
+        await assessmentService.cleanupStaleAttempts();
+        loadPerformanceData();
+      };
+      init();
     }
   }, [institutionId, period]);
 
