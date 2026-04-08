@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.update-student-email]
 verify_jwt = false
+
+[functions.auto-submit-expired-assessments]
+verify_jwt = false

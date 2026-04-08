@@ -53,7 +53,11 @@ const Performance = () => {
 
   useEffect(() => {
     if (institutionId) {
-      loadPerformanceData();
+      const init = async () => {
+        await assessmentService.cleanupStaleAttempts();
+        loadPerformanceData();
+      };
+      init();
     }
   }, [institutionId, period]);
 

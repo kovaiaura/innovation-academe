@@ -1073,5 +1073,23 @@ export const assessmentService = {
       console.error('Error in markAbsentStudents:', error);
       return 0;
     }
+  },
+
+  // Cleanup stale in_progress attempts server-side
+  async cleanupStaleAttempts(): Promise<number> {
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const { data, error } = await supabase.functions.invoke('auto-submit-expired-assessments', {
+        method: 'POST',
+      });
+      if (error) {
+        console.error('Error cleaning up stale attempts:', error);
+        return 0;
+      }
+      return data?.updated || 0;
+    } catch (error) {
+      console.error('Error in cleanupStaleAttempts:', error);
+      return 0;
+    }
   }
 };
