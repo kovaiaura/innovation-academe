@@ -808,7 +808,7 @@ export const assessmentService = {
   async getAssessmentAttempts(assessmentId: string, filters?: { institution_id?: string; class_id?: string }): Promise<AssessmentAttempt[]> {
     let query = supabase
       .from('assessment_attempts')
-      .select('*, profiles:student_id(id, name), institutions:institution_id(id, name), classes:class_id(id, class_name)')
+      .select('*, profiles:student_id(id, name), institutions:institution_id(id, name), classes:class_id(id, class_name), assessment_answers(*)')
       .eq('assessment_id', assessmentId);
 
     if (filters?.institution_id) {
