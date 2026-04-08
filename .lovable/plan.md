@@ -1,41 +1,42 @@
 
 
-# Fix: Bulk Mark Session Selection Not Working
+# Fix: Auto-Submit Stale Assessment Attempts
 
-## Root Cause
+## Problem
+Assessment auto-submit only works client-side via a JavaScript timer in `TakeAssessment.tsx`. If a student closes their browser/computer mid-assessment, the timer stops and the attempt remains `in_progress` forever — even though the assessment duration has long expired.
 
-Two issues in `BulkMarkCompleteTab.tsx` prevent session selection:
+## Solution
+Two-pronged approach:
 
-1. **Invalid `indeterminate` prop**: The module-level `Checkbox` uses `indeterminate={...}` with `@ts-ignore`. Radix UI Checkbox doesn't accept `indeterminate` as a prop — the correct API is `checked="indeterminate"`. The invalid prop gets spread into the DOM element and may interfere with state handling.
+### 1. New Edge Function: `auto-submit-expired-assessments`
+A server-side function that finds and auto-submits all stale `in_progress` attempts where `started_at + duration_minutes` has passed.
 
-2. **`onClick stopPropagation`**: The `onClick={(e) => e.stopPropagation()}` on the Checkbox can interfere with Radix's internal pointer/click event chain, preventing `onCheckedChange` from firing reliably.
+- Query `assessment_attempts` where `status = 'in_progress'`
+- Join with `assessments` to get `duration_minutes`
+- For each attempt where `now() > started_at + duration_minutes`, update:
+  - `status` → `'auto_submitted'`
+  - `submitted_at` → `started_at + duration_minutes` (the time it should have been submitted)
+  - `time_taken_seconds` → `duration_minutes * 60`
+  - `score` → sum of `points_earned` from existing answers (whatever they answered before leaving)
+  - `percentage` → calculated from score/total_points
+  - `passed` → percentage >= pass_percentage
+- Also handle case where `now() > assessment.end_time` (assessment window closed)
 
-## Fix
+### 2. Trigger Cleanup on Page Load (Client-Side Fallback)
+In the assessment list/performance pages, call the edge function on load to ensure stale attempts are cleaned up before displaying data. This provides immediate cleanup without needing a cron job.
 
-**File: `src/components/officer/BulkMarkCompleteTab.tsx`**
+- Add a call to the cleanup edge function in `assessment.service.ts` (e.g., `cleanupStaleAttempts()`)
+- Call it when loading the Student Performance page and the student Assessments page
 
-Replace the module-level Checkbox (around line 289-294):
+### 3. Also Handle on Assessment Load
+In `TakeAssessment.tsx`, the existing `loadAssessment` function already checks `remainingSeconds <= 0` and calls `handleAutoSubmit`. This handles the case where a student returns to an expired attempt — no changes needed there.
 
-```tsx
-// Before (broken)
-<Checkbox
-  checked={allSelected}
-  // @ts-ignore
-  indeterminate={someSelected && !allSelected}
-  onCheckedChange={() => toggleAllSessionsInModule(mod.id, sessionAssignments)}
-  onClick={(e) => e.stopPropagation()}
-/>
+## Files
 
-// After (fixed)
-<Checkbox
-  checked={allSelected ? true : (someSelected ? "indeterminate" : false)}
-  onCheckedChange={() => toggleAllSessionsInModule(mod.id, sessionAssignments)}
-/>
-```
-
-Key changes:
-- Use `checked="indeterminate"` (the correct Radix API) instead of an invalid `indeterminate` prop
-- Remove `onClick stopPropagation` — it's not needed since the Checkbox is outside `CollapsibleTrigger`, and it interferes with `onCheckedChange`
-
-Single line change, single file.
+| File | Change |
+|------|--------|
+| `supabase/functions/auto-submit-expired-assessments/index.ts` | **New** — server-side cleanup function |
+| `src/services/assessment.service.ts` | Add `cleanupStaleAttempts()` method that invokes the edge function |
+| `src/pages/system-admin/AssessmentManagement.tsx` | Call cleanup on page load |
+| `src/pages/management/Performance.tsx` | Call cleanup on page load |
 
