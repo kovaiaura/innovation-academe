@@ -1,42 +1,42 @@
 
 
-# Fix: Auto-Submit Stale Assessment Attempts
+# Fix: Question Analysis "Correct %" Always 0%
 
-## Problem
-Assessment auto-submit only works client-side via a JavaScript timer in `TakeAssessment.tsx`. If a student closes their browser/computer mid-assessment, the timer stops and the attempt remains `in_progress` forever — even though the assessment duration has long expired.
+## Root Cause
+In `assessment.service.ts`, `getAssessmentAttempts()` does NOT fetch `assessment_answers` from the database. It calls `transformAttempt(a)` which defaults `answers` to an empty array `[]`. The analytics component at line 346-348 tries to compute correct % from `attempt.answers`, but they're always empty.
 
-## Solution
-Two-pronged approach:
+## Fix
 
-### 1. New Edge Function: `auto-submit-expired-assessments`
-A server-side function that finds and auto-submits all stale `in_progress` attempts where `started_at + duration_minutes` has passed.
+**File: `src/services/assessment.service.ts` — `getAssessmentAttempts` method (line ~809-829)**
 
-- Query `assessment_attempts` where `status = 'in_progress'`
-- Join with `assessments` to get `duration_minutes`
-- For each attempt where `now() > started_at + duration_minutes`, update:
-  - `status` → `'auto_submitted'`
-  - `submitted_at` → `started_at + duration_minutes` (the time it should have been submitted)
-  - `time_taken_seconds` → `duration_minutes * 60`
-  - `score` → sum of `points_earned` from existing answers (whatever they answered before leaving)
-  - `percentage` → calculated from score/total_points
-  - `passed` → percentage >= pass_percentage
-- Also handle case where `now() > assessment.end_time` (assessment window closed)
+Update the select query to also fetch `assessment_answers`:
 
-### 2. Trigger Cleanup on Page Load (Client-Side Fallback)
-In the assessment list/performance pages, call the edge function on load to ensure stale attempts are cleaned up before displaying data. This provides immediate cleanup without needing a cron job.
+```sql
+select('*, profiles:student_id(id, name), institutions:institution_id(id, name), classes:class_id(id, class_name), assessment_answers(*)')
+```
 
-- Add a call to the cleanup edge function in `assessment.service.ts` (e.g., `cleanupStaleAttempts()`)
-- Call it when loading the Student Performance page and the student Assessments page
+Then pass the answers into `transformAttempt`:
 
-### 3. Also Handle on Assessment Load
-In `TakeAssessment.tsx`, the existing `loadAssessment` function already checks `remainingSeconds <= 0` and calls `handleAutoSubmit`. This handles the case where a student returns to an expired attempt — no changes needed there.
+```typescript
+return attempts.map(a => {
+  const answers = (a.assessment_answers || []).map(ans => ({
+    question_id: ans.question_id,
+    selected_option_id: ans.selected_option_id,
+    is_correct: ans.is_correct,
+    points_earned: ans.points_earned || 0,
+    time_spent_seconds: ans.time_spent_seconds || 0,
+  }));
+  return transformAttempt(a as unknown as DbAttempt, answers);
+});
+```
+
+This single change makes the existing analytics UI code work correctly — it already computes correct % from `completedAttempts.flatMap(a => a.answers)`.
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `supabase/functions/auto-submit-expired-assessments/index.ts` | **New** — server-side cleanup function |
-| `src/services/assessment.service.ts` | Add `cleanupStaleAttempts()` method that invokes the edge function |
-| `src/pages/system-admin/AssessmentManagement.tsx` | Call cleanup on page load |
-| `src/pages/management/Performance.tsx` | Call cleanup on page load |
+| `src/services/assessment.service.ts` | Include `assessment_answers(*)` in select + pass to transform |
+
+Single file, ~5-line change.
 
