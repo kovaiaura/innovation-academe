@@ -24,7 +24,7 @@ export function useAllInstitutionsAnalytics() {
       // Fetch students per institution
       const { data: studentCounts } = await supabase
         .from('students')
-        .select('institution_id, status');
+        .select('institution_id, status, class_id');
 
       // Fetch classes per institution
       const { data: classCounts } = await supabase
