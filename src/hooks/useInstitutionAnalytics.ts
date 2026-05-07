@@ -11,7 +11,7 @@ export function useInstitutionAnalytics(institutionId: string | undefined) {
       // Fetch students data
       const { data: students, error: studentsError } = await supabase
         .from('students')
-        .select('id, status, gender, created_at')
+        .select('id, status, gender, created_at, class_id')
         .eq('institution_id', institutionId);
 
       if (studentsError) throw studentsError;
