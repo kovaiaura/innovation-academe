@@ -161,8 +161,14 @@ export function useAllInstitutionsAnalytics() {
         const totalCourses = instCourses.length;
         const coursesInUse = new Set(instCourses.map(c => c.course_id)).size;
 
+        // Real course completion rate
+        const instExpected = expectedByInstitution.get(inst.id) || 0;
+        const instCompleted = completionsByInstitution.get(inst.id) || 0;
+        const realCompletionRate = instExpected > 0
+          ? Math.round((instCompleted / instExpected) * 1000) / 10
+          : 0;
+
         // Calculate engagement score (weighted average)
-        // 40% attendance, 30% assessment participation, 20% course usage, 10% active students ratio
         const studentRatio = totalStudents > 0 ? (activeStudents / totalStudents) * 100 : 0;
         const courseUsageRate = totalCourses > 0 ? (coursesInUse / totalCourses) * 100 : 0;
         const participationRate = totalStudents > 0 && completedAssessments > 0 
