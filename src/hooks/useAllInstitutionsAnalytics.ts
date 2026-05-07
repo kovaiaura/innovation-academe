@@ -224,7 +224,7 @@ export function useAllInstitutionsAnalytics() {
           course_metrics: {
             total_courses_assigned: totalCourses,
             courses_in_use: coursesInUse,
-            average_completion_rate: courseUsageRate,
+            average_completion_rate: realCompletionRate,
             active_students: activeStudents,
             inactive_students: inactiveStudents,
             daily_active_users: Math.round(activeStudents * 0.6), // Estimate
