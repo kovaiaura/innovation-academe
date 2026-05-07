@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -20,7 +21,8 @@ interface SessionCompletionResult {
     classId: string,
     timetableAssignmentId?: string,
     moduleId?: string,
-    courseId?: string
+    courseId?: string,
+    options?: { silent?: boolean }
   ) => Promise<boolean>;
   isLoading: boolean;
   error: string | null;
@@ -34,6 +36,7 @@ interface SessionCompletionResult {
 export function useSessionCompletion(): SessionCompletionResult {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const markSessionComplete = async (
     sessionId: string,
@@ -42,10 +45,12 @@ export function useSessionCompletion(): SessionCompletionResult {
     classId: string,
     timetableAssignmentId?: string,
     moduleId?: string,
-    courseId?: string
+    courseId?: string,
+    options?: { silent?: boolean }
   ): Promise<boolean> => {
+    const silent = options?.silent === true;
     if (studentIds.length === 0) {
-      toast.error('Please select at least one student');
+      if (!silent) toast.error('Please select at least one student');
       return false;
     }
 
@@ -61,7 +66,7 @@ export function useSessionCompletion(): SessionCompletionResult {
 
       if (contentError) throw contentError;
       if (!contentItems || contentItems.length === 0) {
-        toast.error('No content found in this session');
+        if (!silent) toast.error('No content found in this session');
         return false;
       }
 
@@ -90,20 +95,34 @@ export function useSessionCompletion(): SessionCompletionResult {
       await createAttendanceRecord(classId, studentIds, sessionId, timetableAssignmentId);
 
       // 5. Trigger certificate issuance via edge function (if module/course info available)
-      // Small delay to ensure upserted completions are committed before the edge function checks
       if (moduleId && courseId) {
         await new Promise(resolve => setTimeout(resolve, 1500));
         await triggerCertificateIssuance(studentIds, classAssignmentId, moduleId, courseId);
       }
 
-      toast.success(
-        `Session marked complete for ${studentIds.length} student${studentIds.length > 1 ? 's' : ''}`
-      );
+      // 6. Invalidate analytics/dashboard caches so progress updates everywhere
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['class-analytics'] }),
+        queryClient.invalidateQueries({ queryKey: ['institution-analytics'] }),
+        queryClient.invalidateQueries({ queryKey: ['all-institutions-analytics'] }),
+        queryClient.invalidateQueries({ queryKey: ['comprehensive-analytics'] }),
+        queryClient.invalidateQueries({ queryKey: ['class-course-assignments'] }),
+        queryClient.invalidateQueries({ queryKey: ['student-course-progress'] }),
+        queryClient.invalidateQueries({ queryKey: ['class-session-attendance'] }),
+        queryClient.invalidateQueries({ queryKey: ['course-performance'] }),
+        queryClient.invalidateQueries({ queryKey: ['student-content-completions'] }),
+      ]);
+
+      if (!silent) {
+        toast.success(
+          `Session marked complete for ${studentIds.length} student${studentIds.length > 1 ? 's' : ''}`
+        );
+      }
       return true;
     } catch (err: any) {
       console.error('Failed to mark session complete:', err);
       setError(err.message || 'Failed to mark session complete');
-      toast.error('Failed to mark session complete');
+      if (!silent) toast.error('Failed to mark session complete');
       return false;
     } finally {
       setIsLoading(false);

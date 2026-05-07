@@ -24,7 +24,7 @@ export function useAllInstitutionsAnalytics() {
       // Fetch students per institution
       const { data: studentCounts } = await supabase
         .from('students')
-        .select('institution_id, status');
+        .select('institution_id, status, class_id');
 
       // Fetch classes per institution
       const { data: classCounts } = await supabase
@@ -44,7 +44,86 @@ export function useAllInstitutionsAnalytics() {
       // Fetch course assignments
       const { data: courseAssignments } = await supabase
         .from('course_class_assignments')
-        .select('institution_id, course_id');
+        .select('id, institution_id, course_id, class_id');
+
+      // Build per-institution content expected count
+      const allAssignmentIds = (courseAssignments || []).map(ca => ca.id);
+      const assignmentToInstitution = new Map<string, string>();
+      (courseAssignments || []).forEach(ca => assignmentToInstitution.set(ca.id, ca.institution_id));
+
+      // Fetch all completions in one go
+      let allCompletions: { class_assignment_id: string }[] = [];
+      if (allAssignmentIds.length > 0) {
+        const { data: comps } = await supabase
+          .from('student_content_completions')
+          .select('class_assignment_id')
+          .in('class_assignment_id', allAssignmentIds);
+        allCompletions = comps || [];
+      }
+      const completionsByInstitution = new Map<string, number>();
+      allCompletions.forEach(c => {
+        const inst = assignmentToInstitution.get(c.class_assignment_id);
+        if (inst) completionsByInstitution.set(inst, (completionsByInstitution.get(inst) || 0) + 1);
+      });
+
+      // Compute total content expected per institution (content count × students-in-class)
+      const expectedByInstitution = new Map<string, number>();
+      if (allAssignmentIds.length > 0) {
+        const { data: moduleAssigns } = await supabase
+          .from('class_module_assignments')
+          .select('id, class_assignment_id')
+          .in('class_assignment_id', allAssignmentIds);
+
+        const moduleIds = (moduleAssigns || []).map(m => m.id);
+        const { data: sessionAssigns } = moduleIds.length > 0
+          ? await supabase
+              .from('class_session_assignments')
+              .select('session_id, class_module_assignment_id')
+              .in('class_module_assignment_id', moduleIds)
+          : { data: [] as any[] };
+
+        const sessionIds = [...new Set((sessionAssigns || []).map((s: any) => s.session_id))];
+        const { data: contentItems } = sessionIds.length > 0
+          ? await supabase.from('course_content').select('id, session_id').in('session_id', sessionIds)
+          : { data: [] as any[] };
+
+        const sessionContentCount = new Map<string, number>();
+        (contentItems || []).forEach((c: any) => {
+          sessionContentCount.set(c.session_id, (sessionContentCount.get(c.session_id) || 0) + 1);
+        });
+
+        const assignmentModuleMap = new Map<string, string[]>();
+        (moduleAssigns || []).forEach(m => {
+          const arr = assignmentModuleMap.get(m.class_assignment_id) || [];
+          arr.push(m.id);
+          assignmentModuleMap.set(m.class_assignment_id, arr);
+        });
+        const moduleSessionMap = new Map<string, string[]>();
+        (sessionAssigns || []).forEach((s: any) => {
+          const arr = moduleSessionMap.get(s.class_module_assignment_id) || [];
+          arr.push(s.session_id);
+          moduleSessionMap.set(s.class_module_assignment_id, arr);
+        });
+
+        // Count students per class
+        const classStudentCount = new Map<string, number>();
+        (studentCounts || []).forEach((s: any) => {
+          if (s.class_id) classStudentCount.set(s.class_id, (classStudentCount.get(s.class_id) || 0) + 1);
+        });
+
+        (courseAssignments || []).forEach(ca => {
+          const studentsInClass = classStudentCount.get(ca.class_id) || 0;
+          const modIds = assignmentModuleMap.get(ca.id) || [];
+          let contentCount = 0;
+          modIds.forEach(mid => {
+            (moduleSessionMap.get(mid) || []).forEach(sid => {
+              contentCount += sessionContentCount.get(sid) || 0;
+            });
+          });
+          const expected = contentCount * studentsInClass;
+          expectedByInstitution.set(ca.institution_id, (expectedByInstitution.get(ca.institution_id) || 0) + expected);
+        });
+      }
 
       // Calculate analytics for each institution
       const analyticsData: InstitutionEngagement[] = institutions.map(inst => {
@@ -82,8 +161,14 @@ export function useAllInstitutionsAnalytics() {
         const totalCourses = instCourses.length;
         const coursesInUse = new Set(instCourses.map(c => c.course_id)).size;
 
+        // Real course completion rate
+        const instExpected = expectedByInstitution.get(inst.id) || 0;
+        const instCompleted = completionsByInstitution.get(inst.id) || 0;
+        const realCompletionRate = instExpected > 0
+          ? Math.round((instCompleted / instExpected) * 1000) / 10
+          : 0;
+
         // Calculate engagement score (weighted average)
-        // 40% attendance, 30% assessment participation, 20% course usage, 10% active students ratio
         const studentRatio = totalStudents > 0 ? (activeStudents / totalStudents) * 100 : 0;
         const courseUsageRate = totalCourses > 0 ? (coursesInUse / totalCourses) * 100 : 0;
         const participationRate = totalStudents > 0 && completedAssessments > 0 
@@ -139,7 +224,7 @@ export function useAllInstitutionsAnalytics() {
           course_metrics: {
             total_courses_assigned: totalCourses,
             courses_in_use: coursesInUse,
-            average_completion_rate: courseUsageRate,
+            average_completion_rate: realCompletionRate,
             active_students: activeStudents,
             inactive_students: inactiveStudents,
             daily_active_users: Math.round(activeStudents * 0.6), // Estimate
