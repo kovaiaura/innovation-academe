@@ -86,6 +86,12 @@ export interface InstitutionAnalytics {
     event_participation_rate: number;
     project_completion_rate: number;
   };
+  course_metrics?: {
+    total_courses_assigned: number;
+    overall_completion_rate: number;
+    total_completions: number;
+    total_content_expected: number;
+  };
 }
 
 // ========== CLASS DETAIL PAGE TYPES ==========
