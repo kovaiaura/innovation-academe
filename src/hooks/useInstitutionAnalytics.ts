@@ -50,6 +50,85 @@ export function useInstitutionAnalytics(institutionId: string | undefined) {
 
       if (assessmentError) throw assessmentError;
 
+      // ===== Course completion metrics =====
+      const { data: courseAssignments } = await supabase
+        .from('course_class_assignments')
+        .select('id, course_id, class_id')
+        .eq('institution_id', institutionId);
+
+      const assignmentIds = (courseAssignments || []).map(ca => ca.id);
+      let totalContentExpected = 0;
+      let totalCompletions = 0;
+      const totalCoursesAssigned = courseAssignments?.length || 0;
+
+      if (assignmentIds.length > 0 && (students?.length || 0) > 0) {
+        const { data: moduleAssigns } = await supabase
+          .from('class_module_assignments')
+          .select('id, class_assignment_id')
+          .in('class_assignment_id', assignmentIds);
+
+        const moduleIds = (moduleAssigns || []).map(m => m.id);
+        if (moduleIds.length > 0) {
+          const { data: sessionAssigns } = await supabase
+            .from('class_session_assignments')
+            .select('session_id, class_module_assignment_id')
+            .in('class_module_assignment_id', moduleIds);
+
+          const sessionIds = [...new Set((sessionAssigns || []).map(s => s.session_id))];
+          if (sessionIds.length > 0) {
+            const { data: contentItems } = await supabase
+              .from('course_content')
+              .select('id, session_id')
+              .in('session_id', sessionIds);
+
+            const sessionContentCount = new Map<string, number>();
+            (contentItems || []).forEach(c => {
+              sessionContentCount.set(c.session_id, (sessionContentCount.get(c.session_id) || 0) + 1);
+            });
+
+            const classStudentCount = new Map<string, number>();
+            (students || []).forEach((s: any) => {
+              if (s.class_id) classStudentCount.set(s.class_id, (classStudentCount.get(s.class_id) || 0) + 1);
+            });
+
+            const assignmentModuleMap = new Map<string, string[]>();
+            (moduleAssigns || []).forEach(m => {
+              const arr = assignmentModuleMap.get(m.class_assignment_id) || [];
+              arr.push(m.id);
+              assignmentModuleMap.set(m.class_assignment_id, arr);
+            });
+            const moduleSessionMap = new Map<string, string[]>();
+            (sessionAssigns || []).forEach(s => {
+              const arr = moduleSessionMap.get(s.class_module_assignment_id) || [];
+              arr.push(s.session_id);
+              moduleSessionMap.set(s.class_module_assignment_id, arr);
+            });
+
+            (courseAssignments || []).forEach(ca => {
+              const studentsInClass = classStudentCount.get(ca.class_id) || 0;
+              const modIds = assignmentModuleMap.get(ca.id) || [];
+              let contentCount = 0;
+              modIds.forEach(mid => {
+                (moduleSessionMap.get(mid) || []).forEach(sid => {
+                  contentCount += sessionContentCount.get(sid) || 0;
+                });
+              });
+              totalContentExpected += contentCount * studentsInClass;
+            });
+
+            const { count: completionCount } = await supabase
+              .from('student_content_completions')
+              .select('id', { count: 'exact', head: true })
+              .in('class_assignment_id', assignmentIds);
+            totalCompletions = completionCount || 0;
+          }
+        }
+      }
+
+      const overallCompletionRate = totalContentExpected > 0
+        ? Math.round((totalCompletions / totalContentExpected) * 1000) / 10
+        : 0;
+
       // Calculate student metrics
       const totalStudents = students?.length || 0;
       const activeStudents = students?.filter(s => s.status === 'active').length || 0;
