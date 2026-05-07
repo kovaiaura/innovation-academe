@@ -210,6 +210,12 @@ export function useInstitutionAnalytics(institutionId: string | undefined) {
           event_participation_rate: 0,
           project_completion_rate: 0,
         },
+        course_metrics: {
+          total_courses_assigned: totalCoursesAssigned,
+          overall_completion_rate: overallCompletionRate,
+          total_completions: totalCompletions,
+          total_content_expected: totalContentExpected,
+        },
       };
 
       return analytics;
