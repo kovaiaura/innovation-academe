@@ -184,7 +184,8 @@ export function BulkMarkCompleteTab({ classId, className }: BulkMarkCompleteTabP
         classId,
         undefined, // timetableAssignmentId
         moduleAssignment?.module_id,
-        selectedAssignment?.course_id
+        selectedAssignment?.course_id,
+        { silent: true }
       );
 
       if (success) successCount++;
@@ -193,10 +194,13 @@ export function BulkMarkCompleteTab({ classId, className }: BulkMarkCompleteTabP
 
     setIsProcessing(false);
     if (successCount === total) {
-      toast.success(`All ${total} sessions marked complete for ${studentArr.length} students`);
+      toast.success(`All ${total} session${total !== 1 ? 's' : ''} marked complete for ${studentArr.length} student${studentArr.length !== 1 ? 's' : ''}`);
+      setSelectedSessionIds(new Set());
+    } else if (successCount > 0) {
+      toast.warning(`${successCount} of ${total} sessions marked complete (${total - successCount} had no content or failed)`);
       setSelectedSessionIds(new Set());
     } else {
-      toast.warning(`${successCount}/${total} sessions completed successfully`);
+      toast.error('Could not mark any sessions complete. Selected sessions may have no content.');
     }
   };
 
