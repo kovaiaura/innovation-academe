@@ -2,6 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateWeightedScore, calculateCollegeWeightedScore, WEIGHTAGE } from '@/utils/assessmentWeightageCalculator';
 import { AssessmentAttempt } from '@/types/assessment';
+import {
+  buildSessionCompletionContexts,
+  computeStudentSessionProgress,
+} from '@/utils/courseProgressCalculations';
 
 export interface WeightedAssessmentBreakdown {
   fa1_score: number;
