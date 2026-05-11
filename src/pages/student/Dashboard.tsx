@@ -378,11 +378,31 @@ export default function StudentDashboard() {
     
     if (!profile?.class_id) return 0;
     
-    const { count } = await supabase
+    const { data: assignments, count } = await supabase
       .from('course_class_assignments')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact' })
       .eq('class_id', profile.class_id);
-    
+
+    // Compute session-based progress for this student
+    try {
+      const { data: studentRec } = await supabase
+        .from('students').select('id').eq('user_id', studentId).maybeSingle();
+      const assignmentIds = (assignments || []).map(a => a.id);
+      if (studentRec?.id && assignmentIds.length) {
+        const { buildSessionCompletionContexts, computeStudentSessionProgress } =
+          await import('@/utils/courseProgressCalculations');
+        const ctxMap = await buildSessionCompletionContexts(assignmentIds);
+        const progress = await computeStudentSessionProgress(
+          [studentRec.id],
+          Array.from(ctxMap.values())
+        );
+        const p = progress.get(studentRec.id);
+        setCourseProgress(p?.progressPercentage || 0);
+      }
+    } catch (e) {
+      console.error('Failed to compute course progress', e);
+    }
+
     return count || 0;
   };
 
