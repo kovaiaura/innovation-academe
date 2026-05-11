@@ -1,77 +1,75 @@
-# Fix Course Progress Reporting + Bulk Mark Toast
+# Fix Course Progress Showing 0%
 
-## Issues
+## Root Cause
+Course completion is being calculated differently in different places, and some analytics are still content-count based instead of session-count based. The UI where sessions/levels show completed is based on session completion, but dashboards compare raw `student_content_completions` against broad course content totals. That can stay at `0%` when:
 
-### Issue 1: Misleading "0/N sessions completed successfully" toast
-In `BulkMarkCompleteTab.tsx`, the per-session toast inside `useSessionCompletion.markSessionComplete` fires its own success/error toast for every session, AND the bulk handler shows another summary. When the per-session call succeeds, the warning summary path can still fire (and "0 sessions marked" appears) due to early-return error paths in `markSessionComplete` returning `false` even though completions were inserted (e.g. when `contentItems` query path hits the "No content found" error toast for a session with no content).
+- progress rows are stored under student record IDs in one place but read with user/profile IDs elsewhere,
+- locked/unassigned content is included in the denominator,
+- dashboards average student percentages instead of using the class/institution maximum completion capacity,
+- student dashboard only shows course count, not actual completion percentage.
 
-**Fix**:
-- Suppress per-session toast inside `useSessionCompletion` when used in bulk mode (add an optional `silent` flag, or have bulk caller handle messaging only).
-- In `BulkMarkCompleteTab.handleBulkMark`, when `successCount === 0` show error, when `< total` show warning, otherwise success — and invalidate React Query caches for analytics/dashboards on completion.
+## Correct Formula
+Use session-based progress everywhere, matching the way officers mark sessions complete:
 
-### Issue 2: Course progress not updating across dashboards
-Several analytics paths compute progress incorrectly or use mock data. After bulk-marking, queries are not invalidated so UIs keep showing stale 0%.
+```text
+Individual student progress = completed allocated sessions / total allocated sessions
 
-Locations using **inconsistent / wrong / mock** progress logic:
+Class progress = total completed student-sessions / (allocated sessions × active students)
 
-| File | Problem |
-|---|---|
-| `src/hooks/useClassAnalytics.ts` (line 72) | `totalContentEntries = contentItems.length * students.length` — but only counts completions across `class_assignment_id`. The denominator multiplies by *all* students even if some never had assignments. Acceptable, but the issue is no cache invalidation after bulk mark. |
-| `src/hooks/useInstitutionAnalytics.ts` | Has **no** `course_metrics` / completion calculation at all. Returns nothing for course progress. |
-| `src/hooks/useAllInstitutionsAnalytics.ts` (line 142) | `average_completion_rate: courseUsageRate` — this is `coursesInUse/totalCourses`, NOT actual session completion. Wrong metric. |
-| `src/components/management/CoursePerformanceDialog.tsx` | Uses `mockCourses`, `mockEnrollments`, `mockSubmissions` — entirely mock data. |
-| `src/pages/student/Dashboard.tsx` | No course progress shown; the student dashboard should show overall course completion. |
+Institution progress = sum completed student-sessions across classes / sum max student-sessions across classes
+```
 
-### Issue 3: No query invalidation after bulk mark
-After `markSessionComplete` upserts completions, none of these query keys are invalidated:
-- `['class-analytics', classId]`
-- `['institution-analytics', institutionId]`
-- `['all-institutions-analytics']`
-- `['comprehensive-analytics', institutionId]`
-- `['class-course-assignments', ...]` (student dashboard)
-- `['student-course-progress', ...]`
+A session counts as completed for a student only when all content in that allocated session has a completion row for that student.
 
-So all dashboards keep showing stale 0%.
+## Implementation Plan
 
-## Fix Plan
+### 1. Add one shared progress calculator
+Create a reusable helper, for example `src/utils/courseProgressCalculations.ts`, that:
 
-### A. `src/hooks/useSessionCompletion.ts`
-1. Add optional `silent?: boolean` param to `markSessionComplete`. Skip the per-session toast.
-2. Accept a `QueryClient` invalidation by importing `useQueryClient` and invalidating these keys at the end of every successful call:
-   - `class-analytics`, `institution-analytics`, `all-institutions-analytics`, `comprehensive-analytics`, `class-course-assignments`, `student-course-progress`, `class-session-attendance`.
+- loads course-class assignments for an institution/class/student context,
+- loads allocated module/session assignments,
+- loads active students for each class,
+- loads course content only for allocated sessions,
+- loads completions using both `students.id` and legacy `students.user_id` matching where needed,
+- returns per-student, per-class, and institution-level percentages using the formulas above.
 
-### B. `src/components/officer/BulkMarkCompleteTab.tsx`
-1. Pass `silent: true` to suppress per-session toasts.
-2. Fix summary logic: only show one toast at end based on `successCount`. Default state should never show "0 session marked" — verify the path.
-3. After completion, invalidate the same query keys (rely on hook).
+This prevents every dashboard from having its own slightly different logic.
 
-### C. `src/hooks/useInstitutionAnalytics.ts`
-Add real `course_metrics` block computed the same way as `useClassAnalytics`:
-- Fetch `course_class_assignments` for institution.
-- Fetch derived total content count (sessions × content per session).
-- Fetch `student_content_completions` filtered by those `class_assignment_id`s.
-- `overall_completion_rate = completions / (totalContent × totalStudents)`.
+### 2. Fix comprehensive analytics
+Update `src/hooks/useComprehensiveAnalytics.ts` so:
 
-### D. `src/hooks/useAllInstitutionsAnalytics.ts`
-Replace `average_completion_rate: courseUsageRate` with a real calculation:
-- Fetch `course_content` count per course (or per assignment).
-- Fetch `student_content_completions` per institution (via `class_assignment_id` mapping).
-- `average_completion_rate = totalCompletions / (totalContentExpected) × 100`.
+- individual student `course_completion` uses that student’s completed allocated sessions,
+- class `course_completion` uses the max completion count: `sessions × active students`,
+- institution `course_completion` uses the total max completion count across all classes,
+- the Course Progress card in class/student analytics stops showing `0%` when sessions are actually completed.
 
-### E. `src/components/management/CoursePerformanceDialog.tsx`
-Replace mock data usage with a new database-backed hook `useCoursePerformance(courseId, institutionId)` that returns: total students enrolled, completion rate, average progress, per-class breakdown — all computed from `course_class_assignments` + `student_content_completions` + `course_content`.
+### 3. Fix institution-wide analytics
+Update:
 
-### F. `src/pages/student/Dashboard.tsx` (optional add)
-Add a small "Course Progress" card that uses `useClassCourseAssignments` (already returns `progressPercentage`) to show overall % across enrolled courses.
+- `src/hooks/useInstitutionAnalytics.ts`
+- `src/hooks/useAllInstitutionsAnalytics.ts`
 
-## Files Changed
+so CEO/system-level institution analytics use the same session-based calculation instead of raw content totals or course usage.
 
-| File | Change |
-|---|---|
-| `src/hooks/useSessionCompletion.ts` | Add `silent` flag, invalidate analytics queries on success |
-| `src/components/officer/BulkMarkCompleteTab.tsx` | Use silent mode, fix summary toast |
-| `src/hooks/useInstitutionAnalytics.ts` | Add real `course_metrics` |
-| `src/hooks/useAllInstitutionsAnalytics.ts` | Compute real `average_completion_rate` from `student_content_completions` |
-| `src/components/management/CoursePerformanceDialog.tsx` | Replace mock data with DB-backed hook |
-| `src/hooks/useCoursePerformance.ts` (NEW) | Real per-course completion metrics |
-| `src/pages/student/Dashboard.tsx` | Add course progress card |
+### 4. Fix course performance dialog
+Update `src/hooks/useCoursePerformance.ts` so each course’s progress is based on allocated course sessions and student-session completions, not broad content totals.
+
+### 5. Fix student dashboard visibility
+Update `src/pages/student/Dashboard.tsx` to calculate and show actual course progress for the logged-in student, not just number of enrolled courses.
+
+### 6. Ensure refresh after marking complete
+Confirm and extend query invalidation after bulk/session marking so these keys refresh immediately:
+
+- `comprehensive-analytics`
+- `institution-analytics`
+- `all-institutions-analytics`
+- `course-performance`
+- `student-courses`
+- `student-course-progress`
+- `session-completion-status`
+
+## Expected Result
+- Student progress shows their own completed sessions out of allocated sessions.
+- Class progress shows completed student-session count out of the maximum possible for available active students.
+- Institution/CEO analytics aggregate the same real completion data.
+- Bulk-marked sessions update dashboards without requiring manual recalculation.
