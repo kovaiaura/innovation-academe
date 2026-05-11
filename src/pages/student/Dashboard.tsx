@@ -75,6 +75,7 @@ export default function StudentDashboard() {
   const [gamification, setGamification] = useState<StudentGamification | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [coursesEnrolled, setCoursesEnrolled] = useState(0);
+  const [courseProgress, setCourseProgress] = useState(0);
   const [activeProjects, setActiveProjects] = useState(0);
   const [completedProjects, setCompletedProjects] = useState(0);
   const [recentAssessments, setRecentAssessments] = useState<RecentAssessment[]>([]);
