@@ -161,14 +161,13 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
         .select('id, course_id, class_id')
         .eq('institution_id', institutionId);
 
-      const studentRecordIds = students?.map(s => s.id) || [];
       const assignmentIds = courseAssignments?.map(ca => ca.id) || [];
 
       // Build per-class allocation context (allocated sessions + their content)
       const contextsByAssignment = await buildSessionCompletionContexts(assignmentIds);
 
       // Per-class context (so each student is measured against the courses assigned to THEIR class)
-      const contextsByClass = new Map<string, ReturnType<typeof Array.from<any>> extends infer R ? any[] : any[]>();
+      const contextsByClass = new Map<string, any[]>();
       contextsByAssignment.forEach(ctx => {
         const arr = (contextsByClass.get(ctx.classId) as any[]) || [];
         arr.push(ctx);
