@@ -155,47 +155,44 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
         projectsData = projects || [];
       }
 
-      // Fetch course class assignments for this institution
+      // Fetch course class assignments for this institution (used for session-based progress)
       const { data: courseAssignments } = await supabase
         .from('course_class_assignments')
         .select('id, course_id, class_id')
         .eq('institution_id', institutionId);
 
+      const studentRecordIds = students?.map(s => s.id) || [];
       const assignmentIds = courseAssignments?.map(ca => ca.id) || [];
 
-      // Fetch course completions using student record IDs (students.id, not user_id)
-      let contentCompletions: { student_id: string; content_id: string; class_assignment_id: string }[] = [];
-      if (studentRecordIds.length > 0 && assignmentIds.length > 0) {
-        const { data: completions } = await supabase
-          .from('student_content_completions')
-          .select('student_id, content_id, class_assignment_id')
-          .in('student_id', studentRecordIds)
-          .in('class_assignment_id', assignmentIds);
-        contentCompletions = completions || [];
+      // Build per-class allocation context (allocated sessions + their content)
+      const contextsByAssignment = await buildSessionCompletionContexts(assignmentIds);
+
+      // Per-class context (so each student is measured against the courses assigned to THEIR class)
+      const contextsByClass = new Map<string, ReturnType<typeof Array.from<any>> extends infer R ? any[] : any[]>();
+      contextsByAssignment.forEach(ctx => {
+        const arr = (contextsByClass.get(ctx.classId) as any[]) || [];
+        arr.push(ctx);
+        contextsByClass.set(ctx.classId, arr);
+      });
+
+      // Compute completed-sessions per student against their class's allocated sessions
+      const studentProgressMap = new Map<string, { completed: number; total: number }>();
+      // Group students by class for batch progress calc
+      const studentsByClass = new Map<string, string[]>();
+      (students || []).forEach(s => {
+        const arr = studentsByClass.get(s.class_id) || [];
+        arr.push(s.id);
+        studentsByClass.set(s.class_id, arr);
+      });
+
+      for (const [cid, sids] of studentsByClass.entries()) {
+        const ctxArr = (contextsByClass.get(cid) as any[]) || [];
+        const progress = await computeStudentSessionProgress(sids, ctxArr);
+        progress.forEach((p, sid) =>
+          studentProgressMap.set(sid, { completed: p.completedSessions, total: p.totalSessions })
+        );
       }
 
-      // Build a map of class_id -> total content count for assigned courses
-      const classContentCountMap = new Map<string, number>();
-      
-      if (courseAssignments && courseAssignments.length > 0) {
-        const courseIds = [...new Set(courseAssignments.map(ca => ca.course_id))];
-        
-        const { data: courseContent } = await supabase
-          .from('course_content')
-          .select('id, course_id')
-          .in('course_id', courseIds);
-
-        const courseContentMap = new Map<string, number>();
-        courseContent?.forEach(cc => {
-          courseContentMap.set(cc.course_id, (courseContentMap.get(cc.course_id) || 0) + 1);
-        });
-
-        for (const assignment of courseAssignments) {
-          const currentCount = classContentCountMap.get(assignment.class_id) || 0;
-          const courseContentCount = courseContentMap.get(assignment.course_id) || 0;
-          classContentCountMap.set(assignment.class_id, currentCount + courseContentCount);
-        }
-      }
 
       // Build maps for lookups
       const studentClassMap = new Map(students?.map(s => [s.id, s.class_id]) || []);
