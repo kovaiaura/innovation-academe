@@ -307,7 +307,6 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
         const studentXp = xpData.filter(x => x.student_id === student.user_id);
         const studentBadges = badgesData.filter(b => b.student_id === student.user_id);
         const studentProjects = projectsData.filter(p => p.student_id === student.id);
-        const studentCompletions = contentCompletions.filter(c => c.student_id === student.id);
 
         // Get weighted assessment score
         const weightedAssessment = getStudentWeightedAssessment(student.user_id, student.class_id);
@@ -332,13 +331,11 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
         const totalXp = studentXp.reduce((sum, x) => sum + x.points_earned, 0);
         const badgesCount = new Set(studentBadges.map(b => b.badge_id)).size;
         const projectsCount = new Set(studentProjects.map(p => p.project_id)).size;
-        
-        // Calculate course completion based on class-specific content count
-        const studentClassId = student.class_id;
-        const classContentCount = classContentCountMap.get(studentClassId) || 0;
-        const completionsCount = new Set(studentCompletions.map(c => c.content_id)).size;
-        const courseCompletion = classContentCount > 0 
-          ? (completionsCount / classContentCount) * 100 
+
+        // Session-based course completion: completed allocated sessions / total allocated sessions
+        const sessionProgress = studentProgressMap.get(student.id);
+        const courseCompletion = sessionProgress && sessionProgress.total > 0
+          ? (sessionProgress.completed / sessionProgress.total) * 100
           : 0;
 
         // Calculate overall score: Assessment 50% + Assignments 20% + Projects 20% + XP 10%
