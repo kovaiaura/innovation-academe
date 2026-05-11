@@ -436,7 +436,8 @@ export default function StudentDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{coursesEnrolled}</div>
-              <p className="text-xs text-muted-foreground">Active courses</p>
+              <p className="text-xs text-muted-foreground">Course progress: {courseProgress}%</p>
+              <Progress value={courseProgress} className="mt-2 h-1.5" />
             </CardContent>
           </Card>
 
