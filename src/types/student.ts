@@ -25,7 +25,7 @@ export interface Student {
   class_id: string; // Required - links student to specific class
   admission_date: string;
   date_of_birth: string;
-  gender: 'male' | 'female' | 'other';
+  gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
   status: 'active' | 'inactive' | 'transferred' | 'graduated';
   parent_name: string;
   parent_phone: string;
