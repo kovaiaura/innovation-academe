@@ -86,7 +86,7 @@ export function StudentEditDialog({ student, open, onOpenChange, onSave }: Stude
               <Label htmlFor="gender">Gender</Label>
               <Select
                 value={formData.gender}
-                onValueChange={(value: 'male' | 'female' | 'other') => setFormData({ ...formData, gender: value })}
+                onValueChange={(value: 'male' | 'female' | 'other' | 'prefer_not_to_say') => setFormData({ ...formData, gender: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -95,6 +95,7 @@ export function StudentEditDialog({ student, open, onOpenChange, onSave }: Stude
                   <SelectItem value="male">Male</SelectItem>
                   <SelectItem value="female">Female</SelectItem>
                   <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="prefer_not_to_say">Rather not say</SelectItem>
                 </SelectContent>
               </Select>
             </div>
