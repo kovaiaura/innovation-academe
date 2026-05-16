@@ -33,7 +33,7 @@ function dbStudentToStudent(dbStudent: DbStudent, className?: string, section?: 
     class: className || 'Unassigned',
     section: section || '',
     date_of_birth: dbStudent.date_of_birth || '',
-    gender: (dbStudent.gender || 'male') as 'male' | 'female' | 'other',
+    gender: (dbStudent.gender || 'male') as 'male' | 'female' | 'other' | 'prefer_not_to_say',
     blood_group: dbStudent.blood_group || '',
     avatar: dbStudent.avatar || '',
     admission_date: dbStudent.admission_date || '',
