@@ -5,7 +5,7 @@ export interface ParsedRow {
   email: string;
   password: string;
   date_of_birth: string;
-  gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+  gender: 'male' | 'female' | 'other';
   // Optional fields
   blood_group?: string;
   parent_name?: string;
@@ -82,13 +82,8 @@ export function validateRow(row: ParsedRow, rowIndex: number): ValidationResult 
   }
 
   // Gender validation
-  const rawGender = row.gender?.toLowerCase().trim();
-  const allowedGenders = ['male', 'female', 'other', 'prefer_not_to_say', 'rather_not_say'];
-  if (!rawGender || !allowedGenders.includes(rawGender)) {
-    errors.push('Gender must be male, female, other, or prefer_not_to_say');
-  } else if (rawGender === 'rather_not_say') {
-    // Normalize alternate spelling to canonical value
-    row.gender = 'prefer_not_to_say';
+  if (!row.gender || !['male', 'female', 'other'].includes(row.gender.toLowerCase())) {
+    errors.push('Gender must be male, female, or other');
   }
 
   // Optional field validations (only warnings, not errors)
@@ -159,7 +154,7 @@ export function generateTemplate(): Blob {
   ];
 
   // Add header comment explaining required vs optional
-  const headerComment = '# Required: student_name, email, password, date_of_birth, gender (male/female/other/prefer_not_to_say) | Optional: blood_group, parent_name, parent_phone, address, previous_school';
+  const headerComment = '# Required: student_name, email, password, date_of_birth, gender | Optional: blood_group, parent_name, parent_phone, address, previous_school';
   
   const csvContent = [
     headerComment,

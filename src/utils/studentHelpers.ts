@@ -61,16 +61,7 @@ export const getStatusColor = (status: string): string => {
 };
 
 export const getGenderIcon = (gender: string): string => {
-  if (gender === 'male') return '👨';
-  if (gender === 'female') return '👩';
-  // 'other' and 'prefer_not_to_say' use a neutral profile silhouette
-  return '👤';
-};
-
-export const formatGenderLabel = (gender: string): string => {
-  if (gender === 'prefer_not_to_say') return 'Rather not say';
-  if (!gender) return '';
-  return gender.charAt(0).toUpperCase() + gender.slice(1);
+  return gender === 'male' ? '👨' : gender === 'female' ? '👩' : '🧑';
 };
 
 export const filterStudents = (

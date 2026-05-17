@@ -1,40 +1,75 @@
-# Add "Rather not say" gender option
+# Fix Course Progress Showing 0%
 
-## Scope
-Add a fourth gender option `prefer_not_to_say` ("Rather not say") to both individual and bulk student creation in CEO → Institute → Classes → Students, and ensure it renders a neutral profile icon (no gendered emoji/avatar).
+## Root Cause
+Course completion is being calculated differently in different places, and some analytics are still content-count based instead of session-count based. The UI where sessions/levels show completed is based on session completion, but dashboards compare raw `student_content_completions` against broad course content totals. That can stay at `0%` when:
 
-## Files to change
+- progress rows are stored under student record IDs in one place but read with user/profile IDs elsewhere,
+- locked/unassigned content is included in the denominator,
+- dashboards average student percentages instead of using the class/institution maximum completion capacity,
+- student dashboard only shows course count, not actual completion percentage.
 
-### Types
-- `src/types/student.ts` — extend `gender` union to `'male' | 'female' | 'other' | 'prefer_not_to_say'`.
-- `src/types/institution.ts` — same union where gender is referenced (analytics fields stay unchanged; "prefer_not_to_say" counted under existing `other` bucket).
+## Correct Formula
+Use session-based progress everywhere, matching the way officers mark sessions complete:
 
-### Individual add/edit dialogs (CEO institution flow)
-- `src/components/institution/AddStudentToClassDialog.tsx` — add `<SelectItem value="prefer_not_to_say">Rather not say</SelectItem>`; widen the `value` cast.
-- `src/components/institution/StudentEditDialog.tsx` — same select option + type widen.
-- `src/components/student/AddEditStudentDialog.tsx` — same select option (used by Management Students page).
+```text
+Individual student progress = completed allocated sessions / total allocated sessions
 
-### Bulk upload (CEO institution flow)
-- `src/components/institution/BulkUploadStudentsToClassDialog.tsx` — accept `rather_not_say` / `prefer_not_to_say` in parsing/display.
-- `src/components/student/BulkUploadDialog.tsx` — same.
-- `src/utils/csvParser.ts`:
-  - Extend allowed values: `['male','female','other','prefer_not_to_say','rather_not_say']` (normalized to `prefer_not_to_say`).
-  - Update error message: "Gender must be male, female, other, or prefer_not_to_say".
-  - Update CSV template header comment + sample rows to include the new option.
+Class progress = total completed student-sessions / (allocated sessions × active students)
 
-### Neutral profile icon
-- `src/utils/studentHelpers.ts`:
-  - `getGenderIcon`: return `'👤'` for both `other` and `prefer_not_to_say` (neutral silhouette), keep 👨/👩 for male/female.
-- Wherever an avatar fallback is rendered (e.g. `ClassStudentTable`, `StudentDetailsDialog`), `AvatarFallback` already falls back to initials when no avatar URL is set — no gendered placeholder image is used today, so no avatar image change needed. The neutral icon applies to the emoji helper only.
+Institution progress = sum completed student-sessions across classes / sum max student-sessions across classes
+```
 
-### Filter UI
-- `src/components/institution/ClassStudentTable.tsx` — add "Rather not say" to the gender filter `<Select>`.
+A session counts as completed for a student only when all content in that allocated session has a completion row for that student.
 
-## Non-changes
-- Database: `students.gender` is a free-text column with no CHECK constraint, so no migration is needed.
-- Analytics gender_distribution math is unaffected; `prefer_not_to_say` is grouped with non-male/non-female counts.
+## Implementation Plan
 
-## Display label
-- UI label: **"Rather not say"**
-- Stored value: **`prefer_not_to_say`**
-- CSV accepted (case-insensitive): `prefer_not_to_say`, `rather_not_say`
+### 1. Add one shared progress calculator
+Create a reusable helper, for example `src/utils/courseProgressCalculations.ts`, that:
+
+- loads course-class assignments for an institution/class/student context,
+- loads allocated module/session assignments,
+- loads active students for each class,
+- loads course content only for allocated sessions,
+- loads completions using both `students.id` and legacy `students.user_id` matching where needed,
+- returns per-student, per-class, and institution-level percentages using the formulas above.
+
+This prevents every dashboard from having its own slightly different logic.
+
+### 2. Fix comprehensive analytics
+Update `src/hooks/useComprehensiveAnalytics.ts` so:
+
+- individual student `course_completion` uses that student’s completed allocated sessions,
+- class `course_completion` uses the max completion count: `sessions × active students`,
+- institution `course_completion` uses the total max completion count across all classes,
+- the Course Progress card in class/student analytics stops showing `0%` when sessions are actually completed.
+
+### 3. Fix institution-wide analytics
+Update:
+
+- `src/hooks/useInstitutionAnalytics.ts`
+- `src/hooks/useAllInstitutionsAnalytics.ts`
+
+so CEO/system-level institution analytics use the same session-based calculation instead of raw content totals or course usage.
+
+### 4. Fix course performance dialog
+Update `src/hooks/useCoursePerformance.ts` so each course’s progress is based on allocated course sessions and student-session completions, not broad content totals.
+
+### 5. Fix student dashboard visibility
+Update `src/pages/student/Dashboard.tsx` to calculate and show actual course progress for the logged-in student, not just number of enrolled courses.
+
+### 6. Ensure refresh after marking complete
+Confirm and extend query invalidation after bulk/session marking so these keys refresh immediately:
+
+- `comprehensive-analytics`
+- `institution-analytics`
+- `all-institutions-analytics`
+- `course-performance`
+- `student-courses`
+- `student-course-progress`
+- `session-completion-status`
+
+## Expected Result
+- Student progress shows their own completed sessions out of allocated sessions.
+- Class progress shows completed student-session count out of the maximum possible for available active students.
+- Institution/CEO analytics aggregate the same real completion data.
+- Bulk-marked sessions update dashboards without requiring manual recalculation.
