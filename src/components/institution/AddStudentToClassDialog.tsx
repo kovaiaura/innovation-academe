@@ -48,7 +48,7 @@ export function AddStudentToClassDialog({
     roll_number: '',
     admission_number: '',
     date_of_birth: '',
-    gender: 'male' as 'male' | 'female' | 'other',
+    gender: 'male' as 'male' | 'female' | 'other' | 'prefer_not_to_say',
     blood_group: '',
     admission_date: format(new Date(), 'yyyy-MM-dd'),
     previous_school: '',
@@ -259,6 +259,7 @@ export function AddStudentToClassDialog({
                     <SelectItem value="male">Male</SelectItem>
                     <SelectItem value="female">Female</SelectItem>
                     <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="prefer_not_to_say">Rather not say</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

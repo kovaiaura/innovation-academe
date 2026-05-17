@@ -89,7 +89,7 @@ export default function ClassDetail() {
     institution_id: s.institution_id,
     admission_date: s.admission_date || undefined,
     date_of_birth: s.date_of_birth || undefined,
-    gender: (s.gender as 'male' | 'female' | 'other') || 'male',
+    gender: (s.gender as 'male' | 'female' | 'other' | 'prefer_not_to_say') || 'male',
     status: (s.status as 'active' | 'inactive') || 'active',
     parent_name: s.parent_name || undefined,
     parent_phone: s.parent_phone || undefined,
