@@ -58,40 +58,39 @@ export function useSessionCompletion(): SessionCompletionResult {
     setError(null);
 
     try {
-      // 1. Fetch all content in this session
+      // 1. Fetch all content in this session (may be empty for content-less sessions)
       const { data: contentItems, error: contentError } = await supabase
         .from('course_content')
         .select('id')
         .eq('session_id', sessionId);
 
       if (contentError) throw contentError;
-      if (!contentItems || contentItems.length === 0) {
-        if (!silent) toast.error('No content found in this session');
-        return false;
+
+      // 2. If the session has content, upsert per-content completion rows
+      if (contentItems && contentItems.length > 0) {
+        const completionRecords = studentIds.flatMap(studentId =>
+          contentItems.map(content => ({
+            student_id: studentId,
+            content_id: content.id,
+            class_assignment_id: classAssignmentId,
+            watch_percentage: 100,
+            completed_at: new Date().toISOString()
+          }))
+        );
+
+        const { error: insertError } = await supabase
+          .from('student_content_completions')
+          .upsert(completionRecords, {
+            onConflict: 'student_id,content_id,class_assignment_id',
+            ignoreDuplicates: false
+          });
+
+        if (insertError) throw insertError;
       }
 
-      // 2. Create completion records for each student + content combination
-      const completionRecords = studentIds.flatMap(studentId =>
-        contentItems.map(content => ({
-          student_id: studentId,
-          content_id: content.id,
-          class_assignment_id: classAssignmentId,
-          watch_percentage: 100,
-          completed_at: new Date().toISOString()
-        }))
-      );
-
-      // 3. Upsert completions (avoid duplicates)
-      const { error: insertError } = await supabase
-        .from('student_content_completions')
-        .upsert(completionRecords, {
-          onConflict: 'student_id,content_id,class_assignment_id',
-          ignoreDuplicates: false
-        });
-
-      if (insertError) throw insertError;
-
-      // 4. Also create/update class_session_attendance for management dashboard
+      // 3. ALWAYS create/update class_session_attendance so the officer's
+      //    "mark complete" is recorded even when the session has no content.
+      //    This is the session-level completion source used by analytics.
       await createAttendanceRecord(classId, studentIds, sessionId, timetableAssignmentId);
 
       // 5. Trigger certificate issuance via edge function (if module/course info available)

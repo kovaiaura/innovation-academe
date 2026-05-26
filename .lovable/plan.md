@@ -1,40 +1,49 @@
-# Add "Rather not say" gender option
+## Why progress shows 0% in CEO / Management dashboards
 
-## Scope
-Add a fourth gender option `prefer_not_to_say` ("Rather not say") to both individual and bulk student creation in CEO → Institute → Classes → Students, and ensure it renders a neutral profile icon (no gendered emoji/avatar).
+Two real bugs combined:
 
-## Files to change
+1. **Officer's "Mark session complete" silently fails for sessions with no `course_content` rows.**
+   In `useSessionCompletion.ts` we early-return when `course_content` for the session is empty, so neither `student_content_completions` nor `class_session_attendance` gets written. Most allocated sessions in the project currently have zero content rows, so officer clicks produce no progress signal at all.
 
-### Types
-- `src/types/student.ts` — extend `gender` union to `'male' | 'female' | 'other' | 'prefer_not_to_say'`.
-- `src/types/institution.ts` — same union where gender is referenced (analytics fields stay unchanged; "prefer_not_to_say" counted under existing `other` bucket).
+2. **Class and institution progress are computed as the AVERAGE across all students.**
+   Even when one student completes a few sessions, the class average rounds to ~0%. The user wants class-wise/institution-wise progress to reflect the **top student's completion**, and individual to stay as their own %.
 
-### Individual add/edit dialogs (CEO institution flow)
-- `src/components/institution/AddStudentToClassDialog.tsx` — add `<SelectItem value="prefer_not_to_say">Rather not say</SelectItem>`; widen the `value` cast.
-- `src/components/institution/StudentEditDialog.tsx` — same select option + type widen.
-- `src/components/student/AddEditStudentDialog.tsx` — same select option (used by Management Students page).
+3. **Progress calc ignores session-level completions.**
+   `courseProgressCalculations.ts` only counts a session done when every `course_content` row has a `student_content_completions` row. A session marked complete by an officer (or a level/module marked complete previously) without per-content rows is never counted.
 
-### Bulk upload (CEO institution flow)
-- `src/components/institution/BulkUploadStudentsToClassDialog.tsx` — accept `rather_not_say` / `prefer_not_to_say` in parsing/display.
-- `src/components/student/BulkUploadDialog.tsx` — same.
-- `src/utils/csvParser.ts`:
-  - Extend allowed values: `['male','female','other','prefer_not_to_say','rather_not_say']` (normalized to `prefer_not_to_say`).
-  - Update error message: "Gender must be male, female, other, or prefer_not_to_say".
-  - Update CSV template header comment + sample rows to include the new option.
+## Fix
 
-### Neutral profile icon
-- `src/utils/studentHelpers.ts`:
-  - `getGenderIcon`: return `'👤'` for both `other` and `prefer_not_to_say` (neutral silhouette), keep 👨/👩 for male/female.
-- Wherever an avatar fallback is rendered (e.g. `ClassStudentTable`, `StudentDetailsDialog`), `AvatarFallback` already falls back to initials when no avatar URL is set — no gendered placeholder image is used today, so no avatar image change needed. The neutral icon applies to the emoji helper only.
+### A. Always record officer "mark session complete" (even with zero content)
 
-### Filter UI
-- `src/components/institution/ClassStudentTable.tsx` — add "Rather not say" to the gender filter `<Select>`.
+`src/hooks/useSessionCompletion.ts`
+- Remove the early-return when `course_content` for the session is empty.
+- Still upsert per-content `student_content_completions` when content exists.
+- ALWAYS call `createAttendanceRecord(...)` so `class_session_attendance.is_session_completed = true` is written with the per-student `present/absent` status in `attendance_records`. This becomes the session-level "officer marked complete" source.
 
-## Non-changes
-- Database: `students.gender` is a free-text column with no CHECK constraint, so no migration is needed.
-- Analytics gender_distribution math is unaffected; `prefer_not_to_say` is grouped with non-male/non-female counts.
+### B. Treat session-level marks as completion
 
-## Display label
-- UI label: **"Rather not say"**
-- Stored value: **`prefer_not_to_say`**
-- CSV accepted (case-insensitive): `prefer_not_to_say`, `rather_not_say`
+`src/utils/courseProgressCalculations.ts`
+- Add a second source: load `class_session_attendance` rows where `is_session_completed = true` for the relevant class(es) and parse `attendance_records` JSON to build a map of `studentRecordId -> Set<session_id>` completed-by-officer.
+- A session counts as completed for a student if **either**:
+  - it has content AND all `course_content` rows have matching `student_content_completions` (existing rule), **or**
+  - the student is marked `present` in a `class_session_attendance` row for that session with `is_session_completed = true` (new rule).
+- This makes empty sessions countable and back-fills previously marked sessions/levels.
+
+### C. Aggregate class & institution as the TOP student's progress
+
+`src/hooks/useComprehensiveAnalytics.ts`
+- `classPerformance[].course_completion` = `Math.max(...classStudents.map(s => s.course_completion))` (instead of average).
+- `InstitutionPerformance.course_completion` = `Math.max(...classPerformance.map(c => c.course_completion))`.
+
+`src/hooks/useInstitutionAnalytics.ts`, `src/hooks/useAllInstitutionsAnalytics.ts`, `src/hooks/useClassAnalytics.ts`
+- Switch their `course_completion` aggregates from average → max across students (class) and max across classes (institution), using the same shared `computeStudentSessionProgress` utility for the per-student %.
+
+### D. No DB schema change
+
+No migration required. Existing `class_session_attendance.attendance_records` JSON already stores per-student presence; we just start reading it as a completion source.
+
+### Out of scope (intentionally not changed)
+
+- Assessment weightages, assignment averages, XP/badges/projects aggregates.
+- Per-student calculation rule (stays sessions-completed / sessions-allocated).
+- Student dashboard's own % (already uses the same shared util — will automatically benefit from B).

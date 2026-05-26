@@ -3,16 +3,16 @@ import { supabase } from '@/integrations/supabase/client';
 /**
  * Shared session-based course progress utilities.
  *
- * Rules used everywhere (student/class/institution):
- *  - A SESSION is "completed" for a student when ALL course_content rows
- *    in that session have a matching student_content_completions row.
- *  - Individual student progress = completed allocated sessions / total allocated sessions.
- *  - Class progress = sum of completed student-sessions across active students
- *                     / (allocated sessions × active students).
- *  - Institution progress = sum across classes using the same numerator/denominator.
+ * A session counts as "completed" for a student when EITHER:
+ *  - it has course_content rows AND every row has a matching
+ *    student_content_completions row for that student, OR
+ *  - the session was marked completed for the student via the officer's
+ *    "mark session complete" flow (class_session_attendance row with
+ *    is_session_completed = true and the student present in attendance_records).
  *
- * Locked sessions are still counted in the denominator only if they are part
- * of the class assignment (this matches what officers see and mark).
+ * Per-student progress = completed allocated sessions / total allocated sessions.
+ * Class progress and institution progress are aggregated as the MAX across
+ * students/classes by the analytics hooks (top performer rule).
  */
 
 export interface SessionCompletionContext {
@@ -111,6 +111,87 @@ export async function buildSessionCompletionContexts(
 }
 
 /**
+ * Load officer-marked session completions for the given classes.
+ * Returns map studentRecordId -> Set<sessionId> of sessions marked complete
+ * via class_session_attendance.is_session_completed where the student appears
+ * as present in the attendance_records JSON.
+ */
+async function loadOfficerMarkedSessionsByStudent(
+  classIds: string[]
+): Promise<Map<string, Set<string>>> {
+  const result = new Map<string, Set<string>>();
+  if (classIds.length === 0) return result;
+
+  const { data: attendanceRows } = await supabase
+    .from('class_session_attendance')
+    .select('subject, period_label, attendance_records, is_session_completed, class_id')
+    .in('class_id', classIds)
+    .eq('is_session_completed', true);
+
+  if (!attendanceRows || attendanceRows.length === 0) return result;
+
+  // Resolve subject/period_label to session_id via the classes' allocated sessions.
+  const { data: classAssignments } = await supabase
+    .from('course_class_assignments')
+    .select('id, class_id')
+    .in('class_id', classIds);
+  const assignIdToClass = new Map<string, string>();
+  (classAssignments || []).forEach((a: any) => assignIdToClass.set(a.id, a.class_id));
+
+  const { data: moduleAssigns } = (classAssignments || []).length
+    ? await supabase
+        .from('class_module_assignments')
+        .select('id, class_assignment_id')
+        .in('class_assignment_id', (classAssignments || []).map((a: any) => a.id))
+    : { data: [] as any[] };
+  const moduleIdToClass = new Map<string, string>();
+  (moduleAssigns || []).forEach((m: any) => {
+    const cls = assignIdToClass.get(m.class_assignment_id);
+    if (cls) moduleIdToClass.set(m.id, cls);
+  });
+
+  const { data: sessionAssigns } = (moduleAssigns || []).length
+    ? await supabase
+        .from('class_session_assignments')
+        .select('session_id, class_module_assignment_id, course_sessions(id, title)')
+        .in('class_module_assignment_id', (moduleAssigns || []).map((m: any) => m.id))
+    : { data: [] as any[] };
+
+  const titleToSessionByClass = new Map<string, Map<string, string>>();
+  (sessionAssigns || []).forEach((row: any) => {
+    const cls = moduleIdToClass.get(row.class_module_assignment_id);
+    const title: string | undefined = row?.course_sessions?.title;
+    const sid: string | undefined = row?.session_id;
+    if (!cls || !title || !sid) return;
+    const m = titleToSessionByClass.get(cls) || new Map<string, string>();
+    m.set(title, sid);
+    titleToSessionByClass.set(cls, m);
+  });
+
+  attendanceRows.forEach((row: any) => {
+    const titleMap = titleToSessionByClass.get(row.class_id);
+    if (!titleMap) return;
+    const sid =
+      titleMap.get(row.subject) ||
+      titleMap.get(row.period_label);
+    if (!sid) return;
+
+    const records = Array.isArray(row.attendance_records) ? row.attendance_records : [];
+    records.forEach((rec: any) => {
+      if (!rec?.student_id) return;
+      if (rec.status === 'present' || rec.status === 'late') {
+        const set = result.get(rec.student_id) || new Set<string>();
+        set.add(sid);
+        result.set(rec.student_id, set);
+      }
+    });
+  });
+
+  return result;
+}
+
+
+/**
  * Compute per-student completed-session counts for a list of class assignments.
  * Returns map: studentRecordId -> { totalSessions, completedSessions } across ALL given assignments combined.
  */
@@ -147,6 +228,10 @@ export async function computeStudentSessionProgress(
     completions = (data || []) as any;
   }
 
+  // Also load officer-marked session completions for the involved classes
+  const classIds = [...new Set(contexts.map(c => c.classId))];
+  const markedBySession = await loadOfficerMarkedSessionsByStudent(classIds);
+
   // Build set per (student, classAssignment) of completed content ids
   const completedByStudentAssign = new Map<string, Set<string>>();
   completions.forEach(c => {
@@ -159,12 +244,18 @@ export async function computeStudentSessionProgress(
   for (const sid of studentRecordIds) {
     let totalSessions = 0;
     let completedSessions = 0;
+    const officerMarked = markedBySession.get(sid) || new Set<string>();
     for (const ctx of contexts) {
       const completedSet =
         completedByStudentAssign.get(`${sid}__${ctx.classAssignmentId}`) || new Set<string>();
-      ctx.contentBySession.forEach(contentIds => {
+      ctx.contentBySession.forEach((contentIds, sessionId) => {
         totalSessions += 1;
-        if (contentIds.length === 0) return; // session with no content does not count as completed
+        // Officer-marked counts as completed regardless of content
+        if (officerMarked.has(sessionId)) {
+          completedSessions += 1;
+          return;
+        }
+        if (contentIds.length === 0) return; // empty session and not officer-marked: not completed
         if (contentIds.every(cid => completedSet.has(cid))) {
           completedSessions += 1;
         }
