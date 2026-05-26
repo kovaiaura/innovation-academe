@@ -197,10 +197,10 @@ export function BulkMarkCompleteTab({ classId, className }: BulkMarkCompleteTabP
       toast.success(`All ${total} session${total !== 1 ? 's' : ''} marked complete for ${studentArr.length} student${studentArr.length !== 1 ? 's' : ''}`);
       setSelectedSessionIds(new Set());
     } else if (successCount > 0) {
-      toast.warning(`${successCount} of ${total} sessions marked complete (${total - successCount} had no content or failed)`);
+      toast.warning(`${successCount} of ${total} sessions marked complete (${total - successCount} failed)`);
       setSelectedSessionIds(new Set());
     } else {
-      toast.error('Could not mark any sessions complete. Selected sessions may have no content.');
+      toast.error('Could not mark any sessions complete.');
     }
   };
 
