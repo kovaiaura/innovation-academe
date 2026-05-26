@@ -135,12 +135,8 @@ export function useAllInstitutionsAnalytics() {
         const totalCourses = instCourses.length;
         const coursesInUse = new Set(instCourses.map(c => c.course_id)).size;
 
-        // Real course completion rate
-        const instExpected = expectedByInstitution.get(inst.id) || 0;
-        const instCompleted = completionsByInstitution.get(inst.id) || 0;
-        const realCompletionRate = instExpected > 0
-          ? Math.round((instCompleted / instExpected) * 1000) / 10
-          : 0;
+        // Top-student completion % across all classes in this institution
+        const realCompletionRate = completionRateByInstitution.get(inst.id) || 0;
 
         // Calculate engagement score (weighted average)
         const studentRatio = totalStudents > 0 ? (activeStudents / totalStudents) * 100 : 0;
