@@ -130,16 +130,36 @@ async function loadOfficerMarkedSessionsByStudent(
 
   if (!attendanceRows || attendanceRows.length === 0) return result;
 
-  // Build a session-title lookup from the classes' allocated sessions so we can
-  // resolve subject/period_label -> session_id.
-  const { data: sessionAssigns } = await supabase
-    .from('class_session_assignments')
-    .select('session_id, class_module_assignment_id, course_sessions(id, title), class_module_assignments!inner(class_assignment_id, course_class_assignments!inner(class_id))')
-    .in('class_module_assignments.course_class_assignments.class_id', classIds);
+  // Resolve subject/period_label to session_id via the classes' allocated sessions.
+  const { data: classAssignments } = await supabase
+    .from('course_class_assignments')
+    .select('id, class_id')
+    .in('class_id', classIds);
+  const assignIdToClass = new Map<string, string>();
+  (classAssignments || []).forEach((a: any) => assignIdToClass.set(a.id, a.class_id));
+
+  const { data: moduleAssigns } = (classAssignments || []).length
+    ? await supabase
+        .from('class_module_assignments')
+        .select('id, class_assignment_id')
+        .in('class_assignment_id', (classAssignments || []).map((a: any) => a.id))
+    : { data: [] as any[] };
+  const moduleIdToClass = new Map<string, string>();
+  (moduleAssigns || []).forEach((m: any) => {
+    const cls = assignIdToClass.get(m.class_assignment_id);
+    if (cls) moduleIdToClass.set(m.id, cls);
+  });
+
+  const { data: sessionAssigns } = (moduleAssigns || []).length
+    ? await supabase
+        .from('class_session_assignments')
+        .select('session_id, class_module_assignment_id, course_sessions(id, title)')
+        .in('class_module_assignment_id', (moduleAssigns || []).map((m: any) => m.id))
+    : { data: [] as any[] };
 
   const titleToSessionByClass = new Map<string, Map<string, string>>();
   (sessionAssigns || []).forEach((row: any) => {
-    const cls = row?.class_module_assignments?.course_class_assignments?.class_id;
+    const cls = moduleIdToClass.get(row.class_module_assignment_id);
     const title: string | undefined = row?.course_sessions?.title;
     const sid: string | undefined = row?.session_id;
     if (!cls || !title || !sid) return;
@@ -169,6 +189,7 @@ async function loadOfficerMarkedSessionsByStudent(
 
   return result;
 }
+
 
 /**
  * Compute per-student completed-session counts for a list of class assignments.
