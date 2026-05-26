@@ -420,7 +420,7 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
           total_xp: classStudents.reduce((sum, s) => sum + s.total_xp, 0),
           avg_badges: Math.round((classStudents.reduce((sum, s) => sum + s.badges_count, 0) / classStudents.length) * 10) / 10,
           avg_projects: Math.round((classStudents.reduce((sum, s) => sum + s.projects_count, 0) / classStudents.length) * 10) / 10,
-          course_completion: Math.round((classStudents.reduce((sum, s) => sum + s.course_completion, 0) / classStudents.length) * 10) / 10,
+          course_completion: Math.round(Math.max(...classStudents.map(s => s.course_completion)) * 10) / 10,
           overall_score: Math.round((classStudents.reduce((sum, s) => sum + s.overall_score, 0) / classStudents.length) * 10) / 10,
           topStudents: top10,
           allStudents: rankedAll,
@@ -460,8 +460,8 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
         total_xp: allStudents.reduce((sum, s) => sum + s.total_xp, 0),
         total_badges: allStudents.reduce((sum, s) => sum + s.badges_count, 0),
         total_projects: allStudents.reduce((sum, s) => sum + s.projects_count, 0),
-        course_completion: allStudents.length > 0 
-          ? Math.round((allStudents.reduce((sum, s) => sum + s.course_completion, 0) / allStudents.length) * 10) / 10 
+        course_completion: classPerformance.length > 0
+          ? Math.round(Math.max(0, ...classPerformance.map(c => c.course_completion)) * 10) / 10
           : 0,
         topStudents: top10Overall,
         allStudents: sortedAll.map((s, i) => ({ ...s, rank: i + 1 })),
