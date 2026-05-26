@@ -1,6 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ClassAnalytics } from '@/types/institution';
+import {
+  buildSessionCompletionContexts,
+  computeStudentSessionProgress,
+} from '@/utils/courseProgressCalculations';
+
 
 export function useClassAnalytics(classId: string | undefined, institutionId?: string) {
   return useQuery({
@@ -43,42 +48,20 @@ export function useClassAnalytics(classId: string | undefined, institutionId?: s
 
       if (courseAssignError) throw courseAssignError;
 
-      // Fetch total allocated sessions and completion data
-      let totalCompletedContentEntries = 0;
-      let totalContentEntries = 0;
+      // Compute per-student session-based progress; class progress = max student %
+      let classCompletionRate = 0;
       const assignmentIds = courseAssignments?.map(ca => ca.id) || [];
-
-      if (assignmentIds.length > 0) {
-        const { data: moduleAssigns } = await supabase
-          .from('class_module_assignments')
-          .select('id')
-          .in('class_assignment_id', assignmentIds);
-
-        const moduleAssignIds = moduleAssigns?.map(m => m.id) || [];
-
-        if (moduleAssignIds.length > 0) {
-          const { data: sessionAssigns } = await supabase
-            .from('class_session_assignments')
-            .select('id, session_id')
-            .in('class_module_assignment_id', moduleAssignIds);
-
-          if (sessionAssigns && sessionAssigns.length > 0) {
-            const sessionIds = sessionAssigns.map(s => s.session_id);
-            const { data: contentItems } = await supabase
-              .from('course_content')
-              .select('id, session_id')
-              .in('session_id', sessionIds);
-
-            totalContentEntries = (contentItems?.length || 0) * (students?.length || 1);
-
-            const { data: completions } = await supabase
-              .from('student_content_completions')
-              .select('id')
-              .in('class_assignment_id', assignmentIds);
-
-            totalCompletedContentEntries = completions?.length || 0;
-          }
-        }
+      const activeStudentRecordIds = (students || [])
+        .filter(s => s.status === 'active')
+        .map(s => s.id);
+      if (assignmentIds.length > 0 && activeStudentRecordIds.length > 0) {
+        const ctxMap = await buildSessionCompletionContexts(assignmentIds);
+        const progress = await computeStudentSessionProgress(
+          activeStudentRecordIds,
+          Array.from(ctxMap.values())
+        );
+        const pcts = Array.from(progress.values()).map(p => p.progressPercentage);
+        classCompletionRate = pcts.length > 0 ? Math.max(...pcts) : 0;
       }
 
       // Fetch XP transactions for top students
