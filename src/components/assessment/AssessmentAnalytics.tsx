@@ -25,6 +25,8 @@ export function AssessmentAnalytics({ assessment, institutionId, onClose }: Asse
   const [selectedAttempt, setSelectedAttempt] = useState<AssessmentAttempt | null>(null);
   const [filterClass, setFilterClass] = useState<string>('all');
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [attemptToDelete, setAttemptToDelete] = useState<AssessmentAttempt | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadData();
