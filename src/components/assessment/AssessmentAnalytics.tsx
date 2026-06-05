@@ -69,6 +69,20 @@ export function AssessmentAnalytics({ assessment, institutionId, onClose }: Asse
     setDetailDialogOpen(true);
   };
 
+  const handleConfirmDelete = async () => {
+    if (!attemptToDelete) return;
+    setIsDeleting(true);
+    const success = await assessmentService.deleteAttempt(attemptToDelete.id);
+    setIsDeleting(false);
+    if (success) {
+      toast.success('Attempt deleted');
+      setAttemptToDelete(null);
+      await loadData();
+    } else {
+      toast.error('Failed to delete attempt');
+    }
+  };
+
   // Calculate statistics
   const completedAttempts = attempts.filter(a => a.status !== 'in_progress');
   const totalAttempts = attempts.length;
