@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { assessmentService } from '@/services/assessment.service';
 import { Assessment, AssessmentAttempt, AssessmentQuestion } from '@/types/assessment';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Users, TrendingUp, Clock, Award, CheckCircle, XCircle, RotateCcw, Eye, Loader2 } from 'lucide-react';
+import { Users, TrendingUp, Clock, Award, CheckCircle, XCircle, RotateCcw, Eye, Loader2, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 
 interface AssessmentAnalyticsProps {
@@ -24,6 +25,8 @@ export function AssessmentAnalytics({ assessment, institutionId, onClose }: Asse
   const [selectedAttempt, setSelectedAttempt] = useState<AssessmentAttempt | null>(null);
   const [filterClass, setFilterClass] = useState<string>('all');
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [attemptToDelete, setAttemptToDelete] = useState<AssessmentAttempt | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -64,6 +67,20 @@ export function AssessmentAnalytics({ assessment, institutionId, onClose }: Asse
     const fullAttempt = await assessmentService.getAttemptById(attempt.id);
     setSelectedAttempt(fullAttempt);
     setDetailDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!attemptToDelete) return;
+    setIsDeleting(true);
+    const success = await assessmentService.deleteAttempt(attemptToDelete.id);
+    setIsDeleting(false);
+    if (success) {
+      toast.success('Attempt deleted');
+      setAttemptToDelete(null);
+      await loadData();
+    } else {
+      toast.error('Failed to delete attempt');
+    }
   };
 
   // Calculate statistics
@@ -315,6 +332,17 @@ export function AssessmentAnalytics({ assessment, institutionId, onClose }: Asse
                         {attempt.retake_allowed && (
                           <Badge variant="outline" className="text-xs">Retake Allowed</Badge>
                         )}
+                        {attempt.status !== 'in_progress' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setAttemptToDelete(attempt)}
+                            title="Delete Attempt"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -449,6 +477,29 @@ export function AssessmentAnalytics({ assessment, institutionId, onClose }: Asse
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!attemptToDelete} onOpenChange={(open) => !open && setAttemptToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this attempt?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove {attemptToDelete?.student_name}'s submission
+              ({attemptToDelete?.score}/{attemptToDelete?.total_points} • {attemptToDelete?.percentage.toFixed(1)}%).
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleConfirmDelete(); }}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
