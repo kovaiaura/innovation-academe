@@ -477,6 +477,29 @@ export function AssessmentAnalytics({ assessment, institutionId, onClose }: Asse
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!attemptToDelete} onOpenChange={(open) => !open && setAttemptToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this attempt?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove {attemptToDelete?.student_name}'s submission
+              ({attemptToDelete?.score}/{attemptToDelete?.total_points} • {attemptToDelete?.percentage.toFixed(1)}%).
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleConfirmDelete(); }}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
