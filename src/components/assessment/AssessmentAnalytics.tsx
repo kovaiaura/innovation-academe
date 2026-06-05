@@ -332,6 +332,17 @@ export function AssessmentAnalytics({ assessment, institutionId, onClose }: Asse
                         {attempt.retake_allowed && (
                           <Badge variant="outline" className="text-xs">Retake Allowed</Badge>
                         )}
+                        {attempt.status !== 'in_progress' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setAttemptToDelete(attempt)}
+                            title="Delete Attempt"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
