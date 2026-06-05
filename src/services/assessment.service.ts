@@ -1001,6 +1001,32 @@ export const assessmentService = {
     return true;
   },
 
+  async deleteAttempt(attemptId: string): Promise<boolean> {
+    const { error: answersError } = await supabase
+      .from('assessment_answers')
+      .delete()
+      .eq('attempt_id', attemptId);
+
+    if (answersError) {
+      console.error('Error deleting attempt answers:', answersError);
+      return false;
+    }
+
+    const { error: attemptError } = await supabase
+      .from('assessment_attempts')
+      .delete()
+      .eq('id', attemptId);
+
+    if (attemptError) {
+      console.error('Error deleting attempt:', attemptError);
+      return false;
+    }
+
+    return true;
+  },
+
+
+
   // ============================================
   // Auto-Mark Absent Students
   // ============================================
