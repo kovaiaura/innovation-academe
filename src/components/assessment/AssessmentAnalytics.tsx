@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { assessmentService } from '@/services/assessment.service';
 import { Assessment, AssessmentAttempt, AssessmentQuestion } from '@/types/assessment';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Users, TrendingUp, Clock, Award, CheckCircle, XCircle, RotateCcw, Eye, Loader2 } from 'lucide-react';
+import { Users, TrendingUp, Clock, Award, CheckCircle, XCircle, RotateCcw, Eye, Loader2, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 
 interface AssessmentAnalyticsProps {
