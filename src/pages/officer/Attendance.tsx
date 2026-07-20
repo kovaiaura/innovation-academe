@@ -856,11 +856,15 @@ const Attendance = () => {
                 </Button>
                 <Button 
                   onClick={handleMarkSessionCompleted} 
-                  disabled={markCompletedMutation.isPending || isSessionCompleted}
+                  disabled={markCompletedMutation.isPending || isMarkingCurriculum || isSessionCompleted}
                   className="gap-2"
                 >
                   <CheckCircle2 className="h-4 w-4" />
-                  {markCompletedMutation.isPending ? "Completing..." : "Mark Session Complete"}
+                  {markCompletedMutation.isPending || isMarkingCurriculum
+                    ? "Completing..."
+                    : selectedCurriculumSessionId
+                      ? "Save Attendance & Mark Session Completed"
+                      : "Mark Session Complete"}
                 </Button>
               </div>
             </CardContent>
