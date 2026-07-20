@@ -607,6 +607,82 @@ const Attendance = () => {
                 <p className="text-sm text-muted-foreground">No classes scheduled for this date</p>
               </div>
             )}
+
+            {/* Curriculum picker: Course -> Level -> Session */}
+            {selectedSession && (
+              classCourseAssignments.length > 0 ? (
+                <div className="grid gap-3 md:grid-cols-3 pt-2 border-t">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Course (optional)</label>
+                    <Select
+                      value={selectedCourseAssignmentId}
+                      onValueChange={(v) => {
+                        setSelectedCourseAssignmentId(v);
+                        setSelectedModuleAssignmentId('');
+                        setSelectedCurriculumSessionId('');
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose course..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {classCourseAssignments.map((ca: any) => (
+                          <SelectItem key={ca.id} value={ca.id}>
+                            {ca.courses?.title} {ca.courses?.course_code ? `(${ca.courses.course_code})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Level / Module</label>
+                    <Select
+                      value={selectedModuleAssignmentId}
+                      onValueChange={(v) => {
+                        setSelectedModuleAssignmentId(v);
+                        setSelectedCurriculumSessionId('');
+                      }}
+                      disabled={!selectedCourseAssignmentId || moduleAssignments.length === 0}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose level..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {moduleAssignments.map((m: any) => (
+                          <SelectItem key={m.id} value={m.id} disabled={!m.is_unlocked}>
+                            {m.course_modules?.title || 'Untitled'} {!m.is_unlocked ? '(Locked)' : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Session</label>
+                    <Select
+                      value={selectedCurriculumSessionId}
+                      onValueChange={setSelectedCurriculumSessionId}
+                      disabled={!selectedModuleAssignmentId || curriculumSessionAssignments.length === 0}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose session..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {curriculumSessionAssignments.map((s: any) => (
+                          <SelectItem key={s.id} value={s.session_id} disabled={!s.is_unlocked}>
+                            {s.course_sessions?.title || 'Untitled'} {!s.is_unlocked ? '(Locked)' : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground pt-2 border-t">
+                  No course assigned to this class yet — session will be marked as attended only.
+                </p>
+              )
+            )}
+
           </CardContent>
         </Card>
 
