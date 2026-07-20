@@ -33,6 +33,8 @@ import {
   AttendanceRecord 
 } from "@/hooks/useClassSessionAttendance";
 import { useReceivedAccessGrants } from "@/hooks/useOfficerClassAccess";
+import { useSessionCompletion } from "@/hooks/useSessionCompletion";
+import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface ClassSession {
@@ -81,6 +83,12 @@ const Attendance = () => {
   // Mutations
   const saveAttendanceMutation = useSaveClassAttendance();
   const markCompletedMutation = useMarkSessionCompleted();
+  const { markSessionComplete, isLoading: isMarkingCurriculum } = useSessionCompletion();
+
+  // Curriculum picker state (Course -> Level/Module -> Session)
+  const [selectedCourseAssignmentId, setSelectedCourseAssignmentId] = useState<string>('');
+  const [selectedModuleAssignmentId, setSelectedModuleAssignmentId] = useState<string>('');
+  const [selectedCurriculumSessionId, setSelectedCurriculumSessionId] = useState<string>('');
 
   // Get delegated access grants for today
   const { data: accessGrants } = useReceivedAccessGrants(officerProfile?.id);
@@ -322,28 +330,75 @@ const Attendance = () => {
 
   const handleMarkSessionCompleted = async () => {
     if (!selectedSession || !officerProfile?.id) return;
-    
+
+    const session = availableSessions.find(s => s.id === selectedSession);
+    if (!session) return;
+
     // First save attendance
     await handleSaveAttendance();
-    
+
     // Find the saved attendance record
     const savedRecord = savedAttendance?.find(
       a => a.timetable_assignment_id === selectedSession
     );
-    
+
     if (savedRecord) {
       try {
         await markCompletedMutation.mutateAsync({
           attendanceId: savedRecord.id,
           officerId: officerProfile.id,
         });
-        toast.success("Session marked as completed!");
       } catch (error) {
         console.error("Failed to mark session completed:", error);
         toast.error("Failed to mark session completed");
+        return;
       }
     }
+
+    // If a curriculum session was picked, mark it complete for present/late students
+    if (selectedCurriculumSessionId && selectedCourseAssignmentId) {
+      const presentStudentIds = attendance
+        .filter(r => r.status === 'present' || r.status === 'late')
+        .map(r => r.id);
+
+      if (presentStudentIds.length === 0) {
+        toast.success("Session marked as completed!");
+        toast.warning("No present/late students — curriculum session not credited to anyone.");
+        return;
+      }
+
+      const sessionMeta = curriculumSessionAssignments.find(
+        (s: any) => s.session_id === selectedCurriculumSessionId
+      );
+      const sessionTitle = (sessionMeta as any)?.course_sessions?.title || 'session';
+      const moduleId = (selectedModuleAssignment as any)?.module_id;
+      const courseId = (selectedCourseAssignment as any)?.course_id;
+
+      const ok = await markSessionComplete(
+        selectedCurriculumSessionId,
+        presentStudentIds,
+        selectedCourseAssignmentId,
+        session.classId,
+        session.timetable_assignment_id,
+        moduleId,
+        courseId,
+        { silent: true }
+      );
+
+      if (ok) {
+        toast.success(
+          `Attendance saved. Session "${sessionTitle}" marked complete for ${presentStudentIds.length} student${presentStudentIds.length !== 1 ? 's' : ''}.`
+        );
+      } else {
+        toast.success("Session marked as completed!");
+        toast.error("Could not update curriculum progress. Please try again.");
+      }
+    } else {
+      toast.success("Session marked as completed!");
+    }
   };
+
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -375,7 +430,67 @@ const Attendance = () => {
     : "0";
 
   const selectedSessionData = availableSessions.find(s => s.id === selectedSession);
-  
+  const classIdForCurriculum = selectedSessionData?.classId || '';
+
+  // Fetch courses assigned to the selected class
+  const { data: classCourseAssignments = [] } = useQuery({
+    queryKey: ['officer-attn-course-assignments', classIdForCurriculum],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('course_class_assignments')
+        .select('id, course_id, courses(id, title, course_code)')
+        .eq('class_id', classIdForCurriculum);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!classIdForCurriculum,
+  });
+
+  const selectedCourseAssignment = classCourseAssignments.find(
+    (c: any) => c.id === selectedCourseAssignmentId
+  );
+
+  // Fetch modules for selected course
+  const { data: moduleAssignments = [] } = useQuery({
+    queryKey: ['officer-attn-module-assignments', selectedCourseAssignmentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('class_module_assignments')
+        .select('id, module_id, is_unlocked, unlock_order, course_modules(id, title, display_order)')
+        .eq('class_assignment_id', selectedCourseAssignmentId)
+        .order('unlock_order', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedCourseAssignmentId,
+  });
+
+  const selectedModuleAssignment = moduleAssignments.find(
+    (m: any) => m.id === selectedModuleAssignmentId
+  );
+
+  // Fetch sessions for selected module
+  const { data: curriculumSessionAssignments = [] } = useQuery({
+    queryKey: ['officer-attn-session-assignments', selectedModuleAssignmentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('class_session_assignments')
+        .select('id, session_id, is_unlocked, unlock_order, course_sessions(id, title, display_order)')
+        .eq('class_module_assignment_id', selectedModuleAssignmentId)
+        .order('unlock_order', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedModuleAssignmentId,
+  });
+
+  // Reset curriculum picker whenever the timetable slot or date changes
+  useEffect(() => {
+    setSelectedCourseAssignmentId('');
+    setSelectedModuleAssignmentId('');
+    setSelectedCurriculumSessionId('');
+  }, [selectedSession, selectedDate]);
+
   // Check if current session is already completed
   const isSessionCompleted = savedAttendance?.find(
     a => a.timetable_assignment_id === selectedSession
@@ -492,6 +607,82 @@ const Attendance = () => {
                 <p className="text-sm text-muted-foreground">No classes scheduled for this date</p>
               </div>
             )}
+
+            {/* Curriculum picker: Course -> Level -> Session */}
+            {selectedSession && (
+              classCourseAssignments.length > 0 ? (
+                <div className="grid gap-3 md:grid-cols-3 pt-2 border-t">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Course (optional)</label>
+                    <Select
+                      value={selectedCourseAssignmentId}
+                      onValueChange={(v) => {
+                        setSelectedCourseAssignmentId(v);
+                        setSelectedModuleAssignmentId('');
+                        setSelectedCurriculumSessionId('');
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose course..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {classCourseAssignments.map((ca: any) => (
+                          <SelectItem key={ca.id} value={ca.id}>
+                            {ca.courses?.title} {ca.courses?.course_code ? `(${ca.courses.course_code})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Level / Module</label>
+                    <Select
+                      value={selectedModuleAssignmentId}
+                      onValueChange={(v) => {
+                        setSelectedModuleAssignmentId(v);
+                        setSelectedCurriculumSessionId('');
+                      }}
+                      disabled={!selectedCourseAssignmentId || moduleAssignments.length === 0}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose level..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {moduleAssignments.map((m: any) => (
+                          <SelectItem key={m.id} value={m.id} disabled={!m.is_unlocked}>
+                            {m.course_modules?.title || 'Untitled'} {!m.is_unlocked ? '(Locked)' : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Session</label>
+                    <Select
+                      value={selectedCurriculumSessionId}
+                      onValueChange={setSelectedCurriculumSessionId}
+                      disabled={!selectedModuleAssignmentId || curriculumSessionAssignments.length === 0}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose session..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {curriculumSessionAssignments.map((s: any) => (
+                          <SelectItem key={s.id} value={s.session_id} disabled={!s.is_unlocked}>
+                            {s.course_sessions?.title || 'Untitled'} {!s.is_unlocked ? '(Locked)' : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground pt-2 border-t">
+                  No course assigned to this class yet — session will be marked as attended only.
+                </p>
+              )
+            )}
+
           </CardContent>
         </Card>
 
@@ -665,11 +856,15 @@ const Attendance = () => {
                 </Button>
                 <Button 
                   onClick={handleMarkSessionCompleted} 
-                  disabled={markCompletedMutation.isPending || isSessionCompleted}
+                  disabled={markCompletedMutation.isPending || isMarkingCurriculum || isSessionCompleted}
                   className="gap-2"
                 >
                   <CheckCircle2 className="h-4 w-4" />
-                  {markCompletedMutation.isPending ? "Completing..." : "Mark Session Complete"}
+                  {markCompletedMutation.isPending || isMarkingCurriculum
+                    ? "Completing..."
+                    : selectedCurriculumSessionId
+                      ? "Save Attendance & Mark Session Completed"
+                      : "Mark Session Complete"}
                 </Button>
               </div>
             </CardContent>
