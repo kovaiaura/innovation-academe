@@ -33,6 +33,8 @@ import {
   AttendanceRecord 
 } from "@/hooks/useClassSessionAttendance";
 import { useReceivedAccessGrants } from "@/hooks/useOfficerClassAccess";
+import { useSessionCompletion } from "@/hooks/useSessionCompletion";
+import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface ClassSession {
