@@ -330,28 +330,75 @@ const Attendance = () => {
 
   const handleMarkSessionCompleted = async () => {
     if (!selectedSession || !officerProfile?.id) return;
-    
+
+    const session = availableSessions.find(s => s.id === selectedSession);
+    if (!session) return;
+
     // First save attendance
     await handleSaveAttendance();
-    
+
     // Find the saved attendance record
     const savedRecord = savedAttendance?.find(
       a => a.timetable_assignment_id === selectedSession
     );
-    
+
     if (savedRecord) {
       try {
         await markCompletedMutation.mutateAsync({
           attendanceId: savedRecord.id,
           officerId: officerProfile.id,
         });
-        toast.success("Session marked as completed!");
       } catch (error) {
         console.error("Failed to mark session completed:", error);
         toast.error("Failed to mark session completed");
+        return;
       }
     }
+
+    // If a curriculum session was picked, mark it complete for present/late students
+    if (selectedCurriculumSessionId && selectedCourseAssignmentId) {
+      const presentStudentIds = attendance
+        .filter(r => r.status === 'present' || r.status === 'late')
+        .map(r => r.id);
+
+      if (presentStudentIds.length === 0) {
+        toast.success("Session marked as completed!");
+        toast.warning("No present/late students — curriculum session not credited to anyone.");
+        return;
+      }
+
+      const sessionMeta = curriculumSessionAssignments.find(
+        (s: any) => s.session_id === selectedCurriculumSessionId
+      );
+      const sessionTitle = (sessionMeta as any)?.course_sessions?.title || 'session';
+      const moduleId = (selectedModuleAssignment as any)?.module_id;
+      const courseId = (selectedCourseAssignment as any)?.course_id;
+
+      const ok = await markSessionComplete(
+        selectedCurriculumSessionId,
+        presentStudentIds,
+        selectedCourseAssignmentId,
+        session.classId,
+        session.timetable_assignment_id,
+        moduleId,
+        courseId,
+        { silent: true }
+      );
+
+      if (ok) {
+        toast.success(
+          `Attendance saved. Session "${sessionTitle}" marked complete for ${presentStudentIds.length} student${presentStudentIds.length !== 1 ? 's' : ''}.`
+        );
+      } else {
+        toast.success("Session marked as completed!");
+        toast.error("Could not update curriculum progress. Please try again.");
+      }
+    } else {
+      toast.success("Session marked as completed!");
+    }
   };
+
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
