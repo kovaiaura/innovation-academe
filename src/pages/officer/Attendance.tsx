@@ -383,7 +383,67 @@ const Attendance = () => {
     : "0";
 
   const selectedSessionData = availableSessions.find(s => s.id === selectedSession);
-  
+  const classIdForCurriculum = selectedSessionData?.classId || '';
+
+  // Fetch courses assigned to the selected class
+  const { data: classCourseAssignments = [] } = useQuery({
+    queryKey: ['officer-attn-course-assignments', classIdForCurriculum],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('course_class_assignments')
+        .select('id, course_id, courses(id, title, course_code)')
+        .eq('class_id', classIdForCurriculum);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!classIdForCurriculum,
+  });
+
+  const selectedCourseAssignment = classCourseAssignments.find(
+    (c: any) => c.id === selectedCourseAssignmentId
+  );
+
+  // Fetch modules for selected course
+  const { data: moduleAssignments = [] } = useQuery({
+    queryKey: ['officer-attn-module-assignments', selectedCourseAssignmentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('class_module_assignments')
+        .select('id, module_id, is_unlocked, unlock_order, course_modules(id, title, display_order)')
+        .eq('class_assignment_id', selectedCourseAssignmentId)
+        .order('unlock_order', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedCourseAssignmentId,
+  });
+
+  const selectedModuleAssignment = moduleAssignments.find(
+    (m: any) => m.id === selectedModuleAssignmentId
+  );
+
+  // Fetch sessions for selected module
+  const { data: curriculumSessionAssignments = [] } = useQuery({
+    queryKey: ['officer-attn-session-assignments', selectedModuleAssignmentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('class_session_assignments')
+        .select('id, session_id, is_unlocked, unlock_order, course_sessions(id, title, display_order)')
+        .eq('class_module_assignment_id', selectedModuleAssignmentId)
+        .order('unlock_order', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedModuleAssignmentId,
+  });
+
+  // Reset curriculum picker whenever the timetable slot or date changes
+  useEffect(() => {
+    setSelectedCourseAssignmentId('');
+    setSelectedModuleAssignmentId('');
+    setSelectedCurriculumSessionId('');
+  }, [selectedSession, selectedDate]);
+
   // Check if current session is already completed
   const isSessionCompleted = savedAttendance?.find(
     a => a.timetable_assignment_id === selectedSession
