@@ -258,14 +258,24 @@ const Attendance = () => {
     loadStudents();
   }, [selectedSession, availableSessions, primaryInstitutionId, savedAttendance]);
 
+  const getSessionCheckInTime = () => {
+    const session = availableSessions.find(s => s.id === selectedSession);
+    if (!session?.startTime) return format(new Date(), 'hh:mm a');
+    const [h, m] = session.startTime.split(':');
+    const d = new Date();
+    d.setHours(parseInt(h, 10) || 0, parseInt(m, 10) || 0, 0, 0);
+    return format(d, 'hh:mm a');
+  };
+
   const handleMarkAttendance = (studentId: string, status: "present" | "absent" | "late") => {
+    const checkIn = getSessionCheckInTime();
     setAttendance(prev =>
       prev.map(record =>
         record.id === studentId
           ? {
               ...record,
               status,
-              check_in_time: status !== "absent" ? format(new Date(), 'hh:mm a') : undefined,
+              check_in_time: status !== "absent" ? checkIn : undefined,
             }
           : record
       )
@@ -273,11 +283,12 @@ const Attendance = () => {
   };
 
   const handleMarkAllPresent = () => {
+    const checkIn = getSessionCheckInTime();
     setAttendance(prev =>
       prev.map(record => ({
         ...record,
         status: "present" as const,
-        check_in_time: format(new Date(), 'hh:mm a'),
+        check_in_time: checkIn,
       }))
     );
     toast.success("Marked all students present");
@@ -293,6 +304,7 @@ const Attendance = () => {
     );
     toast.success("Marked all students absent");
   };
+
 
   const handleSaveAttendance = async () => {
     if (!selectedSession || !officerProfile?.id || !primaryInstitutionId) return;
