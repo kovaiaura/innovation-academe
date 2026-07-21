@@ -190,7 +190,7 @@ const Attendance = () => {
         </div>
         
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-          <TabsList className="grid w-full grid-cols-2 max-w-2xl">
+          <TabsList className="grid w-full grid-cols-3 max-w-3xl">
             <TabsTrigger value="officers" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Officer Attendance
@@ -198,6 +198,10 @@ const Attendance = () => {
             <TabsTrigger value="class-sessions" className="flex items-center gap-2">
               <CalendarCheck className="h-4 w-4" />
               Class Sessions
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Reports
             </TabsTrigger>
           </TabsList>
           
@@ -207,6 +211,10 @@ const Attendance = () => {
           
           <TabsContent value="class-sessions" className="mt-6">
             <ClassSessionAttendanceTab institutionId={institution.id} />
+          </TabsContent>
+
+          <TabsContent value="reports" className="mt-6">
+            <ClassAttendanceReportsTab institutionId={institution.id} institutionName={institution.name} />
           </TabsContent>
         </Tabs>
       </div>
