@@ -251,6 +251,7 @@ const Attendance = () => {
         });
         
         setAttendance(attendanceRecords);
+        setClassRemark(savedRecord?.notes || '');
       } catch (error) {
         console.error('Error loading students:', error);
         toast.error('Failed to load students');
