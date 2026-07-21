@@ -335,6 +335,7 @@ const Attendance = () => {
         period_time: `${session.startTime} - ${session.endTime}`,
         subject: session.subject,
         attendance_records: attendanceRecords,
+        notes: classRemark || undefined,
       });
 
       toast.success("Attendance saved successfully!");
