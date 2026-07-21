@@ -1,46 +1,62 @@
-# Link Class Attendance to Course Curriculum Progress
+# Attendance Enhancements — Multi-Session, Remarks, Reports & PDF Export
 
-Today the officer's **Class Attendance** page only marks students present/absent for a timetable slot and toggles `is_session_completed` on `class_session_attendance`. It does not tell the system *which* curriculum session was actually taught, so course progress for that class stays untouched unless the officer separately goes into Bulk Mark Complete.
+## 1. Multi-Level / Multi-Session Picker (Officer → Class Attendance)
+File: `src/pages/officer/Attendance.tsx`
 
-We'll add a Course → Level (Module) → Session picker into the same page, and when the officer clicks **Mark Session Completed**, we'll also mark that specific curriculum session complete for the students who are Present/Late — reusing the exact same `markSessionComplete` flow that Bulk Mark Complete uses.
+- Replace single-select curriculum session dropdown with a **multi-select** (checkbox list inside a Popover).
+  - Course dropdown stays single-select.
+  - Level/Module dropdown becomes multi-select — picking multiple levels loads their combined sessions.
+  - Sessions become a multi-select checkbox list, grouped by module.
+- On "Save Attendance & Mark Session(s) Completed":
+  - Iterate all selected session IDs and call `markSessionComplete` for each with the same present/late student list.
+  - Toast summary: "N sessions marked complete for M students".
 
-## UX
+## 2. Class Remark / Note (Optional)
+File: `src/pages/officer/Attendance.tsx` + `useClassSessionAttendance.ts`
 
-Inside the existing "Select Date & Class Session" card (after a timetable session is chosen), show three cascading dropdowns:
+- Add a **Remark** textarea below the picker (e.g. "Exam day — all students in exam hall").
+- Persist to existing `class_session_attendance.notes` column (no migration needed).
+- Extend `useSaveClassAttendance` payload to include `notes`.
+- Load existing note when a saved session is selected.
+- Allow saving remark even when all students are marked absent (already possible).
 
-1. **Course** — populated from `course_class_assignments` for the selected class.
-2. **Level (Module)** — populated from `class_module_assignments` for that course, ordered by `unlock_order`.
-3. **Session** — populated from `class_session_assignments` for that module, ordered by `unlock_order`. Sessions already completed for the whole class are shown with a "✓ Completed" tag.
+## 3. Weekly / Monthly Attendance Reports for Management
+New file: `src/components/attendance/ClassAttendanceReportsTab.tsx`
+Wired into `src/pages/management/Attendance.tsx` as a third tab **"Reports"**.
 
-Selections are optional. If nothing is selected, the page behaves exactly as today (attendance-only). If a session is selected, the primary button changes from "Mark Session Completed" to **"Save Attendance & Mark Session Completed"** and does both actions in one click.
+**View controls**
+- Range toggle: Weekly (Mon–Sun of picked week) | Monthly (calendar month picker).
+- Optional class filter and officer filter.
 
-Persist the last selection per timetable slot in local component state so switching between periods keeps context.
+**Data (from `class_session_attendance` for institution + date range, joined with `officers`, `classes`, `institution_timetable_assignments` → `institution_periods`)**
+- Summary cards:
+  - Total periods handled (rows count)
+  - Total teaching minutes (auto-calculated from `period_time` "HH:MM - HH:MM")
+  - Average attendance %
+  - Sessions marked completed
+  - Unique classes covered / unique officers involved
+- Table 1 — **Per Officer**: Officer, Periods handled, Total hours, Classes covered, Avg attendance %, Sessions completed.
+- Table 2 — **Per Class**: Class, Periods, Total hours, Avg attendance %, Officers who taught it.
+- Table 3 — **Per Day**: Date, Periods, Hours, Attendance %, Completed count.
+- Remarks section: any row where `notes` is non-empty (date, class, officer, remark).
 
-## Behavior on "Save Attendance & Mark Session Completed"
+## 4. Export to PDF
+Same tab.
 
-1. Save the attendance rows (unchanged).
-2. Mark the `class_session_attendance` row as completed (unchanged).
-3. **New:** If a curriculum Session is selected, call `markSessionComplete(sessionId, presentStudentIds, courseAssignmentId, classId, timetableAssignmentId, moduleId, courseId)` from `useSessionCompletion`, where `presentStudentIds` = students whose status is `present` or `late`. Absent students are excluded so their progress is not falsely credited.
-4. Show one consolidated toast: "Attendance saved. Session '<title>' marked complete for N students."
+- Use existing `jspdf` + `jspdf-autotable` (already in project — used by payslip/report services).
+- "Export PDF" button generates a branded, multi-section report with the range in the header, all four tables, and summary stats.
+- Also keep an "Export CSV" button (flat per-period rows).
 
-If the session was already fully complete for the class, still call the hook (it's idempotent) but suppress the duplicate toast via `{ silent: true }` and surface a lighter "Session already up to date" message.
+## Technical Notes
+- Duration calc helper: parse `period_time` → minutes; skip if unparsable.
+- All queries scoped by `institution_id` and RLS already permits management SELECT.
+- No DB migration required (uses existing columns).
+- Multi-session marking reuses `useSessionCompletion.markSessionComplete` in a sequential loop with `{ silent: true }`, single toast at the end.
 
-## Guardrails
-
-- Course/Level/Session selectors are cleared whenever the timetable session or date changes.
-- If `course_class_assignments` returns zero rows for the class, hide the picker and show a small hint: "No course assigned to this class yet."
-- Only sessions whose module `is_unlocked = true` are enabled in the dropdown; locked ones are shown greyed-out with a "Locked" tag so officers know why they can't pick them.
-- Only officers who have access to that timetable slot (primary / secondary / backup / delegated — already computed) can mark completion; no change to permissions.
-
-## Files to Modify
-
+## Files
 | File | Change |
-|------|--------|
-| `src/pages/officer/Attendance.tsx` | Add Course/Level/Session state + three `Select`s inside the existing selector card. Extend `handleMarkSessionCompleted` to call `markSessionComplete` for present+late students when a session is selected. Update button label + toast copy. |
-
-## Technical Details
-
-- Data sources are the same tables Bulk Mark Complete already uses: `course_class_assignments`, `class_module_assignments` (+ `course_modules`), `class_session_assignments` (+ `course_sessions`).
-- Queries are gated by `enabled: !!classId` / `!!courseAssignmentId` / `!!moduleAssignmentId` so they don't fire until each parent selection is made.
-- Reuse the shared `useSessionCompletion` hook — no new completion logic. This ensures the fix flows into every analytics view (student dashboard, class, institution, CEO) that we already wired to session-based progress.
-- No schema changes, no new migrations, no changes to the CEO / management "Class Session Attendance" monitor tab.
+|---|---|
+| `src/pages/officer/Attendance.tsx` | Multi-select level/session, remark textarea, loop mark-complete |
+| `src/hooks/useClassSessionAttendance.ts` | Add `notes` to save payload |
+| `src/pages/management/Attendance.tsx` | Add "Reports" tab |
+| `src/components/attendance/ClassAttendanceReportsTab.tsx` | New — weekly/monthly report + PDF/CSV export |
