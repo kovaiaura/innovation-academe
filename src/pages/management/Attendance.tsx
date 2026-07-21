@@ -14,7 +14,7 @@ import { transformDbToApp } from "@/hooks/useInstitutions";
 import { format } from "date-fns";
 
 const Attendance = () => {
-  const [activeTab, setActiveTab] = useState<'officers' | 'class-sessions'>('officers');
+  const [activeTab, setActiveTab] = useState<'officers' | 'class-sessions' | 'reports'>('officers');
   
   const { tenantId } = useParams<{ tenantId: string }>();
   
