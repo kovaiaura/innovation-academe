@@ -630,7 +630,7 @@ const Attendance = () => {
               </div>
             )}
 
-            {/* Curriculum picker: Course -> Level -> Session */}
+            {/* Curriculum picker: Course -> Multi Levels -> Multi Sessions */}
             {selectedSession && (
               classCourseAssignments.length > 0 ? (
                 <div className="grid gap-3 md:grid-cols-3 pt-2 border-t">
@@ -640,8 +640,8 @@ const Attendance = () => {
                       value={selectedCourseAssignmentId}
                       onValueChange={(v) => {
                         setSelectedCourseAssignmentId(v);
-                        setSelectedModuleAssignmentId('');
-                        setSelectedCurriculumSessionId('');
+                        setSelectedModuleAssignmentIds([]);
+                        setSelectedCurriculumSessionIds([]);
                       }}
                     >
                       <SelectTrigger>
@@ -657,45 +657,100 @@ const Attendance = () => {
                     </Select>
                   </div>
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Level / Module</label>
-                    <Select
-                      value={selectedModuleAssignmentId}
-                      onValueChange={(v) => {
-                        setSelectedModuleAssignmentId(v);
-                        setSelectedCurriculumSessionId('');
-                      }}
-                      disabled={!selectedCourseAssignmentId || moduleAssignments.length === 0}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose level..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {moduleAssignments.map((m: any) => (
-                          <SelectItem key={m.id} value={m.id} disabled={!m.is_unlocked}>
-                            {m.course_modules?.title || 'Untitled'} {!m.is_unlocked ? '(Locked)' : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <label className="text-sm font-medium mb-2 block">Levels / Modules (multi)</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start font-normal"
+                          disabled={!selectedCourseAssignmentId || moduleAssignments.length === 0}
+                        >
+                          {selectedModuleAssignmentIds.length === 0
+                            ? 'Choose levels...'
+                            : `${selectedModuleAssignmentIds.length} level${selectedModuleAssignmentIds.length !== 1 ? 's' : ''} selected`}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-72 p-2" align="start">
+                        <div className="space-y-1 max-h-64 overflow-auto">
+                          {moduleAssignments.map((m: any) => {
+                            const checked = selectedModuleAssignmentIds.includes(m.id);
+                            return (
+                              <label
+                                key={m.id}
+                                className={`flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer ${!m.is_unlocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              >
+                                <Checkbox
+                                  checked={checked}
+                                  disabled={!m.is_unlocked}
+                                  onCheckedChange={(v) => {
+                                    setSelectedModuleAssignmentIds((prev) => {
+                                      const next = v ? [...prev, m.id] : prev.filter((x) => x !== m.id);
+                                      // Trim session selections that no longer belong to selected modules
+                                      setSelectedCurriculumSessionIds((prevSess) =>
+                                        prevSess.filter((sid) => {
+                                          const sa = curriculumSessionAssignments.find((s: any) => s.session_id === sid);
+                                          return sa && next.includes((sa as any).class_module_assignment_id);
+                                        })
+                                      );
+                                      return next;
+                                    });
+                                  }}
+                                />
+                                <span className="text-sm">
+                                  {m.course_modules?.title || 'Untitled'} {!m.is_unlocked ? '(Locked)' : ''}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Session</label>
-                    <Select
-                      value={selectedCurriculumSessionId}
-                      onValueChange={setSelectedCurriculumSessionId}
-                      disabled={!selectedModuleAssignmentId || curriculumSessionAssignments.length === 0}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose session..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {curriculumSessionAssignments.map((s: any) => (
-                          <SelectItem key={s.id} value={s.session_id} disabled={!s.is_unlocked}>
-                            {s.course_sessions?.title || 'Untitled'} {!s.is_unlocked ? '(Locked)' : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <label className="text-sm font-medium mb-2 block">Sessions (multi)</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start font-normal"
+                          disabled={selectedModuleAssignmentIds.length === 0 || curriculumSessionAssignments.length === 0}
+                        >
+                          {selectedCurriculumSessionIds.length === 0
+                            ? 'Choose sessions...'
+                            : `${selectedCurriculumSessionIds.length} session${selectedCurriculumSessionIds.length !== 1 ? 's' : ''} selected`}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80 p-2" align="start">
+                        <div className="space-y-1 max-h-64 overflow-auto">
+                          {curriculumSessionAssignments.map((s: any) => {
+                            const checked = selectedCurriculumSessionIds.includes(s.session_id);
+                            const parentModule = moduleAssignments.find(
+                              (m: any) => m.id === s.class_module_assignment_id
+                            );
+                            return (
+                              <label
+                                key={s.id}
+                                className={`flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer ${!s.is_unlocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              >
+                                <Checkbox
+                                  checked={checked}
+                                  disabled={!s.is_unlocked}
+                                  onCheckedChange={(v) => {
+                                    setSelectedCurriculumSessionIds((prev) =>
+                                      v ? [...prev, s.session_id] : prev.filter((x) => x !== s.session_id)
+                                    );
+                                  }}
+                                />
+                                <span className="text-sm">
+                                  <span className="text-muted-foreground">{(parentModule as any)?.course_modules?.title || ''} · </span>
+                                  {s.course_sessions?.title || 'Untitled'} {!s.is_unlocked ? '(Locked)' : ''}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
               ) : (
@@ -704,6 +759,20 @@ const Attendance = () => {
                 </p>
               )
             )}
+
+            {/* Class remark (optional) */}
+            {selectedSession && (
+              <div className="pt-2 border-t">
+                <label className="text-sm font-medium mb-2 block">Class Remark (optional)</label>
+                <Textarea
+                  placeholder="e.g. Exam day — students in exam hall, Field trip, Substitute assigned, etc."
+                  value={classRemark}
+                  onChange={(e) => setClassRemark(e.target.value)}
+                  rows={2}
+                />
+              </div>
+            )}
+
 
           </CardContent>
         </Card>
