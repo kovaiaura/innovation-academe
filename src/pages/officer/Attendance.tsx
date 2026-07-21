@@ -88,10 +88,11 @@ const Attendance = () => {
   const markCompletedMutation = useMarkSessionCompleted();
   const { markSessionComplete, isLoading: isMarkingCurriculum } = useSessionCompletion();
 
-  // Curriculum picker state (Course -> Level/Module -> Session)
+  // Curriculum picker state (Course -> multi Level/Module -> multi Session)
   const [selectedCourseAssignmentId, setSelectedCourseAssignmentId] = useState<string>('');
-  const [selectedModuleAssignmentId, setSelectedModuleAssignmentId] = useState<string>('');
-  const [selectedCurriculumSessionId, setSelectedCurriculumSessionId] = useState<string>('');
+  const [selectedModuleAssignmentIds, setSelectedModuleAssignmentIds] = useState<string[]>([]);
+  const [selectedCurriculumSessionIds, setSelectedCurriculumSessionIds] = useState<string[]>([]);
+  const [classRemark, setClassRemark] = useState<string>('');
 
   // Get delegated access grants for today
   const { data: accessGrants } = useReceivedAccessGrants(officerProfile?.id);
