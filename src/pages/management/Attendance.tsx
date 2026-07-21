@@ -2,18 +2,19 @@ import { Layout } from "@/components/layout/Layout";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, CalendarCheck, CheckCircle2, Clock } from "lucide-react";
+import { Users, CalendarCheck, CheckCircle2, Clock, FileText } from "lucide-react";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { OfficerAttendanceTab } from "@/components/attendance/OfficerAttendanceTab";
 import { ClassSessionAttendanceTab } from "@/components/attendance/ClassSessionAttendanceTab";
+import { ClassAttendanceReportsTab } from "@/components/attendance/ClassAttendanceReportsTab";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { transformDbToApp } from "@/hooks/useInstitutions";
 import { format } from "date-fns";
 
 const Attendance = () => {
-  const [activeTab, setActiveTab] = useState<'officers' | 'class-sessions'>('officers');
+  const [activeTab, setActiveTab] = useState<'officers' | 'class-sessions' | 'reports'>('officers');
   
   const { tenantId } = useParams<{ tenantId: string }>();
   
@@ -189,7 +190,7 @@ const Attendance = () => {
         </div>
         
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-          <TabsList className="grid w-full grid-cols-2 max-w-2xl">
+          <TabsList className="grid w-full grid-cols-3 max-w-3xl">
             <TabsTrigger value="officers" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Officer Attendance
@@ -197,6 +198,10 @@ const Attendance = () => {
             <TabsTrigger value="class-sessions" className="flex items-center gap-2">
               <CalendarCheck className="h-4 w-4" />
               Class Sessions
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Reports
             </TabsTrigger>
           </TabsList>
           
@@ -206,6 +211,10 @@ const Attendance = () => {
           
           <TabsContent value="class-sessions" className="mt-6">
             <ClassSessionAttendanceTab institutionId={institution.id} />
+          </TabsContent>
+
+          <TabsContent value="reports" className="mt-6">
+            <ClassAttendanceReportsTab institutionId={institution.id} institutionName={institution.name} />
           </TabsContent>
         </Tabs>
       </div>

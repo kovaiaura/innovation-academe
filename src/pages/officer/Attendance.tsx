@@ -20,6 +20,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
@@ -85,10 +88,11 @@ const Attendance = () => {
   const markCompletedMutation = useMarkSessionCompleted();
   const { markSessionComplete, isLoading: isMarkingCurriculum } = useSessionCompletion();
 
-  // Curriculum picker state (Course -> Level/Module -> Session)
+  // Curriculum picker state (Course -> multi Level/Module -> multi Session)
   const [selectedCourseAssignmentId, setSelectedCourseAssignmentId] = useState<string>('');
-  const [selectedModuleAssignmentId, setSelectedModuleAssignmentId] = useState<string>('');
-  const [selectedCurriculumSessionId, setSelectedCurriculumSessionId] = useState<string>('');
+  const [selectedModuleAssignmentIds, setSelectedModuleAssignmentIds] = useState<string[]>([]);
+  const [selectedCurriculumSessionIds, setSelectedCurriculumSessionIds] = useState<string[]>([]);
+  const [classRemark, setClassRemark] = useState<string>('');
 
   // Get delegated access grants for today
   const { data: accessGrants } = useReceivedAccessGrants(officerProfile?.id);
@@ -247,6 +251,7 @@ const Attendance = () => {
         });
         
         setAttendance(attendanceRecords);
+        setClassRemark(savedRecord?.notes || '');
       } catch (error) {
         console.error('Error loading students:', error);
         toast.error('Failed to load students');
@@ -331,6 +336,7 @@ const Attendance = () => {
         period_time: `${session.startTime} - ${session.endTime}`,
         subject: session.subject,
         attendance_records: attendanceRecords,
+        notes: classRemark || undefined,
       });
 
       toast.success("Attendance saved successfully!");
@@ -367,39 +373,47 @@ const Attendance = () => {
       }
     }
 
-    // If a curriculum session was picked, mark it complete for present/late students
-    if (selectedCurriculumSessionId && selectedCourseAssignmentId) {
+    // If curriculum sessions were picked, mark each complete for present/late students
+    if (selectedCurriculumSessionIds.length > 0 && selectedCourseAssignmentId) {
       const presentStudentIds = attendance
         .filter(r => r.status === 'present' || r.status === 'late')
         .map(r => r.id);
 
       if (presentStudentIds.length === 0) {
         toast.success("Session marked as completed!");
-        toast.warning("No present/late students — curriculum session not credited to anyone.");
+        toast.warning("No present/late students — curriculum sessions not credited to anyone.");
         return;
       }
 
-      const sessionMeta = curriculumSessionAssignments.find(
-        (s: any) => s.session_id === selectedCurriculumSessionId
-      );
-      const sessionTitle = (sessionMeta as any)?.course_sessions?.title || 'session';
-      const moduleId = (selectedModuleAssignment as any)?.module_id;
       const courseId = (selectedCourseAssignment as any)?.course_id;
+      let successCount = 0;
 
-      const ok = await markSessionComplete(
-        selectedCurriculumSessionId,
-        presentStudentIds,
-        selectedCourseAssignmentId,
-        session.classId,
-        session.timetable_assignment_id,
-        moduleId,
-        courseId,
-        { silent: true }
-      );
+      for (const sessionId of selectedCurriculumSessionIds) {
+        const sessionMeta = curriculumSessionAssignments.find(
+          (s: any) => s.session_id === sessionId
+        );
+        const moduleAssignmentId = (sessionMeta as any)?.class_module_assignment_id;
+        const moduleAssignment = moduleAssignments.find(
+          (m: any) => m.id === moduleAssignmentId
+        ) || moduleAssignments.find((m: any) => selectedModuleAssignmentIds.includes(m.id));
+        const moduleId = (moduleAssignment as any)?.module_id;
 
-      if (ok) {
+        const ok = await markSessionComplete(
+          sessionId,
+          presentStudentIds,
+          selectedCourseAssignmentId,
+          session.classId,
+          session.timetable_assignment_id,
+          moduleId,
+          courseId,
+          { silent: true }
+        );
+        if (ok) successCount++;
+      }
+
+      if (successCount > 0) {
         toast.success(
-          `Attendance saved. Session "${sessionTitle}" marked complete for ${presentStudentIds.length} student${presentStudentIds.length !== 1 ? 's' : ''}.`
+          `Attendance saved. ${successCount} session${successCount !== 1 ? 's' : ''} marked complete for ${presentStudentIds.length} student${presentStudentIds.length !== 1 ? 's' : ''}.`
         );
       } else {
         toast.success("Session marked as completed!");
@@ -477,30 +491,28 @@ const Attendance = () => {
     enabled: !!selectedCourseAssignmentId,
   });
 
-  const selectedModuleAssignment = moduleAssignments.find(
-    (m: any) => m.id === selectedModuleAssignmentId
-  );
-
-  // Fetch sessions for selected module
+  // Fetch sessions for selected modules (multi)
   const { data: curriculumSessionAssignments = [] } = useQuery({
-    queryKey: ['officer-attn-session-assignments', selectedModuleAssignmentId],
+    queryKey: ['officer-attn-session-assignments-multi', selectedModuleAssignmentIds.join(',')],
     queryFn: async () => {
+      if (selectedModuleAssignmentIds.length === 0) return [];
       const { data, error } = await supabase
         .from('class_session_assignments')
-        .select('id, session_id, is_unlocked, unlock_order, course_sessions(id, title, display_order)')
-        .eq('class_module_assignment_id', selectedModuleAssignmentId)
+        .select('id, session_id, class_module_assignment_id, is_unlocked, unlock_order, course_sessions(id, title, display_order)')
+        .in('class_module_assignment_id', selectedModuleAssignmentIds)
         .order('unlock_order', { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!selectedModuleAssignmentId,
+    enabled: selectedModuleAssignmentIds.length > 0,
   });
 
   // Reset curriculum picker whenever the timetable slot or date changes
   useEffect(() => {
     setSelectedCourseAssignmentId('');
-    setSelectedModuleAssignmentId('');
-    setSelectedCurriculumSessionId('');
+    setSelectedModuleAssignmentIds([]);
+    setSelectedCurriculumSessionIds([]);
+    setClassRemark('');
   }, [selectedSession, selectedDate]);
 
   // Check if current session is already completed
@@ -620,7 +632,7 @@ const Attendance = () => {
               </div>
             )}
 
-            {/* Curriculum picker: Course -> Level -> Session */}
+            {/* Curriculum picker: Course -> Multi Levels -> Multi Sessions */}
             {selectedSession && (
               classCourseAssignments.length > 0 ? (
                 <div className="grid gap-3 md:grid-cols-3 pt-2 border-t">
@@ -630,8 +642,8 @@ const Attendance = () => {
                       value={selectedCourseAssignmentId}
                       onValueChange={(v) => {
                         setSelectedCourseAssignmentId(v);
-                        setSelectedModuleAssignmentId('');
-                        setSelectedCurriculumSessionId('');
+                        setSelectedModuleAssignmentIds([]);
+                        setSelectedCurriculumSessionIds([]);
                       }}
                     >
                       <SelectTrigger>
@@ -647,45 +659,100 @@ const Attendance = () => {
                     </Select>
                   </div>
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Level / Module</label>
-                    <Select
-                      value={selectedModuleAssignmentId}
-                      onValueChange={(v) => {
-                        setSelectedModuleAssignmentId(v);
-                        setSelectedCurriculumSessionId('');
-                      }}
-                      disabled={!selectedCourseAssignmentId || moduleAssignments.length === 0}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose level..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {moduleAssignments.map((m: any) => (
-                          <SelectItem key={m.id} value={m.id} disabled={!m.is_unlocked}>
-                            {m.course_modules?.title || 'Untitled'} {!m.is_unlocked ? '(Locked)' : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <label className="text-sm font-medium mb-2 block">Levels / Modules (multi)</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start font-normal"
+                          disabled={!selectedCourseAssignmentId || moduleAssignments.length === 0}
+                        >
+                          {selectedModuleAssignmentIds.length === 0
+                            ? 'Choose levels...'
+                            : `${selectedModuleAssignmentIds.length} level${selectedModuleAssignmentIds.length !== 1 ? 's' : ''} selected`}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-72 p-2" align="start">
+                        <div className="space-y-1 max-h-64 overflow-auto">
+                          {moduleAssignments.map((m: any) => {
+                            const checked = selectedModuleAssignmentIds.includes(m.id);
+                            return (
+                              <label
+                                key={m.id}
+                                className={`flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer ${!m.is_unlocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              >
+                                <Checkbox
+                                  checked={checked}
+                                  disabled={!m.is_unlocked}
+                                  onCheckedChange={(v) => {
+                                    setSelectedModuleAssignmentIds((prev) => {
+                                      const next = v ? [...prev, m.id] : prev.filter((x) => x !== m.id);
+                                      // Trim session selections that no longer belong to selected modules
+                                      setSelectedCurriculumSessionIds((prevSess) =>
+                                        prevSess.filter((sid) => {
+                                          const sa = curriculumSessionAssignments.find((s: any) => s.session_id === sid);
+                                          return sa && next.includes((sa as any).class_module_assignment_id);
+                                        })
+                                      );
+                                      return next;
+                                    });
+                                  }}
+                                />
+                                <span className="text-sm">
+                                  {m.course_modules?.title || 'Untitled'} {!m.is_unlocked ? '(Locked)' : ''}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Session</label>
-                    <Select
-                      value={selectedCurriculumSessionId}
-                      onValueChange={setSelectedCurriculumSessionId}
-                      disabled={!selectedModuleAssignmentId || curriculumSessionAssignments.length === 0}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose session..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {curriculumSessionAssignments.map((s: any) => (
-                          <SelectItem key={s.id} value={s.session_id} disabled={!s.is_unlocked}>
-                            {s.course_sessions?.title || 'Untitled'} {!s.is_unlocked ? '(Locked)' : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <label className="text-sm font-medium mb-2 block">Sessions (multi)</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start font-normal"
+                          disabled={selectedModuleAssignmentIds.length === 0 || curriculumSessionAssignments.length === 0}
+                        >
+                          {selectedCurriculumSessionIds.length === 0
+                            ? 'Choose sessions...'
+                            : `${selectedCurriculumSessionIds.length} session${selectedCurriculumSessionIds.length !== 1 ? 's' : ''} selected`}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80 p-2" align="start">
+                        <div className="space-y-1 max-h-64 overflow-auto">
+                          {curriculumSessionAssignments.map((s: any) => {
+                            const checked = selectedCurriculumSessionIds.includes(s.session_id);
+                            const parentModule = moduleAssignments.find(
+                              (m: any) => m.id === s.class_module_assignment_id
+                            );
+                            return (
+                              <label
+                                key={s.id}
+                                className={`flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer ${!s.is_unlocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              >
+                                <Checkbox
+                                  checked={checked}
+                                  disabled={!s.is_unlocked}
+                                  onCheckedChange={(v) => {
+                                    setSelectedCurriculumSessionIds((prev) =>
+                                      v ? [...prev, s.session_id] : prev.filter((x) => x !== s.session_id)
+                                    );
+                                  }}
+                                />
+                                <span className="text-sm">
+                                  <span className="text-muted-foreground">{(parentModule as any)?.course_modules?.title || ''} · </span>
+                                  {s.course_sessions?.title || 'Untitled'} {!s.is_unlocked ? '(Locked)' : ''}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
               ) : (
@@ -694,6 +761,20 @@ const Attendance = () => {
                 </p>
               )
             )}
+
+            {/* Class remark (optional) */}
+            {selectedSession && (
+              <div className="pt-2 border-t">
+                <label className="text-sm font-medium mb-2 block">Class Remark (optional)</label>
+                <Textarea
+                  placeholder="e.g. Exam day — students in exam hall, Field trip, Substitute assigned, etc."
+                  value={classRemark}
+                  onChange={(e) => setClassRemark(e.target.value)}
+                  rows={2}
+                />
+              </div>
+            )}
+
 
           </CardContent>
         </Card>
@@ -874,8 +955,8 @@ const Attendance = () => {
                   <CheckCircle2 className="h-4 w-4" />
                   {markCompletedMutation.isPending || isMarkingCurriculum
                     ? "Completing..."
-                    : selectedCurriculumSessionId
-                      ? "Save Attendance & Mark Session Completed"
+                    : selectedCurriculumSessionIds.length > 0
+                      ? `Save Attendance & Mark ${selectedCurriculumSessionIds.length} Session${selectedCurriculumSessionIds.length !== 1 ? 's' : ''} Completed`
                       : "Mark Session Complete"}
                 </Button>
               </div>
