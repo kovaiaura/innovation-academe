@@ -489,30 +489,28 @@ const Attendance = () => {
     enabled: !!selectedCourseAssignmentId,
   });
 
-  const selectedModuleAssignment = moduleAssignments.find(
-    (m: any) => m.id === selectedModuleAssignmentId
-  );
-
-  // Fetch sessions for selected module
+  // Fetch sessions for selected modules (multi)
   const { data: curriculumSessionAssignments = [] } = useQuery({
-    queryKey: ['officer-attn-session-assignments', selectedModuleAssignmentId],
+    queryKey: ['officer-attn-session-assignments-multi', selectedModuleAssignmentIds.join(',')],
     queryFn: async () => {
+      if (selectedModuleAssignmentIds.length === 0) return [];
       const { data, error } = await supabase
         .from('class_session_assignments')
-        .select('id, session_id, is_unlocked, unlock_order, course_sessions(id, title, display_order)')
-        .eq('class_module_assignment_id', selectedModuleAssignmentId)
+        .select('id, session_id, class_module_assignment_id, is_unlocked, unlock_order, course_sessions(id, title, display_order)')
+        .in('class_module_assignment_id', selectedModuleAssignmentIds)
         .order('unlock_order', { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!selectedModuleAssignmentId,
+    enabled: selectedModuleAssignmentIds.length > 0,
   });
 
   // Reset curriculum picker whenever the timetable slot or date changes
   useEffect(() => {
     setSelectedCourseAssignmentId('');
-    setSelectedModuleAssignmentId('');
-    setSelectedCurriculumSessionId('');
+    setSelectedModuleAssignmentIds([]);
+    setSelectedCurriculumSessionIds([]);
+    setClassRemark('');
   }, [selectedSession, selectedDate]);
 
   // Check if current session is already completed
