@@ -953,8 +953,8 @@ const Attendance = () => {
                   <CheckCircle2 className="h-4 w-4" />
                   {markCompletedMutation.isPending || isMarkingCurriculum
                     ? "Completing..."
-                    : selectedCurriculumSessionId
-                      ? "Save Attendance & Mark Session Completed"
+                    : selectedCurriculumSessionIds.length > 0
+                      ? `Save Attendance & Mark ${selectedCurriculumSessionIds.length} Session${selectedCurriculumSessionIds.length !== 1 ? 's' : ''} Completed`
                       : "Mark Session Complete"}
                 </Button>
               </div>
