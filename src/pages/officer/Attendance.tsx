@@ -371,39 +371,47 @@ const Attendance = () => {
       }
     }
 
-    // If a curriculum session was picked, mark it complete for present/late students
-    if (selectedCurriculumSessionId && selectedCourseAssignmentId) {
+    // If curriculum sessions were picked, mark each complete for present/late students
+    if (selectedCurriculumSessionIds.length > 0 && selectedCourseAssignmentId) {
       const presentStudentIds = attendance
         .filter(r => r.status === 'present' || r.status === 'late')
         .map(r => r.id);
 
       if (presentStudentIds.length === 0) {
         toast.success("Session marked as completed!");
-        toast.warning("No present/late students — curriculum session not credited to anyone.");
+        toast.warning("No present/late students — curriculum sessions not credited to anyone.");
         return;
       }
 
-      const sessionMeta = curriculumSessionAssignments.find(
-        (s: any) => s.session_id === selectedCurriculumSessionId
-      );
-      const sessionTitle = (sessionMeta as any)?.course_sessions?.title || 'session';
-      const moduleId = (selectedModuleAssignment as any)?.module_id;
       const courseId = (selectedCourseAssignment as any)?.course_id;
+      let successCount = 0;
 
-      const ok = await markSessionComplete(
-        selectedCurriculumSessionId,
-        presentStudentIds,
-        selectedCourseAssignmentId,
-        session.classId,
-        session.timetable_assignment_id,
-        moduleId,
-        courseId,
-        { silent: true }
-      );
+      for (const sessionId of selectedCurriculumSessionIds) {
+        const sessionMeta = curriculumSessionAssignments.find(
+          (s: any) => s.session_id === sessionId
+        );
+        const moduleAssignmentId = (sessionMeta as any)?.class_module_assignment_id;
+        const moduleAssignment = moduleAssignments.find(
+          (m: any) => m.id === moduleAssignmentId
+        ) || moduleAssignments.find((m: any) => selectedModuleAssignmentIds.includes(m.id));
+        const moduleId = (moduleAssignment as any)?.module_id;
 
-      if (ok) {
+        const ok = await markSessionComplete(
+          sessionId,
+          presentStudentIds,
+          selectedCourseAssignmentId,
+          session.classId,
+          session.timetable_assignment_id,
+          moduleId,
+          courseId,
+          { silent: true }
+        );
+        if (ok) successCount++;
+      }
+
+      if (successCount > 0) {
         toast.success(
-          `Attendance saved. Session "${sessionTitle}" marked complete for ${presentStudentIds.length} student${presentStudentIds.length !== 1 ? 's' : ''}.`
+          `Attendance saved. ${successCount} session${successCount !== 1 ? 's' : ''} marked complete for ${presentStudentIds.length} student${presentStudentIds.length !== 1 ? 's' : ''}.`
         );
       } else {
         toast.success("Session marked as completed!");
