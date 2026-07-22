@@ -44,6 +44,7 @@ export function ClassCoursesTab({
   onAssignCourse,
 }: ClassCoursesTabProps) {
   const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [showBulkAssignDialog, setShowBulkAssignDialog] = useState(false);
   const [assignmentToDelete, setAssignmentToDelete] = useState<ClassCourseAssignmentWithDetails | null>(null);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
 
