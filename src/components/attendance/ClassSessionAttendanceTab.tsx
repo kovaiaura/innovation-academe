@@ -166,6 +166,7 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
           studentsPresent: session?.students_present ?? null,
           totalStudents: session?.total_students ?? null,
           subject: session?.subject || null,
+          notes: session?.notes || null,
           completedBy: session?.completed_by ? officerMap[session.completed_by] : null,
         };
       })
@@ -180,17 +181,22 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
   const handleExportCSV = () => {
     if (mergedData.length === 0) return;
     const csvContent = [
-      ['Period', 'Time', 'Class', 'Scheduled Officer', 'Status', 'Students Present', 'Total Students', 'Course/Session Covered'],
-      ...mergedData.map(row => [
-        row.periodLabel,
-        row.periodTime,
-        row.className,
-        row.scheduledOfficer,
-        row.isCompleted ? 'Completed' : 'Pending',
-        row.studentsPresent ?? '-',
-        row.totalStudents ?? '-',
-        row.subject || '-',
-      ])
+      ['Period', 'Time', 'Class', 'Scheduled Officer', 'Status', 'Students Present', 'Total Students', 'Course/Session Covered', 'Remark'],
+      ...mergedData.map(row => {
+        const allAbsent = row.isCompleted && row.studentsPresent === 0;
+        const covered = allAbsent && row.notes ? `Remark: ${row.notes}` : (row.subject || '-');
+        return [
+          row.periodLabel,
+          row.periodTime,
+          row.className,
+          row.scheduledOfficer,
+          row.isCompleted ? 'Completed' : 'Pending',
+          row.studentsPresent ?? '-',
+          row.totalStudents ?? '-',
+          `"${covered.replace(/"/g, '""')}"`,
+          `"${(row.notes || '').replace(/"/g, '""')}"`,
+        ];
+      })
     ].map(row => row.join(',')).join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -354,11 +360,35 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
                       )}
                     </TableCell>
                     <TableCell>
-                      {row.subject ? (
-                        <span className="text-sm">{row.subject}</span>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
+                      {(() => {
+                        const allAbsent = row.isCompleted && row.studentsPresent === 0;
+                        if (allAbsent && row.notes) {
+                          return (
+                            <div className="text-sm">
+                              <span className="text-amber-700 dark:text-amber-400 font-medium">Remark:</span>{' '}
+                              <span className="italic">{row.notes}</span>
+                            </div>
+                          );
+                        }
+                        if (row.subject) {
+                          return (
+                            <div className="space-y-0.5">
+                              <div className="text-sm">{row.subject}</div>
+                              {row.notes && (
+                                <div className="text-xs text-muted-foreground italic">Remark: {row.notes}</div>
+                              )}
+                            </div>
+                          );
+                        }
+                        if (row.notes) {
+                          return (
+                            <div className="text-sm italic text-amber-700 dark:text-amber-400">
+                              Remark: {row.notes}
+                            </div>
+                          );
+                        }
+                        return <span className="text-muted-foreground text-sm">-</span>;
+                      })()}
                     </TableCell>
                   </TableRow>
                 ))}

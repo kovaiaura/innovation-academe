@@ -186,44 +186,47 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
   }, [filtered]);
 
   const perOfficer = useMemo(() => {
-    const map = new Map<string, { name: string; periods: number; minutes: number; classes: Set<string>; present: number; total: number; completed: number }>();
+    const map = new Map<string, { name: string; periods: number; minutes: number; classes: Set<string>; present: number; total: number; completed: number; topics: Set<string> }>();
     filtered.forEach((r) => {
       const key = r.officer_id || 'unassigned';
-      const cur = map.get(key) || { name: r.officer_name, periods: 0, minutes: 0, classes: new Set(), present: 0, total: 0, completed: 0 };
+      const cur = map.get(key) || { name: r.officer_name, periods: 0, minutes: 0, classes: new Set(), present: 0, total: 0, completed: 0, topics: new Set() };
       cur.periods += 1;
       cur.minutes += parseDurationMinutes(r.period_time);
       cur.classes.add(r.class_id);
       cur.present += r.students_present + r.students_late;
       cur.total += r.total_students;
       if (r.is_session_completed) cur.completed += 1;
+      if (r.subject) cur.topics.add(r.subject);
       map.set(key, cur);
     });
     return Array.from(map.values()).sort((a, b) => b.periods - a.periods);
   }, [filtered]);
 
   const perClass = useMemo(() => {
-    const map = new Map<string, { name: string; periods: number; minutes: number; officers: Set<string>; present: number; total: number }>();
+    const map = new Map<string, { name: string; periods: number; minutes: number; officers: Set<string>; present: number; total: number; topics: Set<string> }>();
     filtered.forEach((r) => {
-      const cur = map.get(r.class_id) || { name: r.class_name, periods: 0, minutes: 0, officers: new Set(), present: 0, total: 0 };
+      const cur = map.get(r.class_id) || { name: r.class_name, periods: 0, minutes: 0, officers: new Set(), present: 0, total: 0, topics: new Set() };
       cur.periods += 1;
       cur.minutes += parseDurationMinutes(r.period_time);
       if (r.officer_id) cur.officers.add(r.officer_name);
       cur.present += r.students_present + r.students_late;
       cur.total += r.total_students;
+      if (r.subject) cur.topics.add(r.subject);
       map.set(r.class_id, cur);
     });
     return Array.from(map.values()).sort((a, b) => b.periods - a.periods);
   }, [filtered]);
 
   const perDay = useMemo(() => {
-    const map = new Map<string, { date: string; periods: number; minutes: number; present: number; total: number; completed: number }>();
+    const map = new Map<string, { date: string; periods: number; minutes: number; present: number; total: number; completed: number; topics: Set<string> }>();
     filtered.forEach((r) => {
-      const cur = map.get(r.date) || { date: r.date, periods: 0, minutes: 0, present: 0, total: 0, completed: 0 };
+      const cur = map.get(r.date) || { date: r.date, periods: 0, minutes: 0, present: 0, total: 0, completed: 0, topics: new Set() };
       cur.periods += 1;
       cur.minutes += parseDurationMinutes(r.period_time);
       cur.present += r.students_present + r.students_late;
       cur.total += r.total_students;
       if (r.is_session_completed) cur.completed += 1;
+      if (r.subject) cur.topics.add(r.subject);
       map.set(r.date, cur);
     });
     return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
@@ -327,7 +330,7 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
     // Per Officer
     autoTable(doc, {
       startY: (doc as any).lastAutoTable.finalY + 8,
-      head: [['Officer', 'Periods', 'Hours', 'Classes', 'Avg Attendance', 'Sessions Completed']],
+      head: [['Officer', 'Periods', 'Hours', 'Classes', 'Avg Attendance', 'Completed', 'Topics Covered']],
       body: perOfficer.map((o) => [
         o.name,
         o.periods,
@@ -335,44 +338,45 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
         o.classes.size,
         o.total > 0 ? `${((o.present / o.total) * 100).toFixed(1)}%` : '-',
         o.completed,
+        Array.from(o.topics).join(', ') || '-',
       ]),
       theme: 'striped',
       headStyles: { fillColor: [30, 41, 59] },
-      didDrawPage: () => {
-        doc.setFontSize(11);
-      },
-      willDrawCell: () => {},
+      columnStyles: { 6: { cellWidth: 70 } },
     });
-    (doc as any).lastAutoTable && doc.text('Per Officer', 14, (doc as any).lastAutoTable.finalY - (doc as any).lastAutoTable.finalY + 0);
 
     // Per Class
     autoTable(doc, {
       startY: (doc as any).lastAutoTable.finalY + 8,
-      head: [['Class', 'Periods', 'Hours', 'Officers', 'Avg Attendance']],
+      head: [['Class', 'Periods', 'Hours', 'Officers', 'Avg Attendance', 'Topics Covered']],
       body: perClass.map((c) => [
         c.name,
         c.periods,
         formatHrs(c.minutes),
         Array.from(c.officers).join(', ') || '-',
         c.total > 0 ? `${((c.present / c.total) * 100).toFixed(1)}%` : '-',
+        Array.from(c.topics).join(', ') || '-',
       ]),
       theme: 'striped',
       headStyles: { fillColor: [30, 41, 59] },
+      columnStyles: { 5: { cellWidth: 70 } },
     });
 
     // Per Day
     autoTable(doc, {
       startY: (doc as any).lastAutoTable.finalY + 8,
-      head: [['Date', 'Periods', 'Hours', 'Attendance', 'Completed']],
+      head: [['Date', 'Periods', 'Hours', 'Attendance', 'Completed', 'Topics Covered']],
       body: perDay.map((d) => [
         format(new Date(d.date), 'EEE, MMM d'),
         d.periods,
         formatHrs(d.minutes),
         d.total > 0 ? `${((d.present / d.total) * 100).toFixed(1)}%` : '-',
         d.completed,
+        Array.from(d.topics).join(', ') || '-',
       ]),
       theme: 'striped',
       headStyles: { fillColor: [30, 41, 59] },
+      columnStyles: { 5: { cellWidth: 80 } },
     });
 
     // Remarks
@@ -496,11 +500,12 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
                     <TableHead className="text-right">Classes</TableHead>
                     <TableHead className="text-right">Avg Attendance</TableHead>
                     <TableHead className="text-right">Completed</TableHead>
+                    <TableHead>Topics Covered</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {perOfficer.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
                   ) : perOfficer.map((o) => (
                     <TableRow key={o.name}>
                       <TableCell className="font-medium">{o.name}</TableCell>
@@ -509,6 +514,9 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
                       <TableCell className="text-right">{o.classes.size}</TableCell>
                       <TableCell className="text-right">{o.total > 0 ? `${((o.present / o.total) * 100).toFixed(1)}%` : '-'}</TableCell>
                       <TableCell className="text-right">{o.completed}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-[280px]">
+                        {Array.from(o.topics).join(', ') || '-'}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -530,11 +538,12 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
                     <TableHead className="text-right">Hours</TableHead>
                     <TableHead>Officers</TableHead>
                     <TableHead className="text-right">Avg Attendance</TableHead>
+                    <TableHead>Topics Covered</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {perClass.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
                   ) : perClass.map((c) => (
                     <TableRow key={c.name}>
                       <TableCell className="font-medium">{c.name}</TableCell>
@@ -542,6 +551,9 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
                       <TableCell className="text-right">{formatHrs(c.minutes)}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{Array.from(c.officers).join(', ') || '-'}</TableCell>
                       <TableCell className="text-right">{c.total > 0 ? `${((c.present / c.total) * 100).toFixed(1)}%` : '-'}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-[280px]">
+                        {Array.from(c.topics).join(', ') || '-'}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -563,11 +575,12 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
                     <TableHead className="text-right">Hours</TableHead>
                     <TableHead className="text-right">Attendance</TableHead>
                     <TableHead className="text-right">Completed</TableHead>
+                    <TableHead>Topics Covered</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {perDay.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
                   ) : perDay.map((d) => (
                     <TableRow key={d.date}>
                       <TableCell className="font-medium">{format(new Date(d.date), 'EEE, MMM d')}</TableCell>
@@ -575,12 +588,16 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
                       <TableCell className="text-right">{formatHrs(d.minutes)}</TableCell>
                       <TableCell className="text-right">{d.total > 0 ? `${((d.present / d.total) * 100).toFixed(1)}%` : '-'}</TableCell>
                       <TableCell className="text-right">{d.completed}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-[280px]">
+                        {Array.from(d.topics).join(', ') || '-'}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
+
 
           {/* Remarks */}
           {remarks.length > 0 && (
