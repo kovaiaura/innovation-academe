@@ -118,10 +118,16 @@ export function ClassCoursesTab({
                   Manage courses and levels assigned to {classData.class_name}
                 </CardDescription>
               </div>
-              <Button size="sm" onClick={() => setShowAssignDialog(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Assign Course
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => setShowBulkAssignDialog(true)}>
+                  <Link2 className="h-4 w-4 mr-2" />
+                  Bulk Assign
+                </Button>
+                <Button size="sm" onClick={() => setShowAssignDialog(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Assign Course
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
