@@ -500,11 +500,12 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
                     <TableHead className="text-right">Classes</TableHead>
                     <TableHead className="text-right">Avg Attendance</TableHead>
                     <TableHead className="text-right">Completed</TableHead>
+                    <TableHead>Topics Covered</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {perOfficer.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
                   ) : perOfficer.map((o) => (
                     <TableRow key={o.name}>
                       <TableCell className="font-medium">{o.name}</TableCell>
@@ -513,6 +514,9 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
                       <TableCell className="text-right">{o.classes.size}</TableCell>
                       <TableCell className="text-right">{o.total > 0 ? `${((o.present / o.total) * 100).toFixed(1)}%` : '-'}</TableCell>
                       <TableCell className="text-right">{o.completed}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-[280px]">
+                        {Array.from(o.topics).join(', ') || '-'}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -534,11 +538,12 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
                     <TableHead className="text-right">Hours</TableHead>
                     <TableHead>Officers</TableHead>
                     <TableHead className="text-right">Avg Attendance</TableHead>
+                    <TableHead>Topics Covered</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {perClass.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
                   ) : perClass.map((c) => (
                     <TableRow key={c.name}>
                       <TableCell className="font-medium">{c.name}</TableCell>
@@ -546,6 +551,9 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
                       <TableCell className="text-right">{formatHrs(c.minutes)}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{Array.from(c.officers).join(', ') || '-'}</TableCell>
                       <TableCell className="text-right">{c.total > 0 ? `${((c.present / c.total) * 100).toFixed(1)}%` : '-'}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-[280px]">
+                        {Array.from(c.topics).join(', ') || '-'}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -567,11 +575,12 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
                     <TableHead className="text-right">Hours</TableHead>
                     <TableHead className="text-right">Attendance</TableHead>
                     <TableHead className="text-right">Completed</TableHead>
+                    <TableHead>Topics Covered</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {perDay.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
                   ) : perDay.map((d) => (
                     <TableRow key={d.date}>
                       <TableCell className="font-medium">{format(new Date(d.date), 'EEE, MMM d')}</TableCell>
@@ -579,12 +588,16 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
                       <TableCell className="text-right">{formatHrs(d.minutes)}</TableCell>
                       <TableCell className="text-right">{d.total > 0 ? `${((d.present / d.total) * 100).toFixed(1)}%` : '-'}</TableCell>
                       <TableCell className="text-right">{d.completed}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-[280px]">
+                        {Array.from(d.topics).join(', ') || '-'}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
+
 
           {/* Remarks */}
           {remarks.length > 0 && (
