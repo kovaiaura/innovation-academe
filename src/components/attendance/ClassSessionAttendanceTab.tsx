@@ -181,17 +181,22 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
   const handleExportCSV = () => {
     if (mergedData.length === 0) return;
     const csvContent = [
-      ['Period', 'Time', 'Class', 'Scheduled Officer', 'Status', 'Students Present', 'Total Students', 'Course/Session Covered'],
-      ...mergedData.map(row => [
-        row.periodLabel,
-        row.periodTime,
-        row.className,
-        row.scheduledOfficer,
-        row.isCompleted ? 'Completed' : 'Pending',
-        row.studentsPresent ?? '-',
-        row.totalStudents ?? '-',
-        row.subject || '-',
-      ])
+      ['Period', 'Time', 'Class', 'Scheduled Officer', 'Status', 'Students Present', 'Total Students', 'Course/Session Covered', 'Remark'],
+      ...mergedData.map(row => {
+        const allAbsent = row.isCompleted && row.studentsPresent === 0;
+        const covered = allAbsent && row.notes ? `Remark: ${row.notes}` : (row.subject || '-');
+        return [
+          row.periodLabel,
+          row.periodTime,
+          row.className,
+          row.scheduledOfficer,
+          row.isCompleted ? 'Completed' : 'Pending',
+          row.studentsPresent ?? '-',
+          row.totalStudents ?? '-',
+          `"${covered.replace(/"/g, '""')}"`,
+          `"${(row.notes || '').replace(/"/g, '""')}"`,
+        ];
+      })
     ].map(row => row.join(',')).join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
