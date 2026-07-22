@@ -325,6 +325,12 @@ export function ClassCoursesTab({
         onAssignCourse={handleAssignCourse}
       />
 
+      <BulkAssignCoursesToClassDialog
+        isOpen={showBulkAssignDialog}
+        onOpenChange={setShowBulkAssignDialog}
+        classData={classData}
+      />
+
       <AlertDialog open={!!assignmentToDelete} onOpenChange={() => setAssignmentToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
