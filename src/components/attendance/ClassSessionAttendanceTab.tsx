@@ -166,6 +166,7 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
           studentsPresent: session?.students_present ?? null,
           totalStudents: session?.total_students ?? null,
           subject: session?.subject || null,
+          notes: session?.notes || null,
           completedBy: session?.completed_by ? officerMap[session.completed_by] : null,
         };
       })
