@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { InstitutionClass } from '@/types/institution';
 import { AssignCourseToClassDialog } from './AssignCourseToClassDialog';
+import { BulkAssignCoursesToClassDialog } from './BulkAssignCoursesToClassDialog';
 import { 
   useClassCourseAssignments, 
   useRemoveCourseFromClass, 
