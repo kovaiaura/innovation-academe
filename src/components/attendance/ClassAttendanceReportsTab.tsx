@@ -330,7 +330,7 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
     // Per Officer
     autoTable(doc, {
       startY: (doc as any).lastAutoTable.finalY + 8,
-      head: [['Officer', 'Periods', 'Hours', 'Classes', 'Avg Attendance', 'Sessions Completed']],
+      head: [['Officer', 'Periods', 'Hours', 'Classes', 'Avg Attendance', 'Completed', 'Topics Covered']],
       body: perOfficer.map((o) => [
         o.name,
         o.periods,
@@ -338,44 +338,45 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
         o.classes.size,
         o.total > 0 ? `${((o.present / o.total) * 100).toFixed(1)}%` : '-',
         o.completed,
+        Array.from(o.topics).join(', ') || '-',
       ]),
       theme: 'striped',
       headStyles: { fillColor: [30, 41, 59] },
-      didDrawPage: () => {
-        doc.setFontSize(11);
-      },
-      willDrawCell: () => {},
+      columnStyles: { 6: { cellWidth: 70 } },
     });
-    (doc as any).lastAutoTable && doc.text('Per Officer', 14, (doc as any).lastAutoTable.finalY - (doc as any).lastAutoTable.finalY + 0);
 
     // Per Class
     autoTable(doc, {
       startY: (doc as any).lastAutoTable.finalY + 8,
-      head: [['Class', 'Periods', 'Hours', 'Officers', 'Avg Attendance']],
+      head: [['Class', 'Periods', 'Hours', 'Officers', 'Avg Attendance', 'Topics Covered']],
       body: perClass.map((c) => [
         c.name,
         c.periods,
         formatHrs(c.minutes),
         Array.from(c.officers).join(', ') || '-',
         c.total > 0 ? `${((c.present / c.total) * 100).toFixed(1)}%` : '-',
+        Array.from(c.topics).join(', ') || '-',
       ]),
       theme: 'striped',
       headStyles: { fillColor: [30, 41, 59] },
+      columnStyles: { 5: { cellWidth: 70 } },
     });
 
     // Per Day
     autoTable(doc, {
       startY: (doc as any).lastAutoTable.finalY + 8,
-      head: [['Date', 'Periods', 'Hours', 'Attendance', 'Completed']],
+      head: [['Date', 'Periods', 'Hours', 'Attendance', 'Completed', 'Topics Covered']],
       body: perDay.map((d) => [
         format(new Date(d.date), 'EEE, MMM d'),
         d.periods,
         formatHrs(d.minutes),
         d.total > 0 ? `${((d.present / d.total) * 100).toFixed(1)}%` : '-',
         d.completed,
+        Array.from(d.topics).join(', ') || '-',
       ]),
       theme: 'striped',
       headStyles: { fillColor: [30, 41, 59] },
+      columnStyles: { 5: { cellWidth: 80 } },
     });
 
     // Remarks
