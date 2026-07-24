@@ -185,6 +185,38 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
     };
   }, [filtered]);
 
+  // Set of known officer names in this dataset — used to filter accidental
+  // "officer name as subject" entries out of Topics Covered.
+  const officerNameSet = useMemo(() => {
+    const s = new Set<string>();
+    rows.forEach((r) => {
+      if (r.officer_name) s.add(r.officer_name.trim().toLowerCase());
+    });
+    return s;
+  }, [rows]);
+
+  const isValidTopic = (subject: string | null, officerName?: string | null) => {
+    if (!subject) return false;
+    const t = subject.trim();
+    if (!t) return false;
+    const low = t.toLowerCase();
+    if (officerName && low === officerName.trim().toLowerCase()) return false;
+    if (officerNameSet.has(low)) return false;
+    return true;
+  };
+
+  // Extracts the topic string to aggregate for a row: prefer the remark
+  // when present, else the subject only if it is a real topic (not an
+  // officer name) AND the session is marked completed.
+  const topicFor = (r: Row): string | null => {
+    const note = (r.notes || '').trim();
+    if (note) return `Remark: ${note}`;
+    if (r.is_session_completed && isValidTopic(r.subject, r.officer_name)) {
+      return r.subject!.trim();
+    }
+    return null;
+  };
+
   const perOfficer = useMemo(() => {
     const map = new Map<string, { name: string; periods: number; minutes: number; classes: Set<string>; present: number; total: number; completed: number; topics: Set<string> }>();
     filtered.forEach((r) => {
@@ -196,11 +228,12 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
       cur.present += r.students_present + r.students_late;
       cur.total += r.total_students;
       if (r.is_session_completed) cur.completed += 1;
-      if (r.subject) cur.topics.add(r.subject);
+      const t = topicFor(r);
+      if (t) cur.topics.add(t);
       map.set(key, cur);
     });
     return Array.from(map.values()).sort((a, b) => b.periods - a.periods);
-  }, [filtered]);
+  }, [filtered, officerNameSet]);
 
   const perClass = useMemo(() => {
     const map = new Map<string, { name: string; periods: number; minutes: number; officers: Set<string>; present: number; total: number; topics: Set<string> }>();
@@ -211,11 +244,12 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
       if (r.officer_id) cur.officers.add(r.officer_name);
       cur.present += r.students_present + r.students_late;
       cur.total += r.total_students;
-      if (r.subject) cur.topics.add(r.subject);
+      const t = topicFor(r);
+      if (t) cur.topics.add(t);
       map.set(r.class_id, cur);
     });
     return Array.from(map.values()).sort((a, b) => b.periods - a.periods);
-  }, [filtered]);
+  }, [filtered, officerNameSet]);
 
   const perDay = useMemo(() => {
     const map = new Map<string, { date: string; periods: number; minutes: number; present: number; total: number; completed: number; topics: Set<string> }>();
@@ -226,11 +260,13 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
       cur.present += r.students_present + r.students_late;
       cur.total += r.total_students;
       if (r.is_session_completed) cur.completed += 1;
-      if (r.subject) cur.topics.add(r.subject);
+      const t = topicFor(r);
+      if (t) cur.topics.add(t);
       map.set(r.date, cur);
     });
     return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
-  }, [filtered]);
+  }, [filtered, officerNameSet]);
+
 
   const remarks = useMemo(
     () => filtered.filter((r) => (r.notes || '').trim().length > 0),
@@ -282,7 +318,7 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
       r.officer_name,
       r.period_label || '',
       r.period_time || '',
-      r.subject || '',
+      isValidTopic(r.subject, r.officer_name) ? r.subject : '',
       r.total_students,
       r.students_present,
       r.students_late,

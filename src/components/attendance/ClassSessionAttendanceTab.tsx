@@ -24,11 +24,16 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { Calendar, CheckCircle2, Download, Clock, CalendarIcon } from 'lucide-react';
+import { Calendar, CheckCircle2, Download, Clock, CalendarIcon, Pencil } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { useSaveClassAttendance } from '@/hooks/useClassSessionAttendance';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+
 
 interface ClassSessionAttendanceTabProps {
   institutionId?: string;
@@ -39,6 +44,11 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttendanceTabProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('all');
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
+  const { user } = useAuth();
+  const saveMutation = useSaveClassAttendance();
+
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const dayOfWeek = DAY_NAMES[getDay(selectedDate)];
@@ -154,21 +164,36 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
           s => s.timetable_assignment_id === assignment.id
         );
 
+        const scheduledOfficerName =
+          assignment.teacher_name ||
+          (assignment.teacher_id ? officerMap[assignment.teacher_id] : null) ||
+          '-';
+        const rawSubject = session?.subject || null;
+        // Ignore subject if it accidentally matches the officer name
+        const isOfficerNameSubject =
+          !!rawSubject &&
+          rawSubject.trim().toLowerCase() === scheduledOfficerName.trim().toLowerCase();
         return {
           id: assignment.id,
+          sessionId: session?.id || null,
           periodLabel: period?.label || '-',
           periodTime: period ? `${period.start_time} - ${period.end_time}` : '-',
           displayOrder: period?.display_order ?? 999,
           className: assignment.class_name,
           classId: assignment.class_id,
-          scheduledOfficer: assignment.teacher_name || (assignment.teacher_id ? officerMap[assignment.teacher_id] : null) || '-',
+          teacherId: assignment.teacher_id || null,
+          scheduledOfficer: scheduledOfficerName,
           isCompleted: session?.is_session_completed ?? false,
           studentsPresent: session?.students_present ?? null,
           totalStudents: session?.total_students ?? null,
-          subject: session?.subject || null,
+          subject: isOfficerNameSubject ? null : rawSubject,
           notes: session?.notes || null,
           completedBy: session?.completed_by ? officerMap[session.completed_by] : null,
+          completedById: session?.completed_by || null,
+          attendanceRecords: (session?.attendance_records as any) || [],
+          periodId: assignment.period_id,
         };
+
       })
       .sort((a, b) => a.displayOrder - b.displayOrder);
   }, [timetableAssignments, sessionRecords, periodMap, officerMap, selectedClassFilter]);
@@ -177,6 +202,38 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
   const pendingCount = mergedData.filter(d => !d.isCompleted).length;
 
   const isLoading = loadingTimetable || loadingSessions;
+
+  const canEditRemarks = !!user && ['management', 'system_admin', 'super_admin', 'officer'].includes(user.role);
+
+  const openEditor = (row: typeof mergedData[number]) => {
+    setEditingRowId(row.id);
+    setEditValue(row.notes || '');
+  };
+
+  const handleSaveRemark = async (row: typeof mergedData[number]) => {
+    if (!institutionId || !user) return;
+    try {
+      await saveMutation.mutateAsync({
+        timetable_assignment_id: row.id,
+        class_id: row.classId,
+        institution_id: institutionId,
+        officer_id: row.completedById || row.teacherId || user.id,
+        date: dateStr,
+        period_label: row.periodLabel,
+        period_time: row.periodTime,
+        subject: row.subject || undefined,
+        attendance_records: row.attendanceRecords || [],
+        notes: editValue.trim(),
+      });
+      toast.success('Remark saved');
+      setEditingRowId(null);
+      setEditValue('');
+    } catch (e: any) {
+      console.error('Failed to save remark', e);
+      toast.error(e?.message || 'Failed to save remark');
+    }
+  };
+
 
   const handleExportCSV = () => {
     if (mergedData.length === 0) return;
@@ -361,35 +418,101 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
                     </TableCell>
                     <TableCell>
                       {(() => {
+                        const hasSubject = !!row.subject;
+                        const hasNote = !!row.notes;
                         const allAbsent = row.isCompleted && row.studentsPresent === 0;
-                        if (allAbsent && row.notes) {
+
+                        const editButton = canEditRemarks ? (
+                          <Popover
+                            open={editingRowId === row.id}
+                            onOpenChange={(open) => {
+                              if (open) openEditor(row);
+                              else {
+                                setEditingRowId(null);
+                                setEditValue('');
+                              }
+                            }}
+                          >
+                            <PopoverTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                                <Pencil className="h-3 w-3 mr-1" />
+                                {hasNote ? 'Edit remark' : 'Add topic / remark'}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80" align="start">
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium">Add remark / topic covered</p>
+                                <Textarea
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  placeholder="e.g. Topic covered, exam held, class cancelled..."
+                                  rows={3}
+                                />
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setEditingRowId(null);
+                                      setEditValue('');
+                                    }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    disabled={saveMutation.isPending || !editValue.trim()}
+                                    onClick={() => handleSaveRemark(row)}
+                                  >
+                                    Save
+                                  </Button>
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        ) : null;
+
+                        if (allAbsent && hasNote) {
                           return (
-                            <div className="text-sm">
-                              <span className="text-amber-700 dark:text-amber-400 font-medium">Remark:</span>{' '}
-                              <span className="italic">{row.notes}</span>
+                            <div className="space-y-1">
+                              <div className="text-sm">
+                                <span className="text-amber-700 dark:text-amber-400 font-medium">Remark:</span>{' '}
+                                <span className="italic">{row.notes}</span>
+                              </div>
+                              {editButton}
                             </div>
                           );
                         }
-                        if (row.subject) {
+                        if (hasSubject) {
                           return (
                             <div className="space-y-0.5">
                               <div className="text-sm">{row.subject}</div>
-                              {row.notes && (
+                              {hasNote && (
                                 <div className="text-xs text-muted-foreground italic">Remark: {row.notes}</div>
                               )}
+                              {editButton}
                             </div>
                           );
                         }
-                        if (row.notes) {
+                        if (hasNote) {
                           return (
-                            <div className="text-sm italic text-amber-700 dark:text-amber-400">
-                              Remark: {row.notes}
+                            <div className="space-y-1">
+                              <div className="text-sm italic text-amber-700 dark:text-amber-400">
+                                Remark: {row.notes}
+                              </div>
+                              {editButton}
                             </div>
                           );
                         }
-                        return <span className="text-muted-foreground text-sm">-</span>;
+                        return (
+                          <div className="space-y-1">
+                            <span className="text-muted-foreground text-sm">-</span>
+                            {editButton && <div>{editButton}</div>}
+                          </div>
+                        );
                       })()}
                     </TableCell>
+
                   </TableRow>
                 ))}
               </TableBody>
