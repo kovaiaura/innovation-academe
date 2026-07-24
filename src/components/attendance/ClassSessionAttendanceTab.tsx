@@ -24,11 +24,16 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { Calendar, CheckCircle2, Download, Clock, CalendarIcon } from 'lucide-react';
+import { Calendar, CheckCircle2, Download, Clock, CalendarIcon, Pencil } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { useSaveClassAttendance } from '@/hooks/useClassSessionAttendance';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+
 
 interface ClassSessionAttendanceTabProps {
   institutionId?: string;
