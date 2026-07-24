@@ -203,6 +203,38 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
 
   const isLoading = loadingTimetable || loadingSessions;
 
+  const canEditRemarks = !!user && ['management', 'system_admin', 'super_admin', 'officer'].includes(user.role);
+
+  const openEditor = (row: typeof mergedData[number]) => {
+    setEditingRowId(row.id);
+    setEditValue(row.notes || '');
+  };
+
+  const handleSaveRemark = async (row: typeof mergedData[number]) => {
+    if (!institutionId || !user) return;
+    try {
+      await saveMutation.mutateAsync({
+        timetable_assignment_id: row.id,
+        class_id: row.classId,
+        institution_id: institutionId,
+        officer_id: row.completedById || row.teacherId || user.id,
+        date: dateStr,
+        period_label: row.periodLabel,
+        period_time: row.periodTime,
+        subject: row.subject || undefined,
+        attendance_records: row.attendanceRecords || [],
+        notes: editValue.trim(),
+      });
+      toast.success('Remark saved');
+      setEditingRowId(null);
+      setEditValue('');
+    } catch (e: any) {
+      console.error('Failed to save remark', e);
+      toast.error(e?.message || 'Failed to save remark');
+    }
+  };
+
+
   const handleExportCSV = () => {
     if (mergedData.length === 0) return;
     const csvContent = [
