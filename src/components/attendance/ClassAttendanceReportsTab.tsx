@@ -318,7 +318,7 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
       r.officer_name,
       r.period_label || '',
       r.period_time || '',
-      r.subject || '',
+      isValidTopic(r.subject, r.officer_name) ? r.subject : '',
       r.total_students,
       r.students_present,
       r.students_late,
