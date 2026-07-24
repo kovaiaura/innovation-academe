@@ -164,21 +164,36 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
           s => s.timetable_assignment_id === assignment.id
         );
 
+        const scheduledOfficerName =
+          assignment.teacher_name ||
+          (assignment.teacher_id ? officerMap[assignment.teacher_id] : null) ||
+          '-';
+        const rawSubject = session?.subject || null;
+        // Ignore subject if it accidentally matches the officer name
+        const isOfficerNameSubject =
+          !!rawSubject &&
+          rawSubject.trim().toLowerCase() === scheduledOfficerName.trim().toLowerCase();
         return {
           id: assignment.id,
+          sessionId: session?.id || null,
           periodLabel: period?.label || '-',
           periodTime: period ? `${period.start_time} - ${period.end_time}` : '-',
           displayOrder: period?.display_order ?? 999,
           className: assignment.class_name,
           classId: assignment.class_id,
-          scheduledOfficer: assignment.teacher_name || (assignment.teacher_id ? officerMap[assignment.teacher_id] : null) || '-',
+          teacherId: assignment.teacher_id || null,
+          scheduledOfficer: scheduledOfficerName,
           isCompleted: session?.is_session_completed ?? false,
           studentsPresent: session?.students_present ?? null,
           totalStudents: session?.total_students ?? null,
-          subject: session?.subject || null,
+          subject: isOfficerNameSubject ? null : rawSubject,
           notes: session?.notes || null,
           completedBy: session?.completed_by ? officerMap[session.completed_by] : null,
+          completedById: session?.completed_by || null,
+          attendanceRecords: (session?.attendance_records as any) || [],
+          periodId: assignment.period_id,
         };
+
       })
       .sort((a, b) => a.displayOrder - b.displayOrder);
   }, [timetableAssignments, sessionRecords, periodMap, officerMap, selectedClassFilter]);
