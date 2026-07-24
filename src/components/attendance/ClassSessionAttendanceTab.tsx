@@ -44,6 +44,11 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttendanceTabProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('all');
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
+  const { user } = useAuth();
+  const saveMutation = useSaveClassAttendance();
+
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const dayOfWeek = DAY_NAMES[getDay(selectedDate)];
