@@ -418,35 +418,101 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
                     </TableCell>
                     <TableCell>
                       {(() => {
+                        const hasSubject = !!row.subject;
+                        const hasNote = !!row.notes;
                         const allAbsent = row.isCompleted && row.studentsPresent === 0;
-                        if (allAbsent && row.notes) {
+
+                        const editButton = canEditRemarks ? (
+                          <Popover
+                            open={editingRowId === row.id}
+                            onOpenChange={(open) => {
+                              if (open) openEditor(row);
+                              else {
+                                setEditingRowId(null);
+                                setEditValue('');
+                              }
+                            }}
+                          >
+                            <PopoverTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                                <Pencil className="h-3 w-3 mr-1" />
+                                {hasNote ? 'Edit remark' : 'Add topic / remark'}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80" align="start">
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium">Add remark / topic covered</p>
+                                <Textarea
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  placeholder="e.g. Topic covered, exam held, class cancelled..."
+                                  rows={3}
+                                />
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setEditingRowId(null);
+                                      setEditValue('');
+                                    }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    disabled={saveMutation.isPending || !editValue.trim()}
+                                    onClick={() => handleSaveRemark(row)}
+                                  >
+                                    Save
+                                  </Button>
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        ) : null;
+
+                        if (allAbsent && hasNote) {
                           return (
-                            <div className="text-sm">
-                              <span className="text-amber-700 dark:text-amber-400 font-medium">Remark:</span>{' '}
-                              <span className="italic">{row.notes}</span>
+                            <div className="space-y-1">
+                              <div className="text-sm">
+                                <span className="text-amber-700 dark:text-amber-400 font-medium">Remark:</span>{' '}
+                                <span className="italic">{row.notes}</span>
+                              </div>
+                              {editButton}
                             </div>
                           );
                         }
-                        if (row.subject) {
+                        if (hasSubject) {
                           return (
                             <div className="space-y-0.5">
                               <div className="text-sm">{row.subject}</div>
-                              {row.notes && (
+                              {hasNote && (
                                 <div className="text-xs text-muted-foreground italic">Remark: {row.notes}</div>
                               )}
+                              {editButton}
                             </div>
                           );
                         }
-                        if (row.notes) {
+                        if (hasNote) {
                           return (
-                            <div className="text-sm italic text-amber-700 dark:text-amber-400">
-                              Remark: {row.notes}
+                            <div className="space-y-1">
+                              <div className="text-sm italic text-amber-700 dark:text-amber-400">
+                                Remark: {row.notes}
+                              </div>
+                              {editButton}
                             </div>
                           );
                         }
-                        return <span className="text-muted-foreground text-sm">-</span>;
+                        return (
+                          <div className="space-y-1">
+                            <span className="text-muted-foreground text-sm">-</span>
+                            {editButton && <div>{editButton}</div>}
+                          </div>
+                        );
                       })()}
                     </TableCell>
+
                   </TableRow>
                 ))}
               </TableBody>
