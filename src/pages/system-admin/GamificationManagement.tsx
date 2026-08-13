@@ -58,6 +58,26 @@ export default function GamificationManagement() {
   const [institutionFilter, setInstitutionFilter] = useState<string>("all");
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [recalculateStatus, setRecalculateStatus] = useState('');
+  const [isRecalcProgress, setIsRecalcProgress] = useState(false);
+  const [progressStatus, setProgressStatus] = useState('');
+
+  const handleRecalculateProgress = async () => {
+    setIsRecalcProgress(true);
+    setProgressStatus('Rebuilding session completions...');
+    try {
+      const { data, error } = await supabase.functions.invoke('recalculate-course-progress');
+      if (error) throw error;
+      const processed = (data as any)?.processed ?? 0;
+      setProgressStatus(`Done. ${processed} session completion records processed.`);
+      toast.success('Course progress recalculated');
+    } catch (error: any) {
+      console.error('Recalculate progress error:', error);
+      setProgressStatus('');
+      toast.error(error?.message || 'Failed to recalculate course progress');
+    } finally {
+      setIsRecalcProgress(false);
+    }
+  };
   const [recalcProgressDialogOpen, setRecalcProgressDialogOpen] = useState(false);
   const [recalcProgress, setRecalcProgress] = useState<{ step: string; current: number; total: number; message: string } | null>(null);
   const [recalcResult, setRecalcResult] = useState<{ studentsProcessed: number; totalXP: number; badgesAwarded: number } | null>(null);
