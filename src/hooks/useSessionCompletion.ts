@@ -88,10 +88,42 @@ export function useSessionCompletion(): SessionCompletionResult {
         if (insertError) throw insertError;
       }
 
+      // 2b. Record the explicit session completion per student. This is the
+      //     authoritative source analytics uses for progress.
+      const { data: classRow } = await supabase
+        .from('classes')
+        .select('institution_id')
+        .eq('id', classId)
+        .maybeSingle();
+
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const completionRows = studentIds.map(studentId => ({
+        institution_id: classRow?.institution_id || null,
+        class_id: classId,
+        class_assignment_id: classAssignmentId,
+        course_id: courseId || null,
+        module_id: moduleId || null,
+        session_id: sessionId,
+        student_id: studentId,
+        source: 'officer_marked',
+        completed_at: new Date().toISOString(),
+        completed_by: user?.id || null,
+      }));
+
+      const { error: sessionCompletionError } = await supabase
+        .from('class_session_completions')
+        .upsert(completionRows, {
+          onConflict: 'student_id,session_id,class_assignment_id',
+          ignoreDuplicates: false,
+        });
+
+      if (sessionCompletionError) throw sessionCompletionError;
+
       // 3. ALWAYS create/update class_session_attendance so the officer's
       //    "mark complete" is recorded even when the session has no content.
-      //    This is the session-level completion source used by analytics.
       await createAttendanceRecord(classId, studentIds, sessionId, timetableAssignmentId);
+
 
       // 5. Trigger certificate issuance via edge function (if module/course info available)
       if (moduleId && courseId) {
