@@ -320,6 +320,32 @@ export default function GamificationManagement() {
               </CardContent>
             </Card>
 
+            {/* Recalculate Course Progress */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Recalculate Course Progress
+                </CardTitle>
+                <CardDescription>
+                  Rebuild session completion records from past attendance and content completions so course progress reflects everything marked so far.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button disabled={isRecalcProgress} onClick={handleRecalculateProgress}>
+                  {isRecalcProgress ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Recalculating...</>
+                  ) : (
+                    <><RefreshCw className="mr-2 h-4 w-4" /> Recalculate Progress</>
+                  )}
+                </Button>
+                {progressStatus && (
+                  <p className="text-sm text-muted-foreground">{progressStatus}</p>
+                )}
+              </CardContent>
+            </Card>
+
+
             {/* XP Distribution & Top Students */}
             <div className="grid gap-6 md:grid-cols-2">
               <Card>
