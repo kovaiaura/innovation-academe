@@ -27,6 +27,8 @@ export interface ClassSessionAttendance {
   students_late: number;
   attendance_records: AttendanceRecord[];
   is_session_completed: boolean;
+  covered_session_ids?: string[];
+  covered_course_id?: string | null;
   completed_by: string | null;
   completed_at: string | null;
   notes: string | null;
@@ -45,6 +47,8 @@ interface SaveAttendanceParams {
   subject?: string;
   attendance_records: AttendanceRecord[];
   notes?: string;
+  covered_session_ids?: string[];
+  covered_course_id?: string | null;
 }
 
 interface MarkSessionCompletedParams {
@@ -170,6 +174,8 @@ export function useSaveClassAttendance() {
           subject: params.subject,
           attendance_records: params.attendance_records as unknown as Json,
           notes: params.notes,
+          covered_session_ids: (params.covered_session_ids || []) as unknown as Json,
+          covered_course_id: params.covered_course_id || null,
           ...stats,
           updated_at: new Date().toISOString(),
         }, {

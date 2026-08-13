@@ -337,6 +337,8 @@ const Attendance = () => {
         subject: session.subject,
         attendance_records: attendanceRecords,
         notes: classRemark || undefined,
+        covered_session_ids: selectedCurriculumSessionIds,
+        covered_course_id: (selectedCourseAssignment as any)?.course_id || null,
       });
 
       toast.success("Attendance saved successfully!");

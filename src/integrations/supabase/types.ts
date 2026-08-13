@@ -1117,6 +1117,8 @@ export type Database = {
           class_id: string
           completed_at: string | null
           completed_by: string | null
+          covered_course_id: string | null
+          covered_session_ids: Json | null
           created_at: string | null
           date: string
           id: string
@@ -1139,6 +1141,8 @@ export type Database = {
           class_id: string
           completed_at?: string | null
           completed_by?: string | null
+          covered_course_id?: string | null
+          covered_session_ids?: Json | null
           created_at?: string | null
           date: string
           id?: string
@@ -1161,6 +1165,8 @@ export type Database = {
           class_id?: string
           completed_at?: string | null
           completed_by?: string | null
+          covered_course_id?: string | null
+          covered_session_ids?: Json | null
           created_at?: string | null
           date?: string
           id?: string
@@ -1215,6 +1221,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      class_session_completions: {
+        Row: {
+          attendance_id: string | null
+          class_assignment_id: string
+          class_id: string
+          completed_at: string
+          completed_by: string | null
+          course_id: string | null
+          created_at: string
+          id: string
+          institution_id: string | null
+          module_id: string | null
+          session_id: string
+          source: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          attendance_id?: string | null
+          class_assignment_id: string
+          class_id: string
+          completed_at?: string
+          completed_by?: string | null
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          institution_id?: string | null
+          module_id?: string | null
+          session_id: string
+          source?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          attendance_id?: string | null
+          class_assignment_id?: string
+          class_id?: string
+          completed_at?: string
+          completed_by?: string | null
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          institution_id?: string | null
+          module_id?: string | null
+          session_id?: string
+          source?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       classes: {
         Row: {

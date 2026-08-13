@@ -88,10 +88,42 @@ export function useSessionCompletion(): SessionCompletionResult {
         if (insertError) throw insertError;
       }
 
+      // 2b. Record the explicit session completion per student. This is the
+      //     authoritative source analytics uses for progress.
+      const { data: classRow } = await supabase
+        .from('classes')
+        .select('institution_id')
+        .eq('id', classId)
+        .maybeSingle();
+
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const completionRows = studentIds.map(studentId => ({
+        institution_id: classRow?.institution_id || null,
+        class_id: classId,
+        class_assignment_id: classAssignmentId,
+        course_id: courseId || null,
+        module_id: moduleId || null,
+        session_id: sessionId,
+        student_id: studentId,
+        source: 'officer_marked',
+        completed_at: new Date().toISOString(),
+        completed_by: user?.id || null,
+      }));
+
+      const { error: sessionCompletionError } = await supabase
+        .from('class_session_completions')
+        .upsert(completionRows, {
+          onConflict: 'student_id,session_id,class_assignment_id',
+          ignoreDuplicates: false,
+        });
+
+      if (sessionCompletionError) throw sessionCompletionError;
+
       // 3. ALWAYS create/update class_session_attendance so the officer's
       //    "mark complete" is recorded even when the session has no content.
-      //    This is the session-level completion source used by analytics.
       await createAttendanceRecord(classId, studentIds, sessionId, timetableAssignmentId);
+
 
       // 5. Trigger certificate issuance via edge function (if module/course info available)
       if (moduleId && courseId) {
@@ -285,10 +317,41 @@ async function createAttendanceRecord(
       return;
     }
 
-    // Insert or update attendance record
+    // Non-destructive: if a row already exists for this period+date (saved by
+    // the officer's attendance flow), only flag it completed and append the
+    // covered session — never overwrite the attendance records or remark.
+    const { data: existingRow } = await supabase
+      .from('class_session_attendance')
+      .select('id, subject, covered_session_ids')
+      .eq('timetable_assignment_id', finalTimetableAssignmentId)
+      .eq('date', today)
+      .maybeSingle();
+
+    if (existingRow) {
+      const covered = Array.isArray((existingRow as any).covered_session_ids)
+        ? ((existingRow as any).covered_session_ids as string[])
+        : [];
+      const nextCovered = [...new Set([...covered, sessionId])];
+
+      const { error: updateError } = await supabase
+        .from('class_session_attendance')
+        .update({
+          is_session_completed: true,
+          completed_by: officerId,
+          completed_at: new Date().toISOString(),
+          covered_session_ids: nextCovered as unknown as Json,
+          subject: sessionData?.title || existingRow.subject,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingRow.id);
+
+      if (updateError) console.error('Failed to update attendance record:', updateError);
+      return;
+    }
+
     const { error: attendanceError } = await supabase
       .from('class_session_attendance')
-      .upsert({
+      .insert({
         timetable_assignment_id: finalTimetableAssignmentId,
         class_id: classId,
         institution_id: classData.institution_id,
@@ -297,6 +360,7 @@ async function createAttendanceRecord(
         period_label: sessionData?.title || 'Course Session',
         subject: sessionData?.title || 'Course Content',
         attendance_records: attendanceRecords as unknown as Json,
+        covered_session_ids: [sessionId] as unknown as Json,
         total_students: allStudents.length,
         students_present: selectedStudentIds.length,
         students_absent: allStudents.length - selectedStudentIds.length,
@@ -305,13 +369,12 @@ async function createAttendanceRecord(
         completed_by: officerId,
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'timetable_assignment_id,date'
       });
 
     if (attendanceError) {
       console.error('Failed to create attendance record:', attendanceError);
     }
+
   } catch (err) {
     console.error('Error creating attendance record:', err);
   }

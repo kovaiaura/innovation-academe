@@ -217,61 +217,17 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
     return null;
   };
 
-  const perOfficer = useMemo(() => {
-    const map = new Map<string, { name: string; periods: number; minutes: number; classes: Set<string>; present: number; total: number; completed: number; topics: Set<string> }>();
-    filtered.forEach((r) => {
-      const key = r.officer_id || 'unassigned';
-      const cur = map.get(key) || { name: r.officer_name, periods: 0, minutes: 0, classes: new Set(), present: 0, total: 0, completed: 0, topics: new Set() };
-      cur.periods += 1;
-      cur.minutes += parseDurationMinutes(r.period_time);
-      cur.classes.add(r.class_id);
-      cur.present += r.students_present + r.students_late;
-      cur.total += r.total_students;
-      if (r.is_session_completed) cur.completed += 1;
-      const t = topicFor(r);
-      if (t) cur.topics.add(t);
-      map.set(key, cur);
-    });
-    return Array.from(map.values()).sort((a, b) => b.periods - a.periods);
-  }, [filtered, officerNameSet]);
-
-  const perClass = useMemo(() => {
-    const map = new Map<string, { name: string; periods: number; minutes: number; officers: Set<string>; present: number; total: number; topics: Set<string> }>();
-    filtered.forEach((r) => {
-      const cur = map.get(r.class_id) || { name: r.class_name, periods: 0, minutes: 0, officers: new Set(), present: 0, total: 0, topics: new Set() };
-      cur.periods += 1;
-      cur.minutes += parseDurationMinutes(r.period_time);
-      if (r.officer_id) cur.officers.add(r.officer_name);
-      cur.present += r.students_present + r.students_late;
-      cur.total += r.total_students;
-      const t = topicFor(r);
-      if (t) cur.topics.add(t);
-      map.set(r.class_id, cur);
-    });
-    return Array.from(map.values()).sort((a, b) => b.periods - a.periods);
-  }, [filtered, officerNameSet]);
-
-  const perDay = useMemo(() => {
-    const map = new Map<string, { date: string; periods: number; minutes: number; present: number; total: number; completed: number; topics: Set<string> }>();
-    filtered.forEach((r) => {
-      const cur = map.get(r.date) || { date: r.date, periods: 0, minutes: 0, present: 0, total: 0, completed: 0, topics: new Set() };
-      cur.periods += 1;
-      cur.minutes += parseDurationMinutes(r.period_time);
-      cur.present += r.students_present + r.students_late;
-      cur.total += r.total_students;
-      if (r.is_session_completed) cur.completed += 1;
-      const t = topicFor(r);
-      if (t) cur.topics.add(t);
-      map.set(r.date, cur);
-    });
-    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
-  }, [filtered, officerNameSet]);
-
-
-  const remarks = useMemo(
-    () => filtered.filter((r) => (r.notes || '').trim().length > 0),
+  const logRows = useMemo(
+    () =>
+      [...filtered].sort(
+        (a, b) =>
+          a.date.localeCompare(b.date) ||
+          (a.period_label || '').localeCompare(b.period_label || '') ||
+          a.class_name.localeCompare(b.class_name)
+      ),
     [filtered]
   );
+
 
   const classOptions = useMemo(() => {
     const m = new Map<string, string>();
@@ -298,34 +254,17 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
   };
 
   const handleExportCSV = () => {
-    const header = [
-      'Date',
-      'Class',
-      'Officer',
-      'Period',
-      'Time',
-      'Subject',
-      'Total',
-      'Present',
-      'Late',
-      'Absent',
-      'Completed',
-      'Remark',
-    ];
-    const rowsCsv = filtered.map((r) => [
-      r.date,
-      r.class_name,
-      r.officer_name,
-      r.period_label || '',
-      r.period_time || '',
-      isValidTopic(r.subject, r.officer_name) ? r.subject : '',
-      r.total_students,
-      r.students_present,
-      r.students_late,
-      r.students_absent,
-      r.is_session_completed ? 'Yes' : 'No',
-      (r.notes || '').replace(/[\n,]/g, ' '),
+    const header = ['Date', 'Day', 'Period', 'Class', 'Trainer', 'Attendance', 'Topic / Remark'];
+    const rowsCsv = logRows.map((r) => [
+      format(new Date(r.date), 'dd MMM yyyy'),
+      format(new Date(r.date), 'EEE'),
+      `${r.period_label || '-'}${r.period_time ? ` (${r.period_time})` : ''}`.replace(/,/g, ' '),
+      r.class_name.replace(/,/g, ' '),
+      r.officer_name.replace(/,/g, ' '),
+      `${r.students_present + r.students_late}/${r.total_students}`,
+      (topicFor(r) || '-').replace(/[\n,]/g, ' '),
     ]);
+
     const csv = [header, ...rowsCsv].map((r) => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -363,74 +302,24 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
       headStyles: { fillColor: [30, 41, 59] },
     });
 
-    // Per Officer
+    // Detailed log
     autoTable(doc, {
       startY: (doc as any).lastAutoTable.finalY + 8,
-      head: [['Officer', 'Periods', 'Hours', 'Classes', 'Avg Attendance', 'Completed', 'Topics Covered']],
-      body: perOfficer.map((o) => [
-        o.name,
-        o.periods,
-        formatHrs(o.minutes),
-        o.classes.size,
-        o.total > 0 ? `${((o.present / o.total) * 100).toFixed(1)}%` : '-',
-        o.completed,
-        Array.from(o.topics).join(', ') || '-',
+      head: [['Date', 'Day', 'Period', 'Class', 'Trainer', 'Attendance', 'Topic / Remark']],
+      body: logRows.map((r) => [
+        format(new Date(r.date), 'dd MMM yyyy'),
+        format(new Date(r.date), 'EEE'),
+        `${r.period_label || '-'}${r.period_time ? ` (${r.period_time})` : ''}`,
+        r.class_name,
+        r.officer_name,
+        `${r.students_present + r.students_late}/${r.total_students}`,
+        topicFor(r) || '-',
       ]),
       theme: 'striped',
       headStyles: { fillColor: [30, 41, 59] },
-      columnStyles: { 6: { cellWidth: 70 } },
+      columnStyles: { 6: { cellWidth: 90 } },
     });
 
-    // Per Class
-    autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 8,
-      head: [['Class', 'Periods', 'Hours', 'Officers', 'Avg Attendance', 'Topics Covered']],
-      body: perClass.map((c) => [
-        c.name,
-        c.periods,
-        formatHrs(c.minutes),
-        Array.from(c.officers).join(', ') || '-',
-        c.total > 0 ? `${((c.present / c.total) * 100).toFixed(1)}%` : '-',
-        Array.from(c.topics).join(', ') || '-',
-      ]),
-      theme: 'striped',
-      headStyles: { fillColor: [30, 41, 59] },
-      columnStyles: { 5: { cellWidth: 70 } },
-    });
-
-    // Per Day
-    autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 8,
-      head: [['Date', 'Periods', 'Hours', 'Attendance', 'Completed', 'Topics Covered']],
-      body: perDay.map((d) => [
-        format(new Date(d.date), 'EEE, MMM d'),
-        d.periods,
-        formatHrs(d.minutes),
-        d.total > 0 ? `${((d.present / d.total) * 100).toFixed(1)}%` : '-',
-        d.completed,
-        Array.from(d.topics).join(', ') || '-',
-      ]),
-      theme: 'striped',
-      headStyles: { fillColor: [30, 41, 59] },
-      columnStyles: { 5: { cellWidth: 80 } },
-    });
-
-    // Remarks
-    if (remarks.length > 0) {
-      autoTable(doc, {
-        startY: (doc as any).lastAutoTable.finalY + 8,
-        head: [['Date', 'Class', 'Officer', 'Remark']],
-        body: remarks.map((r) => [
-          format(new Date(r.date), 'MMM d'),
-          r.class_name,
-          r.officer_name,
-          r.notes || '',
-        ]),
-        theme: 'striped',
-        headStyles: { fillColor: [180, 83, 9] },
-        columnStyles: { 3: { cellWidth: 120 } },
-      });
-    }
 
     doc.save(`attendance_${mode}_${startStr}_to_${endStr}.pdf`);
     toast.success('PDF exported');
@@ -521,111 +410,44 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
             <SummaryCard icon={<Users className="h-5 w-5" />} label="Officers" value={summary.uniqueOfficers} />
           </div>
 
-          {/* Per Officer */}
+          {/* Detailed log */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Per Officer</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Officer</TableHead>
-                    <TableHead className="text-right">Periods</TableHead>
-                    <TableHead className="text-right">Hours</TableHead>
-                    <TableHead className="text-right">Classes</TableHead>
-                    <TableHead className="text-right">Avg Attendance</TableHead>
-                    <TableHead className="text-right">Completed</TableHead>
-                    <TableHead>Topics Covered</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {perOfficer.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
-                  ) : perOfficer.map((o) => (
-                    <TableRow key={o.name}>
-                      <TableCell className="font-medium">{o.name}</TableCell>
-                      <TableCell className="text-right">{o.periods}</TableCell>
-                      <TableCell className="text-right">{formatHrs(o.minutes)}</TableCell>
-                      <TableCell className="text-right">{o.classes.size}</TableCell>
-                      <TableCell className="text-right">{o.total > 0 ? `${((o.present / o.total) * 100).toFixed(1)}%` : '-'}</TableCell>
-                      <TableCell className="text-right">{o.completed}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[280px]">
-                        {Array.from(o.topics).join(', ') || '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          {/* Per Class */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Per Class</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Class</TableHead>
-                    <TableHead className="text-right">Periods</TableHead>
-                    <TableHead className="text-right">Hours</TableHead>
-                    <TableHead>Officers</TableHead>
-                    <TableHead className="text-right">Avg Attendance</TableHead>
-                    <TableHead>Topics Covered</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {perClass.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
-                  ) : perClass.map((c) => (
-                    <TableRow key={c.name}>
-                      <TableCell className="font-medium">{c.name}</TableCell>
-                      <TableCell className="text-right">{c.periods}</TableCell>
-                      <TableCell className="text-right">{formatHrs(c.minutes)}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{Array.from(c.officers).join(', ') || '-'}</TableCell>
-                      <TableCell className="text-right">{c.total > 0 ? `${((c.present / c.total) * 100).toFixed(1)}%` : '-'}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[280px]">
-                        {Array.from(c.topics).join(', ') || '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          {/* Per Day */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Per Day</CardTitle>
+              <CardTitle className="text-base">
+                {mode === 'weekly' ? 'Weekly' : 'Monthly'} Attendance Log
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Periods</TableHead>
-                    <TableHead className="text-right">Hours</TableHead>
+                    <TableHead>Day</TableHead>
+                    <TableHead>Period</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead>Trainer</TableHead>
                     <TableHead className="text-right">Attendance</TableHead>
-                    <TableHead className="text-right">Completed</TableHead>
-                    <TableHead>Topics Covered</TableHead>
+                    <TableHead>Topic / Remark</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {perDay.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
-                  ) : perDay.map((d) => (
-                    <TableRow key={d.date}>
-                      <TableCell className="font-medium">{format(new Date(d.date), 'EEE, MMM d')}</TableCell>
-                      <TableCell className="text-right">{d.periods}</TableCell>
-                      <TableCell className="text-right">{formatHrs(d.minutes)}</TableCell>
-                      <TableCell className="text-right">{d.total > 0 ? `${((d.present / d.total) * 100).toFixed(1)}%` : '-'}</TableCell>
-                      <TableCell className="text-right">{d.completed}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[280px]">
-                        {Array.from(d.topics).join(', ') || '-'}
+                  {logRows.length === 0 ? (
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
+                  ) : logRows.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell>{format(new Date(r.date), 'dd MMM yyyy')}</TableCell>
+                      <TableCell>{format(new Date(r.date), 'EEE')}</TableCell>
+                      <TableCell className="text-sm">
+                        {r.period_label || '-'}
+                        {r.period_time ? <span className="text-muted-foreground"> ({r.period_time})</span> : null}
+                      </TableCell>
+                      <TableCell className="font-medium">{r.class_name}</TableCell>
+                      <TableCell className="text-sm">{r.officer_name}</TableCell>
+                      <TableCell className="text-right">
+                        {r.students_present + r.students_late}/{r.total_students}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-[320px]">
+                        {topicFor(r) || '-'}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -634,39 +456,6 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
             </CardContent>
           </Card>
 
-
-          {/* Remarks */}
-          {remarks.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  Remarks <Badge variant="secondary">{remarks.length}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Class</TableHead>
-                      <TableHead>Officer</TableHead>
-                      <TableHead>Remark</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {remarks.map((r) => (
-                      <TableRow key={r.id}>
-                        <TableCell>{format(new Date(r.date), 'MMM d')}</TableCell>
-                        <TableCell>{r.class_name}</TableCell>
-                        <TableCell>{r.officer_name}</TableCell>
-                        <TableCell className="text-sm">{r.notes}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
         </>
       )}
     </div>

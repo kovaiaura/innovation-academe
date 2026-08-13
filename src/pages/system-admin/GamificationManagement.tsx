@@ -58,6 +58,26 @@ export default function GamificationManagement() {
   const [institutionFilter, setInstitutionFilter] = useState<string>("all");
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [recalculateStatus, setRecalculateStatus] = useState('');
+  const [isRecalcProgress, setIsRecalcProgress] = useState(false);
+  const [progressStatus, setProgressStatus] = useState('');
+
+  const handleRecalculateProgress = async () => {
+    setIsRecalcProgress(true);
+    setProgressStatus('Rebuilding session completions...');
+    try {
+      const { data, error } = await supabase.functions.invoke('recalculate-course-progress');
+      if (error) throw error;
+      const processed = (data as any)?.processed ?? 0;
+      setProgressStatus(`Done. ${processed} session completion records processed.`);
+      toast.success('Course progress recalculated');
+    } catch (error: any) {
+      console.error('Recalculate progress error:', error);
+      setProgressStatus('');
+      toast.error(error?.message || 'Failed to recalculate course progress');
+    } finally {
+      setIsRecalcProgress(false);
+    }
+  };
   const [recalcProgressDialogOpen, setRecalcProgressDialogOpen] = useState(false);
   const [recalcProgress, setRecalcProgress] = useState<{ step: string; current: number; total: number; message: string } | null>(null);
   const [recalcResult, setRecalcResult] = useState<{ studentsProcessed: number; totalXP: number; badgesAwarded: number } | null>(null);
@@ -319,6 +339,32 @@ export default function GamificationManagement() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Recalculate Course Progress */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Recalculate Course Progress
+                </CardTitle>
+                <CardDescription>
+                  Rebuild session completion records from past attendance and content completions so course progress reflects everything marked so far.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button disabled={isRecalcProgress} onClick={handleRecalculateProgress}>
+                  {isRecalcProgress ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Recalculating...</>
+                  ) : (
+                    <><RefreshCw className="mr-2 h-4 w-4" /> Recalculate Progress</>
+                  )}
+                </Button>
+                {progressStatus && (
+                  <p className="text-sm text-muted-foreground">{progressStatus}</p>
+                )}
+              </CardContent>
+            </Card>
+
 
             {/* XP Distribution & Top Students */}
             <div className="grid gap-6 md:grid-cols-2">
