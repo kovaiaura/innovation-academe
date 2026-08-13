@@ -521,111 +521,44 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
             <SummaryCard icon={<Users className="h-5 w-5" />} label="Officers" value={summary.uniqueOfficers} />
           </div>
 
-          {/* Per Officer */}
+          {/* Detailed log */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Per Officer</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Officer</TableHead>
-                    <TableHead className="text-right">Periods</TableHead>
-                    <TableHead className="text-right">Hours</TableHead>
-                    <TableHead className="text-right">Classes</TableHead>
-                    <TableHead className="text-right">Avg Attendance</TableHead>
-                    <TableHead className="text-right">Completed</TableHead>
-                    <TableHead>Topics Covered</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {perOfficer.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
-                  ) : perOfficer.map((o) => (
-                    <TableRow key={o.name}>
-                      <TableCell className="font-medium">{o.name}</TableCell>
-                      <TableCell className="text-right">{o.periods}</TableCell>
-                      <TableCell className="text-right">{formatHrs(o.minutes)}</TableCell>
-                      <TableCell className="text-right">{o.classes.size}</TableCell>
-                      <TableCell className="text-right">{o.total > 0 ? `${((o.present / o.total) * 100).toFixed(1)}%` : '-'}</TableCell>
-                      <TableCell className="text-right">{o.completed}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[280px]">
-                        {Array.from(o.topics).join(', ') || '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          {/* Per Class */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Per Class</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Class</TableHead>
-                    <TableHead className="text-right">Periods</TableHead>
-                    <TableHead className="text-right">Hours</TableHead>
-                    <TableHead>Officers</TableHead>
-                    <TableHead className="text-right">Avg Attendance</TableHead>
-                    <TableHead>Topics Covered</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {perClass.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
-                  ) : perClass.map((c) => (
-                    <TableRow key={c.name}>
-                      <TableCell className="font-medium">{c.name}</TableCell>
-                      <TableCell className="text-right">{c.periods}</TableCell>
-                      <TableCell className="text-right">{formatHrs(c.minutes)}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{Array.from(c.officers).join(', ') || '-'}</TableCell>
-                      <TableCell className="text-right">{c.total > 0 ? `${((c.present / c.total) * 100).toFixed(1)}%` : '-'}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[280px]">
-                        {Array.from(c.topics).join(', ') || '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          {/* Per Day */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Per Day</CardTitle>
+              <CardTitle className="text-base">
+                {mode === 'weekly' ? 'Weekly' : 'Monthly'} Attendance Log
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Periods</TableHead>
-                    <TableHead className="text-right">Hours</TableHead>
+                    <TableHead>Day</TableHead>
+                    <TableHead>Period</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead>Trainer</TableHead>
                     <TableHead className="text-right">Attendance</TableHead>
-                    <TableHead className="text-right">Completed</TableHead>
-                    <TableHead>Topics Covered</TableHead>
+                    <TableHead>Topic / Remark</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {perDay.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
-                  ) : perDay.map((d) => (
-                    <TableRow key={d.date}>
-                      <TableCell className="font-medium">{format(new Date(d.date), 'EEE, MMM d')}</TableCell>
-                      <TableCell className="text-right">{d.periods}</TableCell>
-                      <TableCell className="text-right">{formatHrs(d.minutes)}</TableCell>
-                      <TableCell className="text-right">{d.total > 0 ? `${((d.present / d.total) * 100).toFixed(1)}%` : '-'}</TableCell>
-                      <TableCell className="text-right">{d.completed}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[280px]">
-                        {Array.from(d.topics).join(', ') || '-'}
+                  {logRows.length === 0 ? (
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">No data</TableCell></TableRow>
+                  ) : logRows.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell>{format(new Date(r.date), 'dd MMM yyyy')}</TableCell>
+                      <TableCell>{format(new Date(r.date), 'EEE')}</TableCell>
+                      <TableCell className="text-sm">
+                        {r.period_label || '-'}
+                        {r.period_time ? <span className="text-muted-foreground"> ({r.period_time})</span> : null}
+                      </TableCell>
+                      <TableCell className="font-medium">{r.class_name}</TableCell>
+                      <TableCell className="text-sm">{r.officer_name}</TableCell>
+                      <TableCell className="text-right">
+                        {r.students_present + r.students_late}/{r.total_students}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-[320px]">
+                        {topicFor(r) || '-'}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -634,39 +567,6 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
             </CardContent>
           </Card>
 
-
-          {/* Remarks */}
-          {remarks.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  Remarks <Badge variant="secondary">{remarks.length}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Class</TableHead>
-                      <TableHead>Officer</TableHead>
-                      <TableHead>Remark</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {remarks.map((r) => (
-                      <TableRow key={r.id}>
-                        <TableCell>{format(new Date(r.date), 'MMM d')}</TableCell>
-                        <TableCell>{r.class_name}</TableCell>
-                        <TableCell>{r.officer_name}</TableCell>
-                        <TableCell className="text-sm">{r.notes}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
         </>
       )}
     </div>
