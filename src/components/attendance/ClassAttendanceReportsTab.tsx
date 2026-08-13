@@ -217,61 +217,17 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
     return null;
   };
 
-  const perOfficer = useMemo(() => {
-    const map = new Map<string, { name: string; periods: number; minutes: number; classes: Set<string>; present: number; total: number; completed: number; topics: Set<string> }>();
-    filtered.forEach((r) => {
-      const key = r.officer_id || 'unassigned';
-      const cur = map.get(key) || { name: r.officer_name, periods: 0, minutes: 0, classes: new Set(), present: 0, total: 0, completed: 0, topics: new Set() };
-      cur.periods += 1;
-      cur.minutes += parseDurationMinutes(r.period_time);
-      cur.classes.add(r.class_id);
-      cur.present += r.students_present + r.students_late;
-      cur.total += r.total_students;
-      if (r.is_session_completed) cur.completed += 1;
-      const t = topicFor(r);
-      if (t) cur.topics.add(t);
-      map.set(key, cur);
-    });
-    return Array.from(map.values()).sort((a, b) => b.periods - a.periods);
-  }, [filtered, officerNameSet]);
-
-  const perClass = useMemo(() => {
-    const map = new Map<string, { name: string; periods: number; minutes: number; officers: Set<string>; present: number; total: number; topics: Set<string> }>();
-    filtered.forEach((r) => {
-      const cur = map.get(r.class_id) || { name: r.class_name, periods: 0, minutes: 0, officers: new Set(), present: 0, total: 0, topics: new Set() };
-      cur.periods += 1;
-      cur.minutes += parseDurationMinutes(r.period_time);
-      if (r.officer_id) cur.officers.add(r.officer_name);
-      cur.present += r.students_present + r.students_late;
-      cur.total += r.total_students;
-      const t = topicFor(r);
-      if (t) cur.topics.add(t);
-      map.set(r.class_id, cur);
-    });
-    return Array.from(map.values()).sort((a, b) => b.periods - a.periods);
-  }, [filtered, officerNameSet]);
-
-  const perDay = useMemo(() => {
-    const map = new Map<string, { date: string; periods: number; minutes: number; present: number; total: number; completed: number; topics: Set<string> }>();
-    filtered.forEach((r) => {
-      const cur = map.get(r.date) || { date: r.date, periods: 0, minutes: 0, present: 0, total: 0, completed: 0, topics: new Set() };
-      cur.periods += 1;
-      cur.minutes += parseDurationMinutes(r.period_time);
-      cur.present += r.students_present + r.students_late;
-      cur.total += r.total_students;
-      if (r.is_session_completed) cur.completed += 1;
-      const t = topicFor(r);
-      if (t) cur.topics.add(t);
-      map.set(r.date, cur);
-    });
-    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
-  }, [filtered, officerNameSet]);
-
-
-  const remarks = useMemo(
-    () => filtered.filter((r) => (r.notes || '').trim().length > 0),
+  const logRows = useMemo(
+    () =>
+      [...filtered].sort(
+        (a, b) =>
+          a.date.localeCompare(b.date) ||
+          (a.period_label || '').localeCompare(b.period_label || '') ||
+          a.class_name.localeCompare(b.class_name)
+      ),
     [filtered]
   );
+
 
   const classOptions = useMemo(() => {
     const m = new Map<string, string>();
