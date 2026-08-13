@@ -317,10 +317,41 @@ async function createAttendanceRecord(
       return;
     }
 
-    // Insert or update attendance record
+    // Non-destructive: if a row already exists for this period+date (saved by
+    // the officer's attendance flow), only flag it completed and append the
+    // covered session — never overwrite the attendance records or remark.
+    const { data: existingRow } = await supabase
+      .from('class_session_attendance')
+      .select('id, subject, covered_session_ids')
+      .eq('timetable_assignment_id', finalTimetableAssignmentId)
+      .eq('date', today)
+      .maybeSingle();
+
+    if (existingRow) {
+      const covered = Array.isArray((existingRow as any).covered_session_ids)
+        ? ((existingRow as any).covered_session_ids as string[])
+        : [];
+      const nextCovered = [...new Set([...covered, sessionId])];
+
+      const { error: updateError } = await supabase
+        .from('class_session_attendance')
+        .update({
+          is_session_completed: true,
+          completed_by: officerId,
+          completed_at: new Date().toISOString(),
+          covered_session_ids: nextCovered as unknown as Json,
+          subject: sessionData?.title || existingRow.subject,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingRow.id);
+
+      if (updateError) console.error('Failed to update attendance record:', updateError);
+      return;
+    }
+
     const { error: attendanceError } = await supabase
       .from('class_session_attendance')
-      .upsert({
+      .insert({
         timetable_assignment_id: finalTimetableAssignmentId,
         class_id: classId,
         institution_id: classData.institution_id,
@@ -329,6 +360,7 @@ async function createAttendanceRecord(
         period_label: sessionData?.title || 'Course Session',
         subject: sessionData?.title || 'Course Content',
         attendance_records: attendanceRecords as unknown as Json,
+        covered_session_ids: [sessionId] as unknown as Json,
         total_students: allStudents.length,
         students_present: selectedStudentIds.length,
         students_absent: allStudents.length - selectedStudentIds.length,
@@ -337,13 +369,12 @@ async function createAttendanceRecord(
         completed_by: officerId,
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'timetable_assignment_id,date'
       });
 
     if (attendanceError) {
       console.error('Failed to create attendance record:', attendanceError);
     }
+
   } catch (err) {
     console.error('Error creating attendance record:', err);
   }
