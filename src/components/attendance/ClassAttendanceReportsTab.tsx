@@ -302,74 +302,24 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
       headStyles: { fillColor: [30, 41, 59] },
     });
 
-    // Per Officer
+    // Detailed log
     autoTable(doc, {
       startY: (doc as any).lastAutoTable.finalY + 8,
-      head: [['Officer', 'Periods', 'Hours', 'Classes', 'Avg Attendance', 'Completed', 'Topics Covered']],
-      body: perOfficer.map((o) => [
-        o.name,
-        o.periods,
-        formatHrs(o.minutes),
-        o.classes.size,
-        o.total > 0 ? `${((o.present / o.total) * 100).toFixed(1)}%` : '-',
-        o.completed,
-        Array.from(o.topics).join(', ') || '-',
+      head: [['Date', 'Day', 'Period', 'Class', 'Trainer', 'Attendance', 'Topic / Remark']],
+      body: logRows.map((r) => [
+        format(new Date(r.date), 'dd MMM yyyy'),
+        format(new Date(r.date), 'EEE'),
+        `${r.period_label || '-'}${r.period_time ? ` (${r.period_time})` : ''}`,
+        r.class_name,
+        r.officer_name,
+        `${r.students_present + r.students_late}/${r.total_students}`,
+        topicFor(r) || '-',
       ]),
       theme: 'striped',
       headStyles: { fillColor: [30, 41, 59] },
-      columnStyles: { 6: { cellWidth: 70 } },
+      columnStyles: { 6: { cellWidth: 90 } },
     });
 
-    // Per Class
-    autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 8,
-      head: [['Class', 'Periods', 'Hours', 'Officers', 'Avg Attendance', 'Topics Covered']],
-      body: perClass.map((c) => [
-        c.name,
-        c.periods,
-        formatHrs(c.minutes),
-        Array.from(c.officers).join(', ') || '-',
-        c.total > 0 ? `${((c.present / c.total) * 100).toFixed(1)}%` : '-',
-        Array.from(c.topics).join(', ') || '-',
-      ]),
-      theme: 'striped',
-      headStyles: { fillColor: [30, 41, 59] },
-      columnStyles: { 5: { cellWidth: 70 } },
-    });
-
-    // Per Day
-    autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 8,
-      head: [['Date', 'Periods', 'Hours', 'Attendance', 'Completed', 'Topics Covered']],
-      body: perDay.map((d) => [
-        format(new Date(d.date), 'EEE, MMM d'),
-        d.periods,
-        formatHrs(d.minutes),
-        d.total > 0 ? `${((d.present / d.total) * 100).toFixed(1)}%` : '-',
-        d.completed,
-        Array.from(d.topics).join(', ') || '-',
-      ]),
-      theme: 'striped',
-      headStyles: { fillColor: [30, 41, 59] },
-      columnStyles: { 5: { cellWidth: 80 } },
-    });
-
-    // Remarks
-    if (remarks.length > 0) {
-      autoTable(doc, {
-        startY: (doc as any).lastAutoTable.finalY + 8,
-        head: [['Date', 'Class', 'Officer', 'Remark']],
-        body: remarks.map((r) => [
-          format(new Date(r.date), 'MMM d'),
-          r.class_name,
-          r.officer_name,
-          r.notes || '',
-        ]),
-        theme: 'striped',
-        headStyles: { fillColor: [180, 83, 9] },
-        columnStyles: { 3: { cellWidth: 120 } },
-      });
-    }
 
     doc.save(`attendance_${mode}_${startStr}_to_${endStr}.pdf`);
     toast.success('PDF exported');
