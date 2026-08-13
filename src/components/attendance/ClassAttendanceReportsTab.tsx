@@ -254,34 +254,17 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
   };
 
   const handleExportCSV = () => {
-    const header = [
-      'Date',
-      'Class',
-      'Officer',
-      'Period',
-      'Time',
-      'Subject',
-      'Total',
-      'Present',
-      'Late',
-      'Absent',
-      'Completed',
-      'Remark',
-    ];
-    const rowsCsv = filtered.map((r) => [
-      r.date,
-      r.class_name,
-      r.officer_name,
-      r.period_label || '',
-      r.period_time || '',
-      isValidTopic(r.subject, r.officer_name) ? r.subject : '',
-      r.total_students,
-      r.students_present,
-      r.students_late,
-      r.students_absent,
-      r.is_session_completed ? 'Yes' : 'No',
-      (r.notes || '').replace(/[\n,]/g, ' '),
+    const header = ['Date', 'Day', 'Period', 'Class', 'Trainer', 'Attendance', 'Topic / Remark'];
+    const rowsCsv = logRows.map((r) => [
+      format(new Date(r.date), 'dd MMM yyyy'),
+      format(new Date(r.date), 'EEE'),
+      `${r.period_label || '-'}${r.period_time ? ` (${r.period_time})` : ''}`.replace(/,/g, ' '),
+      r.class_name.replace(/,/g, ' '),
+      r.officer_name.replace(/,/g, ' '),
+      `${r.students_present + r.students_late}/${r.total_students}`,
+      (topicFor(r) || '-').replace(/[\n,]/g, ' '),
     ]);
+
     const csv = [header, ...rowsCsv].map((r) => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
