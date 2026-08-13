@@ -111,10 +111,10 @@ export async function buildSessionCompletionContexts(
 }
 
 /**
- * Load officer-marked session completions for the given classes.
- * Returns map studentRecordId -> Set<sessionId> of sessions marked complete
- * via class_session_attendance.is_session_completed where the student appears
- * as present in the attendance_records JSON.
+ * Load officer-marked session completions for the given classes from the
+ * dedicated class_session_completions table (explicit session ids, no
+ * fragile title matching).
+ * Returns map studentRecordId -> Set<sessionId>.
  */
 async function loadOfficerMarkedSessionsByStudent(
   classIds: string[]
@@ -122,73 +122,21 @@ async function loadOfficerMarkedSessionsByStudent(
   const result = new Map<string, Set<string>>();
   if (classIds.length === 0) return result;
 
-  const { data: attendanceRows } = await supabase
-    .from('class_session_attendance')
-    .select('subject, period_label, attendance_records, is_session_completed, class_id')
-    .in('class_id', classIds)
-    .eq('is_session_completed', true);
-
-  if (!attendanceRows || attendanceRows.length === 0) return result;
-
-  // Resolve subject/period_label to session_id via the classes' allocated sessions.
-  const { data: classAssignments } = await supabase
-    .from('course_class_assignments')
-    .select('id, class_id')
+  const { data } = await supabase
+    .from('class_session_completions')
+    .select('student_id, session_id')
     .in('class_id', classIds);
-  const assignIdToClass = new Map<string, string>();
-  (classAssignments || []).forEach((a: any) => assignIdToClass.set(a.id, a.class_id));
 
-  const { data: moduleAssigns } = (classAssignments || []).length
-    ? await supabase
-        .from('class_module_assignments')
-        .select('id, class_assignment_id')
-        .in('class_assignment_id', (classAssignments || []).map((a: any) => a.id))
-    : { data: [] as any[] };
-  const moduleIdToClass = new Map<string, string>();
-  (moduleAssigns || []).forEach((m: any) => {
-    const cls = assignIdToClass.get(m.class_assignment_id);
-    if (cls) moduleIdToClass.set(m.id, cls);
-  });
-
-  const { data: sessionAssigns } = (moduleAssigns || []).length
-    ? await supabase
-        .from('class_session_assignments')
-        .select('session_id, class_module_assignment_id, course_sessions(id, title)')
-        .in('class_module_assignment_id', (moduleAssigns || []).map((m: any) => m.id))
-    : { data: [] as any[] };
-
-  const titleToSessionByClass = new Map<string, Map<string, string>>();
-  (sessionAssigns || []).forEach((row: any) => {
-    const cls = moduleIdToClass.get(row.class_module_assignment_id);
-    const title: string | undefined = row?.course_sessions?.title;
-    const sid: string | undefined = row?.session_id;
-    if (!cls || !title || !sid) return;
-    const m = titleToSessionByClass.get(cls) || new Map<string, string>();
-    m.set(title, sid);
-    titleToSessionByClass.set(cls, m);
-  });
-
-  attendanceRows.forEach((row: any) => {
-    const titleMap = titleToSessionByClass.get(row.class_id);
-    if (!titleMap) return;
-    const sid =
-      titleMap.get(row.subject) ||
-      titleMap.get(row.period_label);
-    if (!sid) return;
-
-    const records = Array.isArray(row.attendance_records) ? row.attendance_records : [];
-    records.forEach((rec: any) => {
-      if (!rec?.student_id) return;
-      if (rec.status === 'present' || rec.status === 'late') {
-        const set = result.get(rec.student_id) || new Set<string>();
-        set.add(sid);
-        result.set(rec.student_id, set);
-      }
-    });
+  (data || []).forEach((row: any) => {
+    if (!row?.student_id || !row?.session_id) return;
+    const set = result.get(row.student_id) || new Set<string>();
+    set.add(row.session_id);
+    result.set(row.student_id, set);
   });
 
   return result;
 }
+
 
 
 /**
