@@ -113,6 +113,8 @@ Deno.serve(async (req) => {
       });
     };
 
+    let unmapped = 0;
+
     // ---------- 1) From officer-marked attendance ----------
     const { data: attendance } = await admin
       .from('class_session_attendance')
@@ -121,7 +123,10 @@ Deno.serve(async (req) => {
 
     (attendance || []).forEach((row: any) => {
       const classAllocs = allocsByClass.get(row.class_id) || [];
-      if (classAllocs.length === 0) return;
+      if (classAllocs.length === 0) {
+        unmapped += 1;
+        return;
+      }
 
       const covered: string[] = Array.isArray(row.covered_session_ids)
         ? row.covered_session_ids
@@ -138,7 +143,10 @@ Deno.serve(async (req) => {
           (a) => a.title && candidates.includes(a.title.trim().toLowerCase())
         );
       }
-      if (targets.length === 0) return;
+      if (targets.length === 0) {
+        unmapped += 1;
+        return;
+      }
 
       const records = Array.isArray(row.attendance_records) ? row.attendance_records : [];
       records.forEach((rec: any) => {
@@ -190,7 +198,10 @@ Deno.serve(async (req) => {
     }
 
     // ---------- Upsert in chunks ----------
-    let inserted = 0;
+    const { count: beforeCount } = await admin
+      .from('class_session_completions')
+      .select('id', { count: 'exact', head: true });
+
     for (let i = 0; i < rows.length; i += 500) {
       const chunk = rows.slice(i, i + 500);
       const { error } = await admin
@@ -201,12 +212,24 @@ Deno.serve(async (req) => {
         });
       if (error) {
         console.error('Upsert failed', error);
-        return json({ error: error.message, processed: inserted }, 500);
+        return json({ error: error.message, attempted: rows.length }, 500);
       }
-      inserted += chunk.length;
     }
 
-    return json({ success: true, processed: inserted });
+    const { count: afterCount } = await admin
+      .from('class_session_completions')
+      .select('id', { count: 'exact', head: true });
+
+    const created = Math.max(0, (afterCount || 0) - (beforeCount || 0));
+
+    return json({
+      success: true,
+      attempted: rows.length,
+      created,
+      total: afterCount || 0,
+      unmappedAttendanceRows: unmapped,
+      processed: created,
+    });
   } catch (err) {
     console.error('recalculate-course-progress error', err);
     return json({ error: (err as Error).message }, 500);
