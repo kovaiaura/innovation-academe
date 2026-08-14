@@ -231,8 +231,48 @@ async function createAttendanceRecord(
   classId: string,
   selectedStudentIds: string[],
   sessionId: string,
-  timetableAssignmentId?: string
+  timetableAssignmentId?: string,
+  context?: { date?: string; attendanceId?: string }
 ) {
+  const conductedDate = context?.date || format(new Date(), 'yyyy-MM-dd');
+
+  // Fast path: the officer's attendance flow already created the row for this
+  // period and date — just flag it complete and append the covered session.
+  if (context?.attendanceId) {
+    const { data: row } = await supabase
+      .from('class_session_attendance')
+      .select('id, covered_session_ids')
+      .eq('id', context.attendanceId)
+      .maybeSingle();
+
+    if (row) {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: officerRow } = user
+        ? await supabase.from('officers').select('id').eq('user_id', user.id).maybeSingle()
+        : { data: null as any };
+
+      const covered = Array.isArray((row as any).covered_session_ids)
+        ? ((row as any).covered_session_ids as string[])
+        : [];
+      const nextCovered = [...new Set([...covered, sessionId])];
+
+      const { error: updateError } = await supabase
+        .from('class_session_attendance')
+        .update({
+          is_session_completed: true,
+          completed_by: officerRow?.id || null,
+          completed_at: new Date().toISOString(),
+          covered_session_ids: nextCovered as unknown as Json,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', row.id);
+
+      if (updateError) console.error('Failed to update attendance record:', updateError);
+      return;
+    }
+  }
+
+
   try {
     // Get class details for institution_id
     const { data: classData, error: classError } = await supabase
