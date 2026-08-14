@@ -312,10 +312,10 @@ const Attendance = () => {
 
 
   const handleSaveAttendance = async () => {
-    if (!selectedSession || !officerProfile?.id || !primaryInstitutionId) return;
+    if (!selectedSession || !officerProfile?.id || !primaryInstitutionId) return null;
 
     const session = availableSessions.find(s => s.id === selectedSession);
-    if (!session) return;
+    if (!session) return null;
 
     try {
       const attendanceRecords: AttendanceRecord[] = attendance.map(record => ({
@@ -325,8 +325,8 @@ const Attendance = () => {
         status: record.status,
         check_in_time: record.check_in_time,
       }));
-      
-      await saveAttendanceMutation.mutateAsync({
+
+      const saved = await saveAttendanceMutation.mutateAsync({
         timetable_assignment_id: session.timetable_assignment_id,
         class_id: session.classId,
         institution_id: primaryInstitutionId,
@@ -342,9 +342,11 @@ const Attendance = () => {
       });
 
       toast.success("Attendance saved successfully!");
+      return saved;
     } catch (error) {
       console.error("Failed to save attendance:", error);
       toast.error("Failed to save attendance. Please try again.");
+      return null;
     }
   };
 
@@ -354,18 +356,17 @@ const Attendance = () => {
     const session = availableSessions.find(s => s.id === selectedSession);
     if (!session) return;
 
-    // First save attendance
-    await handleSaveAttendance();
+    // First save attendance (returns the row for this period + selected date)
+    const savedRow = await handleSaveAttendance();
 
-    // Find the saved attendance record
-    const savedRecord = savedAttendance?.find(
-      a => a.timetable_assignment_id === selectedSession
-    );
+    const attendanceId =
+      (savedRow as any)?.id ||
+      savedAttendance?.find(a => a.timetable_assignment_id === selectedSession)?.id;
 
-    if (savedRecord) {
+    if (attendanceId) {
       try {
         await markCompletedMutation.mutateAsync({
-          attendanceId: savedRecord.id,
+          attendanceId,
           officerId: officerProfile.id,
         });
       } catch (error) {
@@ -408,7 +409,7 @@ const Attendance = () => {
           session.timetable_assignment_id,
           moduleId,
           courseId,
-          { silent: true }
+          { silent: true, date: selectedDate, attendanceId }
         );
         if (ok) successCount++;
       }
@@ -425,6 +426,7 @@ const Attendance = () => {
       toast.success("Session marked as completed!");
     }
   };
+
 
 
 
