@@ -26,6 +26,7 @@ export function BulkMarkCompleteTab({ classId, className }: BulkMarkCompleteTabP
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressCurrent, setProgressCurrent] = useState(0);
   const [progressTotal, setProgressTotal] = useState(0);
+  const [markDate, setMarkDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
 
   const { markSessionComplete } = useSessionCompletion();
 
@@ -220,6 +221,21 @@ export function BulkMarkCompleteTab({ classId, className }: BulkMarkCompleteTabP
           Select sessions and students to mark as completed in bulk
         </p>
       </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Date conducted</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <input
+            type="date"
+            value={markDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => setMarkDate(e.target.value)}
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+          />
+        </CardContent>
+      </Card>
 
       {/* Course Selector */}
       <Card>
