@@ -413,7 +413,7 @@ async function createAttendanceRecord(
         institution_id: classData.institution_id,
         officer_id: officerId,
         date: today,
-        period_label: sessionData?.title || 'Course Session',
+        period_label: null,
         subject: sessionData?.title || 'Course Content',
         attendance_records: attendanceRecords as unknown as Json,
         covered_session_ids: [sessionId] as unknown as Json,
