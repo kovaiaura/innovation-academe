@@ -55,7 +55,7 @@ export function useSessionCompletion(): SessionCompletionResult {
     timetableAssignmentId?: string,
     moduleId?: string,
     courseId?: string,
-    options?: { silent?: boolean }
+    options?: MarkSessionOptions
   ): Promise<boolean> => {
     const silent = options?.silent === true;
     if (studentIds.length === 0) {
