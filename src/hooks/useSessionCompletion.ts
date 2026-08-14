@@ -116,7 +116,9 @@ export function useSessionCompletion(): SessionCompletionResult {
         session_id: sessionId,
         student_id: studentId,
         source: 'officer_marked',
-        completed_at: new Date().toISOString(),
+        completed_at: options?.date
+          ? new Date(`${options.date}T12:00:00`).toISOString()
+          : new Date().toISOString(),
         completed_by: user?.id || null,
       }));
 
@@ -131,7 +133,11 @@ export function useSessionCompletion(): SessionCompletionResult {
 
       // 3. ALWAYS create/update class_session_attendance so the officer's
       //    "mark complete" is recorded even when the session has no content.
-      await createAttendanceRecord(classId, studentIds, sessionId, timetableAssignmentId);
+      await createAttendanceRecord(classId, studentIds, sessionId, timetableAssignmentId, {
+        date: options?.date,
+        attendanceId: options?.attendanceId,
+      });
+
 
 
       // 5. Trigger certificate issuance via edge function (if module/course info available)
