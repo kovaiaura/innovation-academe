@@ -326,14 +326,15 @@ async function createAttendanceRecord(
       check_in_time: selectedStudentIds.includes(student.id) ? new Date().toISOString() : undefined
     }));
 
-    const today = format(new Date(), 'yyyy-MM-dd');
-    
+    const today = conductedDate;
+
     // If no timetable assignment, try to find one or create a placeholder ID
     let finalTimetableAssignmentId = timetableAssignmentId;
-    
+
     if (!finalTimetableAssignmentId) {
-      // Try to find a timetable assignment for this class today
-      const dayOfWeek = format(new Date(), 'EEEE'); // e.g., "Monday"
+      // Try to find a timetable assignment for this class on the conducted day
+      const dayOfWeek = format(new Date(`${conductedDate}T12:00:00`), 'EEEE'); // e.g., "Monday"
+
       const { data: existingAssignment } = await supabase
         .from('institution_timetable_assignments')
         .select('id')
