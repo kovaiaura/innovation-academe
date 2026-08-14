@@ -13,6 +13,14 @@ interface AttendanceRecord {
   check_in_time?: string;
 }
 
+export interface MarkSessionOptions {
+  silent?: boolean;
+  /** Date (yyyy-MM-dd) the session was actually conducted. Defaults to today. */
+  date?: string;
+  /** Existing class_session_attendance row to update instead of creating one. */
+  attendanceId?: string;
+}
+
 interface SessionCompletionResult {
   markSessionComplete: (
     sessionId: string,
@@ -22,11 +30,12 @@ interface SessionCompletionResult {
     timetableAssignmentId?: string,
     moduleId?: string,
     courseId?: string,
-    options?: { silent?: boolean }
+    options?: MarkSessionOptions
   ) => Promise<boolean>;
   isLoading: boolean;
   error: string | null;
 }
+
 
 /**
  * Hook to handle marking all content in a session as complete for multiple students
