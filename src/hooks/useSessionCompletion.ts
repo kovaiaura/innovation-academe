@@ -13,6 +13,14 @@ interface AttendanceRecord {
   check_in_time?: string;
 }
 
+export interface MarkSessionOptions {
+  silent?: boolean;
+  /** Date (yyyy-MM-dd) the session was actually conducted. Defaults to today. */
+  date?: string;
+  /** Existing class_session_attendance row to update instead of creating one. */
+  attendanceId?: string;
+}
+
 interface SessionCompletionResult {
   markSessionComplete: (
     sessionId: string,
@@ -22,11 +30,12 @@ interface SessionCompletionResult {
     timetableAssignmentId?: string,
     moduleId?: string,
     courseId?: string,
-    options?: { silent?: boolean }
+    options?: MarkSessionOptions
   ) => Promise<boolean>;
   isLoading: boolean;
   error: string | null;
 }
+
 
 /**
  * Hook to handle marking all content in a session as complete for multiple students
@@ -46,7 +55,7 @@ export function useSessionCompletion(): SessionCompletionResult {
     timetableAssignmentId?: string,
     moduleId?: string,
     courseId?: string,
-    options?: { silent?: boolean }
+    options?: MarkSessionOptions
   ): Promise<boolean> => {
     const silent = options?.silent === true;
     if (studentIds.length === 0) {
@@ -107,7 +116,9 @@ export function useSessionCompletion(): SessionCompletionResult {
         session_id: sessionId,
         student_id: studentId,
         source: 'officer_marked',
-        completed_at: new Date().toISOString(),
+        completed_at: options?.date
+          ? new Date(`${options.date}T12:00:00`).toISOString()
+          : new Date().toISOString(),
         completed_by: user?.id || null,
       }));
 
@@ -122,7 +133,11 @@ export function useSessionCompletion(): SessionCompletionResult {
 
       // 3. ALWAYS create/update class_session_attendance so the officer's
       //    "mark complete" is recorded even when the session has no content.
-      await createAttendanceRecord(classId, studentIds, sessionId, timetableAssignmentId);
+      await createAttendanceRecord(classId, studentIds, sessionId, timetableAssignmentId, {
+        date: options?.date,
+        attendanceId: options?.attendanceId,
+      });
+
 
 
       // 5. Trigger certificate issuance via edge function (if module/course info available)
@@ -216,8 +231,48 @@ async function createAttendanceRecord(
   classId: string,
   selectedStudentIds: string[],
   sessionId: string,
-  timetableAssignmentId?: string
+  timetableAssignmentId?: string,
+  context?: { date?: string; attendanceId?: string }
 ) {
+  const conductedDate = context?.date || format(new Date(), 'yyyy-MM-dd');
+
+  // Fast path: the officer's attendance flow already created the row for this
+  // period and date — just flag it complete and append the covered session.
+  if (context?.attendanceId) {
+    const { data: row } = await supabase
+      .from('class_session_attendance')
+      .select('id, covered_session_ids')
+      .eq('id', context.attendanceId)
+      .maybeSingle();
+
+    if (row) {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: officerRow } = user
+        ? await supabase.from('officers').select('id').eq('user_id', user.id).maybeSingle()
+        : { data: null as any };
+
+      const covered = Array.isArray((row as any).covered_session_ids)
+        ? ((row as any).covered_session_ids as string[])
+        : [];
+      const nextCovered = [...new Set([...covered, sessionId])];
+
+      const { error: updateError } = await supabase
+        .from('class_session_attendance')
+        .update({
+          is_session_completed: true,
+          completed_by: officerRow?.id || null,
+          completed_at: new Date().toISOString(),
+          covered_session_ids: nextCovered as unknown as Json,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', row.id);
+
+      if (updateError) console.error('Failed to update attendance record:', updateError);
+      return;
+    }
+  }
+
+
   try {
     // Get class details for institution_id
     const { data: classData, error: classError } = await supabase
@@ -271,14 +326,15 @@ async function createAttendanceRecord(
       check_in_time: selectedStudentIds.includes(student.id) ? new Date().toISOString() : undefined
     }));
 
-    const today = format(new Date(), 'yyyy-MM-dd');
-    
+    const today = conductedDate;
+
     // If no timetable assignment, try to find one or create a placeholder ID
     let finalTimetableAssignmentId = timetableAssignmentId;
-    
+
     if (!finalTimetableAssignmentId) {
-      // Try to find a timetable assignment for this class today
-      const dayOfWeek = format(new Date(), 'EEEE'); // e.g., "Monday"
+      // Try to find a timetable assignment for this class on the conducted day
+      const dayOfWeek = format(new Date(`${conductedDate}T12:00:00`), 'EEEE'); // e.g., "Monday"
+
       const { data: existingAssignment } = await supabase
         .from('institution_timetable_assignments')
         .select('id')
@@ -357,7 +413,7 @@ async function createAttendanceRecord(
         institution_id: classData.institution_id,
         officer_id: officerId,
         date: today,
-        period_label: sessionData?.title || 'Course Session',
+        period_label: null,
         subject: sessionData?.title || 'Course Content',
         attendance_records: attendanceRecords as unknown as Json,
         covered_session_ids: [sessionId] as unknown as Json,

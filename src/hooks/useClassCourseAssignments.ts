@@ -496,6 +496,7 @@ export function useStudentCourses(userId?: string, classId?: string) {
 
       // Get student completions using students.id (not auth user ID)
       let completions: any[] = [];
+      let officerMarkedSessionIds = new Set<string>();
       if (studentRecordId && assignmentIds.length > 0) {
         const { data: studentCompletions, error: completionError } = await supabase
           .from('student_content_completions')
@@ -505,6 +506,16 @@ export function useStudentCourses(userId?: string, classId?: string) {
 
         if (completionError) throw completionError;
         completions = studentCompletions || [];
+
+        // Sessions the officer marked complete for this student (no content needed)
+        const { data: sessionCompletions, error: sessionCompletionError } = await supabase
+          .from('class_session_completions')
+          .select('session_id')
+          .eq('student_id', studentRecordId)
+          .in('class_assignment_id', assignmentIds);
+
+        if (sessionCompletionError) throw sessionCompletionError;
+        officerMarkedSessionIds = new Set((sessionCompletions || []).map(s => s.session_id));
       }
 
       // Combine the data with session-level completion status
@@ -522,9 +533,11 @@ export function useStudentCourses(userId?: string, classId?: string) {
                     isCompleted: completions.some(comp => comp.content_id === c.id),
                   }));
 
-                // Session is completed if ALL content in it is completed
-                const isSessionCompleted = sessionContentItems.length > 0 
-                  && sessionContentItems.every(c => c.isCompleted);
+                // Session is completed when the officer marked it complete, or
+                // when ALL of its content is completed by the student
+                const isSessionCompleted =
+                  officerMarkedSessionIds.has(sa.session_id) ||
+                  (sessionContentItems.length > 0 && sessionContentItems.every(c => c.isCompleted));
 
                 return {
                   ...sa,
@@ -533,6 +546,7 @@ export function useStudentCourses(userId?: string, classId?: string) {
                   isSessionCompleted,
                 };
               });
+
 
             // Module is completed if ALL sessions in it are completed
             const isModuleCompleted = moduleSessions.length > 0 
