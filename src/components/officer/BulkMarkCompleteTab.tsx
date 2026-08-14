@@ -185,7 +185,7 @@ export function BulkMarkCompleteTab({ classId, className }: BulkMarkCompleteTabP
         undefined, // timetableAssignmentId
         moduleAssignment?.module_id,
         selectedAssignment?.course_id,
-        { silent: true }
+        { silent: true, date: markDate }
       );
 
       if (success) successCount++;
