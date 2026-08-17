@@ -67,9 +67,15 @@ export default function GamificationManagement() {
     try {
       const { data, error } = await supabase.functions.invoke('recalculate-course-progress');
       if (error) throw error;
-      const processed = (data as any)?.processed ?? 0;
-      setProgressStatus(`Done. ${processed} session completion records processed.`);
+      const created = (data as any)?.created ?? 0;
+      const total = (data as any)?.total ?? 0;
+      const unmapped = (data as any)?.unmappedAttendanceRows ?? 0;
+      setProgressStatus(
+        `Done. ${created} new session completions written (${total} total)` +
+          (unmapped ? ` · ${unmapped} attendance record${unmapped === 1 ? '' : 's'} had no matching curriculum session.` : '.')
+      );
       toast.success('Course progress recalculated');
+
     } catch (error: any) {
       console.error('Recalculate progress error:', error);
       setProgressStatus('');
