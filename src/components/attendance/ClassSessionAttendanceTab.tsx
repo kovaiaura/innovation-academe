@@ -220,11 +220,18 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
           completedById: session?.completed_by || null,
           attendanceRecords: (session?.attendance_records as any) || [],
           periodId: assignment.period_id,
+          coveredTitles: (Array.isArray((session as any)?.covered_session_ids)
+            ? ((session as any).covered_session_ids as string[])
+            : []
+          )
+            .map((id) => sessionTitleMap[id])
+            .filter(Boolean) as string[],
         };
 
       })
       .sort((a, b) => a.displayOrder - b.displayOrder);
-  }, [timetableAssignments, sessionRecords, periodMap, officerMap, selectedClassFilter]);
+  }, [timetableAssignments, sessionRecords, periodMap, officerMap, selectedClassFilter, sessionTitleMap]);
+
 
   const completedCount = mergedData.filter(d => d.isCompleted).length;
   const pendingCount = mergedData.filter(d => !d.isCompleted).length;
