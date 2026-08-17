@@ -69,7 +69,9 @@ interface Row {
   students_absent: number;
   is_session_completed: boolean;
   notes: string | null;
+  covered_session_ids: string[];
 }
+
 
 const parseDurationMinutes = (periodTime: string | null): number => {
   if (!periodTime) return 0;
