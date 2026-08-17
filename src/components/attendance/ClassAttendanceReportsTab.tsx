@@ -234,15 +234,19 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
     return true;
   };
 
-  // Extracts the topic string to aggregate for a row: prefer the remark
-  // when present, else the subject only if it is a real topic (not an
-  // officer name) AND the session is marked completed.
+  // Topic for a row: the curriculum sessions covered first, then the remark,
+  // then the subject (never an officer name).
   const topicFor = (r: Row): string | null => {
+    const covered = r.covered_session_ids
+      .map((id) => sessionTitles[id])
+      .filter(Boolean);
+    if (covered.length > 0) return covered.join('; ');
     const note = (r.notes || '').trim();
     if (note) return `Remark: ${note}`;
     if (r.is_session_completed && isValidTopic(r.subject, r.officer_name)) {
       return r.subject!.trim();
     }
+
     return null;
   };
 
