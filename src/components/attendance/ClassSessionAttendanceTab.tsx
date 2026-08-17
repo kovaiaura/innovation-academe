@@ -453,9 +453,11 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
                     </TableCell>
                     <TableCell>
                       {(() => {
+                        const hasCovered = row.coveredTitles.length > 0;
                         const hasSubject = !!row.subject;
                         const hasNote = !!row.notes;
                         const allAbsent = row.isCompleted && row.studentsPresent === 0;
+
 
                         const editButton = canEditRemarks ? (
                           <Popover
