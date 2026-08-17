@@ -141,11 +141,39 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
     return map;
   }, [officers]);
 
+  // Resolve titles of the curriculum sessions covered on this date
+  const coveredIds = useMemo(() => {
+    const set = new Set<string>();
+    sessionRecords.forEach((s: any) => {
+      (Array.isArray(s.covered_session_ids) ? s.covered_session_ids : []).forEach((id: string) => set.add(id));
+    });
+    return Array.from(set);
+  }, [sessionRecords]);
+
+  const { data: sessionTitleMap = {} } = useQuery({
+    queryKey: ['covered-session-titles', coveredIds.join(',')],
+    queryFn: async (): Promise<Record<string, string>> => {
+      if (coveredIds.length === 0) return {};
+      const { data, error } = await supabase
+        .from('course_sessions')
+        .select('id, title, course_modules(title)')
+        .in('id', coveredIds);
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      (data || []).forEach((s: any) => {
+        map[s.id] = s.course_modules?.title ? `${s.course_modules.title} · ${s.title}` : s.title;
+      });
+      return map;
+    },
+    enabled: coveredIds.length > 0,
+  });
+
   const periodMap = useMemo(() => {
     const map: Record<string, { label: string; start_time: string; end_time: string; display_order: number }> = {};
     periods.forEach(p => { map[p.id] = { label: p.label, start_time: p.start_time, end_time: p.end_time, display_order: p.display_order }; });
     return map;
   }, [periods]);
+
 
   // Merge timetable with session records
   const mergedData = useMemo(() => {
@@ -192,11 +220,18 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
           completedById: session?.completed_by || null,
           attendanceRecords: (session?.attendance_records as any) || [],
           periodId: assignment.period_id,
+          coveredTitles: (Array.isArray((session as any)?.covered_session_ids)
+            ? ((session as any).covered_session_ids as string[])
+            : []
+          )
+            .map((id) => sessionTitleMap[id])
+            .filter(Boolean) as string[],
         };
 
       })
       .sort((a, b) => a.displayOrder - b.displayOrder);
-  }, [timetableAssignments, sessionRecords, periodMap, officerMap, selectedClassFilter]);
+  }, [timetableAssignments, sessionRecords, periodMap, officerMap, selectedClassFilter, sessionTitleMap]);
+
 
   const completedCount = mergedData.filter(d => d.isCompleted).length;
   const pendingCount = mergedData.filter(d => !d.isCompleted).length;
@@ -418,9 +453,11 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
                     </TableCell>
                     <TableCell>
                       {(() => {
+                        const hasCovered = row.coveredTitles.length > 0;
                         const hasSubject = !!row.subject;
                         const hasNote = !!row.notes;
                         const allAbsent = row.isCompleted && row.studentsPresent === 0;
+
 
                         const editButton = canEditRemarks ? (
                           <Popover

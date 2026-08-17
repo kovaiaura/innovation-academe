@@ -69,7 +69,9 @@ interface Row {
   students_absent: number;
   is_session_completed: boolean;
   notes: string | null;
+  covered_session_ids: string[];
 }
+
 
 const parseDurationMinutes = (periodTime: string | null): number => {
   if (!periodTime) return 0;
@@ -119,7 +121,7 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
         .select(
           `id, date, class_id, officer_id, period_label, period_time, subject,
            total_students, students_present, students_late, students_absent,
-           is_session_completed, notes,
+           is_session_completed, notes, covered_session_ids,
            classes:class_id (class_name),
            officers:officer_id (full_name)`
         )
@@ -144,10 +146,37 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
         students_absent: r.students_absent || 0,
         is_session_completed: !!r.is_session_completed,
         notes: r.notes || null,
+        covered_session_ids: Array.isArray(r.covered_session_ids) ? r.covered_session_ids : [],
       }));
     },
     enabled: !!institutionId,
   });
+
+  // Resolve curriculum session titles for the "Topic" column
+  const allCoveredIds = useMemo(
+    () => Array.from(new Set(rows.flatMap((r) => r.covered_session_ids))),
+    [rows]
+  );
+
+  const { data: sessionTitles = {} } = useQuery({
+    queryKey: ['mgmt-attn-report-session-titles', allCoveredIds.join(',')],
+    queryFn: async (): Promise<Record<string, string>> => {
+      if (allCoveredIds.length === 0) return {};
+      const { data, error } = await supabase
+        .from('course_sessions')
+        .select('id, title, course_modules(title)')
+        .in('id', allCoveredIds);
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      (data || []).forEach((s: any) => {
+        const mod = s.course_modules?.title;
+        map[s.id] = mod ? `${mod} · ${s.title}` : s.title;
+      });
+      return map;
+    },
+    enabled: allCoveredIds.length > 0,
+  });
+
 
   const filtered = useMemo(
     () =>
@@ -205,15 +234,19 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
     return true;
   };
 
-  // Extracts the topic string to aggregate for a row: prefer the remark
-  // when present, else the subject only if it is a real topic (not an
-  // officer name) AND the session is marked completed.
+  // Topic for a row: the curriculum sessions covered first, then the remark,
+  // then the subject (never an officer name).
   const topicFor = (r: Row): string | null => {
+    const covered = r.covered_session_ids
+      .map((id) => sessionTitles[id])
+      .filter(Boolean);
+    if (covered.length > 0) return covered.join('; ');
     const note = (r.notes || '').trim();
     if (note) return `Remark: ${note}`;
     if (r.is_session_completed && isValidTopic(r.subject, r.officer_name)) {
       return r.subject!.trim();
     }
+
     return null;
   };
 
