@@ -37,7 +37,7 @@ import {
 } from "@/hooks/useClassSessionAttendance";
 import { useReceivedAccessGrants } from "@/hooks/useOfficerClassAccess";
 import { useSessionCompletion } from "@/hooks/useSessionCompletion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface ClassSession {
@@ -94,6 +94,7 @@ const Attendance = () => {
   const [selectedCurriculumSessionIds, setSelectedCurriculumSessionIds] = useState<string[]>([]);
   const [classRemark, setClassRemark] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
+  const queryClient = useQueryClient();
 
 
   // Get delegated access grants for today
