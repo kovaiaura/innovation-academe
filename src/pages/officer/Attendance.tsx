@@ -986,7 +986,7 @@ const Attendance = () => {
                               size="sm"
                               variant={record.status === "present" ? "default" : "outline"}
                               onClick={() => handleMarkAttendance(record.id, "present")}
-                              disabled={isSessionCompleted}
+                              disabled={isLocked}
                             >
                               <UserCheck className="h-4 w-4" />
                             </Button>
@@ -994,7 +994,7 @@ const Attendance = () => {
                               size="sm"
                               variant={record.status === "late" ? "default" : "outline"}
                               onClick={() => handleMarkAttendance(record.id, "late")}
-                              disabled={isSessionCompleted}
+                              disabled={isLocked}
                             >
                               <Clock className="h-4 w-4" />
                             </Button>
@@ -1002,7 +1002,7 @@ const Attendance = () => {
                               size="sm"
                               variant={record.status === "absent" ? "destructive" : "outline"}
                               onClick={() => handleMarkAttendance(record.id, "absent")}
-                              disabled={isSessionCompleted}
+                              disabled={isLocked}
                             >
                               <UserX className="h-4 w-4" />
                             </Button>
@@ -1024,13 +1024,13 @@ const Attendance = () => {
                 <Button 
                   variant="outline" 
                   onClick={handleSaveAttendance} 
-                  disabled={saveAttendanceMutation.isPending || isSessionCompleted}
+                  disabled={saveAttendanceMutation.isPending || isLocked}
                 >
                   {saveAttendanceMutation.isPending ? "Saving..." : "Save Attendance"}
                 </Button>
                 <Button 
                   onClick={handleMarkSessionCompleted} 
-                  disabled={markCompletedMutation.isPending || isMarkingCurriculum || isSessionCompleted}
+                  disabled={markCompletedMutation.isPending || isMarkingCurriculum || isLocked}
                   className="gap-2"
                 >
                   <CheckCircle2 className="h-4 w-4" />
