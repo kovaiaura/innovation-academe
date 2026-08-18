@@ -807,17 +807,19 @@ const Attendance = () => {
                         <div className="space-y-1 max-h-64 overflow-auto">
                           {curriculumSessionAssignments.map((s: any) => {
                             const checked = selectedCurriculumSessionIds.includes(s.session_id);
+                            const alreadyDone = alreadyCoveredSessionIds.has(s.session_id);
+                            const disabled = !s.is_unlocked || alreadyDone;
                             const parentModule = moduleAssignments.find(
                               (m: any) => m.id === s.class_module_assignment_id
                             );
                             return (
                               <label
                                 key={s.id}
-                                className={`flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer ${!s.is_unlocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                               >
                                 <Checkbox
                                   checked={checked}
-                                  disabled={!s.is_unlocked}
+                                  disabled={disabled}
                                   onCheckedChange={(v) => {
                                     setSelectedCurriculumSessionIds((prev) =>
                                       v ? [...prev, s.session_id] : prev.filter((x) => x !== s.session_id)
@@ -826,7 +828,8 @@ const Attendance = () => {
                                 />
                                 <span className="text-sm">
                                   <span className="text-muted-foreground">{(parentModule as any)?.course_modules?.title || ''} · </span>
-                                  {s.course_sessions?.title || 'Untitled'} {!s.is_unlocked ? '(Locked)' : ''}
+                                  {s.course_sessions?.title || 'Untitled'}
+                                  {!s.is_unlocked ? ' (Locked)' : alreadyDone ? ' (Already marked)' : ''}
                                 </span>
                               </label>
                             );
@@ -842,6 +845,19 @@ const Attendance = () => {
                 </p>
               )
             )}
+
+            {/* What was already recorded for this period */}
+            {selectedSession && savedCoveredTitles.length > 0 && (
+              <div className="pt-2 border-t">
+                <p className="text-sm font-medium mb-2">Covered in this period</p>
+                <div className="flex flex-wrap gap-1">
+                  {savedCoveredTitles.map((t) => (
+                    <Badge key={t} variant="secondary" className="font-normal">{t}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
 
             {/* Class remark (optional) */}
             {selectedSession && (
