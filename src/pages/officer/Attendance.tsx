@@ -934,7 +934,13 @@ const Attendance = () => {
                       Session Completed
                     </Badge>
                   )}
+                  {isSessionCompleted && (
+                    <Button variant="outline" size="sm" onClick={() => setIsEditing(v => !v)}>
+                      {isEditing ? 'Cancel edit' : 'Edit'}
+                    </Button>
+                  )}
                 </div>
+
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={handleMarkAllPresent}>
                     <UserCheck className="h-4 w-4 mr-2" />
