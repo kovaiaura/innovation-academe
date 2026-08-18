@@ -509,7 +509,26 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
                           </Popover>
                         ) : null;
 
+                        if (hasCovered) {
+                          return (
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap gap-1">
+                                {row.coveredTitles.map((t) => (
+                                  <Badge key={t} variant="secondary" className="text-xs font-normal">
+                                    {t}
+                                  </Badge>
+                                ))}
+                              </div>
+                              {hasNote && (
+                                <div className="text-xs text-muted-foreground italic">Remark: {row.notes}</div>
+                              )}
+                              {editButton}
+                            </div>
+                          );
+                        }
+
                         if (allAbsent && hasNote) {
+
                           return (
                             <div className="space-y-1">
                               <div className="text-sm">
