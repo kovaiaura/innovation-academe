@@ -517,12 +517,72 @@ const Attendance = () => {
     setSelectedModuleAssignmentIds([]);
     setSelectedCurriculumSessionIds([]);
     setClassRemark('');
+    setIsEditing(false);
   }, [selectedSession, selectedDate]);
 
-  // Check if current session is already completed
-  const isSessionCompleted = savedAttendance?.find(
+  // Saved attendance row for the currently selected period
+  const savedRecordForSession = savedAttendance?.find(
     a => a.timetable_assignment_id === selectedSession
-  )?.is_session_completed || false;
+  );
+  const isSessionCompleted = savedRecordForSession?.is_session_completed || false;
+  const isLocked = isSessionCompleted && !isEditing;
+
+  const savedCoveredSessionIds: string[] = Array.isArray((savedRecordForSession as any)?.covered_session_ids)
+    ? ((savedRecordForSession as any).covered_session_ids as string[])
+    : [];
+
+  // Prefill the curriculum picker from what was already recorded
+  useEffect(() => {
+    if (!savedRecordForSession) return;
+    const courseId = (savedRecordForSession as any).covered_course_id;
+    if (courseId) {
+      const assignment = classCourseAssignments.find((c: any) => c.course_id === courseId);
+      if (assignment) setSelectedCourseAssignmentId((prev) => prev || assignment.id);
+    }
+    if (savedCoveredSessionIds.length > 0) {
+      setSelectedCurriculumSessionIds((prev) => (prev.length > 0 ? prev : savedCoveredSessionIds));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedRecordForSession?.id, classCourseAssignments.length]);
+
+  // Titles of the curriculum sessions already recorded for this period
+  const { data: savedCoveredTitles = [] } = useQuery({
+    queryKey: ['officer-attn-covered-titles', savedCoveredSessionIds.join(',')],
+    queryFn: async (): Promise<string[]> => {
+      if (savedCoveredSessionIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('course_sessions')
+        .select('id, title, course_modules(title)')
+        .in('id', savedCoveredSessionIds);
+      if (error) throw error;
+      return (data || []).map((s: any) =>
+        s.course_modules?.title ? `${s.course_modules.title} · ${s.title}` : s.title
+      );
+    },
+    enabled: savedCoveredSessionIds.length > 0,
+  });
+
+  // Curriculum sessions already marked complete for this class in ANY other period
+  const { data: classCoveredRows = [] } = useQuery({
+    queryKey: ['officer-attn-class-covered', classIdForCurriculum],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('class_session_attendance')
+        .select('id, covered_session_ids')
+        .eq('class_id', classIdForCurriculum)
+        .eq('is_session_completed', true);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!classIdForCurriculum,
+  });
+
+  const alreadyCoveredSessionIds = new Set<string>(
+    classCoveredRows
+      .filter((r: any) => r.id !== savedRecordForSession?.id)
+      .flatMap((r: any) => (Array.isArray(r.covered_session_ids) ? r.covered_session_ids : []))
+  );
+
 
   const handleExportCSV = () => {
     if (!selectedSessionData) return;
