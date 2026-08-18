@@ -37,7 +37,7 @@ import {
 } from "@/hooks/useClassSessionAttendance";
 import { useReceivedAccessGrants } from "@/hooks/useOfficerClassAccess";
 import { useSessionCompletion } from "@/hooks/useSessionCompletion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface ClassSession {
@@ -93,6 +93,9 @@ const Attendance = () => {
   const [selectedModuleAssignmentIds, setSelectedModuleAssignmentIds] = useState<string[]>([]);
   const [selectedCurriculumSessionIds, setSelectedCurriculumSessionIds] = useState<string[]>([]);
   const [classRemark, setClassRemark] = useState<string>('');
+  const [isEditing, setIsEditing] = useState(false);
+  const queryClient = useQueryClient();
+
 
   // Get delegated access grants for today
   const { data: accessGrants } = useReceivedAccessGrants(officerProfile?.id);
@@ -377,7 +380,17 @@ const Attendance = () => {
     }
 
     // If curriculum sessions were picked, mark each complete for present/late students
-    if (selectedCurriculumSessionIds.length > 0 && selectedCourseAssignmentId) {
+    const sessionIdsToMark = selectedCurriculumSessionIds.filter(
+      (id) => !alreadyCoveredSessionIds.has(id)
+    );
+    const skipped = selectedCurriculumSessionIds.length - sessionIdsToMark.length;
+    if (skipped > 0) {
+      toast.warning(
+        `${skipped} session${skipped !== 1 ? 's were' : ' was'} already marked complete for this class and ${skipped !== 1 ? 'were' : 'was'} skipped.`
+      );
+    }
+
+    if (sessionIdsToMark.length > 0 && selectedCourseAssignmentId) {
       const presentStudentIds = attendance
         .filter(r => r.status === 'present' || r.status === 'late')
         .map(r => r.id);
@@ -391,7 +404,7 @@ const Attendance = () => {
       const courseId = (selectedCourseAssignment as any)?.course_id;
       let successCount = 0;
 
-      for (const sessionId of selectedCurriculumSessionIds) {
+      for (const sessionId of sessionIdsToMark) {
         const sessionMeta = curriculumSessionAssignments.find(
           (s: any) => s.session_id === sessionId
         );
@@ -413,6 +426,10 @@ const Attendance = () => {
         );
         if (ok) successCount++;
       }
+
+      queryClient.invalidateQueries({ queryKey: ['officer-attn-class-covered'] });
+      setIsEditing(false);
+
 
       if (successCount > 0) {
         toast.success(
@@ -517,12 +534,72 @@ const Attendance = () => {
     setSelectedModuleAssignmentIds([]);
     setSelectedCurriculumSessionIds([]);
     setClassRemark('');
+    setIsEditing(false);
   }, [selectedSession, selectedDate]);
 
-  // Check if current session is already completed
-  const isSessionCompleted = savedAttendance?.find(
+  // Saved attendance row for the currently selected period
+  const savedRecordForSession = savedAttendance?.find(
     a => a.timetable_assignment_id === selectedSession
-  )?.is_session_completed || false;
+  );
+  const isSessionCompleted = savedRecordForSession?.is_session_completed || false;
+  const isLocked = isSessionCompleted && !isEditing;
+
+  const savedCoveredSessionIds: string[] = Array.isArray((savedRecordForSession as any)?.covered_session_ids)
+    ? ((savedRecordForSession as any).covered_session_ids as string[])
+    : [];
+
+  // Prefill the curriculum picker from what was already recorded
+  useEffect(() => {
+    if (!savedRecordForSession) return;
+    const courseId = (savedRecordForSession as any).covered_course_id;
+    if (courseId) {
+      const assignment = classCourseAssignments.find((c: any) => c.course_id === courseId);
+      if (assignment) setSelectedCourseAssignmentId((prev) => prev || assignment.id);
+    }
+    if (savedCoveredSessionIds.length > 0) {
+      setSelectedCurriculumSessionIds((prev) => (prev.length > 0 ? prev : savedCoveredSessionIds));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedRecordForSession?.id, classCourseAssignments.length]);
+
+  // Titles of the curriculum sessions already recorded for this period
+  const { data: savedCoveredTitles = [] } = useQuery({
+    queryKey: ['officer-attn-covered-titles', savedCoveredSessionIds.join(',')],
+    queryFn: async (): Promise<string[]> => {
+      if (savedCoveredSessionIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('course_sessions')
+        .select('id, title, course_modules(title)')
+        .in('id', savedCoveredSessionIds);
+      if (error) throw error;
+      return (data || []).map((s: any) =>
+        s.course_modules?.title ? `${s.course_modules.title} · ${s.title}` : s.title
+      );
+    },
+    enabled: savedCoveredSessionIds.length > 0,
+  });
+
+  // Curriculum sessions already marked complete for this class in ANY other period
+  const { data: classCoveredRows = [] } = useQuery({
+    queryKey: ['officer-attn-class-covered', classIdForCurriculum],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('class_session_attendance')
+        .select('id, covered_session_ids')
+        .eq('class_id', classIdForCurriculum)
+        .eq('is_session_completed', true);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!classIdForCurriculum,
+  });
+
+  const alreadyCoveredSessionIds = new Set<string>(
+    classCoveredRows
+      .filter((r: any) => r.id !== savedRecordForSession?.id)
+      .flatMap((r: any) => (Array.isArray(r.covered_session_ids) ? r.covered_session_ids : []))
+  );
+
 
   const handleExportCSV = () => {
     if (!selectedSessionData) return;
@@ -730,17 +807,19 @@ const Attendance = () => {
                         <div className="space-y-1 max-h-64 overflow-auto">
                           {curriculumSessionAssignments.map((s: any) => {
                             const checked = selectedCurriculumSessionIds.includes(s.session_id);
+                            const alreadyDone = alreadyCoveredSessionIds.has(s.session_id);
+                            const disabled = !s.is_unlocked || alreadyDone;
                             const parentModule = moduleAssignments.find(
                               (m: any) => m.id === s.class_module_assignment_id
                             );
                             return (
                               <label
                                 key={s.id}
-                                className={`flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer ${!s.is_unlocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                               >
                                 <Checkbox
                                   checked={checked}
-                                  disabled={!s.is_unlocked}
+                                  disabled={disabled}
                                   onCheckedChange={(v) => {
                                     setSelectedCurriculumSessionIds((prev) =>
                                       v ? [...prev, s.session_id] : prev.filter((x) => x !== s.session_id)
@@ -749,7 +828,8 @@ const Attendance = () => {
                                 />
                                 <span className="text-sm">
                                   <span className="text-muted-foreground">{(parentModule as any)?.course_modules?.title || ''} · </span>
-                                  {s.course_sessions?.title || 'Untitled'} {!s.is_unlocked ? '(Locked)' : ''}
+                                  {s.course_sessions?.title || 'Untitled'}
+                                  {!s.is_unlocked ? ' (Locked)' : alreadyDone ? ' (Already marked)' : ''}
                                 </span>
                               </label>
                             );
@@ -765,6 +845,19 @@ const Attendance = () => {
                 </p>
               )
             )}
+
+            {/* What was already recorded for this period */}
+            {selectedSession && savedCoveredTitles.length > 0 && (
+              <div className="pt-2 border-t">
+                <p className="text-sm font-medium mb-2">Covered in this period</p>
+                <div className="flex flex-wrap gap-1">
+                  {savedCoveredTitles.map((t) => (
+                    <Badge key={t} variant="secondary" className="font-normal">{t}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
 
             {/* Class remark (optional) */}
             {selectedSession && (
@@ -857,7 +950,13 @@ const Attendance = () => {
                       Session Completed
                     </Badge>
                   )}
+                  {isSessionCompleted && (
+                    <Button variant="outline" size="sm" onClick={() => setIsEditing(v => !v)}>
+                      {isEditing ? 'Cancel edit' : 'Edit'}
+                    </Button>
+                  )}
                 </div>
+
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={handleMarkAllPresent}>
                     <UserCheck className="h-4 w-4 mr-2" />
@@ -909,7 +1008,7 @@ const Attendance = () => {
                               size="sm"
                               variant={record.status === "present" ? "default" : "outline"}
                               onClick={() => handleMarkAttendance(record.id, "present")}
-                              disabled={isSessionCompleted}
+                              disabled={isLocked}
                             >
                               <UserCheck className="h-4 w-4" />
                             </Button>
@@ -917,7 +1016,7 @@ const Attendance = () => {
                               size="sm"
                               variant={record.status === "late" ? "default" : "outline"}
                               onClick={() => handleMarkAttendance(record.id, "late")}
-                              disabled={isSessionCompleted}
+                              disabled={isLocked}
                             >
                               <Clock className="h-4 w-4" />
                             </Button>
@@ -925,7 +1024,7 @@ const Attendance = () => {
                               size="sm"
                               variant={record.status === "absent" ? "destructive" : "outline"}
                               onClick={() => handleMarkAttendance(record.id, "absent")}
-                              disabled={isSessionCompleted}
+                              disabled={isLocked}
                             >
                               <UserX className="h-4 w-4" />
                             </Button>
@@ -947,13 +1046,13 @@ const Attendance = () => {
                 <Button 
                   variant="outline" 
                   onClick={handleSaveAttendance} 
-                  disabled={saveAttendanceMutation.isPending || isSessionCompleted}
+                  disabled={saveAttendanceMutation.isPending || isLocked}
                 >
                   {saveAttendanceMutation.isPending ? "Saving..." : "Save Attendance"}
                 </Button>
                 <Button 
                   onClick={handleMarkSessionCompleted} 
-                  disabled={markCompletedMutation.isPending || isMarkingCurriculum || isSessionCompleted}
+                  disabled={markCompletedMutation.isPending || isMarkingCurriculum || isLocked}
                   className="gap-2"
                 >
                   <CheckCircle2 className="h-4 w-4" />

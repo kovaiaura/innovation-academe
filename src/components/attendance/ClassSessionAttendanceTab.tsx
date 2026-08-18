@@ -276,7 +276,12 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
       ['Period', 'Time', 'Class', 'Scheduled Officer', 'Status', 'Students Present', 'Total Students', 'Course/Session Covered', 'Remark'],
       ...mergedData.map(row => {
         const allAbsent = row.isCompleted && row.studentsPresent === 0;
-        const covered = allAbsent && row.notes ? `Remark: ${row.notes}` : (row.subject || '-');
+        const covered = row.coveredTitles.length > 0
+          ? row.coveredTitles.join('; ')
+          : allAbsent && row.notes
+            ? `Remark: ${row.notes}`
+            : (row.subject || '-');
+
         return [
           row.periodLabel,
           row.periodTime,
@@ -509,7 +514,26 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
                           </Popover>
                         ) : null;
 
+                        if (hasCovered) {
+                          return (
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap gap-1">
+                                {row.coveredTitles.map((t) => (
+                                  <Badge key={t} variant="secondary" className="text-xs font-normal">
+                                    {t}
+                                  </Badge>
+                                ))}
+                              </div>
+                              {hasNote && (
+                                <div className="text-xs text-muted-foreground italic">Remark: {row.notes}</div>
+                              )}
+                              {editButton}
+                            </div>
+                          );
+                        }
+
                         if (allAbsent && hasNote) {
+
                           return (
                             <div className="space-y-1">
                               <div className="text-sm">
