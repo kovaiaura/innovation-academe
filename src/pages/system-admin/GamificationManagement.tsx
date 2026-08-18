@@ -84,6 +84,40 @@ export default function GamificationManagement() {
       setIsRecalcProgress(false);
     }
   };
+
+  const [eraseInstitution, setEraseInstitution] = useState<string>('');
+  const [isErasing, setIsErasing] = useState(false);
+  const [eraseStatus, setEraseStatus] = useState('');
+
+  const handleEraseInstitutionProgress = async () => {
+    if (!eraseInstitution) {
+      toast.error('Select an institution first');
+      return;
+    }
+    if (!window.confirm('This permanently deletes all marked session completions and class attendance records for this institution. Continue?')) {
+      return;
+    }
+    setIsErasing(true);
+    setEraseStatus('Erasing…');
+    try {
+      const { data, error } = await supabase.functions.invoke('erase-institution-progress', {
+        body: { institutionId: eraseInstitution },
+      });
+      if (error) throw error;
+      const d = data as any;
+      setEraseStatus(
+        `Erased ${d?.sessionCompletions ?? 0} session completions, ${d?.contentCompletions ?? 0} content completions and ${d?.attendanceRows ?? 0} attendance rows.`
+      );
+      toast.success('Institution progress erased');
+    } catch (error: any) {
+      console.error('Erase progress error:', error);
+      setEraseStatus('');
+      toast.error(error?.message || 'Failed to erase progress');
+    } finally {
+      setIsErasing(false);
+    }
+  };
+
   const [recalcProgressDialogOpen, setRecalcProgressDialogOpen] = useState(false);
   const [recalcProgress, setRecalcProgress] = useState<{ step: string; current: number; total: number; message: string } | null>(null);
   const [recalcResult, setRecalcResult] = useState<{ studentsProcessed: number; totalXP: number; badgesAwarded: number } | null>(null);
