@@ -379,7 +379,17 @@ const Attendance = () => {
     }
 
     // If curriculum sessions were picked, mark each complete for present/late students
-    if (selectedCurriculumSessionIds.length > 0 && selectedCourseAssignmentId) {
+    const sessionIdsToMark = selectedCurriculumSessionIds.filter(
+      (id) => !alreadyCoveredSessionIds.has(id)
+    );
+    const skipped = selectedCurriculumSessionIds.length - sessionIdsToMark.length;
+    if (skipped > 0) {
+      toast.warning(
+        `${skipped} session${skipped !== 1 ? 's were' : ' was'} already marked complete for this class and ${skipped !== 1 ? 'were' : 'was'} skipped.`
+      );
+    }
+
+    if (sessionIdsToMark.length > 0 && selectedCourseAssignmentId) {
       const presentStudentIds = attendance
         .filter(r => r.status === 'present' || r.status === 'late')
         .map(r => r.id);
@@ -393,7 +403,7 @@ const Attendance = () => {
       const courseId = (selectedCourseAssignment as any)?.course_id;
       let successCount = 0;
 
-      for (const sessionId of selectedCurriculumSessionIds) {
+      for (const sessionId of sessionIdsToMark) {
         const sessionMeta = curriculumSessionAssignments.find(
           (s: any) => s.session_id === sessionId
         );
@@ -415,6 +425,10 @@ const Attendance = () => {
         );
         if (ok) successCount++;
       }
+
+      queryClient.invalidateQueries({ queryKey: ['officer-attn-class-covered'] });
+      setIsEditing(false);
+
 
       if (successCount > 0) {
         toast.success(
