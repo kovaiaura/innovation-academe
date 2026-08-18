@@ -276,7 +276,12 @@ export function ClassSessionAttendanceTab({ institutionId }: ClassSessionAttenda
       ['Period', 'Time', 'Class', 'Scheduled Officer', 'Status', 'Students Present', 'Total Students', 'Course/Session Covered', 'Remark'],
       ...mergedData.map(row => {
         const allAbsent = row.isCompleted && row.studentsPresent === 0;
-        const covered = allAbsent && row.notes ? `Remark: ${row.notes}` : (row.subject || '-');
+        const covered = row.coveredTitles.length > 0
+          ? row.coveredTitles.join('; ')
+          : allAbsent && row.notes
+            ? `Remark: ${row.notes}`
+            : (row.subject || '-');
+
         return [
           row.periodLabel,
           row.periodTime,
