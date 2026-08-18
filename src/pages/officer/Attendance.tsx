@@ -93,6 +93,8 @@ const Attendance = () => {
   const [selectedModuleAssignmentIds, setSelectedModuleAssignmentIds] = useState<string[]>([]);
   const [selectedCurriculumSessionIds, setSelectedCurriculumSessionIds] = useState<string[]>([]);
   const [classRemark, setClassRemark] = useState<string>('');
+  const [isEditing, setIsEditing] = useState(false);
+
 
   // Get delegated access grants for today
   const { data: accessGrants } = useReceivedAccessGrants(officerProfile?.id);
