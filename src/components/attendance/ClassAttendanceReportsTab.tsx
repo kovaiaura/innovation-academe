@@ -70,7 +70,27 @@ interface Row {
   is_session_completed: boolean;
   notes: string | null;
   covered_session_ids: string[];
+  covered_course_id: string | null;
 }
+
+const normalizeIdArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.filter((id): id is string => typeof id === 'string' && id.length > 0);
+  }
+
+  if (typeof value === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      return Array.isArray(parsed)
+        ? parsed.filter((id): id is string => typeof id === 'string' && id.length > 0)
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+};
 
 
 const parseDurationMinutes = (periodTime: string | null): number => {
@@ -121,7 +141,7 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
         .select(
           `id, date, class_id, officer_id, period_label, period_time, subject,
            total_students, students_present, students_late, students_absent,
-           is_session_completed, notes, covered_session_ids,
+           is_session_completed, notes, covered_session_ids, covered_course_id,
            classes:class_id (class_name),
            officers:officer_id (full_name)`
         )
@@ -146,7 +166,8 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
         students_absent: r.students_absent || 0,
         is_session_completed: !!r.is_session_completed,
         notes: r.notes || null,
-        covered_session_ids: Array.isArray(r.covered_session_ids) ? r.covered_session_ids : [],
+        covered_session_ids: normalizeIdArray(r.covered_session_ids),
+        covered_course_id: r.covered_course_id || null,
       }));
     },
     enabled: !!institutionId,
@@ -157,21 +178,60 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
     () => Array.from(new Set(rows.flatMap((r) => r.covered_session_ids))),
     [rows]
   );
+  const allCoveredCourseIds = useMemo(
+    () => Array.from(new Set(rows.map((r) => r.covered_course_id).filter(Boolean) as string[])),
+    [rows]
+  );
 
-  const { data: sessionTitles = {} } = useQuery({
-    queryKey: ['mgmt-attn-report-session-titles', allCoveredIds.join(',')],
+  // Resolve each relationship explicitly. The nested PostgREST relation can
+  // return no child object even when the foreign-key row is present, which
+  // previously made valid completed sessions appear as "-" in the report.
+  const { data: curriculumLabels = {} } = useQuery({
+    queryKey: [
+      'mgmt-attn-report-curriculum-labels',
+      allCoveredIds.join(','),
+      allCoveredCourseIds.join(','),
+    ],
     queryFn: async (): Promise<Record<string, string>> => {
       if (allCoveredIds.length === 0) return {};
-      const { data, error } = await supabase
+
+      const sessionsResult = await supabase
         .from('course_sessions')
-        .select('id, title, course_modules(title)')
+        .select('id, title, module_id, course_id')
         .in('id', allCoveredIds);
-      if (error) throw error;
+      if (sessionsResult.error) throw sessionsResult.error;
+
+      const sessionRows = sessionsResult.data || [];
+      const moduleIds = Array.from(new Set(sessionRows.map((s: any) => s.module_id).filter(Boolean)));
+      const courseIds = Array.from(new Set([
+        ...allCoveredCourseIds,
+        ...sessionRows.map((s: any) => s.course_id).filter(Boolean),
+      ]));
+
+      const [modulesResult, coursesResult] = await Promise.all([
+        moduleIds.length > 0
+          ? supabase.from('course_modules').select('id, title').in('id', moduleIds)
+          : Promise.resolve({ data: [], error: null }),
+        courseIds.length > 0
+          ? supabase.from('courses').select('id, title').in('id', courseIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (modulesResult.error) throw modulesResult.error;
+      if (coursesResult.error) throw coursesResult.error;
+
+      const moduleTitles = new Map((modulesResult.data || []).map((m: any) => [m.id, m.title]));
+      const courseTitles = new Map((coursesResult.data || []).map((c: any) => [c.id, c.title]));
       const map: Record<string, string> = {};
-      (data || []).forEach((s: any) => {
-        const mod = s.course_modules?.title;
-        map[s.id] = mod ? `${mod} · ${s.title}` : s.title;
+
+      sessionRows.forEach((session: any) => {
+        const parts = [
+          courseTitles.get(session.course_id),
+          moduleTitles.get(session.module_id),
+          session.title,
+        ].filter((part): part is string => typeof part === 'string' && part.trim().length > 0);
+        map[session.id] = parts.join(' · ');
       });
+
       return map;
     },
     enabled: allCoveredIds.length > 0,
@@ -238,7 +298,7 @@ export function ClassAttendanceReportsTab({ institutionId, institutionName }: Pr
   // then the subject (never an officer name).
   const topicFor = (r: Row): string | null => {
     const covered = r.covered_session_ids
-      .map((id) => sessionTitles[id])
+      .map((id) => curriculumLabels[id])
       .filter(Boolean);
     if (covered.length > 0) return covered.join('; ');
     const note = (r.notes || '').trim();
