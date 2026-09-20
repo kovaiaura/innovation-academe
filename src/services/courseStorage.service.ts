@@ -2,6 +2,34 @@ import { supabase } from '@/integrations/supabase/client';
 
 const BUCKET_NAME = 'course-content';
 
+/**
+ * Course content should be stored as an object path. Older records may contain
+ * a full public, authenticated, or signed Storage URL instead, so normalize
+ * those values before asking Storage for a fresh signed URL.
+ */
+function normalizeCourseContentPath(filePath: string): string {
+  const trimmedPath = filePath.trim();
+
+  if (!/^https?:\/\//i.test(trimmedPath)) {
+    return trimmedPath.replace(/^\/+/, '');
+  }
+
+  try {
+    const url = new URL(trimmedPath);
+    const decodedPath = decodeURIComponent(url.pathname);
+    const bucketMarker = `/${BUCKET_NAME}/`;
+    const bucketIndex = decodedPath.indexOf(bucketMarker);
+
+    if (bucketIndex >= 0) {
+      return decodedPath.slice(bucketIndex + bucketMarker.length).replace(/^\/+/, '');
+    }
+  } catch (error) {
+    console.error('Failed to parse course content URL:', error);
+  }
+
+  return trimmedPath;
+}
+
 export interface UploadResult {
   path: string;
   publicUrl: string | null;
@@ -89,9 +117,16 @@ export async function getContentSignedUrl(
   filePath: string,
   expiresInSeconds: number = 600 // 10 minutes
 ): Promise<string | null> {
+  const normalizedPath = normalizeCourseContentPath(filePath);
+
+  // Preserve external URLs that are not Storage object URLs.
+  if (/^https?:\/\//i.test(normalizedPath)) {
+    return normalizedPath;
+  }
+
   const { data, error } = await supabase.storage
     .from(BUCKET_NAME)
-    .createSignedUrl(filePath, expiresInSeconds);
+    .createSignedUrl(normalizedPath, expiresInSeconds);
 
   if (error) {
     console.error('Failed to get signed URL:', error);
@@ -102,19 +137,35 @@ export async function getContentSignedUrl(
 }
 
 /**
- * Download a file as blob from storage (bypasses CORS issues)
+ * Download a file through a fresh signed URL. This avoids the authenticated
+ * object endpoint used by storage.download(), which can be routed to a stale
+ * or missing bucket on legacy/custom API domains.
  */
 export async function downloadCourseContent(filePath: string): Promise<Blob | null> {
-  const { data, error } = await supabase.storage
-    .from(BUCKET_NAME)
-    .download(filePath);
+  const signedUrl = await getContentSignedUrl(filePath, 600);
 
-  if (error) {
-    console.error('Failed to download content:', error);
+  if (!signedUrl) {
+    console.error('Failed to create a signed URL for course content');
     return null;
   }
 
-  return data;
+  try {
+    const response = await fetch(signedUrl, {
+      method: 'GET',
+      cache: 'no-store'
+    });
+
+    if (!response.ok) {
+      const details = await response.text();
+      console.error(`Failed to fetch signed course content [${response.status}]:`, details);
+      return null;
+    }
+
+    return await response.blob();
+  } catch (error) {
+    console.error('Failed to fetch signed course content:', error);
+    return null;
+  }
 }
 
 /**
