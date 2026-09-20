@@ -128,19 +128,12 @@ export function ContentViewerDialog({
         );
       
       case 'pdf':
-        // Storage path: render via PDF.js (works across browsers; no iframe).
-        if (content.file_path && !content.file_path.startsWith('http')) {
+        // Always use the secure viewer so legacy Storage URLs are refreshed.
+        if (content.file_path) {
           return <PDFViewer filePath={content.file_path} title={content.title} />;
         }
 
-        if (!contentUrl) return <p className="text-destructive">PDF URL not available</p>;
-        return (
-          <iframe
-            src={contentUrl}
-            className="w-full h-[70vh] rounded-lg bg-card"
-            title={content.title}
-          />
-        );
+        return <p className="text-destructive">PDF URL not available</p>;
 
       case 'ppt':
         if (!contentUrl) return <p className="text-destructive">Presentation URL not available</p>;
