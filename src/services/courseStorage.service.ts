@@ -17,6 +17,14 @@ function normalizeCourseContentPath(filePath: string): string {
   try {
     const url = new URL(trimmedPath);
     const decodedPath = decodeURIComponent(url.pathname);
+    const storagePathMatch = decodedPath.match(
+      /\/storage\/v1\/object\/(?:public|authenticated|sign)\/[^/]+\/(.+)$/
+    );
+
+    if (storagePathMatch?.[1]) {
+      return storagePathMatch[1].replace(/^\/+/, '');
+    }
+
     const bucketMarker = `/${BUCKET_NAME}/`;
     const bucketIndex = decodedPath.indexOf(bucketMarker);
 

@@ -128,8 +128,8 @@ export function LMSCourseViewer({ course, modules, viewOnly = false, backPath }:
         return;
       }
 
-      // PDFs are rendered via our in-app PDFViewer (downloads via SDK), so no signed URL needed.
-      if (selectedContent.type === 'pdf' && selectedContent.file_path && !selectedContent.file_path.startsWith('http')) {
+      // PDFs are rendered through the in-app viewer, which creates a fresh signed URL.
+      if (selectedContent.type === 'pdf' && selectedContent.file_path) {
         setContentUrl(null);
         setIsLoadingContent(false);
         return;
@@ -282,22 +282,10 @@ export function LMSCourseViewer({ course, modules, viewOnly = false, backPath }:
           );
         }
 
-        // Storage path: render via PDF.js (works across browsers; no iframe).
-        if (!selectedContent.file_path.startsWith('http')) {
-          return (
-            <div className="h-full">
-              <PDFViewer filePath={selectedContent.file_path} title={selectedContent.title} />
-            </div>
-          );
-        }
-
-        // External URL: fall back to iframe.
         return (
-          <iframe
-            src={selectedContent.file_path}
-            className="w-full h-full rounded-lg bg-card"
-            title={selectedContent.title}
-          />
+          <div className="h-full">
+            <PDFViewer filePath={selectedContent.file_path} title={selectedContent.title} />
+          </div>
         );
 
       case 'ppt':
