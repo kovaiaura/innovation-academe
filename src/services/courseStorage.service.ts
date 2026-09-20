@@ -149,16 +149,9 @@ export async function getContentSignedUrl(
  * object endpoint used by storage.download(), which can be routed to a stale
  * or missing bucket on legacy/custom API domains.
  */
-export async function downloadCourseContent(filePath: string): Promise<Blob | null> {
-  const signedUrl = await getContentSignedUrl(filePath, 600);
-
-  if (!signedUrl) {
-    console.error('Failed to create a signed URL for course content');
-    return null;
-  }
-
+async function fetchAsBlob(url: string): Promise<Blob | null> {
   try {
-    const response = await fetch(signedUrl, {
+    const response = await fetch(url, {
       method: 'GET',
       cache: 'no-store'
     });
@@ -174,6 +167,27 @@ export async function downloadCourseContent(filePath: string): Promise<Blob | nu
     console.error('Failed to fetch signed course content:', error);
     return null;
   }
+}
+
+export async function downloadCourseContent(filePath: string): Promise<Blob | null> {
+  const signedUrl = await getContentSignedUrl(filePath, 600);
+  const originalIsUrl = /^https?:\/\//i.test(filePath.trim());
+
+  if (signedUrl) {
+    const blob = await fetchAsBlob(signedUrl);
+    if (blob) return blob;
+  } else if (!originalIsUrl) {
+    console.error('Failed to create a signed URL for course content');
+  }
+
+  // Legacy records may hold a full signed/public URL from another storage
+  // project or custom domain. If the fresh signed URL is unavailable or the
+  // fetch failed, fall back to fetching the stored URL directly.
+  if (originalIsUrl && filePath.trim() !== signedUrl) {
+    return await fetchAsBlob(filePath.trim());
+  }
+
+  return null;
 }
 
 /**
