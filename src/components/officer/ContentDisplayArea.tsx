@@ -17,6 +17,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import type { CourseContent, CourseModule } from '@/types/course';
 import { FullscreenWrapper } from '@/components/content-viewer/FullscreenWrapper';
+import { PDFViewer } from '@/components/content-viewer/PDFViewer';
 
 interface ContentDisplayAreaProps {
   content: CourseContent | undefined;
@@ -125,13 +126,17 @@ export function ContentDisplayArea({
     
     switch (content.type) {
       case 'pdf':
+        if (!content.file_url) {
+          return (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              PDF file not available
+            </div>
+          );
+        }
+
         return (
-          <div className="w-full h-full bg-white rounded-lg">
-            <iframe
-              src={content.file_url || `https://docs.google.com/viewer?url=${encodeURIComponent(contentUrl)}&embedded=true`}
-              className="w-full h-full rounded-lg"
-              title={content.title}
-            />
+          <div className="w-full h-full">
+            <PDFViewer filePath={content.file_url} title={content.title} />
           </div>
         );
 

@@ -229,7 +229,7 @@ export default function TeachingSession() {
         return;
       }
 
-      if (selectedContent.type === 'pdf' && selectedContent.file_path && !selectedContent.file_path.startsWith('http')) {
+      if (selectedContent.type === 'pdf' && selectedContent.file_path) {
         setContentUrl(null);
         setIsLoadingContent(false);
         return;
@@ -354,20 +354,10 @@ export default function TeachingSession() {
           );
         }
 
-        if (!selectedContent.file_path.startsWith('http')) {
-          return (
-            <div className="h-full">
-              <PDFViewer filePath={selectedContent.file_path} title={selectedContent.title} />
-            </div>
-          );
-        }
-
         return (
-          <iframe
-            src={selectedContent.file_path}
-            className="w-full h-full rounded-lg bg-card"
-            title={selectedContent.title}
-          />
+          <div className="h-full">
+            <PDFViewer filePath={selectedContent.file_path} title={selectedContent.title} />
+          </div>
         );
 
       default:
