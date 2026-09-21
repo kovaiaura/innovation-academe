@@ -3,7 +3,7 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Loader2, AlertCircle, RefreshCw, Maximize, Minimize } from 'lucide-react';
-import { downloadCourseContent } from '@/services/courseStorage.service';
+import { getContentSignedUrl } from '@/services/courseStorage.service';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
@@ -16,8 +16,7 @@ interface PDFViewerProps {
 }
 
 export function PDFViewer({ filePath, title }: PDFViewerProps) {
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
-  const objectUrlRef = useRef<string | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [numPages, setNumPages] = useState<number>(0);
@@ -48,28 +47,22 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
     return () => observer.disconnect();
   }, []);
 
-  // Fetch PDF as blob using storage SDK (bypasses CORS)
+  // Give PDF.js a signed URL so it can stream large files with byte-range
+  // requests instead of downloading the entire PDF into browser memory first.
   const fetchPdf = useCallback(async () => {
     setLoading(true);
     setError(null);
     setInitialFitDone(false);
+    setPdfUrl(null);
 
     try {
-      const blob = await downloadCourseContent(filePath);
-      if (!blob) {
+      const signedUrl = await getContentSignedUrl(filePath, 3600);
+      if (!signedUrl) {
         setError('Failed to load PDF file');
         return;
       }
 
-      // Revoke any previous object URL
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
-        objectUrlRef.current = null;
-      }
-
-      const url = URL.createObjectURL(blob);
-      objectUrlRef.current = url;
-      setObjectUrl(url);
+      setPdfUrl(signedUrl);
     } catch (err) {
       console.error('Error fetching PDF:', err);
       setError('An error occurred while loading the PDF');
@@ -81,16 +74,6 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
   useEffect(() => {
     if (filePath) fetchPdf();
   }, [filePath, fetchPdf]);
-
-  // Cleanup object URL on unmount
-  useEffect(() => {
-    return () => {
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
-        objectUrlRef.current = null;
-      }
-    };
-  }, []);
 
   const onDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -226,9 +209,9 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
         className={`relative overflow-auto w-full border rounded-lg bg-muted/50 p-4 sm:p-6 ${isFullscreen ? 'flex-1' : 'max-h-[70vh]'}`}
         aria-label={`${title} PDF viewer`}
       >
-        {objectUrl && (
+        {pdfUrl && (
           <Document
-            file={objectUrl}
+            file={{ url: pdfUrl }}
             onLoadSuccess={onDocumentLoadSuccess}
             onLoadError={onDocumentLoadError}
             loading={
