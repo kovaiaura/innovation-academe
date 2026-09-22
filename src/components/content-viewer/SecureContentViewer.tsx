@@ -151,7 +151,7 @@ export function SecureContentViewer({
         if (!content.file_path) {
           return <p className="text-destructive">PDF file not available</p>;
         }
-        // Use react-pdf with blob data to bypass CORS restrictions
+        // Use the shared streaming PDF viewer with its legacy-link fallback.
         return <PDFViewer filePath={content.file_path} title={content.title} />;
 
       case 'ppt':

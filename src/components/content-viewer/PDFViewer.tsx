@@ -10,6 +10,11 @@ import 'react-pdf/dist/Page/TextLayer.css';
 // Configure PDF.js worker (bundle locally to avoid CDN/CSP/adblock issues)
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
+const PDF_DOCUMENT_OPTIONS = {
+  disableRange: true,
+  disableStream: false,
+};
+
 interface PDFViewerProps {
   filePath: string;
   title: string;
@@ -24,6 +29,7 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
   const [scale, setScale] = useState<number>(0.5);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [useNativeFallback, setUseNativeFallback] = useState<boolean>(false);
   
   // For fit-to-width calculation
   const [containerWidth, setContainerWidth] = useState<number>(0);
@@ -54,6 +60,7 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
     setError(null);
     setInitialFitDone(false);
     setPdfUrl(null);
+    setUseNativeFallback(false);
 
     try {
       const signedUrl = await getContentSignedUrl(filePath, 3600);
@@ -82,7 +89,9 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
 
   const onDocumentLoadError = useCallback((err: Error) => {
     console.error('PDF render error:', err);
-    setError('Failed to render PDF');
+    // Older storage domains can open a signed PDF normally while rejecting
+    // cross-origin PDF.js requests. Keep the PDF inside the viewer in that case.
+    setUseNativeFallback(true);
   }, []);
 
   // Called when each page renders - use to get page dimensions and auto-fit
@@ -209,9 +218,17 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
         className={`relative overflow-auto w-full border rounded-lg bg-muted/50 p-4 sm:p-6 ${isFullscreen ? 'flex-1' : 'max-h-[70vh]'}`}
         aria-label={`${title} PDF viewer`}
       >
-        {pdfUrl && (
+        {pdfUrl && useNativeFallback && (
+          <iframe
+            src={pdfUrl}
+            className="h-[70vh] w-full border-0"
+            title={title}
+          />
+        )}
+        {pdfUrl && !useNativeFallback && (
           <Document
             file={{ url: pdfUrl }}
+            options={PDF_DOCUMENT_OPTIONS}
             onLoadSuccess={onDocumentLoadSuccess}
             onLoadError={onDocumentLoadError}
             loading={
