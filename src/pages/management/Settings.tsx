@@ -15,6 +15,7 @@ import { useInstitutionStats } from "@/hooks/useInstitutionStats";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { getDefaultAcademicYear } from "@/utils/academicYear";
 
 interface InstitutionProfileTabProps {
   institutionId: string | undefined;
@@ -23,7 +24,7 @@ interface InstitutionProfileTabProps {
 }
 
 const InstitutionProfileTab = ({ institutionId, currentSettings, institutionName }: InstitutionProfileTabProps) => {
-  const [academicYear, setAcademicYear] = useState(currentSettings?.academic_year || "2025-26");
+  const [academicYear, setAcademicYear] = useState(currentSettings?.academic_year || getDefaultAcademicYear());
   const [saving, setSaving] = useState(false);
   const queryClient = useQueryClient();
 
@@ -44,6 +45,7 @@ const InstitutionProfileTab = ({ institutionId, currentSettings, institutionName
         .eq('id', institutionId);
       
       if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ['institution-academic-year', institutionId] });
       
       // Invalidate all institution stats queries so headers refresh
       queryClient.invalidateQueries({ queryKey: ['institution-stats'] });
