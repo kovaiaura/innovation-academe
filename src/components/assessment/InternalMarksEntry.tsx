@@ -17,6 +17,7 @@ import { useInternalMarks } from '@/hooks/useInternalMarks';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { getDefaultAcademicYear } from '@/utils/academicYear';
 
 interface InternalMarksEntryProps {
   classId: string;
@@ -39,7 +40,7 @@ export function InternalMarksEntry({
   classId,
   className,
   institutionId,
-  academicYear = '2024-25',
+  academicYear = getDefaultAcademicYear(),
   onBack,
 }: InternalMarksEntryProps) {
   const { marks: existingMarks, isLoading: isLoadingMarks, saveBulkMarks, isSaving } = useInternalMarks(classId, academicYear);

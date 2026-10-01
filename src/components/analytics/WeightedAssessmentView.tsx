@@ -13,6 +13,7 @@ import { Loader2, TrendingUp, Award, Percent, BookOpen } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateWeightedScore, calculateCollegeWeightedScore, WEIGHTAGE, COLLEGE_WEIGHTAGE } from '@/utils/assessmentWeightageCalculator';
+import { getDefaultAcademicYear } from '@/utils/academicYear';
 
 interface WeightedAssessmentViewProps {
   classId: string;
@@ -37,7 +38,7 @@ export function WeightedAssessmentView({
   classId,
   className,
   institutionId,
-  academicYear = '2024-25',
+  academicYear = getDefaultAcademicYear(),
   institutionType,
 }: WeightedAssessmentViewProps) {
   // Fetch institution type if not provided

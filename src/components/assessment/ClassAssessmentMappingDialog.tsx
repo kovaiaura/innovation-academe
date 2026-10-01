@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, FileText, Percent } from 'lucide-react';
 import { useClassAssessmentMapping, useClassAssignedAssessments } from '@/hooks/useClassAssessmentMapping';
 import { WEIGHTAGE, COLLEGE_WEIGHTAGE, getWeightageLabel } from '@/utils/assessmentWeightageCalculator';
+import { getDefaultAcademicYear } from '@/utils/academicYear';
 
 interface ClassAssessmentMappingDialogProps {
   open: boolean;
@@ -38,7 +39,7 @@ export function ClassAssessmentMappingDialog({
   classId,
   className,
   institutionId,
-  academicYear = '2024-25',
+  academicYear = getDefaultAcademicYear(),
   institutionType,
 }: ClassAssessmentMappingDialogProps) {
   const isCollege = institutionType === 'college';
