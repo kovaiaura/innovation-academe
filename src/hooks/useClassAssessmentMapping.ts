@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getDefaultAcademicYear } from '@/utils/academicYear';
 
 export interface ClassAssessmentMapping {
   id: string;
@@ -23,7 +24,7 @@ export interface MappingWithDetails extends ClassAssessmentMapping {
   internal_assessment?: { id: string; title: string } | null;
 }
 
-export function useClassAssessmentMapping(classId: string | undefined, academicYear: string = '2024-25') {
+export function useClassAssessmentMapping(classId: string | undefined, academicYear: string = getDefaultAcademicYear()) {
   const queryClient = useQueryClient();
 
   const { data: mapping, isLoading, error } = useQuery({
@@ -122,7 +123,7 @@ export function useClassAssessmentMapping(classId: string | undefined, academicY
   };
 }
 
-export function useInstitutionMappings(institutionId: string | undefined, academicYear: string = '2024-25') {
+export function useInstitutionMappings(institutionId: string | undefined, academicYear: string = getDefaultAcademicYear()) {
   return useQuery({
     queryKey: ['institution-assessment-mappings', institutionId, academicYear],
     queryFn: async (): Promise<MappingWithDetails[]> => {

@@ -25,11 +25,13 @@ import { getAssessmentStatus, formatDuration, calculateTotalPoints, formatDateTi
 import { Search, Plus, Clock, Award, Users, FileText, Eye, Edit, Trash2, Loader2, ClipboardEdit, BarChart3, PlusCircle, Settings2, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
 export default function OfficerAssessmentManagement() {
   const { user } = useAuth();
+  const { selectedYear } = useAcademicYear();
   const [activeTab, setActiveTab] = useState('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -105,11 +107,11 @@ export default function OfficerAssessmentManagement() {
   // Load assessments from database
   useEffect(() => {
     loadAssessments();
-  }, [officerInstitutionId]);
+  }, [officerInstitutionId, selectedYear]);
 
   const loadAssessments = async () => {
     setIsLoading(true);
-    const data = await assessmentService.getAssessments();
+    const data = await assessmentService.getAssessments({ academic_year: selectedYear });
     // Filter to show assessments published to this institution or created by officers of this institution
     const filtered = data.filter(a => {
       const publishedToThisInstitution = a.published_to.some(p => p.institution_id === officerInstitutionId);

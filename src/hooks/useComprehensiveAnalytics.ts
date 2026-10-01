@@ -6,6 +6,8 @@ import {
   buildSessionCompletionContexts,
   computeStudentSessionProgress,
 } from '@/utils/courseProgressCalculations';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { getAcademicYearDateRange } from '@/utils/academicYear';
 
 export interface WeightedAssessmentBreakdown {
   fa1_score: number;
@@ -67,10 +69,12 @@ export interface InstitutionPerformance {
 }
 
 export function useComprehensiveAnalytics(institutionId: string | undefined) {
+  const { selectedYear } = useAcademicYear();
   return useQuery({
-    queryKey: ['comprehensive-analytics', institutionId],
+    queryKey: ['comprehensive-analytics', institutionId, selectedYear],
     queryFn: async (): Promise<InstitutionPerformance | null> => {
       if (!institutionId) return null;
+      const yearRange = getAcademicYearDateRange(selectedYear);
 
       // Fetch institution type
       const { data: institutionData } = await supabase
@@ -99,19 +103,23 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
       const { data: assessmentMappings } = await supabase
         .from('class_assessment_mapping')
         .select('*')
-        .eq('institution_id', institutionId);
+        .eq('institution_id', institutionId)
+        .eq('academic_year', selectedYear);
 
       // Fetch internal assessment marks
       const { data: internalMarks } = await supabase
         .from('internal_assessment_marks')
         .select('*')
-        .eq('institution_id', institutionId);
+        .eq('institution_id', institutionId)
+        .eq('academic_year', selectedYear);
 
       // Fetch assessment attempts
       const { data: assessmentAttempts } = await supabase
         .from('assessment_attempts')
         .select('id, student_id, class_id, assessment_id, percentage, passed, score, total_points, status')
-        .eq('institution_id', institutionId);
+        .eq('institution_id', institutionId)
+        .gte('created_at', yearRange.start)
+        .lt('created_at', yearRange.end);
 
       // Fetch assignment submissions
       const { data: assignmentSubmissions } = await supabase
@@ -121,7 +129,9 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
           assignments:assignment_id (total_marks)
         `)
         .eq('institution_id', institutionId)
-        .eq('status', 'graded');
+        .eq('status', 'graded')
+        .gte('submitted_at', yearRange.start)
+        .lt('submitted_at', yearRange.end);
 
       // Fetch XP transactions - use student user_ids
       const studentUserIds = students?.map(s => s.user_id).filter(Boolean) as string[] || [];

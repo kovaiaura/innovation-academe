@@ -16,6 +16,7 @@ import { CriticalActionsCard } from "@/components/management/CriticalActionsCard
 import { LeaderboardSection } from "@/components/management/LeaderboardSection";
 import { useInstitutionStats } from "@/hooks/useInstitutionStats";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getDefaultAcademicYear } from '@/utils/academicYear';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -161,7 +162,7 @@ const Dashboard = () => {
             establishedYear={institution.settings?.established_year}
             location={institution.address?.city || institution.address?.location}
             totalStudents={stats.totalStudents}
-            academicYear={institution.settings?.academic_year || "2025-26"}
+            academicYear={institution.settings?.academic_year || getDefaultAcademicYear()}
             userRole="Management Portal"
             assignedOfficers={assignedOfficers}
           />

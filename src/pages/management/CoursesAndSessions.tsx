@@ -3,6 +3,7 @@ import { ManagementCoursesView } from "@/components/management/ManagementCourses
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { useInstitutionStats } from "@/hooks/useInstitutionStats";
 import { useLocation } from "react-router-dom";
+import { getDefaultAcademicYear } from '@/utils/academicYear';
 
 const CoursesAndSessions = () => {
   const location = useLocation();
@@ -18,7 +19,7 @@ const CoursesAndSessions = () => {
             establishedYear={institution.settings?.established_year}
             location={institution.address?.city || institution.address?.location}
             totalStudents={stats.totalStudents}
-            academicYear={institution.settings?.academic_year || "2025-26"}
+            academicYear={institution.settings?.academic_year || getDefaultAcademicYear()}
             userRole="Management Portal"
             assignedOfficers={assignedOfficers}
           />

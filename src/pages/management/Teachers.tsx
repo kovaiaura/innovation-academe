@@ -24,6 +24,7 @@ import { AddEditTeacherDialog } from "@/components/teacher/AddEditTeacherDialog"
 import { DeleteTeacherDialog } from "@/components/teacher/DeleteTeacherDialog";
 import { TimetableManagementTab } from "@/components/teacher/TimetableManagementTab";
 import { toast } from "sonner";
+import { getDefaultAcademicYear } from '@/utils/academicYear';
 
 const Teachers = () => {
   const { tenantId } = useParams();
@@ -166,7 +167,7 @@ const Teachers = () => {
             establishedYear={dbInstitution.settings?.established_year}
             location={dbInstitution.address?.city || dbInstitution.address?.location}
             totalStudents={instStats.totalStudents}
-            academicYear={dbInstitution.settings?.academic_year || "2025-26"}
+            academicYear={dbInstitution.settings?.academic_year || getDefaultAcademicYear()}
             userRole="Management Portal"
             assignedOfficers={assignedOfficers}
           />

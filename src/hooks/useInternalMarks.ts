@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getDefaultAcademicYear } from '@/utils/academicYear';
 
 export interface InternalMark {
   id: string;
@@ -24,7 +25,7 @@ export interface InternalMarkWithStudent extends InternalMark {
   };
 }
 
-export function useInternalMarks(classId: string | undefined, academicYear: string = '2024-25') {
+export function useInternalMarks(classId: string | undefined, academicYear: string = getDefaultAcademicYear()) {
   const queryClient = useQueryClient();
 
   const { data: marks, isLoading, error } = useQuery({
@@ -68,7 +69,7 @@ export function useInternalMarks(classId: string | undefined, academicYear: stri
           student_id: data.student_id,
           marks_obtained: data.marks_obtained,
           total_marks: data.total_marks || 100,
-          academic_year: data.academic_year || '2024-25',
+          academic_year: data.academic_year || getDefaultAcademicYear(),
           notes: data.notes || null,
           entered_by: user?.user?.id,
         }, {
@@ -107,7 +108,7 @@ export function useInternalMarks(classId: string | undefined, academicYear: stri
         student_id: d.student_id,
         marks_obtained: d.marks_obtained,
         total_marks: d.total_marks || 100,
-        academic_year: d.academic_year || '2024-25',
+        academic_year: d.academic_year || getDefaultAcademicYear(),
         notes: d.notes || null,
         entered_by: user?.user?.id,
       }));
@@ -142,7 +143,7 @@ export function useInternalMarks(classId: string | undefined, academicYear: stri
   };
 }
 
-export function useStudentInternalMark(studentId: string | undefined, classId: string | undefined, academicYear: string = '2024-25') {
+export function useStudentInternalMark(studentId: string | undefined, classId: string | undefined, academicYear: string = getDefaultAcademicYear()) {
   return useQuery({
     queryKey: ['student-internal-mark', studentId, classId, academicYear],
     queryFn: async (): Promise<InternalMark | null> => {

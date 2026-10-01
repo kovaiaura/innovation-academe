@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { assessmentService } from "@/services/assessment.service";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getDefaultAcademicYear } from '@/utils/academicYear';
 
 interface PerformanceData {
   assignments: {
@@ -207,7 +208,7 @@ const Performance = () => {
             establishedYear={dbInstitution.settings?.established_year}
             location={dbInstitution.address?.city || dbInstitution.address?.location}
             totalStudents={instStats.totalStudents}
-            academicYear={dbInstitution.settings?.academic_year || "2025-26"}
+            academicYear={dbInstitution.settings?.academic_year || getDefaultAcademicYear()}
             userRole="Management Portal"
             assignedOfficers={assignedOfficers}
           />

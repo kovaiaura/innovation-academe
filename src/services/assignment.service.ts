@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { getAcademicYearDateRange } from '@/utils/academicYear';
 
 export interface Assignment {
   id: string;
@@ -53,7 +54,7 @@ export interface AssignmentSubmission {
 }
 
 export const assignmentService = {
-  async getAssignments(institutionId?: string): Promise<AssignmentWithClasses[]> {
+  async getAssignments(institutionId?: string, academicYear?: string): Promise<AssignmentWithClasses[]> {
     let query = (supabase as any)
       .from('assignments')
       .select('*')
@@ -62,6 +63,11 @@ export const assignmentService = {
 
     if (institutionId) {
       query = query.eq('institution_id', institutionId);
+    }
+
+    if (academicYear) {
+      const range = getAcademicYearDateRange(academicYear);
+      query = query.gte('start_date', range.start).lt('start_date', range.end);
     }
 
     const { data, error } = await query;
@@ -98,11 +104,18 @@ export const assignmentService = {
     });
   },
 
-  async getAllAssignments(): Promise<AssignmentWithClasses[]> {
-    const { data, error } = await (supabase as any)
+  async getAllAssignments(academicYear?: string): Promise<AssignmentWithClasses[]> {
+    let query = (supabase as any)
       .from('assignments')
       .select('*')
       .order('created_at', { ascending: false });
+
+    if (academicYear) {
+      const range = getAcademicYearDateRange(academicYear);
+      query = query.gte('start_date', range.start).lt('start_date', range.end);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
 
@@ -184,12 +197,19 @@ export const assignmentService = {
     return data;
   },
 
-  async getAssignmentsForInstitution(institutionId: string): Promise<AssignmentWithClasses[]> {
-    const { data, error } = await (supabase as any)
+  async getAssignmentsForInstitution(institutionId: string, academicYear?: string): Promise<AssignmentWithClasses[]> {
+    let query = (supabase as any)
       .from('assignments')
       .select('*')
       .eq('institution_id', institutionId)
       .order('created_at', { ascending: false });
+
+    if (academicYear) {
+      const range = getAcademicYearDateRange(academicYear);
+      query = query.gte('start_date', range.start).lt('start_date', range.end);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
 

@@ -4,16 +4,18 @@ import { Clock, MapPin, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClassTimetable } from '@/hooks/useClassTimetable';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
 export default function Timetable() {
   const { user } = useAuth();
+  const { selectedYear } = useAcademicYear();
 
   const { assignments, periods, periodMap, isLoading, error } = useClassTimetable(
     user?.institution_id,
     user?.class_id,
-    '2025-26'
+    selectedYear
   );
 
   // Group assignments by day and sort by period display_order
