@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FileText, Calendar, Clock, Search, Users, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { assignmentService, AssignmentWithClasses } from '@/services/assignment.service';
 import { format, isPast, isFuture } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,17 +21,18 @@ export default function OfficerAssignments() {
   const [searchQuery, setSearchQuery] = useState('');
   const [submissionsDialogOpen, setSubmissionsDialogOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentWithClasses | null>(null);
+  const { selectedYear } = useAcademicYear();
 
   useEffect(() => {
     if (user?.institution_id) {
       loadAssignments();
     }
-  }, [user?.institution_id]);
+  }, [user?.institution_id, selectedYear]);
 
   const loadAssignments = async () => {
     try {
       setLoading(true);
-      const data = await assignmentService.getAssignments(user?.institution_id);
+      const data = await assignmentService.getAssignments(user?.institution_id, selectedYear);
       setAssignments(data);
     } catch (error) {
       console.error('Error loading assignments:', error);

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileText, Calendar, Search, Users, BarChart, Filter, Plus, Pencil, Trash2, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { supabase } from '@/integrations/supabase/client';
 import { assignmentService, AssignmentWithClasses, AssignmentFormData } from '@/services/assignment.service';
 import { format, isPast, isFuture } from 'date-fns';
@@ -37,6 +38,7 @@ export default function ManagementAssignments() {
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [availableClasses, setAvailableClasses] = useState<{ id: string; name: string }[]>([]);
   const institutionId = user?.institution_id || user?.tenant_id;
+  const { selectedYear } = useAcademicYear();
 
   // Dialog states
   const [formDialogOpen, setFormDialogOpen] = useState(false);
@@ -50,14 +52,14 @@ export default function ManagementAssignments() {
     if (institutionId) {
       loadAssignments();
     }
-  }, [institutionId]);
+  }, [institutionId, selectedYear]);
 
   const loadAssignments = async () => {
     try {
       setLoading(true);
       
       // Use the service to get assignments for this institution
-      const data = await assignmentService.getAssignmentsForInstitution(institutionId!);
+      const data = await assignmentService.getAssignmentsForInstitution(institutionId!, selectedYear);
       
       // Fetch graded counts
       const assignmentIds = data.map(a => a.id);

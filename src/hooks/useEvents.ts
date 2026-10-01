@@ -2,11 +2,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventService } from '@/services/event.service';
 import { CreateEventData, PublishEventData } from '@/types/events';
 import { toast } from 'sonner';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 export function useEvents(status?: string) {
+  const { selectedYear } = useAcademicYear();
   return useQuery({
-    queryKey: ['events', status],
-    queryFn: () => eventService.getEvents(status),
+    queryKey: ['events', status, selectedYear],
+    queryFn: () => eventService.getEvents(status, selectedYear),
   });
 }
 

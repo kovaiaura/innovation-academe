@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileText, Users, CheckCircle, Clock, Search, TrendingUp, Award, Eye, Filter } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { getAcademicYearDateRange } from '@/utils/academicYear';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { AssessmentAttemptsDialog } from '@/components/assessments/AssessmentAttemptsDialog';
@@ -39,6 +41,7 @@ export default function ManagementAssessments() {
   const [selectedAssessment, setSelectedAssessment] = useState<AssessmentWithStats | null>(null);
   const [attemptsDialogOpen, setAttemptsDialogOpen] = useState(false);
   const institutionId = user?.institution_id || user?.tenant_id || '';
+  const { selectedYear } = useAcademicYear();
 
   useEffect(() => {
     const fetchAssessments = async () => {
@@ -47,6 +50,7 @@ export default function ManagementAssessments() {
       setLoading(true);
 
       try {
+        const yearRange = getAcademicYearDateRange(selectedYear);
         // Get assessments assigned to classes in this institution
         const { data: classAssignments } = await supabase
           .from('assessment_class_assignments')
@@ -70,7 +74,9 @@ export default function ManagementAssessments() {
         const { data: assessmentData } = await supabase
           .from('assessments')
           .select('*')
-          .in('id', assessmentIds);
+          .in('id', assessmentIds)
+          .gte('start_time', yearRange.start)
+          .lt('start_time', yearRange.end);
 
         // Fetch attempts for statistics
         const { data: attempts } = await supabase
@@ -132,7 +138,7 @@ export default function ManagementAssessments() {
     };
 
     fetchAssessments();
-  }, [user?.institution_id, user?.tenant_id]);
+  }, [user?.institution_id, user?.tenant_id, selectedYear]);
 
   const filteredAssessments = assessments.filter(a => {
     const matchesSearch = a.title.toLowerCase().includes(searchQuery.toLowerCase());

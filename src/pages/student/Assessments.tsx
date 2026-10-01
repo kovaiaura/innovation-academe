@@ -5,6 +5,7 @@ import { AssessmentCard } from '@/components/assessment/AssessmentCard';
 import { assessmentService } from '@/services/assessment.service';
 import { getAssessmentStatus } from '@/utils/assessmentHelpers';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { Input } from '@/components/ui/input';
 import { Search, Loader2 } from 'lucide-react';
 import { Assessment, AssessmentAttempt } from '@/types/assessment';
@@ -15,6 +16,7 @@ export default function StudentAssessments() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [attempts, setAttempts] = useState<AssessmentAttempt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { selectedYear } = useAcademicYear();
   
   const studentClassId = user?.class_id || '';
   const studentInstitutionId = user?.institution_id || user?.tenant_id || '';
@@ -34,7 +36,7 @@ export default function StudentAssessments() {
         await assessmentService.cleanupStaleAttempts();
         
         const [loadedAssessments, loadedAttempts] = await Promise.all([
-          assessmentService.getStudentAssessments(studentId, studentClassId, studentInstitutionId),
+          assessmentService.getStudentAssessments(studentId, studentClassId, studentInstitutionId, selectedYear),
           assessmentService.getStudentAttempts(studentId)
         ]);
         setAssessments(loadedAssessments);
@@ -47,7 +49,7 @@ export default function StudentAssessments() {
     };
 
     loadData();
-  }, [studentId, studentClassId, studentInstitutionId]);
+  }, [studentId, studentClassId, studentInstitutionId, selectedYear]);
 
   // Available assessments (ongoing, not yet attempted or can retake)
   const availableAssessments = assessments.filter(a => {

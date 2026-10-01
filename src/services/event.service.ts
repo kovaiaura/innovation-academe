@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Event, EventUpdate, EventInterest, CreateEventData, PublishEventData, EventClassAssignment } from '@/types/events';
+import { getAcademicYearDateRange } from '@/utils/academicYear';
 
 class EventService {
   async createEvent(data: CreateEventData): Promise<Event> {
@@ -41,7 +42,7 @@ class EventService {
     if (error) throw error;
   }
 
-  async getEvents(status?: string): Promise<Event[]> {
+  async getEvents(status?: string, academicYear?: string): Promise<Event[]> {
     let query = supabase
       .from('events')
       .select('*')
@@ -49,6 +50,11 @@ class EventService {
 
     if (status) {
       query = query.eq('status', status);
+    }
+
+    if (academicYear) {
+      const range = getAcademicYearDateRange(academicYear);
+      query = query.gte('event_start', range.start).lt('event_start', range.end);
     }
 
     const { data, error } = await query;

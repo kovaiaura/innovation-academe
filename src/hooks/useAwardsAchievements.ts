@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { getAcademicYearDateRange } from '@/utils/academicYear';
 
 export interface AwardAchievement {
   id: string;
@@ -23,9 +25,10 @@ export function useAwardsAchievements() {
   const role = user?.role;
   const userId = user?.id;
   const institutionId = user?.institution_id;
+  const { selectedYear } = useAcademicYear();
 
   return useQuery({
-    queryKey: ['awards-achievements', role, userId, institutionId],
+    queryKey: ['awards-achievements', role, userId, institutionId, selectedYear],
     queryFn: async (): Promise<AwardAchievement[]> => {
       if (!userId) return [];
 
@@ -43,6 +46,8 @@ export function useAwardsAchievements() {
         .order('created_at', { ascending: false });
 
       // Role-based filtering
+      const range = getAcademicYearDateRange(selectedYear);
+      query = query.gte('created_at', range.start).lt('created_at', range.end);
       if (role === 'student') {
         // Get student's project IDs first
         const { data: studentData } = await supabase
@@ -112,5 +117,6 @@ export function useAwardsAchievements() {
       }));
     },
     enabled: !!userId,
+    staleTime: 60 * 1000,
   });
 }
