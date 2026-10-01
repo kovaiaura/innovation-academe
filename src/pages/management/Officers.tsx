@@ -17,6 +17,7 @@ import { useStudents } from "@/hooks/useStudents";
 import { useOfficersOnLeave } from "@/hooks/useOfficersOnLeave";
 import { useMonthlySessionsCount } from "@/hooks/useMonthlySessionsCount";
 import { OfficerDetails } from "@/services/systemadmin.service";
+import { getDefaultAcademicYear } from '@/utils/academicYear';
 
 const Officers = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -114,7 +115,7 @@ const Officers = () => {
             establishedYear={institutionSettings.established_year || new Date().getFullYear()}
             location={institutionAddress.location || ''}
             totalStudents={totalStudents}
-            academicYear={institutionSettings.academic_year || '2025-26'}
+            academicYear={institutionSettings.academic_year || getDefaultAcademicYear()}
             userRole="Management Portal"
             assignedOfficers={officers.map(o => o.officer_name)}
           />

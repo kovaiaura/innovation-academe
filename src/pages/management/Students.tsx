@@ -21,6 +21,7 @@ import { useCurrentUserInstitutionDetails } from "@/hooks/useCurrentUserInstitut
 import { useStudents, DbStudent } from "@/hooks/useStudents";
 import { useClasses, ClassWithStudentCount } from "@/hooks/useClasses";
 import { Student } from "@/types/student";
+import { getDefaultAcademicYear } from '@/utils/academicYear';
 
 // Convert DbStudent to Student type for compatibility with existing components
 function dbStudentToStudent(dbStudent: DbStudent, className?: string, section?: string): Student {
@@ -227,7 +228,7 @@ export default function Students() {
             establishedYear={institutionSettings.established_year || new Date().getFullYear()}
             location={institutionAddress.location || ''}
             totalStudents={totalStudents}
-            academicYear={institutionSettings.academic_year || '2025-26'}
+            academicYear={institutionSettings.academic_year || getDefaultAcademicYear()}
             userRole="Management Portal"
             assignedOfficers={[]}
           />

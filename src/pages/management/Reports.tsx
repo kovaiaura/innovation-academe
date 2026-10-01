@@ -22,6 +22,7 @@ import { ActivityReportPDF } from "@/components/reports/pdf/ActivityReportPDF";
 import { pdf } from "@react-pdf/renderer";
 import { toast } from "sonner";
 import { useReportSettings } from "@/hooks/useReportSettings";
+import { getDefaultAcademicYear } from '@/utils/academicYear';
 
 // Hook to get institution ID from slug
 function useInstitutionId(slug: string | undefined) {
@@ -181,7 +182,7 @@ const Reports = () => {
             establishedYear={institution.settings?.established_year}
             location={institution.address?.city || institution.address?.location}
             totalStudents={stats.totalStudents}
-            academicYear={institution.settings?.academic_year || "2025-26"}
+            academicYear={institution.settings?.academic_year || getDefaultAcademicYear()}
             userRole="Management Portal"
             assignedOfficers={assignedOfficers}
           />
