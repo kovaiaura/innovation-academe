@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { PeriodConfig, TimetableAssignment } from './useTimetable';
+import { getDefaultAcademicYear } from '@/utils/academicYear';
 
 export function useClassTimetable(
   institutionId?: string,
   classId?: string,
-  academicYear: string = '2025-26'
+  academicYear: string = getDefaultAcademicYear()
 ) {
   const { data: periods = [], isLoading: isLoadingPeriods } = useQuery({
     queryKey: ['class-timetable-periods', institutionId],

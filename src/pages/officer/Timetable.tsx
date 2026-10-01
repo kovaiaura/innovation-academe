@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useInstitutionPeriods, useInstitutionTimetable } from '@/hooks/useTimetable';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useState } from 'react';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
@@ -18,9 +19,10 @@ export default function OfficerTimetable() {
   
   // Use first assigned institution for now
   const institutionId = assignedInstitutions[0];
+  const { selectedYear } = useAcademicYear();
 
   const { periods, isLoading: isLoadingPeriods } = useInstitutionPeriods(institutionId);
-  const { assignments, isLoading: isLoadingTimetable } = useInstitutionTimetable(institutionId);
+  const { assignments, isLoading: isLoadingTimetable } = useInstitutionTimetable(institutionId, selectedYear);
 
   useEffect(() => {
     const fetchOfficerData = async () => {

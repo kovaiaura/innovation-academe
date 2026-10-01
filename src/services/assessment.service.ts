@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Assessment, AssessmentQuestion, AssessmentAttempt, AssessmentAnswer, AssessmentPublishing } from '@/types/assessment';
 import { gamificationDbService } from '@/services/gamification-db.service';
+import { getAcademicYearDateRange } from '@/utils/academicYear';
 
 // Types for database operations
 interface DbAssessment {
@@ -211,7 +212,7 @@ export const assessmentService = {
     return transformAssessment(assessment as DbAssessment);
   },
 
-  async getAssessments(filters?: { status?: string; institution_id?: string }): Promise<Assessment[]> {
+  async getAssessments(filters?: { status?: string; institution_id?: string; academic_year?: string }): Promise<Assessment[]> {
     let query = supabase.from('assessments').select('*');
     
     if (filters?.status && filters.status !== 'all') {
@@ -220,6 +221,11 @@ export const assessmentService = {
     
     if (filters?.institution_id) {
       query = query.eq('institution_id', filters.institution_id);
+    }
+
+    if (filters?.academic_year) {
+      const range = getAcademicYearDateRange(filters.academic_year);
+      query = query.gte('start_time', range.start).lt('start_time', range.end);
     }
 
     const { data: assessments, error } = await query.order('created_at', { ascending: false });
@@ -557,7 +563,7 @@ export const assessmentService = {
   // Student Assessment Operations
   // ============================================
 
-  async getStudentAssessments(studentId: string, classId: string, institutionId: string): Promise<Assessment[]> {
+  async getStudentAssessments(studentId: string, classId: string, institutionId: string, academicYear?: string): Promise<Assessment[]> {
     // Get assessments published to the student's class
     const { data: assignments, error: assignmentError } = await supabase
       .from('assessment_class_assignments')
@@ -570,11 +576,18 @@ export const assessmentService = {
 
     const assessmentIds = assignments.map(a => a.assessment_id);
 
-    const { data: assessments, error } = await supabase
+    let assessmentsQuery = supabase
       .from('assessments')
       .select('*')
       .in('id', assessmentIds)
       .eq('status', 'published');
+
+    if (academicYear) {
+      const range = getAcademicYearDateRange(academicYear);
+      assessmentsQuery = assessmentsQuery.gte('start_time', range.start).lt('start_time', range.end);
+    }
+
+    const { data: assessments, error } = await assessmentsQuery;
 
     if (error) {
       console.error('Error fetching student assessments:', error);

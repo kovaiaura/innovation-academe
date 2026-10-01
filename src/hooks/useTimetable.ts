@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getDefaultAcademicYear } from '@/utils/academicYear';
 
 export interface PeriodConfig {
   id: string;
@@ -111,7 +112,7 @@ export function useInstitutionPeriods(institutionId?: string) {
   };
 }
 
-export function useInstitutionTimetable(institutionId?: string, academicYear: string = '2025-26') {
+export function useInstitutionTimetable(institutionId?: string, academicYear: string = getDefaultAcademicYear()) {
   const queryClient = useQueryClient();
 
   const { data: assignments = [], isLoading, error, refetch } = useQuery({

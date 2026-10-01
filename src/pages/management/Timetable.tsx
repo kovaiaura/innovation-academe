@@ -6,15 +6,17 @@ import { Calendar, Clock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInstitutionPeriods, useInstitutionTimetable } from '@/hooks/useTimetable';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
 export default function ManagementTimetable() {
   const { user } = useAuth();
   const institutionId = user?.tenant_id;
+  const { selectedYear } = useAcademicYear();
 
   const { periods, isLoading: isLoadingPeriods } = useInstitutionPeriods(institutionId);
-  const { assignments, isLoading: isLoadingTimetable } = useInstitutionTimetable(institutionId);
+  const { assignments, isLoading: isLoadingTimetable } = useInstitutionTimetable(institutionId, selectedYear);
 
   const sortedPeriods = [...periods].sort((a, b) => a.display_order - b.display_order);
 
