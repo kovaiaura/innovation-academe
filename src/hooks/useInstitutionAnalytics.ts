@@ -5,13 +5,17 @@ import {
   buildSessionCompletionContexts,
   computeStudentSessionProgress,
 } from '@/utils/courseProgressCalculations';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { getAcademicYearDateRange } from '@/utils/academicYear';
 
 
 export function useInstitutionAnalytics(institutionId: string | undefined) {
+  const { selectedYear } = useAcademicYear();
   return useQuery({
-    queryKey: ['institution-analytics', institutionId],
+    queryKey: ['institution-analytics', institutionId, selectedYear],
     queryFn: async (): Promise<InstitutionAnalytics | null> => {
       if (!institutionId) return null;
+      const yearRange = getAcademicYearDateRange(selectedYear);
 
       // Fetch students data
       const { data: students, error: studentsError } = await supabase
@@ -42,7 +46,9 @@ export function useInstitutionAnalytics(institutionId: string | undefined) {
       const { data: attendance, error: attendanceError } = await supabase
         .from('class_session_attendance')
         .select('students_present, students_absent, students_late, total_students')
-        .eq('institution_id', institutionId);
+        .eq('institution_id', institutionId)
+        .gte('created_at', yearRange.start)
+        .lt('created_at', yearRange.end);
 
       if (attendanceError) throw attendanceError;
 
@@ -51,7 +57,9 @@ export function useInstitutionAnalytics(institutionId: string | undefined) {
         .from('assessment_attempts')
         .select('percentage, passed')
         .eq('institution_id', institutionId)
-        .eq('status', 'submitted');
+        .eq('status', 'submitted')
+        .gte('created_at', yearRange.start)
+        .lt('created_at', yearRange.end);
 
       if (assessmentError) throw assessmentError;
 
@@ -60,7 +68,9 @@ export function useInstitutionAnalytics(institutionId: string | undefined) {
       const { data: courseAssignments } = await supabase
         .from('course_class_assignments')
         .select('id, course_id, class_id')
-        .eq('institution_id', institutionId);
+        .eq('institution_id', institutionId)
+        .gte('created_at', yearRange.start)
+        .lt('created_at', yearRange.end);
 
       const assignmentIds = (courseAssignments || []).map(ca => ca.id);
       const totalCoursesAssigned = courseAssignments?.length || 0;
@@ -173,7 +183,7 @@ export function useInstitutionAnalytics(institutionId: string | undefined) {
 
       const analytics: InstitutionAnalytics = {
         institution_id: institutionId,
-        period: `${new Date().getFullYear()}-${(new Date().getFullYear() + 1).toString().slice(-2)}`,
+         period: selectedYear,
         student_metrics: {
           total_students: totalStudents,
           active_students: activeStudents,

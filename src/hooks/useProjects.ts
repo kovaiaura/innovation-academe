@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { getAcademicYearDateRange } from '@/utils/academicYear';
 
 export interface Project {
   id: string;
@@ -86,9 +88,11 @@ export interface UpdateProjectInput {
 
 // Fetch ALL projects across all institutions (for CEO/Super Admin)
 export function useAllProjects() {
+  const { selectedYear } = useAcademicYear();
   return useQuery({
-    queryKey: ['projects', 'all'],
+    queryKey: ['projects', 'all', selectedYear],
     queryFn: async () => {
+      const range = getAcademicYearDateRange(selectedYear);
       const { data, error } = await supabase
         .from('projects')
         .select(`
@@ -117,6 +121,8 @@ export function useAllProjects() {
           ),
           institution:institutions(id, name)
         `)
+        .gte('created_at', range.start)
+        .lt('created_at', range.end)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -127,11 +133,13 @@ export function useAllProjects() {
 
 // Fetch all projects for an institution (for officers/management)
 export function useInstitutionProjects(institutionId: string | null) {
+  const { selectedYear } = useAcademicYear();
   return useQuery({
-    queryKey: ['projects', 'institution', institutionId],
+    queryKey: ['projects', 'institution', institutionId, selectedYear],
     queryFn: async () => {
       if (!institutionId) return [];
       
+      const range = getAcademicYearDateRange(selectedYear);
       const { data, error } = await supabase
         .from('projects')
         .select(`
@@ -160,6 +168,8 @@ export function useInstitutionProjects(institutionId: string | null) {
           )
         `)
         .eq('institution_id', institutionId)
+        .gte('created_at', range.start)
+        .lt('created_at', range.end)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -171,8 +181,9 @@ export function useInstitutionProjects(institutionId: string | null) {
 
 // Fetch projects assigned to a student
 export function useStudentProjects(studentId: string | null) {
+  const { selectedYear } = useAcademicYear();
   return useQuery({
-    queryKey: ['projects', 'student', studentId],
+    queryKey: ['projects', 'student', studentId, selectedYear],
     queryFn: async () => {
       if (!studentId) return [];
       
@@ -187,6 +198,7 @@ export function useStudentProjects(studentId: string | null) {
       
       const projectIds = memberData.map(m => m.project_id);
       
+      const range = getAcademicYearDateRange(selectedYear);
       const { data, error } = await supabase
         .from('projects')
         .select(`
@@ -216,6 +228,8 @@ export function useStudentProjects(studentId: string | null) {
         `)
         .in('id', projectIds)
         .eq('is_published', true)
+        .gte('created_at', range.start)
+        .lt('created_at', range.end)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
