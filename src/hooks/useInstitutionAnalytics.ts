@@ -47,8 +47,8 @@ export function useInstitutionAnalytics(institutionId: string | undefined) {
         .from('class_session_attendance')
         .select('students_present, students_absent, students_late, total_students')
         .eq('institution_id', institutionId)
-        .gte('created_at', yearRange.start)
-        .lt('created_at', yearRange.end);
+        .gte('date', yearRange.start.slice(0, 10))
+        .lt('date', yearRange.end.slice(0, 10));
 
       if (attendanceError) throw attendanceError;
 

@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AssignmentFormDialog } from '@/components/assignments/AssignmentFormDialog';
 import { AssignmentSubmissionsDialog } from '@/components/assignments/AssignmentSubmissionsDialog';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,15 +31,16 @@ export default function AssignmentManagement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [submissionsDialogOpen, setSubmissionsDialogOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentWithClasses | null>(null);
+  const { selectedYear } = useAcademicYear();
 
   useEffect(() => {
     loadAssignments();
-  }, []);
+  }, [selectedYear]);
 
   const loadAssignments = async () => {
     try {
       setLoading(true);
-      const data = await assignmentService.getAllAssignments();
+      const data = await assignmentService.getAllAssignments(selectedYear);
       setAssignments(data);
     } catch (error) {
       console.error('Error loading assignments:', error);

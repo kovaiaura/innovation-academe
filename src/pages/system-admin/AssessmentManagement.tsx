@@ -27,9 +27,11 @@ import { Search, Plus, Clock, Award, Users, FileText, Edit, Trash2, Eye, Info, L
 import { toast } from 'sonner';
 import { AssessmentDetailsDialog } from '@/components/assessment/AssessmentDetailsDialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 export default function AssessmentManagement() {
   const { user } = useAuth();
+  const { selectedYear } = useAcademicYear();
   const [activeTab, setActiveTab] = useState('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -74,11 +76,11 @@ export default function AssessmentManagement() {
       loadAssessments();
     };
     init();
-  }, []);
+  }, [selectedYear]);
 
   const loadAssessments = async () => {
     setIsLoading(true);
-    const data = await assessmentService.getAssessments();
+    const data = await assessmentService.getAssessments({ academic_year: selectedYear });
     setAssessments(data);
     setIsLoading(false);
   };

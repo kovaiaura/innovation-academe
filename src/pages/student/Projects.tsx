@@ -13,6 +13,8 @@ import { ProjectDetailsDialog } from "@/components/project/ProjectDetailsDialog"
 import { SDGGoalBadges, SDG_GOALS } from "@/components/project/SDGGoalSelector";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { getAcademicYearDateRange } from '@/utils/academicYear';
 
 const STATUS_CONFIG = {
   yet_to_start: { label: 'Yet to Start', className: 'bg-slate-500/10 text-slate-500 border-slate-500/20' },
@@ -22,6 +24,7 @@ const STATUS_CONFIG = {
 
 export default function StudentProjects() {
   const { user } = useAuth();
+  const { selectedYear } = useAcademicYear();
   const [selectedProject, setSelectedProject] = useState<ProjectWithRelations | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
 
@@ -44,7 +47,7 @@ export default function StudentProjects() {
 
   // Then get projects assigned to this student
   const { data: projects = [], isLoading } = useQuery({
-    queryKey: ['student-projects', studentData?.id],
+    queryKey: ['student-projects', studentData?.id, selectedYear],
     queryFn: async () => {
       if (!studentData?.id) return [];
       
@@ -58,6 +61,7 @@ export default function StudentProjects() {
       if (!memberData || memberData.length === 0) return [];
       
       const projectIds = memberData.map(m => m.project_id);
+      const yearRange = getAcademicYearDateRange(selectedYear);
       
       const { data, error } = await supabase
         .from('projects')
@@ -88,6 +92,8 @@ export default function StudentProjects() {
         `)
         .in('id', projectIds)
         .eq('is_published', true)
+        .gte('created_at', yearRange.start)
+        .lt('created_at', yearRange.end)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
