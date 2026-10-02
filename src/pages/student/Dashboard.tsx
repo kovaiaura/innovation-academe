@@ -12,6 +12,8 @@ import { gamificationDbService } from '@/services/gamification-db.service';
 import { useStudentStreak } from '@/hooks/useStudentStreak';
 import { StreakLeaderboard } from '@/components/gamification/StreakLeaderboard';
 import { format } from 'date-fns';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { getAcademicYearDateRange } from '@/utils/academicYear';
 
 interface StudentGamification {
   total_points: number;
@@ -71,6 +73,7 @@ interface RecentAssignment {
 export default function StudentDashboard() {
   const { user } = useAuth();
   const { tenantId } = useParams<{ tenantId: string }>();
+  const { selectedYear } = useAcademicYear();
   const [loading, setLoading] = useState(true);
   const [gamification, setGamification] = useState<StudentGamification | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -90,7 +93,7 @@ export default function StudentDashboard() {
     if (user?.id) {
       loadDashboardData();
     }
-  }, [user?.id]);
+  }, [user?.id, selectedYear]);
 
   const loadDashboardData = async () => {
     if (!user?.id) return;
@@ -253,6 +256,7 @@ export default function StudentDashboard() {
   
   const loadPerformanceData = async (studentId: string) => {
     try {
+      const yearRange = getAcademicYearDateRange(selectedYear);
       // Fetch recent assessment attempts
       const { data: assessmentAttempts } = await supabase
         .from('assessment_attempts')
@@ -265,6 +269,8 @@ export default function StudentDashboard() {
         `)
         .eq('student_id', studentId)
         .in('status', ['submitted', 'auto_submitted', 'evaluated', 'completed'])
+        .gte('submitted_at', yearRange.start)
+        .lt('submitted_at', yearRange.end)
         .order('submitted_at', { ascending: false })
         .limit(5);
       
@@ -298,6 +304,8 @@ export default function StudentDashboard() {
         `)
         .eq('student_id', studentId)
         .in('status', ['submitted', 'graded'])
+        .gte('submitted_at', yearRange.start)
+        .lt('submitted_at', yearRange.end)
         .order('submitted_at', { ascending: false })
         .limit(5);
       
@@ -345,6 +353,7 @@ export default function StudentDashboard() {
   };
 
   const loadProjectData = async (authUserId: string) => {
+    const yearRange = getAcademicYearDateRange(selectedYear);
     // First get the student record ID from the students table
     const { data: studentRecord } = await supabase
       .from('students')
@@ -359,8 +368,10 @@ export default function StudentDashboard() {
     
     const { data } = await supabase
       .from('project_members')
-      .select('project_id, projects(status)')
-      .eq('student_id', studentRecordId);
+      .select('project_id, projects!inner(status, created_at)')
+      .eq('student_id', studentRecordId)
+      .gte('projects.created_at', yearRange.start)
+      .lt('projects.created_at', yearRange.end);
     
     const projects = data || [];
     return {
@@ -370,6 +381,7 @@ export default function StudentDashboard() {
   };
 
   const loadCourseData = async (studentId: string) => {
+    const yearRange = getAcademicYearDateRange(selectedYear);
     const { data: profile } = await supabase
       .from('profiles')
       .select('class_id')
@@ -381,7 +393,9 @@ export default function StudentDashboard() {
     const { data: assignments, count } = await supabase
       .from('course_class_assignments')
       .select('id', { count: 'exact' })
-      .eq('class_id', profile.class_id);
+      .eq('class_id', profile.class_id)
+      .gte('assigned_at', yearRange.start)
+      .lt('assigned_at', yearRange.end);
 
     // Compute session-based progress for this student
     try {
