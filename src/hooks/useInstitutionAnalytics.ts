@@ -69,8 +69,8 @@ export function useInstitutionAnalytics(institutionId: string | undefined) {
         .from('course_class_assignments')
         .select('id, course_id, class_id')
         .eq('institution_id', institutionId)
-        .gte('created_at', yearRange.start)
-        .lt('created_at', yearRange.end);
+        .gte('assigned_at', yearRange.start)
+        .lt('assigned_at', yearRange.end);
 
       const assignmentIds = (courseAssignments || []).map(ca => ca.id);
       const totalCoursesAssigned = courseAssignments?.length || 0;

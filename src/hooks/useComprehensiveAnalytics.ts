@@ -140,7 +140,9 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
         const { data: xp } = await supabase
           .from('student_xp_transactions')
           .select('student_id, points_earned')
-          .in('student_id', studentUserIds);
+          .in('student_id', studentUserIds)
+          .gte('earned_at', yearRange.start)
+          .lt('earned_at', yearRange.end);
         xpData = xp || [];
       }
 
@@ -150,7 +152,9 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
         const { data: badges } = await supabase
           .from('student_badges')
           .select('student_id, badge_id')
-          .in('student_id', studentUserIds);
+          .in('student_id', studentUserIds)
+          .gte('earned_at', yearRange.start)
+          .lt('earned_at', yearRange.end);
         badgesData = badges || [];
       }
 
@@ -169,7 +173,9 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
       const { data: courseAssignments } = await supabase
         .from('course_class_assignments')
         .select('id, course_id, class_id')
-        .eq('institution_id', institutionId);
+        .eq('institution_id', institutionId)
+        .gte('assigned_at', yearRange.start)
+        .lt('assigned_at', yearRange.end);
 
       const assignmentIds = courseAssignments?.map(ca => ca.id) || [];
 
