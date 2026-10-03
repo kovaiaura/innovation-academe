@@ -13,6 +13,7 @@ import { PeriodConfig, InstitutionTimetableAssignment, OfficerAssignment } from 
 import { InstitutionClass } from '@/types/student';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { getDefaultAcademicYear } from '@/utils/academicYear';
 
 interface InstitutionTimetableTabProps {
   institutionId: string;
@@ -199,7 +200,7 @@ export const InstitutionTimetableTab = ({
     const assignment: InstitutionTimetableAssignment = {
       id: existingIndex >= 0 ? timetableData[existingIndex].id : crypto.randomUUID(),
       institution_id: institutionId,
-      academic_year: '2025-26',
+      academic_year: getDefaultAcademicYear(),
       day: selectedCell.day,
       period_id: selectedCell.periodId,
       class_id: selectedClass,

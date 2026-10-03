@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Building2, MapPin, Calendar, Users, UserCheck } from "lucide-react";
+import { getDefaultAcademicYear } from '@/utils/academicYear';
 
 interface InstitutionHeaderProps {
   institutionName?: string;
@@ -18,7 +19,7 @@ export const InstitutionHeader = ({
   establishedYear = "1995",
   location = "Delhi, India",
   totalStudents = 0,
-  academicYear = "2025-26 (Semester 2)",
+  academicYear = getDefaultAcademicYear(),
   userRole = "Management Portal",
   assignedOfficers
 }: InstitutionHeaderProps) => {
