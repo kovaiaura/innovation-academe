@@ -261,7 +261,7 @@ const Settings = () => {
             establishedYear={institution.settings?.established_year}
             location={institution.address?.city || institution.address?.location}
             totalStudents={stats.totalStudents}
-            academicYear={institution.settings?.academic_year || "2025-26"}
+            academicYear={institution.settings?.academic_year || getDefaultAcademicYear()}
             userRole="Management Portal"
             assignedOfficers={assignedOfficers}
           />

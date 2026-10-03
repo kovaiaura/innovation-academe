@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { InstitutionClass } from '@/types/student';
+import { getDefaultAcademicYear } from '@/utils/academicYear';
 
 interface AddClassDialogProps {
   open: boolean;
@@ -17,7 +18,7 @@ export function AddClassDialog({ open, onOpenChange, onSave, existingClass, inst
   const [formData, setFormData] = useState<Partial<InstitutionClass>>({
     class_name: '',
     display_order: 1,
-    academic_year: '2025-2026',
+    academic_year: getDefaultAcademicYear(),
     capacity: 40,
     room_number: '',
     status: 'active'
@@ -37,7 +38,7 @@ export function AddClassDialog({ open, onOpenChange, onSave, existingClass, inst
       setFormData({
         class_name: '',
         display_order: 1,
-        academic_year: '2025-2026',
+        academic_year: getDefaultAcademicYear(),
         capacity: 40,
         room_number: '',
         status: 'active'

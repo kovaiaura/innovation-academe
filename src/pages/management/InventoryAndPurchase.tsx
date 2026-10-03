@@ -15,6 +15,7 @@ import { PurchaseRequest, InventoryIssue } from "@/types/inventory";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { getDefaultAcademicYear } from '@/utils/academicYear';
 
 const getStatusBadge = (status: string) => {
   const variants: Record<string, { className: string; label: string }> = {
@@ -153,7 +154,7 @@ export default function InventoryAndPurchase() {
           establishedYear={(institutionData?.settings as any)?.established_year || new Date().getFullYear().toString()}
           location={`${(institutionData?.address as any)?.city || ''}, ${(institutionData?.address as any)?.state || ''}`}
           totalStudents={studentCount}
-          academicYear="2025-26"
+          academicYear={(institutionData?.settings as any)?.academic_year || getDefaultAcademicYear()}
         />
         
         <Tabs defaultValue="inventory" className="w-full">
