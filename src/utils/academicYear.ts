@@ -18,8 +18,54 @@ export function getPreviousAcademicYear(academicYear: string): string {
   return `${startYear}-${String(startYear + 1).slice(-2)}`;
 }
 
-export function getAcademicYearDateRange(academicYear: string): { start: string; end: string } {
+export interface AcademicYearPeriodConfig {
+  academic_year: string;
+  start_date: string;
+  end_date: string;
+}
+
+export interface AcademicYearPeriodsConfig {
+  current?: AcademicYearPeriodConfig;
+  previous?: AcademicYearPeriodConfig;
+}
+
+export interface AcademicYearDateRange {
+  start: string;
+  end: string;
+}
+
+export function getDefaultAcademicYearPeriods(currentYear: string): Required<AcademicYearPeriodsConfig> {
+  const current = normalizeAcademicYear(currentYear);
+  const previous = getPreviousAcademicYear(current);
+  const makePeriod = (label: string): AcademicYearPeriodConfig => {
+    const startYear = Number(normalizeAcademicYear(label).slice(0, 4));
+    return {
+      academic_year: normalizeAcademicYear(label),
+      start_date: `${startYear}-04-01`,
+      end_date: `${startYear + 1}-03-31`,
+    };
+  };
+  return { current: makePeriod(current), previous: makePeriod(previous) };
+}
+
+export function getAcademicYearDateRange(
+  academicYear: string,
+  periods?: AcademicYearPeriodsConfig,
+): AcademicYearDateRange {
   const normalized = normalizeAcademicYear(academicYear);
+  const period = [periods?.current, periods?.previous]
+    .find((candidate) => candidate?.academic_year === normalized);
+  if (period?.start_date && period.end_date) {
+    const exclusiveEnd = new Date(`${period.end_date}T00:00:00.000Z`);
+    if (!Number.isNaN(exclusiveEnd.getTime())) {
+      exclusiveEnd.setUTCDate(exclusiveEnd.getUTCDate() + 1);
+      return {
+        start: `${period.start_date}T00:00:00.000Z`,
+        end: exclusiveEnd.toISOString(),
+      };
+    }
+  }
+
   const startYear = Number(normalized.slice(0, 4));
   return {
     start: `${startYear}-04-01T00:00:00.000Z`,

@@ -2,7 +2,15 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { getDefaultAcademicYear, getPreviousAcademicYear, normalizeAcademicYear } from '@/utils/academicYear';
+import {
+  AcademicYearDateRange,
+  AcademicYearPeriodsConfig,
+  getAcademicYearDateRange,
+  getDefaultAcademicYear,
+  getDefaultAcademicYearPeriods,
+  getPreviousAcademicYear,
+  normalizeAcademicYear,
+} from '@/utils/academicYear';
 
 interface AcademicYearContextValue {
   institutionId: string | undefined;
@@ -10,6 +18,8 @@ interface AcademicYearContextValue {
   previousYear: string;
   selectedYear: string;
   availableYears: string[];
+  periods: Required<AcademicYearPeriodsConfig>;
+  selectedRange: AcademicYearDateRange;
   isLoading: boolean;
   isHistorical: boolean;
   setSelectedYear: (year: string) => void;
@@ -39,11 +49,25 @@ export function AcademicYearProvider({ children }: { children: React.ReactNode }
     staleTime: 60 * 1000,
   });
 
-  const currentYear = normalizeAcademicYear(
-    (institution?.settings as { academic_year?: string } | null)?.academic_year || getDefaultAcademicYear(),
-  );
+  const settings = institution?.settings as {
+    academic_year?: string;
+    academic_year_periods?: AcademicYearPeriodsConfig;
+  } | null;
+  const currentYear = normalizeAcademicYear(settings?.academic_year || getDefaultAcademicYear());
   const previousYear = getPreviousAcademicYear(currentYear);
   const availableYears = useMemo(() => [currentYear, previousYear], [currentYear, previousYear]);
+  const periods = useMemo(() => {
+    const defaults = getDefaultAcademicYearPeriods(currentYear);
+    const configured = settings?.academic_year_periods;
+    return {
+      current: configured?.current?.academic_year === currentYear
+        ? configured.current
+        : defaults.current,
+      previous: configured?.previous?.academic_year === previousYear
+        ? configured.previous
+        : defaults.previous,
+    };
+  }, [currentYear, previousYear, settings?.academic_year_periods]);
 
   useEffect(() => {
     if (!institutionId) {
@@ -64,6 +88,11 @@ export function AcademicYearProvider({ children }: { children: React.ReactNode }
     }
   };
 
+  const selectedRange = useMemo(
+    () => getAcademicYearDateRange(selectedYear || currentYear, periods),
+    [selectedYear, currentYear, periods],
+  );
+
   return (
     <AcademicYearContext.Provider
       value={{
@@ -72,6 +101,8 @@ export function AcademicYearProvider({ children }: { children: React.ReactNode }
         previousYear,
         selectedYear: selectedYear || currentYear,
         availableYears,
+        periods,
+        selectedRange,
         isLoading,
         isHistorical: (selectedYear || currentYear) !== currentYear,
         setSelectedYear,
