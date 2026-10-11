@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useParams } from 'react-router-dom';
 import {
   AcademicYearDateRange,
   AcademicYearPeriodsConfig,
@@ -29,7 +30,8 @@ const AcademicYearContext = createContext<AcademicYearContextValue | undefined>(
 
 export function AcademicYearProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const institutionId = user?.institution_id || user?.tenant_id;
+  const { institutionId: routeInstitutionId } = useParams<{ institutionId?: string }>();
+  const institutionId = user?.institution_id || user?.tenant_id || routeInstitutionId;
   const [selectedYear, setSelectedYearState] = useState('');
 
   const { data: institution, isLoading } = useQuery({
@@ -54,8 +56,7 @@ export function AcademicYearProvider({ children }: { children: React.ReactNode }
     academic_year_periods?: AcademicYearPeriodsConfig;
   } | null;
   const currentYear = normalizeAcademicYear(settings?.academic_year || getDefaultAcademicYear());
-  const previousYear = getPreviousAcademicYear(currentYear);
-  const availableYears = useMemo(() => [currentYear, previousYear], [currentYear, previousYear]);
+  const derivedPreviousYear = getPreviousAcademicYear(currentYear);
   const periods = useMemo(() => {
     const defaults = getDefaultAcademicYearPeriods(currentYear);
     const configured = settings?.academic_year_periods;
@@ -63,11 +64,13 @@ export function AcademicYearProvider({ children }: { children: React.ReactNode }
       current: configured?.current?.academic_year === currentYear
         ? configured.current
         : defaults.current,
-      previous: configured?.previous?.academic_year === previousYear
+      previous: configured?.previous?.academic_year
         ? configured.previous
         : defaults.previous,
     };
-  }, [currentYear, previousYear, settings?.academic_year_periods]);
+  }, [currentYear, derivedPreviousYear, settings?.academic_year_periods]);
+  const previousYear = periods.previous.academic_year || derivedPreviousYear;
+  const availableYears = useMemo(() => [currentYear, previousYear], [currentYear, previousYear]);
 
   useEffect(() => {
     if (!institutionId) {

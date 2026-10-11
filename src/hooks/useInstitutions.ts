@@ -73,6 +73,7 @@ export function transformDbToApp(db: any) {
     slug: db.slug,
     code: db.code || db.slug?.toUpperCase() || '',
     type: (db.type || 'school') as 'school' | 'college' | 'university' | 'institute',
+    settings,
     location: address.location || '',
     established_year: settings.established_year || new Date().getFullYear(),
     contact_email: contact.email || '',
