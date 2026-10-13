@@ -59,7 +59,7 @@ export const assignmentService = {
       .from('assignments')
       .select('*')
       .eq('status', 'published')
-      .order('created_at', { ascending: false });
+      .order('start_date', { ascending: false });
 
     if (institutionId) {
       query = query.eq('institution_id', institutionId);
@@ -108,7 +108,7 @@ export const assignmentService = {
     let query = (supabase as any)
       .from('assignments')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('start_date', { ascending: false });
 
     if (academicYear) {
       const range = dateRange || getAcademicYearDateRange(academicYear);
@@ -202,7 +202,7 @@ export const assignmentService = {
       .from('assignments')
       .select('*')
       .eq('institution_id', institutionId)
-      .order('created_at', { ascending: false });
+      .order('start_date', { ascending: false });
 
     if (academicYear) {
       const range = dateRange || getAcademicYearDateRange(academicYear);

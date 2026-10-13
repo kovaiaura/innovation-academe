@@ -46,7 +46,7 @@ class EventService {
     let query = supabase
       .from('events')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('event_start', { ascending: false });
 
     if (status) {
       query = query.eq('status', status);
