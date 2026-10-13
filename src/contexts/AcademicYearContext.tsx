@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useParams } from 'react-router-dom';
 import {
   AcademicYearDateRange,
   AcademicYearPeriodsConfig,
@@ -29,7 +30,8 @@ const AcademicYearContext = createContext<AcademicYearContextValue | undefined>(
 
 export function AcademicYearProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const institutionId = user?.institution_id || user?.tenant_id;
+  const params = useParams<{ institutionId?: string; tenantId?: string; tenant_id?: string }>();
+  const institutionId = user?.institution_id || user?.tenant_id || params.institutionId || params.tenantId || params.tenant_id;
   const [selectedYear, setSelectedYearState] = useState('');
 
   const { data: institution, isLoading } = useQuery({

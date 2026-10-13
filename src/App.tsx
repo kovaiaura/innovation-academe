@@ -182,7 +182,6 @@ const queryClient = new QueryClient({
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <AcademicYearProvider>
       <BrandingProvider>
         <PlatformSettingsProvider>
           <InstitutionDataProvider>
@@ -191,6 +190,7 @@ const App = () => (
               <Toaster />
               <Sonner position="top-right" />
               <BrowserRouter>
+              <AcademicYearProvider>
               <Routes>
                 {/* Public Routes */}
                 <Route path="/login" element={<Login />} />
@@ -1403,13 +1403,13 @@ const App = () => (
             {/* Catch all */}
             <Route path="*" element={<NotFound />} />
               </Routes>
+              </AcademicYearProvider>
             </BrowserRouter>
             </TooltipProvider>
           </SessionTimeoutProvider>
         </InstitutionDataProvider>
       </PlatformSettingsProvider>
       </BrandingProvider>
-      </AcademicYearProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

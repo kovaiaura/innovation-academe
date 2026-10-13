@@ -1,9 +1,10 @@
 import { CalendarDays } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { format } from 'date-fns';
 
 export function AcademicYearSelector() {
-  const { institutionId, currentYear, previousYear, selectedYear, isLoading, setSelectedYear } = useAcademicYear();
+  const { institutionId, currentYear, previousYear, selectedYear, periods, isLoading, setSelectedYear } = useAcademicYear();
 
   if (!institutionId || isLoading) return null;
 
@@ -16,8 +17,12 @@ export function AcademicYearSelector() {
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={currentYear}>{currentYear} (Current)</SelectItem>
-          <SelectItem value={previousYear}>{previousYear} (Previous)</SelectItem>
+          <SelectItem value={currentYear}>
+            {currentYear} · Current ({format(new Date(`${periods.current.start_date}T00:00:00`), 'MMM d, yyyy')} – {format(new Date(`${periods.current.end_date}T00:00:00`), 'MMM d, yyyy')})
+          </SelectItem>
+          <SelectItem value={previousYear}>
+            {previousYear} · Previous ({format(new Date(`${periods.previous.start_date}T00:00:00`), 'MMM d, yyyy')} – {format(new Date(`${periods.previous.end_date}T00:00:00`), 'MMM d, yyyy')})
+          </SelectItem>
         </SelectContent>
       </Select>
     </div>
