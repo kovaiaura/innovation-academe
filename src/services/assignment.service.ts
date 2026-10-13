@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { getAcademicYearDateRange } from '@/utils/academicYear';
+import { AcademicYearDateRange, getAcademicYearDateRange } from '@/utils/academicYear';
 
 export interface Assignment {
   id: string;
@@ -54,7 +54,7 @@ export interface AssignmentSubmission {
 }
 
 export const assignmentService = {
-  async getAssignments(institutionId?: string, academicYear?: string): Promise<AssignmentWithClasses[]> {
+  async getAssignments(institutionId?: string, academicYear?: string, dateRange?: AcademicYearDateRange): Promise<AssignmentWithClasses[]> {
     let query = (supabase as any)
       .from('assignments')
       .select('*')
@@ -66,7 +66,7 @@ export const assignmentService = {
     }
 
     if (academicYear) {
-      const range = getAcademicYearDateRange(academicYear);
+      const range = dateRange || getAcademicYearDateRange(academicYear);
       query = query.gte('start_date', range.start).lt('start_date', range.end);
     }
 
@@ -104,14 +104,14 @@ export const assignmentService = {
     });
   },
 
-  async getAllAssignments(academicYear?: string): Promise<AssignmentWithClasses[]> {
+  async getAllAssignments(academicYear?: string, dateRange?: AcademicYearDateRange): Promise<AssignmentWithClasses[]> {
     let query = (supabase as any)
       .from('assignments')
       .select('*')
       .order('created_at', { ascending: false });
 
     if (academicYear) {
-      const range = getAcademicYearDateRange(academicYear);
+      const range = dateRange || getAcademicYearDateRange(academicYear);
       query = query.gte('start_date', range.start).lt('start_date', range.end);
     }
 
@@ -197,7 +197,7 @@ export const assignmentService = {
     return data;
   },
 
-  async getAssignmentsForInstitution(institutionId: string, academicYear?: string): Promise<AssignmentWithClasses[]> {
+  async getAssignmentsForInstitution(institutionId: string, academicYear?: string, dateRange?: AcademicYearDateRange): Promise<AssignmentWithClasses[]> {
     let query = (supabase as any)
       .from('assignments')
       .select('*')
@@ -205,7 +205,7 @@ export const assignmentService = {
       .order('created_at', { ascending: false });
 
     if (academicYear) {
-      const range = getAcademicYearDateRange(academicYear);
+      const range = dateRange || getAcademicYearDateRange(academicYear);
       query = query.gte('start_date', range.start).lt('start_date', range.end);
     }
 
