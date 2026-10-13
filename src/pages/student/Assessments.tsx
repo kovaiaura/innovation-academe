@@ -16,7 +16,7 @@ export default function StudentAssessments() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [attempts, setAttempts] = useState<AssessmentAttempt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { selectedYear } = useAcademicYear();
+  const { selectedYear, selectedRange } = useAcademicYear();
   
   const studentClassId = user?.class_id || '';
   const studentInstitutionId = user?.institution_id || user?.tenant_id || '';
@@ -36,7 +36,7 @@ export default function StudentAssessments() {
         await assessmentService.cleanupStaleAttempts();
         
         const [loadedAssessments, loadedAttempts] = await Promise.all([
-          assessmentService.getStudentAssessments(studentId, studentClassId, studentInstitutionId, selectedYear),
+          assessmentService.getStudentAssessments(studentId, studentClassId, studentInstitutionId, selectedYear, selectedRange),
           assessmentService.getStudentAttempts(studentId)
         ]);
         setAssessments(loadedAssessments);
@@ -49,7 +49,7 @@ export default function StudentAssessments() {
     };
 
     loadData();
-  }, [studentId, studentClassId, studentInstitutionId, selectedYear]);
+  }, [studentId, studentClassId, studentInstitutionId, selectedYear, selectedRange]);
 
   // Available assessments (ongoing, not yet attempted or can retake)
   const availableAssessments = assessments.filter(a => {

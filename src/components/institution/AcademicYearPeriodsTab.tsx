@@ -36,11 +36,14 @@ export function AcademicYearPeriodsTab({ currentYear, periods, saving = false, o
   }, [periods, defaults.current.academic_year, defaults.previous.academic_year]);
 
   const save = async () => {
-    if (!current.academic_year.trim() || !previous.academic_year.trim()) {
-      toast.error('Enter a label for both academic years');
+    const academicYearPattern = /^\d{4}-(\d{2}|\d{4})$/;
+    if (!academicYearPattern.test(current.academic_year.trim()) || !academicYearPattern.test(previous.academic_year.trim())) {
+      toast.error('Use year labels such as 2026-27');
       return;
     }
-    if (normalizeAcademicYear(current.academic_year) === normalizeAcademicYear(previous.academic_year)) {
+    const normalizedCurrentYear = normalizeAcademicYear(current.academic_year);
+    const normalizedPreviousYear = normalizeAcademicYear(previous.academic_year);
+    if (normalizedCurrentYear === normalizedPreviousYear) {
       toast.error('Current and previous academic years must have different labels');
       return;
     }
@@ -50,10 +53,14 @@ export function AcademicYearPeriodsTab({ currentYear, periods, saving = false, o
         return;
       }
     }
+    if (current.start_date <= previous.end_date && previous.start_date <= current.end_date) {
+      toast.error('Current and previous academic-year dates cannot overlap');
+      return;
+    }
 
     await onSave(
-      { ...current, academic_year: current.academic_year.trim() },
-      { ...previous, academic_year: previous.academic_year.trim() },
+      { ...current, academic_year: normalizedCurrentYear },
+      { ...previous, academic_year: normalizedPreviousYear },
     );
   };
 

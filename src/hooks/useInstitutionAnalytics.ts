@@ -6,13 +6,12 @@ import {
   computeStudentSessionProgress,
 } from '@/utils/courseProgressCalculations';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
-import { getAcademicYearDateRange } from '@/utils/academicYear';
 
 
 export function useInstitutionAnalytics(institutionId: string | undefined) {
   const { selectedYear, selectedRange } = useAcademicYear();
   return useQuery({
-    queryKey: ['institution-analytics', institutionId, selectedYear],
+    queryKey: ['institution-analytics', institutionId, selectedYear, selectedRange],
     queryFn: async (): Promise<InstitutionAnalytics | null> => {
       if (!institutionId) return null;
       const yearRange = selectedRange;

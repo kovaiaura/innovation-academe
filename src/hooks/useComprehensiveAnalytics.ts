@@ -7,7 +7,6 @@ import {
   computeStudentSessionProgress,
 } from '@/utils/courseProgressCalculations';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
-import { getAcademicYearDateRange } from '@/utils/academicYear';
 
 export interface WeightedAssessmentBreakdown {
   fa1_score: number;
@@ -71,7 +70,7 @@ export interface InstitutionPerformance {
 export function useComprehensiveAnalytics(institutionId: string | undefined) {
   const { selectedYear, selectedRange } = useAcademicYear();
   return useQuery({
-    queryKey: ['comprehensive-analytics', institutionId, selectedYear],
+    queryKey: ['comprehensive-analytics', institutionId, selectedYear, selectedRange],
     queryFn: async (): Promise<InstitutionPerformance | null> => {
       if (!institutionId) return null;
       const yearRange = selectedRange;

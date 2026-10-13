@@ -16,10 +16,11 @@ import { CriticalActionsCard } from "@/components/management/CriticalActionsCard
 import { LeaderboardSection } from "@/components/management/LeaderboardSection";
 import { useInstitutionStats } from "@/hooks/useInstitutionStats";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getDefaultAcademicYear } from '@/utils/academicYear';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { selectedYear } = useAcademicYear();
   const tenant = authService.getTenant();
   
   // Extract institution from URL
@@ -162,7 +163,7 @@ const Dashboard = () => {
             establishedYear={institution.settings?.established_year}
             location={institution.address?.city || institution.address?.location}
             totalStudents={stats.totalStudents}
-            academicYear={institution.settings?.academic_year || getDefaultAcademicYear()}
+            academicYear={selectedYear}
             userRole="Management Portal"
             assignedOfficers={assignedOfficers}
           />

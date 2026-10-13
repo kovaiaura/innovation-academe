@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FileText, Users, CheckCircle, Clock, Search, TrendingUp, Award, Eye, Filter } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
-import { getAcademicYearDateRange } from '@/utils/academicYear';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { AssessmentAttemptsDialog } from '@/components/assessments/AssessmentAttemptsDialog';
@@ -41,7 +40,7 @@ export default function ManagementAssessments() {
   const [selectedAssessment, setSelectedAssessment] = useState<AssessmentWithStats | null>(null);
   const [attemptsDialogOpen, setAttemptsDialogOpen] = useState(false);
   const institutionId = user?.institution_id || user?.tenant_id || '';
-  const { selectedYear } = useAcademicYear();
+  const { selectedYear, selectedRange } = useAcademicYear();
 
   useEffect(() => {
     const fetchAssessments = async () => {
@@ -50,7 +49,7 @@ export default function ManagementAssessments() {
       setLoading(true);
 
       try {
-        const yearRange = getAcademicYearDateRange(selectedYear);
+        const yearRange = selectedRange;
         // Get assessments assigned to classes in this institution
         const { data: classAssignments } = await supabase
           .from('assessment_class_assignments')
@@ -138,7 +137,7 @@ export default function ManagementAssessments() {
     };
 
     fetchAssessments();
-  }, [user?.institution_id, user?.tenant_id, selectedYear]);
+  }, [user?.institution_id, user?.tenant_id, selectedYear, selectedRange]);
 
   const filteredAssessments = assessments.filter(a => {
     const matchesSearch = a.title.toLowerCase().includes(searchQuery.toLowerCase());

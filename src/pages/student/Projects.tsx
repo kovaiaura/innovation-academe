@@ -14,7 +14,6 @@ import { SDGGoalBadges, SDG_GOALS } from "@/components/project/SDGGoalSelector";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
-import { getAcademicYearDateRange } from '@/utils/academicYear';
 
 const STATUS_CONFIG = {
   yet_to_start: { label: 'Yet to Start', className: 'bg-slate-500/10 text-slate-500 border-slate-500/20' },
@@ -47,7 +46,7 @@ export default function StudentProjects() {
 
   // Then get projects assigned to this student
   const { data: projects = [], isLoading } = useQuery({
-    queryKey: ['student-projects', studentData?.id, selectedYear],
+    queryKey: ['student-projects', studentData?.id, selectedYear, selectedRange],
     queryFn: async () => {
       if (!studentData?.id) return [];
       

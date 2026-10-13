@@ -18,7 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { assessmentService } from "@/services/assessment.service";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getDefaultAcademicYear } from '@/utils/academicYear';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 interface PerformanceData {
   assignments: {
@@ -45,6 +45,7 @@ interface PerformanceData {
 const Performance = () => {
   const [period, setPeriod] = useState("monthly");
   const { user } = useAuth();
+  const { selectedYear, selectedRange } = useAcademicYear();
   const [loading, setLoading] = useState(true);
   const [performanceData, setPerformanceData] = useState<PerformanceData | null>(null);
   
@@ -61,7 +62,7 @@ const Performance = () => {
       };
       init();
     }
-  }, [institutionId, period]);
+  }, [institutionId, period, selectedYear, selectedRange]);
 
   const loadPerformanceData = async () => {
     if (!institutionId) return;
@@ -73,7 +74,9 @@ const Performance = () => {
         .from('assignments')
         .select('id, total_marks, passing_marks')
         .eq('institution_id', institutionId)
-        .eq('status', 'published');
+        .eq('status', 'published')
+        .gte('start_date', selectedRange.start)
+        .lt('start_date', selectedRange.end);
 
       const assignmentIds = (assignments || []).map((a: any) => a.id);
       
@@ -82,7 +85,9 @@ const Performance = () => {
         const { data: subs } = await (supabase as any)
           .from('assignment_submissions')
           .select('*')
-          .in('assignment_id', assignmentIds);
+          .in('assignment_id', assignmentIds)
+          .gte('submitted_at', selectedRange.start)
+          .lt('submitted_at', selectedRange.end);
         assignmentSubmissions = subs || [];
       }
 
@@ -99,13 +104,26 @@ const Performance = () => {
         .eq('institution_id', institutionId);
 
       const assessmentIds = [...new Set((assessmentAssignments || []).map((a: any) => a.assessment_id))];
+      let yearAssessmentIds: string[] = [];
+      if (assessmentIds.length > 0) {
+        const { data: yearAssessments } = await (supabase as any)
+          .from('assessments')
+          .select('id')
+          .in('id', assessmentIds)
+          .gte('start_time', selectedRange.start)
+          .lt('start_time', selectedRange.end);
+        yearAssessmentIds = (yearAssessments || []).map((assessment: any) => assessment.id);
+      }
       
       let assessmentAttempts: any[] = [];
-      if (assessmentIds.length > 0) {
+      if (yearAssessmentIds.length > 0) {
         const { data: attempts } = await (supabase as any)
           .from('assessment_attempts')
           .select('*')
-          .eq('institution_id', institutionId);
+          .eq('institution_id', institutionId)
+          .in('assessment_id', yearAssessmentIds)
+          .gte('created_at', selectedRange.start)
+          .lt('created_at', selectedRange.end);
         assessmentAttempts = attempts || [];
       }
 
@@ -177,7 +195,7 @@ const Performance = () => {
             : 0
         },
         assessments: {
-          total: assessmentIds.length,
+          total: yearAssessmentIds.length,
           completed: completedAttempts.length,
           avgScore: Math.round(assessmentAvgScore),
           passRate: completedAttempts.length > 0 
@@ -208,7 +226,7 @@ const Performance = () => {
             establishedYear={dbInstitution.settings?.established_year}
             location={dbInstitution.address?.city || dbInstitution.address?.location}
             totalStudents={instStats.totalStudents}
-            academicYear={dbInstitution.settings?.academic_year || getDefaultAcademicYear()}
+            academicYear={selectedYear}
             userRole="Management Portal"
             assignedOfficers={assignedOfficers}
           />

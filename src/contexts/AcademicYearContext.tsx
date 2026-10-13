@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import {
   AcademicYearDateRange,
   AcademicYearPeriodsConfig,
@@ -30,8 +30,9 @@ const AcademicYearContext = createContext<AcademicYearContextValue | undefined>(
 
 export function AcademicYearProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const params = useParams<{ institutionId?: string; tenantId?: string; tenant_id?: string }>();
-  const institutionId = user?.institution_id || user?.tenant_id || params.institutionId || params.tenantId || params.tenant_id;
+  const location = useLocation();
+  const institutionFromPath = location.pathname.match(/^\/system-admin\/institutions\/([^/]+)/)?.[1];
+  const institutionId = institutionFromPath || user?.institution_id || user?.tenant_id;
   const [selectedYear, setSelectedYearState] = useState('');
 
   const { data: institution, isLoading } = useQuery({
@@ -60,12 +61,15 @@ export function AcademicYearProvider({ children }: { children: React.ReactNode }
   const periods = useMemo(() => {
     const defaults = getDefaultAcademicYearPeriods(currentYear);
     const configured = settings?.academic_year_periods;
+    const configuredPreviousYear = configured?.previous?.academic_year
+      ? normalizeAcademicYear(configured.previous.academic_year)
+      : undefined;
     return {
-      current: configured?.current?.academic_year === currentYear
-        ? configured.current
+      current: configured?.current?.academic_year && normalizeAcademicYear(configured.current.academic_year) === currentYear
+        ? { ...configured.current, academic_year: currentYear }
         : defaults.current,
-      previous: configured?.previous?.academic_year
-        ? configured.previous
+      previous: configuredPreviousYear
+        ? { ...configured.previous, academic_year: configuredPreviousYear }
         : defaults.previous,
     };
   }, [currentYear, derivedPreviousYear, settings?.academic_year_periods]);

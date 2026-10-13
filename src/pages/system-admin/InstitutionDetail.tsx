@@ -26,12 +26,14 @@ import { useOfficersByInstitution, useAvailableOfficers, useOfficerAssignment } 
 import { PeriodConfig, InstitutionTimetableAssignment } from '@/types/institution';
 import { Loader2 } from 'lucide-react';
 import { getDefaultAcademicYear, getDefaultAcademicYearPeriods, normalizeAcademicYear } from '@/utils/academicYear';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 
 export default function InstitutionDetail() {
   const { institutionId } = useParams();
   const navigate = useNavigate();
   const { institutions, updateInstitution } = useInstitutions();
+  const { selectedYear } = useAcademicYear();
   const [isEditInstitutionOpen, setIsEditInstitutionOpen] = useState(false);
   const [isAddClassOpen, setIsAddClassOpen] = useState(false);
   const [isEditClassOpen, setIsEditClassOpen] = useState(false);
@@ -467,6 +469,7 @@ export default function InstitutionDetail() {
           <TabsContent value="classes" className="space-y-6">
             <InstitutionClassesTab
               institutionId={institutionId!}
+              academicYear={selectedYear}
               institutionType={institution?.type}
               institutionClasses={classesWithCounts.map(c => ({
                 id: c.id,

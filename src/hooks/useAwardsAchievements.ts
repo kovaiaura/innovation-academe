@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
-import { getAcademicYearDateRange } from '@/utils/academicYear';
 
 export interface AwardAchievement {
   id: string;
@@ -28,7 +27,7 @@ export function useAwardsAchievements() {
   const { selectedYear, selectedRange } = useAcademicYear();
 
   return useQuery({
-    queryKey: ['awards-achievements', role, userId, institutionId, selectedYear],
+    queryKey: ['awards-achievements', role, userId, institutionId, selectedYear, selectedRange],
     queryFn: async (): Promise<AwardAchievement[]> => {
       if (!userId) return [];
 

@@ -12,9 +12,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { transformDbToApp } from "@/hooks/useInstitutions";
 import { format } from "date-fns";
-import { getDefaultAcademicYear } from '@/utils/academicYear';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 const Attendance = () => {
+  const { selectedYear } = useAcademicYear();
   const [activeTab, setActiveTab] = useState<'officers' | 'class-sessions' | 'reports'>('officers');
   
   const { tenantId } = useParams<{ tenantId: string }>();
@@ -118,7 +119,7 @@ const Attendance = () => {
           establishedYear={institution.established_year}
           location={institution.location}
           totalStudents={studentCount}
-          academicYear={getDefaultAcademicYear()}
+          academicYear={selectedYear}
           userRole="Management Portal"
           assignedOfficers={[]}
         />

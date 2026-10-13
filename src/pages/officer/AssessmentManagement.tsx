@@ -31,7 +31,7 @@ import { useQuery } from '@tanstack/react-query';
 
 export default function OfficerAssessmentManagement() {
   const { user } = useAuth();
-  const { selectedYear } = useAcademicYear();
+  const { selectedYear, selectedRange } = useAcademicYear();
   const [activeTab, setActiveTab] = useState('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -107,11 +107,11 @@ export default function OfficerAssessmentManagement() {
   // Load assessments from database
   useEffect(() => {
     loadAssessments();
-  }, [officerInstitutionId, selectedYear]);
+  }, [officerInstitutionId, selectedYear, selectedRange]);
 
   const loadAssessments = async () => {
     setIsLoading(true);
-    const data = await assessmentService.getAssessments({ academic_year: selectedYear });
+    const data = await assessmentService.getAssessments({ academic_year: selectedYear, academic_year_range: selectedRange });
     // Filter to show assessments published to this institution or created by officers of this institution
     const filtered = data.filter(a => {
       const publishedToThisInstitution = a.published_to.some(p => p.institution_id === officerInstitutionId);
@@ -493,6 +493,7 @@ export default function OfficerAssessmentManagement() {
                 classId={internalMarksClass.id}
                 className={internalMarksClass.name}
                 institutionId={officerInstitutionId || ''}
+                academicYear={selectedYear}
                 onBack={() => setInternalMarksClass(null)}
               />
             ) : weightedViewClass ? (
@@ -504,6 +505,7 @@ export default function OfficerAssessmentManagement() {
                   classId={weightedViewClass.id}
                   className={weightedViewClass.name}
                   institutionId={officerInstitutionId || ''}
+                  academicYear={selectedYear}
                 />
               </div>
             ) : (
@@ -577,6 +579,7 @@ export default function OfficerAssessmentManagement() {
                     classId={selectedClassForMapping.id}
                     className={selectedClassForMapping.name}
                     institutionId={officerInstitutionId || ''}
+                    academicYear={selectedYear}
                     institutionType={institutionType}
                   />
                 )}

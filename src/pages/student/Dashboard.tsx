@@ -13,7 +13,6 @@ import { useStudentStreak } from '@/hooks/useStudentStreak';
 import { StreakLeaderboard } from '@/components/gamification/StreakLeaderboard';
 import { format } from 'date-fns';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
-import { getAcademicYearDateRange } from '@/utils/academicYear';
 
 interface StudentGamification {
   total_points: number;
@@ -93,7 +92,7 @@ export default function StudentDashboard() {
     if (user?.id) {
       loadDashboardData();
     }
-  }, [user?.id, selectedYear]);
+  }, [user?.id, selectedYear, selectedRange]);
 
   const loadDashboardData = async () => {
     if (!user?.id) return;
