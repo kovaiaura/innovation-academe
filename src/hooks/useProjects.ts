@@ -88,11 +88,11 @@ export interface UpdateProjectInput {
 
 // Fetch ALL projects across all institutions (for CEO/Super Admin)
 export function useAllProjects() {
-  const { selectedYear } = useAcademicYear();
+  const { selectedYear, selectedRange } = useAcademicYear();
   return useQuery({
     queryKey: ['projects', 'all', selectedYear],
     queryFn: async () => {
-      const range = getAcademicYearDateRange(selectedYear);
+      const range = selectedRange;
       const { data, error } = await supabase
         .from('projects')
         .select(`
@@ -133,13 +133,13 @@ export function useAllProjects() {
 
 // Fetch all projects for an institution (for officers/management)
 export function useInstitutionProjects(institutionId: string | null) {
-  const { selectedYear } = useAcademicYear();
+  const { selectedYear, selectedRange } = useAcademicYear();
   return useQuery({
     queryKey: ['projects', 'institution', institutionId, selectedYear],
     queryFn: async () => {
       if (!institutionId) return [];
       
-      const range = getAcademicYearDateRange(selectedYear);
+      const range = selectedRange;
       const { data, error } = await supabase
         .from('projects')
         .select(`
@@ -181,7 +181,7 @@ export function useInstitutionProjects(institutionId: string | null) {
 
 // Fetch projects assigned to a student
 export function useStudentProjects(studentId: string | null) {
-  const { selectedYear } = useAcademicYear();
+  const { selectedYear, selectedRange } = useAcademicYear();
   return useQuery({
     queryKey: ['projects', 'student', studentId, selectedYear],
     queryFn: async () => {
@@ -198,7 +198,7 @@ export function useStudentProjects(studentId: string | null) {
       
       const projectIds = memberData.map(m => m.project_id);
       
-      const range = getAcademicYearDateRange(selectedYear);
+      const range = selectedRange;
       const { data, error } = await supabase
         .from('projects')
         .select(`

@@ -24,7 +24,7 @@ const STATUS_CONFIG = {
 
 export default function StudentProjects() {
   const { user } = useAuth();
-  const { selectedYear } = useAcademicYear();
+  const { selectedYear, selectedRange } = useAcademicYear();
   const [selectedProject, setSelectedProject] = useState<ProjectWithRelations | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
 
@@ -61,7 +61,7 @@ export default function StudentProjects() {
       if (!memberData || memberData.length === 0) return [];
       
       const projectIds = memberData.map(m => m.project_id);
-      const yearRange = getAcademicYearDateRange(selectedYear);
+      const yearRange = selectedRange;
       
       const { data, error } = await supabase
         .from('projects')

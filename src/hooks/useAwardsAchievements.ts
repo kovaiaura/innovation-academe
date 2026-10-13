@@ -25,7 +25,7 @@ export function useAwardsAchievements() {
   const role = user?.role;
   const userId = user?.id;
   const institutionId = user?.institution_id;
-  const { selectedYear } = useAcademicYear();
+  const { selectedYear, selectedRange } = useAcademicYear();
 
   return useQuery({
     queryKey: ['awards-achievements', role, userId, institutionId, selectedYear],
@@ -46,7 +46,7 @@ export function useAwardsAchievements() {
         .order('created_at', { ascending: false });
 
       // Role-based filtering
-      const range = getAcademicYearDateRange(selectedYear);
+      const range = selectedRange;
       query = query.gte('created_at', range.start).lt('created_at', range.end);
       if (role === 'student') {
         // Get student's project IDs first

@@ -73,7 +73,7 @@ interface RecentAssignment {
 export default function StudentDashboard() {
   const { user } = useAuth();
   const { tenantId } = useParams<{ tenantId: string }>();
-  const { selectedYear } = useAcademicYear();
+  const { selectedYear, selectedRange } = useAcademicYear();
   const [loading, setLoading] = useState(true);
   const [gamification, setGamification] = useState<StudentGamification | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -256,7 +256,7 @@ export default function StudentDashboard() {
   
   const loadPerformanceData = async (studentId: string) => {
     try {
-      const yearRange = getAcademicYearDateRange(selectedYear);
+      const yearRange = selectedRange;
       // Fetch recent assessment attempts
       const { data: assessmentAttempts } = await supabase
         .from('assessment_attempts')
@@ -353,7 +353,7 @@ export default function StudentDashboard() {
   };
 
   const loadProjectData = async (authUserId: string) => {
-    const yearRange = getAcademicYearDateRange(selectedYear);
+    const yearRange = selectedRange;
     // First get the student record ID from the students table
     const { data: studentRecord } = await supabase
       .from('students')
@@ -381,7 +381,7 @@ export default function StudentDashboard() {
   };
 
   const loadCourseData = async (studentId: string) => {
-    const yearRange = getAcademicYearDateRange(selectedYear);
+    const yearRange = selectedRange;
     const { data: profile } = await supabase
       .from('profiles')
       .select('class_id')

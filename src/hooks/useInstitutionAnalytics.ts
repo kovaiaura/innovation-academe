@@ -10,12 +10,12 @@ import { getAcademicYearDateRange } from '@/utils/academicYear';
 
 
 export function useInstitutionAnalytics(institutionId: string | undefined) {
-  const { selectedYear } = useAcademicYear();
+  const { selectedYear, selectedRange } = useAcademicYear();
   return useQuery({
     queryKey: ['institution-analytics', institutionId, selectedYear],
     queryFn: async (): Promise<InstitutionAnalytics | null> => {
       if (!institutionId) return null;
-      const yearRange = getAcademicYearDateRange(selectedYear);
+      const yearRange = selectedRange;
 
       // Fetch students data
       const { data: students, error: studentsError } = await supabase
