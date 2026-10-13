@@ -70,7 +70,7 @@ export interface InstitutionPerformance {
 export function useComprehensiveAnalytics(institutionId: string | undefined) {
   const { selectedYear, selectedRange } = useAcademicYear();
   return useQuery({
-    queryKey: ['comprehensive-analytics', institutionId, selectedYear],
+    queryKey: ['comprehensive-analytics', institutionId, selectedYear, selectedRange],
     queryFn: async (): Promise<InstitutionPerformance | null> => {
       if (!institutionId) return null;
       const yearRange = selectedRange;

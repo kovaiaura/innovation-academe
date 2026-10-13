@@ -11,7 +11,7 @@ import { useAcademicYear } from '@/contexts/AcademicYearContext';
 export function useInstitutionAnalytics(institutionId: string | undefined) {
   const { selectedYear, selectedRange } = useAcademicYear();
   return useQuery({
-    queryKey: ['institution-analytics', institutionId, selectedYear],
+    queryKey: ['institution-analytics', institutionId, selectedYear, selectedRange],
     queryFn: async (): Promise<InstitutionAnalytics | null> => {
       if (!institutionId) return null;
       const yearRange = selectedRange;

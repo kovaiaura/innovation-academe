@@ -493,6 +493,7 @@ export default function OfficerAssessmentManagement() {
                 classId={internalMarksClass.id}
                 className={internalMarksClass.name}
                 institutionId={officerInstitutionId || ''}
+                academicYear={selectedYear}
                 onBack={() => setInternalMarksClass(null)}
               />
             ) : weightedViewClass ? (
@@ -504,6 +505,7 @@ export default function OfficerAssessmentManagement() {
                   classId={weightedViewClass.id}
                   className={weightedViewClass.name}
                   institutionId={officerInstitutionId || ''}
+                  academicYear={selectedYear}
                 />
               </div>
             ) : (
@@ -577,6 +579,7 @@ export default function OfficerAssessmentManagement() {
                     classId={selectedClassForMapping.id}
                     className={selectedClassForMapping.name}
                     institutionId={officerInstitutionId || ''}
+                    academicYear={selectedYear}
                     institutionType={institutionType}
                   />
                 )}

@@ -27,7 +27,7 @@ export function useAwardsAchievements() {
   const { selectedYear, selectedRange } = useAcademicYear();
 
   return useQuery({
-    queryKey: ['awards-achievements', role, userId, institutionId, selectedYear],
+    queryKey: ['awards-achievements', role, userId, institutionId, selectedYear, selectedRange],
     queryFn: async (): Promise<AwardAchievement[]> => {
       if (!userId) return [];
 

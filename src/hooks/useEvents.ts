@@ -7,7 +7,7 @@ import { useAcademicYear } from '@/contexts/AcademicYearContext';
 export function useEvents(status?: string) {
   const { selectedYear, selectedRange } = useAcademicYear();
   return useQuery({
-    queryKey: ['events', status, selectedYear],
+    queryKey: ['events', status, selectedYear, selectedRange],
     queryFn: () => eventService.getEvents(status, selectedYear, selectedRange),
   });
 }
