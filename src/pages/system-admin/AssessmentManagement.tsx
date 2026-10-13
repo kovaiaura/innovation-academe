@@ -76,7 +76,7 @@ export default function AssessmentManagement() {
       loadAssessments();
     };
     init();
-  }, [selectedYear]);
+  }, [selectedYear, selectedRange]);
 
   const loadAssessments = async () => {
     setIsLoading(true);

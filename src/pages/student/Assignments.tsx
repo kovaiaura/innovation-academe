@@ -22,18 +22,18 @@ export default function StudentAssignments() {
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentWithClasses | null>(null);
-  const { selectedYear } = useAcademicYear();
+  const { selectedYear, selectedRange } = useAcademicYear();
 
   useEffect(() => {
     if (user?.institution_id) {
       loadAssignments();
     }
-  }, [user?.institution_id, selectedYear]);
+  }, [user?.institution_id, selectedYear, selectedRange]);
 
   const loadAssignments = async () => {
     try {
       setLoading(true);
-      const data = await assignmentService.getAssignments(user?.institution_id, selectedYear);
+      const data = await assignmentService.getAssignments(user?.institution_id, selectedYear, selectedRange);
       setAssignments(data);
 
       // Load submissions for each assignment

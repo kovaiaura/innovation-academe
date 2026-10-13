@@ -52,7 +52,7 @@ export default function ManagementAssignments() {
     if (institutionId) {
       loadAssignments();
     }
-  }, [institutionId, selectedYear]);
+  }, [institutionId, selectedYear, selectedRange]);
 
   const loadAssignments = async () => {
     try {

@@ -107,7 +107,7 @@ export default function OfficerAssessmentManagement() {
   // Load assessments from database
   useEffect(() => {
     loadAssessments();
-  }, [officerInstitutionId, selectedYear]);
+  }, [officerInstitutionId, selectedYear, selectedRange]);
 
   const loadAssessments = async () => {
     setIsLoading(true);

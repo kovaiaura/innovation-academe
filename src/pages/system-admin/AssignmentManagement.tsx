@@ -35,7 +35,7 @@ export default function AssignmentManagement() {
 
   useEffect(() => {
     loadAssignments();
-  }, [selectedYear]);
+  }, [selectedYear, selectedRange]);
 
   const loadAssignments = async () => {
     try {

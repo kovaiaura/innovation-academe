@@ -49,7 +49,7 @@ export default function StudentAssessments() {
     };
 
     loadData();
-  }, [studentId, studentClassId, studentInstitutionId, selectedYear]);
+  }, [studentId, studentClassId, studentInstitutionId, selectedYear, selectedRange]);
 
   // Available assessments (ongoing, not yet attempted or can retake)
   const availableAssessments = assessments.filter(a => {
