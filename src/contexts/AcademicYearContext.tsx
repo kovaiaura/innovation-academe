@@ -122,6 +122,19 @@ export function AcademicYearProvider({ children }: { children: React.ReactNode }
 
 export function useAcademicYear() {
   const context = useContext(AcademicYearContext);
-  if (!context) throw new Error('useAcademicYear must be used within AcademicYearProvider');
-  return context;
+  if (context) return context;
+  const currentYear = getDefaultAcademicYear();
+  const periods = getDefaultAcademicYearPeriods(currentYear);
+  return {
+    institutionId: undefined,
+    currentYear,
+    previousYear: periods.previous.academic_year,
+    selectedYear: currentYear,
+    availableYears: [currentYear, periods.previous.academic_year],
+    periods,
+    selectedRange: getAcademicYearDateRange(currentYear, periods),
+    isLoading: false,
+    isHistorical: false,
+    setSelectedYear: () => {},
+  };
 }

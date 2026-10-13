@@ -15,6 +15,7 @@ import { assessmentService } from '@/services/assessment.service';
 import { Loader2, Save, Users, Calendar, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDateTimeLocal } from '@/utils/assessmentHelpers';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 interface Student {
   id: string;
@@ -51,15 +52,16 @@ export function ManualAssessmentEntry({ restrictToInstitutionId, onComplete }: M
   const [results, setResults] = useState<ManualResult[]>([]);
 
   // Load assessments and classes on mount
+  const { selectedYear, selectedRange } = useAcademicYear();
   useEffect(() => {
     loadData();
-  }, [restrictToInstitutionId]);
+  }, [restrictToInstitutionId, selectedYear, selectedRange.start, selectedRange.end]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
       // Load assessments
-      const assessmentsData = await assessmentService.getAssessments();
+      const assessmentsData = await assessmentService.getAssessments({ academic_year: selectedYear, academic_year_range: selectedRange });
       setAssessments(assessmentsData);
 
       // Load classes

@@ -228,7 +228,7 @@ export const assessmentService = {
       query = query.gte('start_time', range.start).lt('start_time', range.end);
     }
 
-    const { data: assessments, error } = await query.order('created_at', { ascending: false });
+    const { data: assessments, error } = await query.order('start_time', { ascending: false });
 
     if (error) {
       console.error('Error fetching assessments:', error);
