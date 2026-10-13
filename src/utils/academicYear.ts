@@ -54,7 +54,7 @@ export function getAcademicYearDateRange(
 ): AcademicYearDateRange {
   const normalized = normalizeAcademicYear(academicYear);
   const period = [periods?.current, periods?.previous]
-    .find((candidate) => candidate?.academic_year === normalized);
+    .find((candidate) => candidate?.academic_year && normalizeAcademicYear(candidate.academic_year) === normalized);
   if (period?.start_date && period.end_date) {
     const exclusiveEnd = new Date(`${period.end_date}T00:00:00.000Z`);
     if (!Number.isNaN(exclusiveEnd.getTime())) {

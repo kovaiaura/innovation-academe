@@ -61,12 +61,15 @@ export function AcademicYearProvider({ children }: { children: React.ReactNode }
   const periods = useMemo(() => {
     const defaults = getDefaultAcademicYearPeriods(currentYear);
     const configured = settings?.academic_year_periods;
+    const configuredPreviousYear = configured?.previous?.academic_year
+      ? normalizeAcademicYear(configured.previous.academic_year)
+      : undefined;
     return {
-      current: configured?.current?.academic_year === currentYear
-        ? configured.current
+      current: configured?.current?.academic_year && normalizeAcademicYear(configured.current.academic_year) === currentYear
+        ? { ...configured.current, academic_year: currentYear }
         : defaults.current,
-      previous: configured?.previous?.academic_year
-        ? configured.previous
+      previous: configuredPreviousYear
+        ? { ...configured.previous, academic_year: configuredPreviousYear }
         : defaults.previous,
     };
   }, [currentYear, derivedPreviousYear, settings?.academic_year_periods]);
