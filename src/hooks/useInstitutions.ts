@@ -485,10 +485,11 @@ export function useInstitutions() {
       }
       toast.error(err.message || 'Failed to update institution');
     },
-    onSuccess: (_result, variables) => {
+    onSuccess: async (_result, variables) => {
       toast.success('Institution updated successfully');
       queryClient.invalidateQueries({ queryKey: ['institutions'] });
-      queryClient.invalidateQueries({ queryKey: ['institution-academic-year', variables.id] });
+      await queryClient.invalidateQueries({ queryKey: ['institution-academic-year', variables.id] });
+      await queryClient.invalidateQueries();
     },
   });
 

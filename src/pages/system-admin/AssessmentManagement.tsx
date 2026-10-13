@@ -31,7 +31,7 @@ import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 export default function AssessmentManagement() {
   const { user } = useAuth();
-  const { selectedYear } = useAcademicYear();
+  const { selectedYear, selectedRange } = useAcademicYear();
   const [activeTab, setActiveTab] = useState('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -80,7 +80,7 @@ export default function AssessmentManagement() {
 
   const loadAssessments = async () => {
     setIsLoading(true);
-    const data = await assessmentService.getAssessments({ academic_year: selectedYear });
+    const data = await assessmentService.getAssessments({ academic_year: selectedYear, academic_year_range: selectedRange });
     setAssessments(data);
     setIsLoading(false);
   };

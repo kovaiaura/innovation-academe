@@ -38,7 +38,7 @@ export default function ManagementAssignments() {
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [availableClasses, setAvailableClasses] = useState<{ id: string; name: string }[]>([]);
   const institutionId = user?.institution_id || user?.tenant_id;
-  const { selectedYear } = useAcademicYear();
+  const { selectedYear, selectedRange } = useAcademicYear();
 
   // Dialog states
   const [formDialogOpen, setFormDialogOpen] = useState(false);
@@ -59,7 +59,7 @@ export default function ManagementAssignments() {
       setLoading(true);
       
       // Use the service to get assignments for this institution
-      const data = await assignmentService.getAssignmentsForInstitution(institutionId!, selectedYear);
+      const data = await assignmentService.getAssignmentsForInstitution(institutionId!, selectedYear, selectedRange);
       
       // Fetch graded counts
       const assignmentIds = data.map(a => a.id);

@@ -41,7 +41,7 @@ export default function ManagementAssessments() {
   const [selectedAssessment, setSelectedAssessment] = useState<AssessmentWithStats | null>(null);
   const [attemptsDialogOpen, setAttemptsDialogOpen] = useState(false);
   const institutionId = user?.institution_id || user?.tenant_id || '';
-  const { selectedYear } = useAcademicYear();
+  const { selectedYear, selectedRange } = useAcademicYear();
 
   useEffect(() => {
     const fetchAssessments = async () => {
@@ -50,7 +50,7 @@ export default function ManagementAssessments() {
       setLoading(true);
 
       try {
-        const yearRange = getAcademicYearDateRange(selectedYear);
+        const yearRange = selectedRange;
         // Get assessments assigned to classes in this institution
         const { data: classAssignments } = await supabase
           .from('assessment_class_assignments')

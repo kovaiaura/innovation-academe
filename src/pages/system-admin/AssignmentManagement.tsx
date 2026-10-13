@@ -31,7 +31,7 @@ export default function AssignmentManagement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [submissionsDialogOpen, setSubmissionsDialogOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentWithClasses | null>(null);
-  const { selectedYear } = useAcademicYear();
+  const { selectedYear, selectedRange } = useAcademicYear();
 
   useEffect(() => {
     loadAssignments();
@@ -40,7 +40,7 @@ export default function AssignmentManagement() {
   const loadAssignments = async () => {
     try {
       setLoading(true);
-      const data = await assignmentService.getAllAssignments(selectedYear);
+      const data = await assignmentService.getAllAssignments(selectedYear, selectedRange);
       setAssignments(data);
     } catch (error) {
       console.error('Error loading assignments:', error);
