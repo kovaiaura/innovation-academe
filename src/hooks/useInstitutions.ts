@@ -432,6 +432,9 @@ export function useInstitutions() {
       
       // Update settings JSONB
       const settingsUpdates: Record<string, any> = {};
+      if (updates.settings && typeof updates.settings === 'object') {
+        Object.assign(settingsUpdates, updates.settings);
+      }
       if (updates.established_year !== undefined) settingsUpdates.established_year = updates.established_year;
       if (updates.total_faculty !== undefined) settingsUpdates.total_faculty = updates.total_faculty;
       if (updates.total_students !== undefined) settingsUpdates.total_students = updates.total_students;

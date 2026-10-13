@@ -36,8 +36,9 @@ export function AcademicYearPeriodsTab({ currentYear, periods, saving = false, o
   }, [periods, defaults.current.academic_year, defaults.previous.academic_year]);
 
   const save = async () => {
-    if (!current.academic_year.trim() || !previous.academic_year.trim()) {
-      toast.error('Enter a label for both academic years');
+    const academicYearPattern = /^\d{4}-\d{2}$/;
+    if (!academicYearPattern.test(current.academic_year.trim()) || !academicYearPattern.test(previous.academic_year.trim())) {
+      toast.error('Use year labels such as 2026-27');
       return;
     }
     if (normalizeAcademicYear(current.academic_year) === normalizeAcademicYear(previous.academic_year)) {
