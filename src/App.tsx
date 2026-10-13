@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { AcademicYearProvider } from "@/contexts/AcademicYearContext";
 import { InstitutionDataProvider } from "@/contexts/InstitutionDataContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
@@ -180,6 +181,7 @@ const queryClient = new QueryClient({
 });
 
 const App = () => (
+  <AppErrorBoundary>
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <BrandingProvider>
@@ -1412,6 +1414,7 @@ const App = () => (
       </BrandingProvider>
     </AuthProvider>
   </QueryClientProvider>
+  </AppErrorBoundary>
 );
 
 export default App;
