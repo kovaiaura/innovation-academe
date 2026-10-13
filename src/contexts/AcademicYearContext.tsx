@@ -32,7 +32,7 @@ export function AcademicYearProvider({ children }: { children: React.ReactNode }
   const { user } = useAuth();
   const location = useLocation();
   const institutionFromPath = location.pathname.match(/^\/system-admin\/institutions\/([^/]+)/)?.[1];
-  const institutionId = user?.institution_id || user?.tenant_id || institutionFromPath;
+  const institutionId = institutionFromPath || user?.institution_id || user?.tenant_id;
   const [selectedYear, setSelectedYearState] = useState('');
 
   const { data: institution, isLoading } = useQuery({
