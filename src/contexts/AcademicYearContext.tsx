@@ -30,8 +30,8 @@ const AcademicYearContext = createContext<AcademicYearContextValue | undefined>(
 
 export function AcademicYearProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const { institutionId: routeInstitutionId } = useParams<{ institutionId?: string }>();
-  const institutionId = user?.institution_id || user?.tenant_id || routeInstitutionId;
+  const params = useParams<{ institutionId?: string; tenantId?: string; tenant_id?: string }>();
+  const institutionId = user?.institution_id || user?.tenant_id || params.institutionId || params.tenantId || params.tenant_id;
   const [selectedYear, setSelectedYearState] = useState('');
 
   const { data: institution, isLoading } = useQuery({

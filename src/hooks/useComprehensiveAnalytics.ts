@@ -69,12 +69,12 @@ export interface InstitutionPerformance {
 }
 
 export function useComprehensiveAnalytics(institutionId: string | undefined) {
-  const { selectedYear } = useAcademicYear();
+  const { selectedYear, selectedRange } = useAcademicYear();
   return useQuery({
     queryKey: ['comprehensive-analytics', institutionId, selectedYear],
     queryFn: async (): Promise<InstitutionPerformance | null> => {
       if (!institutionId) return null;
-      const yearRange = getAcademicYearDateRange(selectedYear);
+      const yearRange = selectedRange;
 
       // Fetch institution type
       const { data: institutionData } = await supabase

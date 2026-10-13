@@ -443,6 +443,8 @@ export function useInstitutions() {
       if (updates.student_id_prefix !== undefined) settingsUpdates.student_id_prefix = updates.student_id_prefix;
       if (updates.student_id_suffix !== undefined) settingsUpdates.student_id_suffix = updates.student_id_suffix;
       if (updates.pricing_model !== undefined) settingsUpdates.pricing_model = updates.pricing_model;
+      if (updates.academic_year !== undefined) settingsUpdates.academic_year = updates.academic_year;
+      if (updates.academic_year_periods !== undefined) settingsUpdates.academic_year_periods = updates.academic_year_periods;
       
       if (Object.keys(settingsUpdates).length > 0) {
         dbUpdates.settings = {
@@ -483,9 +485,10 @@ export function useInstitutions() {
       }
       toast.error(err.message || 'Failed to update institution');
     },
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
       toast.success('Institution updated successfully');
       queryClient.invalidateQueries({ queryKey: ['institutions'] });
+      queryClient.invalidateQueries({ queryKey: ['institution-academic-year', variables.id] });
     },
   });
 

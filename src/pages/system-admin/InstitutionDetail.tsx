@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { ArrowLeft, Users, GraduationCap, Building2, Mail, Phone, Calendar, MapPin, Pencil } from 'lucide-react';
 import { EditInstitutionDialog } from '@/components/institution/EditInstitutionDialog';
+import { AcademicYearPeriodsTab } from '@/components/institution/AcademicYearPeriodsTab';
 import { AddClassDialog } from '@/components/institution/AddClassDialog';
 import { InstitutionClassesTab } from '@/components/institution/InstitutionClassesTab';
 import { InstitutionOfficersTab } from '@/components/institution/InstitutionOfficersTab';
@@ -24,6 +25,7 @@ import { useInstitutionPeriods, useInstitutionTimetable } from '@/hooks/useTimet
 import { useOfficersByInstitution, useAvailableOfficers, useOfficerAssignment } from '@/hooks/useInstitutionOfficers';
 import { PeriodConfig, InstitutionTimetableAssignment } from '@/types/institution';
 import { Loader2 } from 'lucide-react';
+import { getDefaultAcademicYear, getDefaultAcademicYearPeriods, normalizeAcademicYear } from '@/utils/academicYear';
 
 
 export default function InstitutionDetail() {
@@ -255,8 +257,9 @@ export default function InstitutionDetail() {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-4 md:grid-cols-8">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="academic-years">Academic Years</TabsTrigger>
             <TabsTrigger value="classes">Classes</TabsTrigger>
             <TabsTrigger value="courses">Courses</TabsTrigger>
             <TabsTrigger value="officers">Officers</TabsTrigger>
@@ -264,6 +267,23 @@ export default function InstitutionDetail() {
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="timetable">Timetable</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="academic-years" className="space-y-6">
+            <AcademicYearPeriodsTab
+              currentYear={normalizeAcademicYear(institution.settings?.academic_year || getDefaultAcademicYear())}
+              periods={institution.settings?.academic_year_periods || getDefaultAcademicYearPeriods(institution.settings?.academic_year || getDefaultAcademicYear())}
+              onSave={async (current, previous) => {
+                await updateInstitution({
+                  id: institution.id,
+                  updates: {
+                    academic_year: current.academic_year,
+                    academic_year_periods: { current, previous },
+                  },
+                });
+                toast.success('Academic year periods saved');
+              }}
+            />
+          </TabsContent>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
