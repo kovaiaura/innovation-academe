@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
-import { getAcademicYearDateRange } from '@/utils/academicYear';
 
 export interface Project {
   id: string;
@@ -90,7 +89,7 @@ export interface UpdateProjectInput {
 export function useAllProjects() {
   const { selectedYear, selectedRange } = useAcademicYear();
   return useQuery({
-    queryKey: ['projects', 'all', selectedYear],
+    queryKey: ['projects', 'all', selectedYear, selectedRange],
     queryFn: async () => {
       const range = selectedRange;
       const { data, error } = await supabase
@@ -135,7 +134,7 @@ export function useAllProjects() {
 export function useInstitutionProjects(institutionId: string | null) {
   const { selectedYear, selectedRange } = useAcademicYear();
   return useQuery({
-    queryKey: ['projects', 'institution', institutionId, selectedYear],
+    queryKey: ['projects', 'institution', institutionId, selectedYear, selectedRange],
     queryFn: async () => {
       if (!institutionId) return [];
       
@@ -183,7 +182,7 @@ export function useInstitutionProjects(institutionId: string | null) {
 export function useStudentProjects(studentId: string | null) {
   const { selectedYear, selectedRange } = useAcademicYear();
   return useQuery({
-    queryKey: ['projects', 'student', studentId, selectedYear],
+    queryKey: ['projects', 'student', studentId, selectedYear, selectedRange],
     queryFn: async () => {
       if (!studentId) return [];
       

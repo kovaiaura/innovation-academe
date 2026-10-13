@@ -6,7 +6,6 @@ import {
   computeStudentSessionProgress,
 } from '@/utils/courseProgressCalculations';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
-import { getAcademicYearDateRange } from '@/utils/academicYear';
 
 
 export function useInstitutionAnalytics(institutionId: string | undefined) {

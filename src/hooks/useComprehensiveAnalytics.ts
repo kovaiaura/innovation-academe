@@ -7,7 +7,6 @@ import {
   computeStudentSessionProgress,
 } from '@/utils/courseProgressCalculations';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
-import { getAcademicYearDateRange } from '@/utils/academicYear';
 
 export interface WeightedAssessmentBreakdown {
   fa1_score: number;
