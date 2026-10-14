@@ -28,6 +28,8 @@ import { ViewReportDialog } from '@/components/reports/ViewReportDialog';
 import { ActivityReportPDF } from '@/components/reports/pdf/ActivityReportPDF';
 import { pdf } from '@react-pdf/renderer';
 import { useReportSettings } from '@/hooks/useReportSettings';
+import { UploadReportPdfDialog } from '@/components/reports/UploadReportPdfDialog';
+import { getReportPdfBlob, viewReportPdf } from '@/utils/reportPdf';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,6 +47,7 @@ export default function ReportsManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -85,7 +88,7 @@ export default function ReportsManagement() {
 
   const handleDownloadReport = async (report: Report) => {
     try {
-      const blob = await pdf(<ActivityReportPDF report={report} reportSettings={reportSettings} />).toBlob();
+      const blob = await getReportPdfBlob(report, reportSettings);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -233,7 +236,9 @@ export default function ReportsManagement() {
                         {report.trainers.slice(0, 2).map(t => t.name).join(', ')}
                         {report.trainers.length > 2 && ` +${report.trainers.length - 2}`}
                       </TableCell>
-                      <TableCell>{report.hours_handled || '-'}</TableCell>
+                      <TableCell>
+                        {report.uploaded_pdf_path ? <Badge variant="outline">Uploaded PDF</Badge> : (report.hours_handled || '-')}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Badge variant={report.status === 'final' ? 'default' : 'secondary'}>
@@ -257,7 +262,7 @@ export default function ReportsManagement() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleViewReport(report)}>
+                            <DropdownMenuItem onClick={() => report.uploaded_pdf_path ? viewReportPdf(report) : handleViewReport(report)}>
                               <Eye className="h-4 w-4 mr-2" /> View
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleDownloadReport(report)}>
@@ -292,6 +297,7 @@ export default function ReportsManagement() {
       </main>
 
       {/* Dialogs */}
+      <UploadReportPdfDialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen} onSuccess={fetchReports} />
       <CreateReportDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
