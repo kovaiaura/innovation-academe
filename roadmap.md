@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Simplify the student dashboard to earned badges and own class rank; hide its year selector while preserving other pages.
+
 - [x] Refresh only the student dashboard with playful achievements and two course previews; check wide/narrow layouts and tenant-aware links with sample data.
 - [ ] Verify the refreshed dashboard and course navigation with a real signed-in student (blocked: no student preview session available; the requesting account has no matching app user).
 
