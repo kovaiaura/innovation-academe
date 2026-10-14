@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Search, MoreHorizontal, Eye, Download, Trash2, FileText, Loader2, Send, EyeOff } from 'lucide-react';
+import { Upload, Plus, Search, MoreHorizontal, Eye, Download, Trash2, FileText, Loader2, Send, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { Report } from '@/types/report';
 import { reportService } from '@/services/report.service';
@@ -28,6 +28,8 @@ import { ViewReportDialog } from '@/components/reports/ViewReportDialog';
 import { ActivityReportPDF } from '@/components/reports/pdf/ActivityReportPDF';
 import { pdf } from '@react-pdf/renderer';
 import { useReportSettings } from '@/hooks/useReportSettings';
+import { UploadReportPdfDialog } from '@/components/reports/UploadReportPdfDialog';
+import { getReportPdfBlob, viewReportPdf } from '@/utils/reportPdf';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,6 +47,7 @@ export default function ReportsManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -85,7 +88,7 @@ export default function ReportsManagement() {
 
   const handleDownloadReport = async (report: Report) => {
     try {
-      const blob = await pdf(<ActivityReportPDF report={report} reportSettings={reportSettings} />).toBlob();
+      const blob = await getReportPdfBlob(report, reportSettings);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -160,9 +163,14 @@ export default function ReportsManagement() {
             <h1 className="text-3xl font-bold">Reports Management</h1>
             <p className="text-muted-foreground">Generate and manage activity reports for institutions</p>
           </div>
+          <div className="flex">
           <Button onClick={() => setCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" /> Create Report
           </Button>
+          <Button variant="outline" className="ml-2" onClick={() => setUploadDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" /> Upload Report PDF
+          </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -233,7 +241,9 @@ export default function ReportsManagement() {
                         {report.trainers.slice(0, 2).map(t => t.name).join(', ')}
                         {report.trainers.length > 2 && ` +${report.trainers.length - 2}`}
                       </TableCell>
-                      <TableCell>{report.hours_handled || '-'}</TableCell>
+                      <TableCell>
+                        {report.uploaded_pdf_path ? <Badge variant="outline">Uploaded PDF</Badge> : (report.hours_handled || '-')}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Badge variant={report.status === 'final' ? 'default' : 'secondary'}>
@@ -257,7 +267,7 @@ export default function ReportsManagement() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleViewReport(report)}>
+                            <DropdownMenuItem onClick={() => report.uploaded_pdf_path ? viewReportPdf(report) : handleViewReport(report)}>
                               <Eye className="h-4 w-4 mr-2" /> View
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleDownloadReport(report)}>
@@ -292,6 +302,7 @@ export default function ReportsManagement() {
       </main>
 
       {/* Dialogs */}
+      <UploadReportPdfDialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen} onSuccess={fetchReports} />
       <CreateReportDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}

@@ -12,6 +12,7 @@ import { ActivityReportPDF } from '@/components/reports/pdf/ActivityReportPDF';
 import { pdf } from '@react-pdf/renderer';
 import { Report } from '@/types/report';
 import { useReportSettings } from '@/hooks/useReportSettings';
+import { getReportPdfBlob } from '@/utils/reportPdf';
 
 export default function Reports() {
   const { slug } = useParams<{ slug: string }>();
@@ -36,7 +37,7 @@ export default function Reports() {
 
   const handleDownloadReport = async (report: Report) => {
     try {
-      const blob = await pdf(<ActivityReportPDF report={report} reportSettings={reportSettings} />).toBlob();
+      const blob = await getReportPdfBlob(report, reportSettings);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;

@@ -11,7 +11,7 @@ export interface Activity {
 
 export interface Report {
   id: string;
-  report_type: 'activity' | 'monthly';
+  report_type: 'activity' | 'monthly' | 'uploaded';
   report_month: string;
   report_date: string;
   institution_id?: string;
@@ -29,6 +29,7 @@ export interface Report {
   signature_url?: string;
   status: 'draft' | 'final';
   generated_pdf_url?: string;
+  uploaded_pdf_path?: string | null;
   is_published?: boolean;
   published_at?: string;
   created_by?: string;
@@ -37,7 +38,7 @@ export interface Report {
 }
 
 export interface CreateReportData {
-  report_type: 'activity' | 'monthly';
+  report_type: 'activity' | 'monthly' | 'uploaded';
   report_month: string;
   report_date: string;
   institution_id?: string;
