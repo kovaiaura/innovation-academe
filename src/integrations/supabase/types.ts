@@ -6217,6 +6217,7 @@ export type Database = {
           status: string | null
           trainers: Json
           updated_at: string | null
+          uploaded_pdf_path: string | null
         }
         Insert: {
           activities?: Json
@@ -6243,6 +6244,7 @@ export type Database = {
           status?: string | null
           trainers?: Json
           updated_at?: string | null
+          uploaded_pdf_path?: string | null
         }
         Update: {
           activities?: Json
@@ -6269,6 +6271,7 @@ export type Database = {
           status?: string | null
           trainers?: Json
           updated_at?: string | null
+          uploaded_pdf_path?: string | null
         }
         Relationships: [
           {
