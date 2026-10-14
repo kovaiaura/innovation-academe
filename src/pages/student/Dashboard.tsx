@@ -13,6 +13,8 @@ import { useStudentStreak } from '@/hooks/useStudentStreak';
 import { StreakLeaderboard } from '@/components/gamification/StreakLeaderboard';
 import { format } from 'date-fns';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { DashboardLearningHub } from '@/components/student/DashboardLearningHub';
+import '@/components/student/studentDashboard.css';
 
 interface StudentGamification {
   total_points: number;
@@ -78,6 +80,7 @@ export default function StudentDashboard() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [coursesEnrolled, setCoursesEnrolled] = useState(0);
   const [courseProgress, setCourseProgress] = useState(0);
+  const [dashboardAssignmentIds, setDashboardAssignmentIds] = useState<string[]>([]);
   const [activeProjects, setActiveProjects] = useState(0);
   const [completedProjects, setCompletedProjects] = useState(0);
   const [recentAssessments, setRecentAssessments] = useState<RecentAssessment[]>([]);
@@ -387,7 +390,10 @@ export default function StudentDashboard() {
       .eq('id', studentId)
       .single();
     
-    if (!profile?.class_id) return 0;
+    if (!profile?.class_id) {
+      setDashboardAssignmentIds([]);
+      return 0;
+    }
     
     const { data: assignments, count } = await supabase
       .from('course_class_assignments')
@@ -395,6 +401,8 @@ export default function StudentDashboard() {
       .eq('class_id', profile.class_id)
       .gte('assigned_at', yearRange.start)
       .lt('assigned_at', yearRange.end);
+
+    setDashboardAssignmentIds((assignments || []).map(assignment => assignment.id));
 
     // Compute session-based progress for this student
     try {
@@ -435,99 +443,34 @@ export default function StudentDashboard() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Student Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back! Track your progress and achievements</p>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Courses Enrolled</CardTitle>
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{coursesEnrolled}</div>
-              <p className="text-xs text-muted-foreground">Course progress: {courseProgress}%</p>
-              <Progress value={courseProgress} className="mt-2 h-1.5" />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
-              <Target className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{activeProjects}</div>
-              <p className="text-xs text-muted-foreground">{completedProjects} completed</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Points</CardTitle>
-              <Trophy className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{(gamification?.total_points || 0).toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">+{gamification?.weekly_points || 0} this week</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Current Rank</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">#{gamification?.current_rank || '-'}</div>
-              <p className="text-xs text-muted-foreground">In your class</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Gamification Summary */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Streak</CardTitle>
-              <Flame className="h-4 w-4 text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{realtimeStreak?.current_streak || gamification?.streak_days || 0} days</div>
-              <p className="text-xs text-muted-foreground">Keep it going!</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Weekly Points</CardTitle>
-              <Trophy className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">+{gamification?.weekly_points || 0}</div>
-              <p className="text-xs text-muted-foreground">This week</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Badges Earned</CardTitle>
-              <Award className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{gamification?.badges_earned.length || 0}</div>
-              <p className="text-xs text-muted-foreground">{gamification?.badges_locked.length || 0} more to unlock</p>
-            </CardContent>
-          </Card>
+      <div className="student-dashboard space-y-6">
+        <DashboardLearningHub
+          name={user?.name}
+          userId={user?.id}
+          classId={user?.class_id}
+          tenantId={tenantId}
+          assignmentIds={dashboardAssignmentIds}
+          coursesEnrolled={coursesEnrolled}
+          courseProgress={courseProgress}
+          activeProjects={activeProjects}
+          completedProjects={completedProjects}
+          points={gamification?.total_points || 0}
+          weeklyPoints={gamification?.weekly_points || 0}
+          rank={gamification?.current_rank || 0}
+          streak={realtimeStreak?.current_streak || gamification?.streak_days || 0}
+          badgesEarned={gamification?.badges_earned.length || 0}
+          badgesLocked={gamification?.badges_locked.length || 0}
+          nextBadge={gamification?.badges_locked.slice().sort((a, b) => b.progress - a.progress)[0]}
+        />
+        <div className="learning-details">
+          <p className="learning-kicker">EVERY STEP COUNTS</p>
+          <h2>Your learning highlights</h2>
         </div>
 
         {/* Recent Performance */}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Recent Assessments */}
-          <Card>
+          <Card className="learning-detail-card">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
@@ -561,9 +504,9 @@ export default function StudentDashboard() {
                           {assessment.percentage.toFixed(0)}%
                         </Badge>
                         {assessment.passed ? (
-                          <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                          <CheckCircle className="h-4 w-4 learning-success shrink-0" />
                         ) : (
-                          <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                          <XCircle className="h-4 w-4 learning-danger shrink-0" />
                         )}
                       </div>
                     </div>
@@ -574,7 +517,7 @@ export default function StudentDashboard() {
           </Card>
 
           {/* Recent Assignments */}
-          <Card>
+          <Card className="learning-detail-card">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
@@ -609,9 +552,9 @@ export default function StudentDashboard() {
                         </Badge>
                         {assignment.marks_obtained !== null && (
                           assignment.passed ? (
-                            <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                            <CheckCircle className="h-4 w-4 learning-success shrink-0" />
                           ) : (
-                            <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                            <XCircle className="h-4 w-4 learning-danger shrink-0" />
                           )
                         )}
                       </div>
@@ -624,7 +567,7 @@ export default function StudentDashboard() {
         </div>
 
         {/* Recent Badges */}
-        <Card>
+        <Card className="learning-detail-card">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Recent Achievements</CardTitle>
@@ -662,14 +605,14 @@ export default function StudentDashboard() {
         {/* Leaderboards and Points Breakdown */}
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Class XP Leaderboard */}
-          <Card>
+          <Card className="learning-detail-card">
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <div>
                 <CardTitle className="text-base">Class Leaderboard</CardTitle>
                 <CardDescription className="text-xs">Top performers by XP</CardDescription>
               </div>
               <Button variant="ghost" size="sm" asChild>
-                <Link to={gamificationPath}>
+                <Link to={gamificationPath} aria-label="View class leaderboard">
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -691,17 +634,17 @@ export default function StudentDashboard() {
                           : 'bg-muted/50 hover:bg-muted'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <div className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                          entry.rank === 1 ? 'bg-yellow-500 text-white' :
-                          entry.rank === 2 ? 'bg-gray-400 text-white' :
-                          entry.rank === 3 ? 'bg-orange-600 text-white' :
+                      <div className="flex min-w-0 items-center gap-2">
+                        <div className={`flex shrink-0 h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                          entry.rank === 1 ? 'learning-rank-first' :
+                          entry.rank === 2 ? 'learning-rank-second' :
+                          entry.rank === 3 ? 'learning-rank-third' :
                           'bg-muted-foreground/20 text-muted-foreground'
                         }`}>
                           {entry.rank}
                         </div>
                         <div>
-                          <div className="font-medium text-sm flex items-center gap-1">
+                          <div className="font-medium text-sm flex flex-wrap items-center gap-1 break-words">
                             {entry.name}
                             {entry.isCurrentUser && <Badge variant="secondary" className="text-[10px] px-1 py-0">You</Badge>}
                           </div>
@@ -718,7 +661,7 @@ export default function StudentDashboard() {
           {/* Streak Leaderboard */}
           <StreakLeaderboard institutionId={user?.institution_id} limit={5} compact />
 
-          <Card>
+          <Card className="learning-detail-card">
             <CardHeader>
               <CardTitle>Points Breakdown</CardTitle>
               <CardDescription>See where your points come from</CardDescription>
@@ -745,7 +688,7 @@ export default function StudentDashboard() {
 
         {/* Locked Badges */}
         {gamification?.badges_locked && gamification.badges_locked.length > 0 && (
-          <Card>
+          <Card className="learning-detail-card">
             <CardHeader>
               <CardTitle>Locked Badges - Keep Working!</CardTitle>
               <CardDescription>Complete these goals to unlock achievements</CardDescription>
