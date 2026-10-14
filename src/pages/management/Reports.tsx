@@ -2,7 +2,8 @@ import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, Calendar, Loader2 } from "lucide-react";
+import { FileText, Download, Calendar, Loader2, Eye } from "lucide-react";
+import { getReportPdfBlob, viewReportPdf } from "@/utils/reportPdf";
 import { useState } from "react";
 import {
   Select,
@@ -139,6 +140,9 @@ const MonthlyReportsTab = ({ institutionId }: { institutionId: string | undefine
                         </div>
                       </div>
                       <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => viewReportPdf(report, reportSettings)}>
+                          <Eye className="h-4 w-4 mr-2" /> View
+                        </Button>
                         <Button 
                           variant="outline" 
                           size="sm"

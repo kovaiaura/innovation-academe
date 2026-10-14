@@ -12,6 +12,7 @@ import { ActivityReportPDF } from '@/components/reports/pdf/ActivityReportPDF';
 import { pdf } from '@react-pdf/renderer';
 import { Report } from '@/types/report';
 import { useReportSettings } from '@/hooks/useReportSettings';
+import { getReportPdfBlob } from '@/utils/reportPdf';
 
 export default function Reports() {
   const { slug } = useParams<{ slug: string }>();
