@@ -36,7 +36,7 @@ export default function Reports() {
 
   const handleDownloadReport = async (report: Report) => {
     try {
-      const blob = await pdf(<ActivityReportPDF report={report} reportSettings={reportSettings} />).toBlob();
+      const blob = await getReportPdfBlob(report, reportSettings);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;

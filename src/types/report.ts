@@ -29,6 +29,7 @@ export interface Report {
   signature_url?: string;
   status: 'draft' | 'final';
   generated_pdf_url?: string;
+  uploaded_pdf_path?: string | null;
   is_published?: boolean;
   published_at?: string;
   created_by?: string;
