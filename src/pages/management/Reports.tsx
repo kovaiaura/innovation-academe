@@ -5,13 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, Download, Calendar, Loader2, Eye } from "lucide-react";
 import { getReportPdfBlob, viewReportPdf } from "@/utils/reportPdf";
 import { useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { InstitutionHeader } from "@/components/management/InstitutionHeader";
 import { useLocation } from "react-router-dom";
 import { useInstitutionStats } from "@/hooks/useInstitutionStats";
@@ -45,15 +38,9 @@ function useInstitutionId(slug: string | undefined) {
 
 // Monthly Reports Tab - Now uses real published reports
 const MonthlyReportsTab = ({ institutionId }: { institutionId: string | undefined }) => {
-  const [typeFilter, setTypeFilter] = useState("all");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const { data: publishedReports, isLoading } = usePublishedReports(institutionId);
   const { data: reportSettings } = useReportSettings();
-
-  const filteredReports = (publishedReports || []).filter((report) => {
-    if (typeFilter === "all") return true;
-    return report.report_type?.toLowerCase() === typeFilter;
-  });
 
   const handleDownloadReport = async (report: any) => {
     try {
@@ -92,23 +79,10 @@ const MonthlyReportsTab = ({ institutionId }: { institutionId: string | undefine
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>All Reports</CardTitle>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-                <SelectItem value="quarterly">Quarterly</SelectItem>
-                <SelectItem value="annual">Annual</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <CardTitle>All Reports</CardTitle>
         </CardHeader>
         <CardContent>
-          {filteredReports.length === 0 ? (
+          {(publishedReports || []).length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No published reports available yet.</p>
@@ -116,7 +90,7 @@ const MonthlyReportsTab = ({ institutionId }: { institutionId: string | undefine
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredReports.map((report) => (
+              {(publishedReports || []).map((report) => (
                 <Card key={report.id}>
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
