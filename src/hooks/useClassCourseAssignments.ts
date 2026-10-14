@@ -484,14 +484,10 @@ export function useStudentCourses(userId?: string, classId?: string) {
       let contentItems: any[] = [];
 
       if (unlockedSessionIds.length > 0) {
-        const { data: content, error: contentError } = await supabase
-          .from('course_content')
-          .select('*')
-          .in('session_id', unlockedSessionIds)
-          .order('display_order', { ascending: true });
-
-        if (contentError) throw contentError;
-        contentItems = content || [];
+        contentItems = await fetchContentForSessionAssignments(
+          assignments.map((a: any) => a.course_id),
+          sessionAssignments.filter(s => s.is_unlocked !== false)
+        );
       }
 
       // Get student completions using students.id (not auth user ID)
@@ -779,14 +775,10 @@ export function useInstitutionCourseAssignments(institutionId?: string) {
       let contentItems: any[] = [];
 
       if (sessionIds.length > 0) {
-        const { data: content, error: contentError } = await supabase
-          .from('course_content')
-          .select('*')
-          .in('session_id', sessionIds)
-          .order('display_order', { ascending: true });
-
-        if (contentError) throw contentError;
-        contentItems = content || [];
+        contentItems = await fetchContentForSessionAssignments(
+          assignments.map((a: any) => a.course_id),
+          sessionAssignments
+        );
       }
 
       // Group by course to get unique courses with their class assignments
@@ -947,3 +939,53 @@ export function useAllPublishedCourses() {
     },
   });
 }
+// Load course content reliably: by course (paginated) + by session (chunked),
+// then map orphaned content to assigned sessions by matching session title.
+async function fetchContentForSessionAssignments(courseIds: string[], sessionAssignments: any[]): Promise<any[]> {
+  const byId = new Map<string, any>();
+  const PAGE = 1000;
+  const uniqCourses = Array.from(new Set(courseIds.filter(Boolean)));
+  for (let i = 0; i < uniqCourses.length; i += 20) {
+    const batch = uniqCourses.slice(i, i + 20);
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from('course_content').select('*').in('course_id', batch)
+        .order('display_order', { ascending: true }).range(from, from + PAGE - 1);
+      if (error) throw error;
+      (data || []).forEach((c: any) => byId.set(c.id, c));
+      if (!data || data.length < PAGE) break;
+    }
+  }
+  const sessionIds = Array.from(new Set(sessionAssignments.map(s => s.session_id).filter(Boolean)));
+  for (let i = 0; i < sessionIds.length; i += 100) {
+    const { data, error } = await supabase
+      .from('course_content').select('*').in('session_id', sessionIds.slice(i, i + 100))
+      .order('display_order', { ascending: true });
+    if (error) throw error;
+    (data || []).forEach((c: any) => byId.set(c.id, c));
+  }
+  const items = Array.from(byId.values());
+  const assigned = new Set(sessionIds);
+  const orphanSessionIds = Array.from(new Set(items.filter(c => c.session_id && !assigned.has(c.session_id)).map(c => c.session_id)));
+  if (orphanSessionIds.length > 0) {
+    const norm = (t: string) => (t || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const titleToAssigned = new Map<string, string>();
+    sessionAssignments.forEach(sa => {
+      const t = norm(sa.course_sessions?.title);
+      if (t && !titleToAssigned.has(t)) titleToAssigned.set(t, sa.session_id);
+    });
+    const orphanTitle = new Map<string, string>();
+    for (let i = 0; i < orphanSessionIds.length; i += 100) {
+      const { data } = await supabase.from('course_sessions').select('id, title').in('id', orphanSessionIds.slice(i, i + 100));
+      (data || []).forEach((s: any) => orphanTitle.set(s.id, norm(s.title)));
+    }
+    items.forEach(c => {
+      if (c.session_id && !assigned.has(c.session_id)) {
+        const target = titleToAssigned.get(orphanTitle.get(c.session_id) || '');
+        if (target) c.session_id = target;
+      }
+    });
+  }
+  return items.sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+}
+
