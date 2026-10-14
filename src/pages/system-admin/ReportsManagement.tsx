@@ -166,6 +166,9 @@ export default function ReportsManagement() {
           <Button onClick={() => setCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" /> Create Report
           </Button>
+          <Button variant="outline" className="ml-2" onClick={() => setUploadDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" /> Upload Report PDF
+          </Button>
         </div>
 
         {/* Filters */}

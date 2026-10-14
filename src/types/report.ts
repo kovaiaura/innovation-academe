@@ -11,7 +11,7 @@ export interface Activity {
 
 export interface Report {
   id: string;
-  report_type: 'activity' | 'monthly';
+  report_type: 'activity' | 'monthly' | 'uploaded';
   report_month: string;
   report_date: string;
   institution_id?: string;
@@ -38,7 +38,7 @@ export interface Report {
 }
 
 export interface CreateReportData {
-  report_type: 'activity' | 'monthly';
+  report_type: 'activity' | 'monthly' | 'uploaded';
   report_month: string;
   report_date: string;
   institution_id?: string;

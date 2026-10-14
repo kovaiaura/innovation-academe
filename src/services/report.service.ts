@@ -47,7 +47,7 @@ export const reportService = {
       ...row,
       trainers: parseTrainers(row.trainers),
       activities: parseActivities(row.activities),
-      report_type: row.report_type as 'activity' | 'monthly',
+      report_type: row.report_type as 'activity' | 'monthly' | 'uploaded',
       status: row.status as 'draft' | 'final',
     }));
   },
@@ -67,7 +67,7 @@ export const reportService = {
       ...data,
       trainers: parseTrainers(data.trainers),
       activities: parseActivities(data.activities),
-      report_type: data.report_type as 'activity' | 'monthly',
+      report_type: data.report_type as 'activity' | 'monthly' | 'uploaded',
       status: data.status as 'draft' | 'final',
     };
   },
@@ -106,7 +106,7 @@ export const reportService = {
       ...data,
       trainers: parseTrainers(data.trainers),
       activities: parseActivities(data.activities),
-      report_type: data.report_type as 'activity' | 'monthly',
+      report_type: data.report_type as 'activity' | 'monthly' | 'uploaded',
       status: data.status as 'draft' | 'final',
     };
   },
@@ -133,7 +133,7 @@ export const reportService = {
       ...data,
       trainers: parseTrainers(data.trainers),
       activities: parseActivities(data.activities),
-      report_type: data.report_type as 'activity' | 'monthly',
+      report_type: data.report_type as 'activity' | 'monthly' | 'uploaded',
       status: data.status as 'draft' | 'final',
     };
   },
@@ -153,6 +153,10 @@ export const reportService = {
         console.error('Error deleting stored PDF:', storageError);
         // Continue with report deletion even if storage deletion fails
       }
+    }
+
+    if (report?.uploaded_pdf_path) {
+      await supabase.storage.from('activity-reports').remove([report.uploaded_pdf_path]).catch(() => {});
     }
 
     // Delete the report record
@@ -181,7 +185,7 @@ export const reportService = {
       ...data,
       trainers: parseTrainers(data.trainers),
       activities: parseActivities(data.activities),
-      report_type: data.report_type as 'activity' | 'monthly',
+      report_type: data.report_type as 'activity' | 'monthly' | 'uploaded',
       status: data.status as 'draft' | 'final',
     };
   },
@@ -203,7 +207,7 @@ export const reportService = {
       ...data,
       trainers: parseTrainers(data.trainers),
       activities: parseActivities(data.activities),
-      report_type: data.report_type as 'activity' | 'monthly',
+      report_type: data.report_type as 'activity' | 'monthly' | 'uploaded',
       status: data.status as 'draft' | 'final',
     };
   },
@@ -222,7 +226,7 @@ export const reportService = {
       ...row,
       trainers: parseTrainers(row.trainers),
       activities: parseActivities(row.activities),
-      report_type: row.report_type as 'activity' | 'monthly',
+      report_type: row.report_type as 'activity' | 'monthly' | 'uploaded',
       status: row.status as 'draft' | 'final',
     }));
   },
