@@ -479,7 +479,7 @@ export function useStudentCourses(userId?: string, classId?: string) {
 
       // Get content for UNLOCKED sessions only (not locked ones)
       const unlockedSessionIds = sessionAssignments
-        .filter(s => s.is_unlocked === true)
+        .filter(s => s.is_unlocked !== false)
         .map(s => s.session_id);
       let contentItems: any[] = [];
 

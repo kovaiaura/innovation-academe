@@ -448,6 +448,9 @@ export function LMSCourseViewer({ course, modules, viewOnly = false, backPath }:
 
                             {isSessionExpanded && !isSessionLocked && (
                               <div className="ml-4 space-y-1">
+                                {contentItems.length === 0 && (
+                                  <p className="p-2 text-xs text-muted-foreground">No content in this session yet</p>
+                                )}
                                 {contentItems.map((content) => (
                                   <button
                                     key={content.id}

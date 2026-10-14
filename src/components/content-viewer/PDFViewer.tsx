@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { Button } from '@/components/ui/button';
@@ -132,6 +132,10 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  // Stable source object: an inline object makes react-pdf reload the
+  // document on every render, which resets the page to 1.
+  const pdfFile = useMemo(() => (pdfUrl ? { url: pdfUrl } : null), [pdfUrl]);
+
   const goToPrevPage = () => setPageNumber((prev) => Math.max(prev - 1, 1));
   const goToNextPage = () => setPageNumber((prev) => Math.min(prev + 1, numPages));
   const zoomIn = () => setScale((prev) => Math.min(prev + 0.25, 2.5));
@@ -227,7 +231,7 @@ export function PDFViewer({ filePath, title }: PDFViewerProps) {
         )}
         {pdfUrl && !useNativeFallback && (
           <Document
-            file={{ url: pdfUrl }}
+            file={pdfFile}
             options={PDF_DOCUMENT_OPTIONS}
             onLoadSuccess={onDocumentLoadSuccess}
             onLoadError={onDocumentLoadError}
