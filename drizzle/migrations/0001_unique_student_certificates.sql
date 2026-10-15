@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS student_certificates_unique_activity ON public.student_certificates (student_id, activity_type, activity_id);

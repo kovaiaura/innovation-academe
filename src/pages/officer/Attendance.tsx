@@ -36,7 +36,7 @@ import {
   AttendanceRecord 
 } from "@/hooks/useClassSessionAttendance";
 import { useReceivedAccessGrants } from "@/hooks/useOfficerClassAccess";
-import { useSessionCompletion } from "@/hooks/useSessionCompletion";
+import { useSessionCompletion, issueCertificatesForClass } from "@/hooks/useSessionCompletion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -422,10 +422,11 @@ const Attendance = () => {
           session.timetable_assignment_id,
           moduleId,
           courseId,
-          { silent: true, date: selectedDate, attendanceId }
+          { silent: true, date: selectedDate, attendanceId, skipCertificates: true }
         );
         if (ok) successCount++;
       }
+      if (successCount > 0) void issueCertificatesForClass(session.classId, presentStudentIds);
 
       queryClient.invalidateQueries({ queryKey: ['officer-attn-class-covered'] });
       setIsEditing(false);

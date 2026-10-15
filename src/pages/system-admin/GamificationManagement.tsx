@@ -70,9 +70,33 @@ export default function GamificationManagement() {
       const created = (data as any)?.created ?? 0;
       const total = (data as any)?.total ?? 0;
       const unmapped = (data as any)?.unmappedAttendanceRows ?? 0;
-      setProgressStatus(
+      const progressText =
         `Done. ${created} new session completions written (${total} total)` +
-          (unmapped ? ` · ${unmapped} attendance record${unmapped === 1 ? '' : 's'} had no matching curriculum session.` : '.')
+          (unmapped ? ` · ${unmapped} attendance record${unmapped === 1 ? '' : 's'} had no matching curriculum session.` : '.');
+
+      // Issue any certificates already earned, a few classes per request.
+      const classIds: string[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data: rows, error: clsErr } = await supabase
+          .from('classes').select('id').order('id').range(from, from + 999);
+        if (clsErr) throw clsErr;
+        classIds.push(...(rows || []).map(r => r.id));
+        if (!rows || rows.length < 1000) break;
+      }
+      let certs = 0;
+      let missingTemplate = false;
+      for (let i = 0; i < classIds.length; i += 5) {
+        setProgressStatus(`${progressText} Issuing certificates… ${Math.min(i + 5, classIds.length)} / ${classIds.length} classes`);
+        const { data: c, error: certErr } = await supabase.functions.invoke('issue-completion-certificates', {
+          body: { classIds: classIds.slice(i, i + 5) },
+        });
+        if (certErr) { console.error('Certificate issuance failed', certErr); continue; }
+        certs += ((c as any)?.levelIssued || 0) + ((c as any)?.courseIssued || 0);
+        missingTemplate = missingTemplate || !!(c as any)?.missingTemplate;
+      }
+      setProgressStatus(
+        `${progressText} ${certs} certificate${certs === 1 ? '' : 's'} issued.` +
+          (missingTemplate ? ' Some completed levels/courses have no active certificate template.' : '')
       );
       toast.success('Course progress recalculated');
 
