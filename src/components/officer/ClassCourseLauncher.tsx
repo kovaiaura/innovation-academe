@@ -73,6 +73,7 @@ export function ClassCourseLauncher({ classId, className }: ClassCourseLauncherP
       const marks = await readIn<{ student_id: string; session_id: string; class_assignment_id: string }>(
         'class_session_completions', 'id, student_id, session_id, class_assignment_id', 'class_assignment_id', caIds);
       const marked = new Set(marks.map(m => `${m.class_assignment_id}|${m.session_id}|${m.student_id}`));
+      const markedSession = new Set(marks.map(m => `${m.class_assignment_id}|${m.session_id}`));
       const contentDone = await readIn<{ student_id: string; content_id: string; class_assignment_id: string }>(
         'student_content_completions', 'id, student_id, content_id, class_assignment_id', 'class_assignment_id', caIds);
       const doneContent = new Set(contentDone.map(c => `${c.class_assignment_id}|${c.content_id}|${c.student_id}`));
@@ -87,7 +88,7 @@ export function ClassCourseLauncher({ classId, className }: ClassCourseLauncherP
         const studentDone = (sid: string) =>
           marked.has(`${ca}|${s.session_id}|${sid}`) ||
           (items.length > 0 && items.every(cid => doneContent.has(`${ca}|${cid}|${sid}`)));
-        const anyMark = marks.some(m => m.class_assignment_id === ca && m.session_id === s.session_id);
+        const anyMark = markedSession.has(`${ca}|${s.session_id}`);
         const done = studentIds.length ? studentIds.every(studentDone) : anyMark;
         if (done) completed.add(`${s.class_module_assignment_id}|${s.session_id}`);
       });

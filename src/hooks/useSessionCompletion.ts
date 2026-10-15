@@ -154,6 +154,7 @@ export function useSessionCompletion(): SessionCompletionResult {
         queryClient.invalidateQueries({ queryKey: ['all-institutions-analytics'] }),
         queryClient.invalidateQueries({ queryKey: ['comprehensive-analytics'] }),
         queryClient.invalidateQueries({ queryKey: ['class-course-assignments'] }),
+        queryClient.invalidateQueries({ queryKey: ['class-course-launcher'] }),
         queryClient.invalidateQueries({ queryKey: ['student-course-progress'] }),
         queryClient.invalidateQueries({ queryKey: ['class-session-attendance'] }),
         queryClient.invalidateQueries({ queryKey: ['course-performance'] }),
