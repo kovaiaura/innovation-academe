@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -102,6 +103,7 @@ export function ProjectDetailsDialog({
   canDelete = false,
   onDelete,
 }: ProjectDetailsDialogProps) {
+  const returnFocus = useRef<HTMLElement | null>(null);
   if (!project) return null;
 
   const statusConfig = STATUS_CONFIG[project.status] || { label: project.status, className: 'bg-muted text-muted-foreground' };
@@ -114,7 +116,20 @@ export function ProjectDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={studentPresentation ? "w-[calc(100%-2rem)] max-w-2xl max-h-[90dvh] rounded-lg p-4 sm:p-6 [&_*]:break-words" : "max-w-2xl max-h-[90vh]"}>
+      <DialogContent
+        className={studentPresentation ? "w-[calc(100%-2rem)] max-w-2xl max-h-[90dvh] rounded-lg p-4 sm:p-6 [&_*]:break-words" : "max-w-2xl max-h-[90vh]"}
+        onOpenAutoFocus={() => {
+          if (studentPresentation && document.activeElement instanceof HTMLElement) {
+            returnFocus.current = document.activeElement;
+          }
+        }}
+        onCloseAutoFocus={(event) => {
+          if (studentPresentation && returnFocus.current?.isConnected) {
+            event.preventDefault();
+            returnFocus.current.focus();
+          }
+        }}
+      >
         <DialogHeader>
           <div className={studentPresentation ? "flex flex-col items-start gap-3 pr-6 text-left" : "flex items-start justify-between gap-4"}>
             <div>
