@@ -21,8 +21,9 @@ const OfficerCourseOutcomes = () => {
     ? (students || []).filter(s => s.class_id === selectedClass)
     : students || [];
 
-  const { data, isLoading } = useCourseOutcomeAnalytics({
+  const { data, isLoading, isError, refetch } = useCourseOutcomeAnalytics({
     institutionId,
+    enabled: !!institutionId,
     classId: selectedClass !== 'all' ? selectedClass : undefined,
     studentId: selectedStudent !== 'all' ? selectedStudent : undefined,
   });
@@ -36,10 +37,10 @@ const OfficerCourseOutcomes = () => {
         </div>
 
         <div className="flex flex-wrap gap-4">
-          <div className="space-y-1">
+          <div className="space-y-1 w-full sm:w-auto">
             <Label className="text-xs">Class</Label>
             <Select value={selectedClass} onValueChange={(v) => { setSelectedClass(v); setSelectedStudent('all'); }}>
-              <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[200px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Classes</SelectItem>
                 {(classes || []).map(c => (
@@ -48,10 +49,10 @@ const OfficerCourseOutcomes = () => {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1 w-full sm:w-auto">
             <Label className="text-xs">Student</Label>
             <Select value={selectedStudent} onValueChange={setSelectedStudent}>
-              <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[200px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Students</SelectItem>
                 {filteredStudents.map(s => (
@@ -62,7 +63,7 @@ const OfficerCourseOutcomes = () => {
           </div>
         </div>
 
-        <CourseOutcomeAnalytics data={data || { courseAccuracies: [], moduleAccuracies: [], sessionAccuracies: [], strengths: [], weaknesses: [] }} isLoading={isLoading} />
+        <CourseOutcomeAnalytics data={data} isLoading={isLoading} isError={isError} onRetry={() => { void refetch(); }} />
       </div>
     </Layout>
   );

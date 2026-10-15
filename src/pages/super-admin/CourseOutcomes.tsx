@@ -10,6 +10,7 @@ const AdminCourseOutcomes = () => {
   const [institutions, setInstitutions] = useState<{ id: string; name: string }[]>([]);
   const [classes, setClasses] = useState<{ id: string; class_name: string; section: string | null }[]>([]);
   const [selectedInstitution, setSelectedInstitution] = useState<string>('all');
+  const [yearMode, setYearMode] = useState<'current' | 'previous'>('current');
   const [selectedClass, setSelectedClass] = useState<string>('all');
 
   useEffect(() => {
@@ -22,13 +23,14 @@ const AdminCourseOutcomes = () => {
       .then(({ data }) => setClasses(data || []));
   }, [selectedInstitution]);
 
-  const { data, isLoading } = useCourseOutcomeAnalytics({
+  const { data, isLoading, isError, refetch } = useCourseOutcomeAnalytics({
+    yearMode,
     institutionId: selectedInstitution !== 'all' ? selectedInstitution : undefined,
     classId: selectedClass !== 'all' ? selectedClass : undefined,
   });
 
   return (
-    <Layout>
+    <Layout showAcademicYear={false}>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Course Outcome Analytics</h1>
@@ -36,10 +38,14 @@ const AdminCourseOutcomes = () => {
         </div>
 
         <div className="flex flex-wrap gap-4">
-          <div className="space-y-1">
+          <div className="space-y-1 w-full sm:w-auto">
+            <Label className="text-xs">Academic period</Label>
+            <Select value={yearMode} onValueChange={v => setYearMode(v === 'previous' ? 'previous' : 'current')}><SelectTrigger className="w-full sm:w-[200px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="current">Current year</SelectItem><SelectItem value="previous">Previous year</SelectItem></SelectContent></Select>
+          </div>
+          <div className="space-y-1 w-full sm:w-auto">
             <Label className="text-xs">Institution</Label>
             <Select value={selectedInstitution} onValueChange={(v) => { setSelectedInstitution(v); setSelectedClass('all'); }}>
-              <SelectTrigger className="w-[250px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[250px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Institutions</SelectItem>
                 {institutions.map(i => (
@@ -49,10 +55,10 @@ const AdminCourseOutcomes = () => {
             </Select>
           </div>
           {selectedInstitution !== 'all' && (
-            <div className="space-y-1">
+            <div className="space-y-1 w-full sm:w-auto">
               <Label className="text-xs">Class</Label>
               <Select value={selectedClass} onValueChange={setSelectedClass}>
-                <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full sm:w-[200px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Classes</SelectItem>
                   {classes.map(c => (
@@ -64,7 +70,7 @@ const AdminCourseOutcomes = () => {
           )}
         </div>
 
-        <CourseOutcomeAnalytics data={data || { courseAccuracies: [], moduleAccuracies: [], sessionAccuracies: [], strengths: [], weaknesses: [] }} isLoading={isLoading} />
+        <CourseOutcomeAnalytics data={data} isLoading={isLoading} isError={isError} onRetry={() => { void refetch(); }} />
       </div>
     </Layout>
   );
