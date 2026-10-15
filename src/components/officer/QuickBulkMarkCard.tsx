@@ -30,8 +30,8 @@ interface PlanItem {
 
 async function chunkedIn<T>(table: string, select: string, col: string, ids: string[], extra?: (q: any) => any): Promise<T[]> {
   const out: T[] = [];
-  for (let i = 0; i < ids.length; i += 100) {
-    let q: any = (supabase.from(table as any) as any).select(select).in(col, ids.slice(i, i + 100));
+  for (let i = 0; i < ids.length; i += 50) {
+    let q: any = (supabase.from(table as any) as any).select(select).in(col, ids.slice(i, i + 50));
     if (extra) q = extra(q);
     const { data, error } = await q;
     if (error) throw error;
