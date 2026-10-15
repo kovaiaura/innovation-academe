@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Loader2, Zap } from 'lucide-react';
 import { toast } from 'sonner';
-import { useSessionCompletion } from '@/hooks/useSessionCompletion';
+import { useSessionCompletion, issueCertificatesForClass } from '@/hooks/useSessionCompletion';
 import { isNotApplicableTitle } from '@/utils/courseHelpers';
 
 interface Props {
@@ -90,15 +90,33 @@ export function QuickBulkMarkCard({ classId, markDate, students }: Props) {
         courses.add(ca.id);
         candidates.push({ sessionId: s.session_id, classAssignmentId: ca.id, courseId: ca.course_id, moduleId: lvl.module_id });
       })));
-      const existing = await chunkedIn<{ session_id: string; student_id: string }>('class_session_completions',
-        'session_id, student_id', 'session_id', [...new Set(candidates.map(c => c.sessionId))],
-        q => q.eq('class_id', classId));
+      // Read every existing mark for this class page by page (the database
+      // returns at most 1000 rows per request).
+      const existing: { session_id: string; student_id: string; class_assignment_id: string }[] = [];
+      const caIds = tree.map(ca => ca.id);
+      for (let i = 0; i < caIds.length; i += 50) {
+        for (let from = 0; ; from += 1000) {
+          const { data, error } = await supabase
+            .from('class_session_completions')
+            .select('id, session_id, student_id, class_assignment_id')
+            .in('class_assignment_id', caIds.slice(i, i + 50))
+            .order('id')
+            .range(from, from + 999);
+          if (error) throw error;
+          existing.push(...((data || []) as any[]));
+          if (!data || data.length < 1000) break;
+        }
+      }
       const done = new Map<string, Set<string>>();
-      existing.forEach(r => { if (!done.has(r.session_id)) done.set(r.session_id, new Set()); done.get(r.session_id)!.add(r.student_id); });
+      existing.forEach(r => {
+        const k = `${r.class_assignment_id}|${r.session_id}`;
+        if (!done.has(k)) done.set(k, new Set());
+        done.get(k)!.add(r.student_id);
+      });
       let skipped = 0;
       const items: PlanItem[] = [];
       candidates.forEach(c => {
-        const have = done.get(c.sessionId);
+        const have = done.get(`${c.classAssignmentId}|${c.sessionId}`);
         const ids = students.map(s => s.id).filter(id => !have?.has(id));
         if (ids.length) items.push({ ...c, studentIds: ids }); else skipped++;
       });
@@ -120,10 +138,11 @@ export function QuickBulkMarkCard({ classId, markDate, students }: Props) {
     let ok = 0;
     for (const it of preview.items) {
       const success = await markSessionComplete(it.sessionId, it.studentIds, it.classAssignmentId, classId,
-        undefined, it.moduleId, it.courseId, { silent: true, date: markDate });
+        undefined, it.moduleId, it.courseId, { silent: true, date: markDate, skipCertificates: true });
       if (success) ok++;
       setDone(d => d + 1);
     }
+    if (ok > 0) await issueCertificatesForClass(classId, students.map(s => s.id));
     setRunning(false);
     queryClient.invalidateQueries();
     if (ok === preview.items.length) toast.success(`${ok} sessions marked complete till Level ${tillLevel}`);
@@ -172,6 +191,9 @@ export function QuickBulkMarkCard({ classId, markDate, students }: Props) {
                 <p>Sessions to mark: {preview?.items.length ?? 0}</p>
                 <p>Already marked (skipped): {preview?.skipped ?? 0}</p>
                 <p>Students: {students.length} · Date: {markDate}</p>
+                {preview && preview.items.length === 0 && (
+                  <p className="pt-2 font-medium text-foreground">Everything till Level {tillLevel} is already marked.</p>
+                )}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
