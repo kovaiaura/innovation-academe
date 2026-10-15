@@ -1,0 +1,12 @@
+.course-outcomes { min-width: 0; }
+.course-outcomes .outcome-learning-text { color: hsl(var(--outcome-learning)); }
+.course-outcomes .outcome-success { color: hsl(var(--outcome-success)); }
+.course-outcomes .outcome-attention { color: hsl(var(--outcome-attention)); }
+.course-outcomes .outcome-learning > div { background: hsl(var(--outcome-learning)); }
+.course-outcomes .outcome-assessment > div { background: hsl(var(--outcome-assessment)); }
+.course-outcomes .outcome-stat:nth-child(1), .course-outcomes .outcome-stat:nth-child(2) { border-color: hsl(var(--outcome-learning)); }
+.course-outcomes .outcome-stat:nth-child(3) { border-color: hsl(var(--outcome-assessment)); }
+.course-outcomes .outcome-stat:nth-child(4) { border-color: hsl(var(--outcome-attention)); }
+.course-outcomes .outcome-topic-icon { background: hsl(var(--outcome-topic)); color: hsl(var(--outcome-learning)); width: 48px; height: 48px; display: grid; place-items: center; border-radius: 8px; }
+.course-outcomes [data-radix-collapsible-content] { overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { .course-outcomes * { transition: none; animation: none; } }
