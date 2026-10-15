@@ -18,11 +18,12 @@ interface ClassCourseLauncherProps {
   officerId: string;
 }
 
-/** Reads every row for `ids` in chunks, paging past the 1000-row limit. */
+/** Reads every row for `ids`, chunks in parallel, paging past the 1000-row limit. */
 async function readIn<T>(table: string, select: string, col: string, ids: string[], order = 'id'): Promise<T[]> {
-  const out: T[] = [];
-  for (let i = 0; i < ids.length; i += 50) {
-    const slice = ids.slice(i, i + 50);
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += 50) chunks.push(ids.slice(i, i + 50));
+  const parts = await Promise.all(chunks.map(async slice => {
+    const out: T[] = [];
     for (let from = 0; ; from += 1000) {
       const { data, error } = await (supabase.from(table as any) as any)
         .select(select).in(col, slice).order(order).range(from, from + 999);
@@ -30,8 +31,9 @@ async function readIn<T>(table: string, select: string, col: string, ids: string
       out.push(...((data || []) as T[]));
       if (!data || data.length < 1000) break;
     }
-  }
-  return out;
+    return out;
+  }));
+  return parts.flat();
 }
 
 interface SessionRow { id: string; class_module_assignment_id: string; session_id: string; is_unlocked: boolean; unlock_order: number | null; course_sessions?: { title: string } | null }
@@ -42,44 +44,50 @@ export function ClassCourseLauncher({ classId, className }: ClassCourseLauncherP
   const navigate = useNavigate();
   const [openLevels, setOpenLevels] = useState<Set<string>>(new Set());
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['class-course-launcher', classId],
+  // 1. Course cards — small and fast.
+  const cardsQ = useQuery({
+    queryKey: ['class-course-launcher-cards', classId],
     queryFn: async () => {
       const { data: cas, error } = await supabase
         .from('course_class_assignments')
         .select('id, course_id, courses (id, title, course_code, thumbnail_url, status)')
         .eq('class_id', classId);
       if (error) throw error;
-      const caList = (cas || []).filter((c: any) => c.courses);
-      const caIds = caList.map(c => c.id);
-      if (!caIds.length) return { caList, modules: [] as ModuleRow[], sessions: [] as SessionRow[], completed: new Set<string>() };
+      return (cas || []).filter((c: any) => c.courses);
+    },
+  });
+  const caIds = (cardsQ.data || []).map((c: any) => c.id as string);
 
-      const { data: studentRows } = await supabase
-        .from('students').select('id').eq('class_id', classId).eq('status', 'active');
-      const studentIds = (studentRows || []).map(s => s.id);
-
-      const modules = (await readIn<ModuleRow>('class_module_assignments',
-        'id, class_assignment_id, module_id, is_unlocked, unlock_order, course_modules (title, display_order)',
-        'class_assignment_id', caIds)).filter(m => !isNotApplicableTitle(m.course_modules?.title));
+  // 2. Levels, sessions and progress — loaded in the background.
+  const progressQ = useQuery({
+    queryKey: ['class-course-launcher-progress', classId, caIds.join(',')],
+    enabled: caIds.length > 0,
+    queryFn: async () => {
+      const [studentRes, modulesRaw, marks, contentDone] = await Promise.all([
+        supabase.from('students').select('id').eq('class_id', classId).eq('status', 'active'),
+        readIn<ModuleRow>('class_module_assignments',
+          'id, class_assignment_id, module_id, is_unlocked, unlock_order, course_modules (title, display_order)',
+          'class_assignment_id', caIds),
+        readIn<{ student_id: string; session_id: string; class_assignment_id: string }>(
+          'class_session_completions', 'student_id, session_id, class_assignment_id', 'class_assignment_id', caIds, 'id'),
+        readIn<{ student_id: string; content_id: string; class_assignment_id: string }>(
+          'student_content_completions', 'student_id, content_id, class_assignment_id', 'class_assignment_id', caIds, 'id'),
+      ]);
+      const studentIds = (studentRes.data || []).map(s => s.id);
+      const modules = modulesRaw.filter(m => !isNotApplicableTitle(m.course_modules?.title));
       const sessions = await readIn<SessionRow>('class_session_assignments',
         'id, class_module_assignment_id, session_id, is_unlocked, unlock_order, course_sessions (title)',
         'class_module_assignment_id', modules.map(m => m.id));
-
       const sessionIds = [...new Set(sessions.map(s => s.session_id))];
       const content = await readIn<{ id: string; session_id: string }>('course_content', 'id, session_id', 'session_id', sessionIds);
+
       const contentBySession = new Map<string, string[]>();
       content.forEach(c => contentBySession.set(c.session_id, [...(contentBySession.get(c.session_id) || []), c.id]));
-
-      const marks = await readIn<{ student_id: string; session_id: string; class_assignment_id: string }>(
-        'class_session_completions', 'id, student_id, session_id, class_assignment_id', 'class_assignment_id', caIds);
       const marked = new Set(marks.map(m => `${m.class_assignment_id}|${m.session_id}|${m.student_id}`));
       const markedSession = new Set(marks.map(m => `${m.class_assignment_id}|${m.session_id}`));
-      const contentDone = await readIn<{ student_id: string; content_id: string; class_assignment_id: string }>(
-        'student_content_completions', 'id, student_id, content_id, class_assignment_id', 'class_assignment_id', caIds);
       const doneContent = new Set(contentDone.map(c => `${c.class_assignment_id}|${c.content_id}|${c.student_id}`));
 
       const moduleCa = new Map(modules.map(m => [m.id, m.class_assignment_id]));
-      // key: class_module_assignment_id|session_id — complete when every active student has it
       const completed = new Set<string>();
       sessions.forEach(s => {
         const ca = moduleCa.get(s.class_module_assignment_id);
@@ -92,8 +100,7 @@ export function ClassCourseLauncher({ classId, className }: ClassCourseLauncherP
         const done = studentIds.length ? studentIds.every(studentDone) : anyMark;
         if (done) completed.add(`${s.class_module_assignment_id}|${s.session_id}`);
       });
-
-      return { caList, modules, sessions, completed };
+      return { modules, sessions, completed };
     },
   });
 
@@ -107,7 +114,7 @@ export function ClassCourseLauncher({ classId, className }: ClassCourseLauncherP
     return next;
   });
 
-  if (isLoading) {
+  if (cardsQ.isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -115,10 +122,22 @@ export function ClassCourseLauncher({ classId, className }: ClassCourseLauncherP
     );
   }
 
-  const caList = (data?.caList || []) as any[];
-  const modules = data?.modules || [];
-  const sessions = data?.sessions || [];
-  const completed = data?.completed || new Set<string>();
+  if (cardsQ.isError) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center space-y-3">
+          <p className="text-muted-foreground">Couldn't load courses for this class.</p>
+          <Button variant="outline" onClick={() => cardsQ.refetch()}>Retry</Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const caList = (cardsQ.data || []) as any[];
+  const modules = progressQ.data?.modules || [];
+  const sessions = progressQ.data?.sessions || [];
+  const completed = progressQ.data?.completed || new Set<string>();
+  const progressLoading = progressQ.isLoading || progressQ.isFetching && !progressQ.data;
 
   return (
     <div className="space-y-6">
