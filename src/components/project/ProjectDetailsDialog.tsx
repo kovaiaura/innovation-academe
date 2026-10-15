@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -79,6 +80,7 @@ interface ProjectDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   project: ProjectWithRelations | null;
+  studentPresentation?: boolean;
   canDelete?: boolean;
   onDelete?: (projectId: string) => void;
 }
@@ -97,9 +99,11 @@ export function ProjectDetailsDialog({
   open,
   onOpenChange,
   project,
+  studentPresentation = false,
   canDelete = false,
   onDelete,
 }: ProjectDetailsDialogProps) {
+  const returnFocus = useRef<HTMLElement | null>(null);
   if (!project) return null;
 
   const statusConfig = STATUS_CONFIG[project.status] || { label: project.status, className: 'bg-muted text-muted-foreground' };
@@ -112,16 +116,29 @@ export function ProjectDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh]">
+      <DialogContent
+        className={studentPresentation ? "w-[calc(100%-2rem)] max-w-2xl max-h-[90dvh] rounded-lg p-4 sm:p-6 [&_*]:break-words" : "max-w-2xl max-h-[90vh]"}
+        onOpenAutoFocus={() => {
+          if (studentPresentation && document.activeElement instanceof HTMLElement) {
+            returnFocus.current = document.activeElement;
+          }
+        }}
+        onCloseAutoFocus={(event) => {
+          if (studentPresentation && returnFocus.current?.isConnected) {
+            event.preventDefault();
+            returnFocus.current.focus();
+          }
+        }}
+      >
         <DialogHeader>
-          <div className="flex items-start justify-between gap-4">
+          <div className={studentPresentation ? "flex flex-col items-start gap-3 pr-6 text-left" : "flex items-start justify-between gap-4"}>
             <div>
               <DialogTitle className="text-xl">{project.title}</DialogTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 Created by {project.created_by_officer_name}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className={studentPresentation ? "flex flex-wrap items-center gap-2" : "flex items-center gap-2"}>
               <Badge className={statusConfig.className}>{statusConfig.label}</Badge>
               {project.is_published && <Badge variant="outline" className="bg-green-50 text-green-700">Published</Badge>}
               {project.is_showcase && <Badge className="bg-yellow-500/10 text-yellow-600">⭐ Showcase</Badge>}
@@ -129,7 +146,7 @@ export function ProjectDetailsDialog({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] pr-4">
+        <ScrollArea className={studentPresentation ? "max-h-[60dvh] min-w-0 pr-3" : "max-h-[60vh] pr-4"}>
           <div className="space-y-6">
             {/* Progress */}
             <div className="space-y-2">
@@ -149,7 +166,7 @@ export function ProjectDetailsDialog({
             )}
 
             {/* Details Grid */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className={studentPresentation ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : "grid grid-cols-2 gap-4"}>
               <div className="flex items-center gap-2 text-sm">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span className="text-muted-foreground">Category:</span>
@@ -227,7 +244,7 @@ export function ProjectDetailsDialog({
                 </h4>
                 <div className="space-y-2">
                   {achievements.map((achievement) => (
-                    <div key={achievement.id} className="flex items-center justify-between text-sm p-3 border rounded-md">
+                    <div key={achievement.id} className={studentPresentation ? "flex flex-col items-start gap-2 text-sm p-3 border rounded-md sm:flex-row sm:justify-between" : "flex items-center justify-between text-sm p-3 border rounded-md"}>
                       <div>
                         <p className="font-medium">{achievement.title}</p>
                         <p className="text-muted-foreground text-xs">
@@ -244,7 +261,10 @@ export function ProjectDetailsDialog({
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => window.open(achievement.certificate_url!, '_blank')}
+                            aria-label={`Open certificate for ${achievement.title}`}
+                            onClick={() => {
+                              if (achievement.certificate_url) window.open(achievement.certificate_url, '_blank', 'noopener,noreferrer');
+                            }}
                           >
                             <ExternalLink className="h-4 w-4" />
                           </Button>
@@ -310,7 +330,7 @@ export function ProjectDetailsDialog({
                             
                             <div className="text-sm p-3 border rounded-lg bg-card hover:bg-accent/50 transition-colors">
                               {/* Date header - prominent */}
-                              <div className="flex items-center gap-2 mb-2 pb-2 border-b">
+                              <div className={studentPresentation ? "flex flex-wrap items-center gap-2 mb-2 pb-2 border-b" : "flex items-center gap-2 mb-2 pb-2 border-b"}>
                                 <Calendar className="h-4 w-4 text-primary" />
                                 {updateDate ? (
                                   <div className="flex-1">
