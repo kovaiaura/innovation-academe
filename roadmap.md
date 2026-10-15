@@ -1,6 +1,7 @@
 # Roadmap
 
-- [ ] Redesign Course Outcomes for every role with learning completion, assessment evidence, scoped year filtering, and phone-friendly course drill-downs.
+- [x] Redesign Course Outcomes for every role with learning completion, assessment evidence, scoped year filtering, and phone-friendly course drill-downs. Verified fixture-backed service integration, filters, sorting, tenant-aware learning links, desktop/phone layouts, and calculation tests; build passes.
+- [ ] Verify Course Outcomes with real signed-in student and staff accounts (blocked: the requesting user has no matching app account, so a preview session could not be minted).
 
 - [x] Simplify the student dashboard to earned badges and own class rank; hide its year selector while preserving other pages. Verified sample badge/rank layouts and empty states at wide/narrow widths; build passes.
 
