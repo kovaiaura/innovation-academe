@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAllIn } from '@/utils/courseProgressCalculations';
 
 interface SessionCompletionStatus {
   sessionId: string;
@@ -63,12 +64,7 @@ export function useSessionCompletionStatus(
       }
 
       // Get content for each session
-      const { data: contentItems, error: contentError } = await supabase
-        .from('course_content')
-        .select('id, session_id')
-        .in('session_id', sessionIds);
-
-      if (contentError) throw contentError;
+      const contentItems = await fetchAllIn<{ id: string; session_id: string }>('course_content', 'id, session_id', 'session_id', sessionIds);
 
       // Group content by session
       const contentBySession = new Map<string, string[]>();
@@ -83,15 +79,14 @@ export function useSessionCompletionStatus(
       let completions: { student_id: string; content_id: string }[] = [];
 
       if (allContentIds.length > 0) {
-        const { data: completionData, error: completionError } = await supabase
-          .from('student_content_completions')
-          .select('student_id, content_id')
-          .in('content_id', allContentIds)
-          .eq('class_assignment_id', classAssignmentId);
-
-        if (completionError) throw completionError;
-        completions = completionData || [];
+        completions = await fetchAllIn('student_content_completions', 'id, student_id, content_id', 'content_id', allContentIds,
+          q => q.eq('class_assignment_id', classAssignmentId));
       }
+
+      // Sessions explicitly marked complete (officer / bulk marking)
+      const marks = await fetchAllIn<{ student_id: string; session_id: string }>('class_session_completions',
+        'id, student_id, session_id', 'session_id', sessionIds, q => q.eq('class_id', classId));
+      const marked = new Set(marks.map(m => `${m.student_id}__${m.session_id}`));
 
       // Calculate completion status per session
       const sessionStatuses = new Map<string, SessionCompletionStatus>();
@@ -101,6 +96,13 @@ export function useSessionCompletionStatus(
         const sessionContentIds = contentBySession.get(sessionId) || [];
         const contentCount = sessionContentIds.length;
 
+        const markedCount = (students || []).filter(st => marked.has(`${st.id}__${sessionId}`)).length;
+        if (contentCount === 0 && markedCount > 0) {
+          sessionStatuses.set(sessionId, { sessionId, totalStudents, completedStudents: markedCount,
+            isFullyCompleted: markedCount === totalStudents, isConducted: true });
+          totalCompletions += markedCount;
+          continue;
+        }
         if (contentCount === 0) {
           // No content in session - consider all students completed
           sessionStatuses.set(sessionId, {
@@ -117,6 +119,7 @@ export function useSessionCompletionStatus(
         // Count students who completed ALL content in this session
         let completedStudents = 0;
         for (const student of students || []) {
+          if (marked.has(`${student.id}__${sessionId}`)) { completedStudents++; continue; }
           const studentCompletedContent = completions.filter(
             c => c.student_id === student.id && sessionContentIds.includes(c.content_id)
           ).length;
@@ -177,12 +180,7 @@ export function useStudentCourseProgress(
       }
 
       // Get content for each session
-      const { data: contentItems, error: contentError } = await supabase
-        .from('course_content')
-        .select('id, session_id')
-        .in('session_id', sessionIds);
-
-      if (contentError) throw contentError;
+      const contentItems = await fetchAllIn<{ id: string; session_id: string }>('course_content', 'id, session_id', 'session_id', sessionIds);
 
       // Group content by session
       const contentBySession = new Map<string, string[]>();
@@ -197,16 +195,12 @@ export function useStudentCourseProgress(
       let completions: { content_id: string }[] = [];
 
       if (allContentIds.length > 0) {
-        const { data: completionData, error: completionError } = await supabase
-          .from('student_content_completions')
-          .select('content_id')
-          .eq('student_id', studentId)
-          .eq('class_assignment_id', classAssignmentId)
-          .in('content_id', allContentIds);
-
-        if (completionError) throw completionError;
-        completions = completionData || [];
+        completions = await fetchAllIn('student_content_completions', 'id, content_id', 'content_id', allContentIds,
+          q => q.eq('student_id', studentId).eq('class_assignment_id', classAssignmentId));
       }
+      const markRows = await fetchAllIn<{ session_id: string }>('class_session_completions', 'id, session_id',
+        'session_id', sessionIds, q => q.eq('student_id', studentId).eq('class_assignment_id', classAssignmentId));
+      const markedSessions = new Set(markRows.map(r => r.session_id));
 
       const completedContentIds = new Set(completions.map(c => c.content_id));
       const completedSessions = new Set<string>();
@@ -214,7 +208,7 @@ export function useStudentCourseProgress(
       // Check each session
       for (const sessionId of sessionIds) {
         const sessionContentIds = contentBySession.get(sessionId) || [];
-        if (sessionContentIds.length === 0) {
+        if (markedSessions.has(sessionId) || sessionContentIds.length === 0) {
           completedSessions.add(sessionId);
           continue;
         }
