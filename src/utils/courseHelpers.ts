@@ -242,3 +242,9 @@ export const getCoursePerformanceData = (
     at_risk_count,
   };
 };
+
+/** True when a level/module title is a "not applicable" placeholder like "NA" or "N/A". */
+export function isNotApplicableTitle(title?: string | null): boolean {
+  if (!title) return false;
+  return title.replace(/[\s./\-]/g, '').toLowerCase() === 'na';
+}

@@ -1,3 +1,4 @@
+import { isNotApplicableTitle } from '@/utils/courseHelpers';
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
@@ -95,7 +96,7 @@ export function ManagementCoursesView() {
         const selectedSessionIds = assignment?.selected_session_ids as string[] | null;
 
         const courseModules = modules
-          .filter(m => m.course_id === course.id)
+          .filter(m => m.course_id === course.id && !isNotApplicableTitle(m.title))
           .filter(m => !selectedModuleIds || selectedModuleIds.includes(m.id));
 
         return {

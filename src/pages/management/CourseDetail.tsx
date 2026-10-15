@@ -1,3 +1,4 @@
+import { isNotApplicableTitle } from '@/utils/courseHelpers';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -48,7 +49,7 @@ export default function ManagementCourseDetail() {
         .order('display_order');
       const { data: modules } = await modulesQuery;
 
-      const filteredModules = (modules || []).filter(m => !selectedModuleIds || selectedModuleIds.includes(m.id));
+      const filteredModules = (modules || []).filter(m => !isNotApplicableTitle(m.title)).filter(m => !selectedModuleIds || selectedModuleIds.includes(m.id));
       const moduleIds = filteredModules.map(m => m.id);
 
       // Fetch sessions
