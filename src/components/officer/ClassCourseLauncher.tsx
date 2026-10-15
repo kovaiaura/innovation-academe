@@ -208,6 +208,12 @@ export function ClassCourseLauncher({ classId, className }: ClassCourseLauncherP
                     <span className="text-xs text-muted-foreground">{doneSessions} / {totalSessions} sessions marked</span>
                   </div>
                   <Progress value={pct} className="h-2" />
+                  {progressLoading && (
+                    <p className="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Calculating progress…</p>
+                  )}
+                  {progressQ.isError && (
+                    <button type="button" className="text-xs text-destructive underline" onClick={() => progressQ.refetch()}>Couldn't load progress — retry</button>
+                  )}
                   <div className="flex flex-wrap gap-2 pt-1">
                     <Badge variant="outline" className="gap-1"><CheckCircle2 className="h-3 w-3" />Levels done {levelsDone} / {levels.length}</Badge>
                     <Badge variant="outline" className="gap-1"><BookOpen className="h-3 w-3" />{unlocked} of {levels.length} unlocked</Badge>
@@ -260,7 +266,7 @@ export function ClassCourseLauncher({ classId, className }: ClassCourseLauncherP
                   })}
                 </div>
 
-                <Button className="mt-auto w-full" onClick={() => handleLaunchCourse(course.id, assignment.id)} disabled={unlocked === 0}>
+                <Button className="mt-auto w-full" onClick={() => handleLaunchCourse(course.id, assignment.id)} disabled={!progressLoading && !progressQ.isError && unlocked === 0}>
                   <PlayCircle className="h-4 w-4 mr-2" />
                   {doneSessions > 0 ? 'Continue Teaching' : 'Start Teaching'}
                 </Button>
