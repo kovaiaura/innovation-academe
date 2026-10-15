@@ -76,3 +76,19 @@ WHERE a.student_id = b.student_id
 
 CREATE UNIQUE INDEX IF NOT EXISTS student_certificates_unique_activity
   ON public.student_certificates (student_id, activity_type, activity_id);
+
+-- ===================================================================
+-- 6. Speed indexes for progress and certificate screens. Re-runnable.
+--    Fixes "statement timeout" on the Certificates page and slow
+--    officer Courses tab.
+-- ===================================================================
+CREATE INDEX IF NOT EXISTS idx_student_certificates_student ON public.student_certificates (student_id);
+CREATE INDEX IF NOT EXISTS idx_csc_assignment ON public.class_session_completions (class_assignment_id);
+CREATE INDEX IF NOT EXISTS idx_csc_class ON public.class_session_completions (class_id);
+CREATE INDEX IF NOT EXISTS idx_csc_student ON public.class_session_completions (student_id);
+CREATE INDEX IF NOT EXISTS idx_scc_assignment_student ON public.student_content_completions (class_assignment_id, student_id);
+CREATE INDEX IF NOT EXISTS idx_cma_class_assignment ON public.class_module_assignments (class_assignment_id);
+CREATE INDEX IF NOT EXISTS idx_csa_module_assignment ON public.class_session_assignments (class_module_assignment_id);
+CREATE INDEX IF NOT EXISTS idx_course_content_session_id ON public.course_content (session_id);
+CREATE INDEX IF NOT EXISTS idx_cca_class ON public.course_class_assignments (class_id);
+CREATE INDEX IF NOT EXISTS idx_students_class ON public.students (class_id);

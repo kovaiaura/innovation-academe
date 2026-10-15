@@ -57,14 +57,16 @@ async function readIn<T>(admin: any, table: string, select: string, col: string,
 const maxDate = (a: string | null, b: string | null) => (!a ? b : !b ? a : a > b ? a : b);
 
 async function processClass(admin: any, classId: string, onlyStudents?: string[]) {
-  const result = { classId, levelIssued: 0, courseIssued: 0, missingTemplate: false };
+  const result = { classId, levelIssued: 0, courseIssued: 0, missingTemplate: false, completeLevels: 0, alreadyIssued: 0, studentsWithoutUserId: 0 };
 
   const { data: cls } = await admin.from('classes').select('id, institution_id').eq('id', classId).maybeSingle();
   if (!cls) return result;
 
   let studentQ = admin.from('students').select('id, user_id').eq('class_id', classId).eq('status', 'active');
   const students = ((await studentQ).data || []) as { id: string; user_id: string | null }[];
-  const targets = students.filter(s => s.user_id && (!onlyStudents || onlyStudents.includes(s.id)));
+  const scoped = students.filter(s => !onlyStudents || onlyStudents.includes(s.id));
+  result.studentsWithoutUserId = scoped.filter(s => !s.user_id).length;
+  const targets = scoped.filter(s => s.user_id);
   if (!targets.length) return result;
 
   const { data: cas } = await admin
@@ -148,9 +150,10 @@ async function processClass(admin: any, classId: string, onlyStudents?: string[]
         }
         if (!levelDone) { allLevelsDone = false; continue; }
         courseDate = maxDate(courseDate, levelDate);
+        result.completeLevels++;
 
         const key = `${st.user_id}|level|${l.module_id}`;
-        if (have.has(key)) continue;
+        if (have.has(key)) { result.alreadyIssued++; continue; }
         const own = l.course_modules?.certificate_template_id;
         const tpl = own && activeIds.has(own) ? own : levelFallback;
         if (!tpl) { result.missingTemplate = true; continue; }
@@ -252,6 +255,11 @@ Deno.serve(async (req) => {
       levelIssued,
       courseIssued,
       missingTemplate: results.some(r => r.missingTemplate),
+      reasons: {
+        completeLevels: results.reduce((s, r) => s + r.completeLevels, 0),
+        alreadyIssued: results.reduce((s, r) => s + r.alreadyIssued, 0),
+        studentsWithoutUserId: results.reduce((s, r) => s + r.studentsWithoutUserId, 0),
+      },
     });
   } catch (err) {
     console.error('issue-completion-certificates error', err);
