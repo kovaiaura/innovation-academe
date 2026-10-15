@@ -15,3 +15,6 @@
 - [ ] Verify the stored 12 MB course PDF renders in the signed-in viewer (blocked until a preview user session is available).
 - [x] Apply the institute-wide academic year selection across academic, analytics, event, project, award, and dashboard data.
 - [x] Configure current and previous academic-year labels and start/end dates per institute; apply selected periods to year-sensitive analytics, activity views, and marking tools.
+
+- [x] Quick bulk marking reads all existing marks (no repeat offers); officer Courses tab shows % and marked sessions; level/course certificates auto-issue from templates with the real completion date (also from CEO Recalculate Progress).
+- [ ] Verify certificate issuing with a real signed-in officer and student (blocked: no preview session for the requesting user).

@@ -61,3 +61,18 @@ DROP POLICY IF EXISTS "Management read own institution report files" ON storage.
 CREATE POLICY "Management read own institution report files" ON storage.objects FOR SELECT TO authenticated
 USING (bucket_id = 'activity-reports' AND public.has_role(auth.uid(),'management')
   AND (storage.foldername(name))[1] = public.get_user_institution_id(auth.uid())::text);
+
+-- ===================================================================
+-- 5. Certificates: one certificate per student per level/course.
+--    Removes duplicate certificates (keeps the earliest), then adds the
+--    unique rule the automatic certificate issuing relies on. Re-runnable.
+-- ===================================================================
+DELETE FROM public.student_certificates a
+USING public.student_certificates b
+WHERE a.student_id = b.student_id
+  AND a.activity_type = b.activity_type
+  AND a.activity_id = b.activity_id
+  AND (a.created_at, a.id) > (b.created_at, b.id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS student_certificates_unique_activity
+  ON public.student_certificates (student_id, activity_type, activity_id);
