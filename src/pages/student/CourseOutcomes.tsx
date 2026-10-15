@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const StudentCourseOutcomes = () => {
   const { user } = useAuth();
-  const { data, isLoading } = useCourseOutcomeAnalytics({ studentId: user?.id });
+  const { data, isLoading, isError, refetch } = useCourseOutcomeAnalytics({ studentId: user?.id, institutionId: user?.institution_id, enabled: !!user?.id && !!user?.institution_id });
 
   return (
     <Layout>
@@ -14,7 +14,7 @@ const StudentCourseOutcomes = () => {
           <h1 className="text-2xl font-bold">My Course Outcomes</h1>
           <p className="text-muted-foreground">See your strengths and areas that need improvement</p>
         </div>
-        <CourseOutcomeAnalytics data={data || { courseAccuracies: [], moduleAccuracies: [], sessionAccuracies: [], strengths: [], weaknesses: [] }} isLoading={isLoading} />
+        <CourseOutcomeAnalytics data={data} isLoading={isLoading} isError={isError} onRetry={() => { void refetch(); }} personal />
       </div>
     </Layout>
   );

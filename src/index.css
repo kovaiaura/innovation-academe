@@ -38,6 +38,12 @@ All colors MUST be HSL.
 
     --radius: 0.5rem;
 
+    --outcome-learning: 183 78% 30%;
+    --outcome-assessment: 335 65% 43%;
+    --outcome-success: 151 65% 29%;
+    --outcome-attention: 28 85% 35%;
+    --outcome-topic: 183 45% 94%;
+
     --sidebar-background: 0 0% 98%;
 
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -56,6 +62,11 @@ All colors MUST be HSL.
   }
 
   .dark {
+    --outcome-learning: 177 60% 65%;
+    --outcome-assessment: 335 75% 75%;
+    --outcome-success: 151 55% 65%;
+    --outcome-attention: 36 85% 70%;
+    --outcome-topic: 183 30% 16%;
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
