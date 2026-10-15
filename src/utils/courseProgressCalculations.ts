@@ -1,5 +1,29 @@
 import { supabase } from '@/integrations/supabase/client';
 
+/** Read every matching row: chunks the id list and pages past the 1000-row limit. */
+export async function fetchAllIn<T = any>(
+  table: string,
+  select: string,
+  col: string,
+  ids: string[],
+  extra?: (q: any) => any
+): Promise<T[]> {
+  const out: T[] = [];
+  const unique = [...new Set(ids.filter(Boolean))];
+  for (let i = 0; i < unique.length; i += 100) {
+    const chunk = unique.slice(i, i + 100);
+    for (let from = 0; ; from += 1000) {
+      let q: any = (supabase.from(table as any) as any).select(select).in(col, chunk);
+      if (extra) q = extra(q);
+      const { data, error } = await q.order('id', { ascending: true }).range(from, from + 999);
+      if (error) throw error;
+      out.push(...((data || []) as T[]));
+      if (!data || data.length < 1000) break;
+    }
+  }
+  return out;
+}
+
 /**
  * Shared session-based course progress utilities.
  *
@@ -41,31 +65,15 @@ export async function buildSessionCompletionContexts(
   const result = new Map<string, SessionCompletionContext>();
   if (classAssignmentIds.length === 0) return result;
 
-  const { data: assignments } = await supabase
-    .from('course_class_assignments')
-    .select('id, class_id')
-    .in('id', classAssignmentIds);
+  const assignments = await fetchAllIn('course_class_assignments', 'id, class_id', 'id', classAssignmentIds);
 
-  const { data: moduleAssigns } = await supabase
-    .from('class_module_assignments')
-    .select('id, class_assignment_id')
-    .in('class_assignment_id', classAssignmentIds);
+  const moduleAssigns = await fetchAllIn('class_module_assignments', 'id, class_assignment_id', 'class_assignment_id', classAssignmentIds);
 
   const moduleIds = (moduleAssigns || []).map((m: any) => m.id);
-  const { data: sessionAssigns } = moduleIds.length
-    ? await supabase
-        .from('class_session_assignments')
-        .select('session_id, class_module_assignment_id')
-        .in('class_module_assignment_id', moduleIds)
-    : { data: [] as any[] };
+  const sessionAssigns = await fetchAllIn('class_session_assignments', 'id, session_id, class_module_assignment_id', 'class_module_assignment_id', moduleIds);
 
   const sessionIds = [...new Set((sessionAssigns || []).map((s: any) => s.session_id))];
-  const { data: contentItems } = sessionIds.length
-    ? await supabase
-        .from('course_content')
-        .select('id, session_id')
-        .in('session_id', sessionIds)
-    : { data: [] as any[] };
+  const contentItems = await fetchAllIn('course_content', 'id, session_id', 'session_id', sessionIds as string[]);
 
   // session -> content ids
   const sessionContent = new Map<string, string[]>();
@@ -117,15 +125,16 @@ export async function buildSessionCompletionContexts(
  * Returns map studentRecordId -> Set<sessionId>.
  */
 async function loadOfficerMarkedSessionsByStudent(
-  classIds: string[]
+  classIds: string[],
+  studentIds?: string[]
 ): Promise<Map<string, Set<string>>> {
   const result = new Map<string, Set<string>>();
   if (classIds.length === 0) return result;
 
-  const { data } = await supabase
-    .from('class_session_completions')
-    .select('student_id, session_id')
-    .in('class_id', classIds);
+  const data = studentIds?.length
+    ? await fetchAllIn('class_session_completions', 'id, student_id, session_id', 'student_id', studentIds,
+        q => q.in('class_id', classIds))
+    : await fetchAllIn('class_session_completions', 'id, student_id, session_id', 'class_id', classIds);
 
   (data || []).forEach((row: any) => {
     if (!row?.student_id || !row?.session_id) return;
@@ -168,17 +177,13 @@ export async function computeStudentSessionProgress(
 
   let completions: { student_id: string; content_id: string; class_assignment_id: string }[] = [];
   if (allContentIds.size > 0) {
-    const { data } = await supabase
-      .from('student_content_completions')
-      .select('student_id, content_id, class_assignment_id')
-      .in('class_assignment_id', allAssignmentIds)
-      .in('student_id', studentRecordIds);
-    completions = (data || []) as any;
+    completions = await fetchAllIn('student_content_completions', 'id, student_id, content_id, class_assignment_id',
+      'student_id', studentRecordIds, q => q.in('class_assignment_id', allAssignmentIds));
   }
 
   // Also load officer-marked session completions for the involved classes
   const classIds = [...new Set(contexts.map(c => c.classId))];
-  const markedBySession = await loadOfficerMarkedSessionsByStudent(classIds);
+  const markedBySession = await loadOfficerMarkedSessionsByStudent(classIds, studentRecordIds);
 
   // Build set per (student, classAssignment) of completed content ids
   const completedByStudentAssign = new Map<string, Set<string>>();
