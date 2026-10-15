@@ -1,3 +1,4 @@
+import { isNotApplicableTitle } from '@/utils/courseHelpers';
 import { Atom, Bot, CircuitBoard, Cpu, ChevronDown, Layers, Leaf, LockKeyhole, Radio, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +20,7 @@ const topicIcon = (title: string) => {
 
 export function OutcomeCourseItem({ course, data, open, onToggle, personal }: { course: OutcomeCourse; data: CourseOutcomeData; open: boolean; onToggle: () => void; personal: boolean }) {
   const Icon = topicIcon(course.course_title);
-  const modules = data.moduleAccuracies.filter(m => m.course_id === course.course_id);
+  const modules = data.moduleAccuracies.filter(m => m.course_id === course.course_id && !isNotApplicableTitle(m.module_title));
   const status = !course.total_questions ? 'Not assessed yet' : course.total_questions < 5 ? 'Early assessment evidence' : isRevisionTopic(course) ? 'Revision focus' : 'Strong understanding';
   return <Collapsible open={open} onOpenChange={onToggle} className="rounded-lg border bg-card min-w-0 overflow-hidden">
     <div className="p-5 space-y-5">

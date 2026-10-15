@@ -1,3 +1,4 @@
+import { isNotApplicableTitle } from '@/utils/courseHelpers';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -95,7 +96,7 @@ export default function StudentCourseDetail() {
           course_code: course.course_code,
           description: course.description
         }} 
-        modules={modules}
+        modules={modules.filter(m => !isNotApplicableTitle(m.module?.title))}
       />
     </Layout>
   );

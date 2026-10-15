@@ -1,3 +1,5 @@
+import { isNotApplicableTitle } from '@/utils/courseHelpers';
+import { QuickBulkMarkCard } from './QuickBulkMarkCard';
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, BookOpen, ChevronRight, CheckCircle2, Users, ListChecks } from 'lucide-react';
 import { useSessionCompletion } from '@/hooks/useSessionCompletion';
 import { toast } from 'sonner';
@@ -97,10 +98,13 @@ export function BulkMarkCompleteTab({ classId, className }: BulkMarkCompleteTabP
   // Group sessions by module
   const moduleTree = useMemo(() => {
     if (!moduleAssignments || !sessionAssignments) return [];
-    return moduleAssignments.map(mod => ({
-      ...mod,
-      sessions: sessionAssignments.filter(s => s.class_module_assignment_id === mod.id)
-    }));
+    return moduleAssignments
+      .filter(mod => !isNotApplicableTitle(mod.course_modules?.title))
+      .map(mod => ({
+        ...mod,
+        sessions: sessionAssignments.filter(s => s.class_module_assignment_id === mod.id)
+      }))
+      .sort((a, b) => (a.sessions.length === 0 ? 1 : 0) - (b.sessions.length === 0 ? 1 : 0));
   }, [moduleAssignments, sessionAssignments]);
 
   // Toggle helpers
@@ -237,6 +241,8 @@ export function BulkMarkCompleteTab({ classId, className }: BulkMarkCompleteTabP
         </CardContent>
       </Card>
 
+      <QuickBulkMarkCard classId={classId} markDate={markDate} students={students || []} />
+
       {/* Course Selector */}
       <Card>
         <CardHeader className="pb-3">
@@ -290,7 +296,7 @@ export function BulkMarkCompleteTab({ classId, className }: BulkMarkCompleteTabP
                   No levels found for this course
                 </p>
               ) : (
-                <ScrollArea className="max-h-[400px]">
+                <div className="h-[420px] overflow-y-auto overscroll-contain rounded-md">
                   <div className="space-y-2 pr-3">
                     {moduleTree.map(mod => {
                       const moduleSessions = mod.sessions || [];
@@ -305,7 +311,7 @@ export function BulkMarkCompleteTab({ classId, className }: BulkMarkCompleteTabP
                           open={isExpanded}
                           onOpenChange={() => toggleModule(mod.id)}
                         >
-                          <div className="flex items-center gap-2 p-2 rounded-md border bg-muted/30 hover:bg-muted/50 transition-colors">
+                          <div className={`flex items-center gap-2 p-2 rounded-md border bg-muted/30 ${moduleSessions.length === 0 ? 'opacity-50' : ''}`} >
                             <Checkbox
                               checked={allSelected}
                               // @ts-ignore
@@ -347,7 +353,7 @@ export function BulkMarkCompleteTab({ classId, className }: BulkMarkCompleteTabP
                       );
                     })}
                   </div>
-                </ScrollArea>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -382,7 +388,7 @@ export function BulkMarkCompleteTab({ classId, className }: BulkMarkCompleteTabP
                   No active students in this class
                 </p>
               ) : (
-                <ScrollArea className="max-h-[400px]">
+                <div className="h-[420px] overflow-y-auto overscroll-contain rounded-md">
                   <div className="space-y-1 pr-3">
                     {students.map(student => (
                       <div
@@ -402,7 +408,7 @@ export function BulkMarkCompleteTab({ classId, className }: BulkMarkCompleteTabP
                       </div>
                     ))}
                   </div>
-                </ScrollArea>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -425,7 +431,7 @@ export function BulkMarkCompleteTab({ classId, className }: BulkMarkCompleteTabP
       )}
 
       {selectedCourseAssignmentId && (
-        <div className="flex justify-end">
+        <div className="sticky bottom-0 z-10 -mx-1 flex justify-end bg-background/95 px-1 py-3 backdrop-blur">
           <Button
             size="lg"
             onClick={handleBulkMark}
