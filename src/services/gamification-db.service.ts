@@ -876,7 +876,7 @@ export const gamificationDbService = {
       .from('student_certificates')
       .select(`
         *,
-        certificate_templates (name, category, template_image_url)
+        certificate_templates (id, name, category)
       `)
       .eq('student_id', studentId)
       .order('issued_date', { ascending: false });

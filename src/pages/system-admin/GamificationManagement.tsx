@@ -85,18 +85,30 @@ export default function GamificationManagement() {
       }
       let certs = 0;
       let missingTemplate = false;
+      let completeLevels = 0;
+      let already = 0;
+      let outdated = false;
+      let failed = 0;
       for (let i = 0; i < classIds.length; i += 5) {
         setProgressStatus(`${progressText} Issuing certificates… ${Math.min(i + 5, classIds.length)} / ${classIds.length} classes`);
         const { data: c, error: certErr } = await supabase.functions.invoke('issue-completion-certificates', {
           body: { classIds: classIds.slice(i, i + 5) },
         });
-        if (certErr) { console.error('Certificate issuance failed', certErr); continue; }
-        certs += ((c as any)?.levelIssued || 0) + ((c as any)?.courseIssued || 0);
-        missingTemplate = missingTemplate || !!(c as any)?.missingTemplate;
+        if (certErr) { console.error('Certificate issuance failed', certErr); failed++; continue; }
+        const r = c as any;
+        if (!r || r.levelIssued === undefined) { outdated = true; continue; }
+        certs += (r.levelIssued || 0) + (r.courseIssued || 0);
+        missingTemplate = missingTemplate || !!r.missingTemplate;
+        completeLevels += r.reasons?.completeLevels || 0;
+        already += r.reasons?.alreadyIssued || 0;
       }
       setProgressStatus(
         `${progressText} ${certs} certificate${certs === 1 ? '' : 's'} issued.` +
-          (missingTemplate ? ' Some completed levels/courses have no active certificate template.' : '')
+          (already ? ` ${already} already existed.` : '') +
+          (missingTemplate ? ' Some completed levels/courses have no active certificate template.' : '') +
+          (outdated ? ' The certificate function on the server is out of date — redeploy it.' : '') +
+          (failed ? ` ${failed} batch(es) failed — check the certificate function.` : '') +
+          (!outdated && !failed && completeLevels === 0 ? ' No student has fully completed a level yet.' : '')
       );
       toast.success('Course progress recalculated');
 
