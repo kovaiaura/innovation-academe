@@ -24,7 +24,7 @@ interface DBCertificate {
   certificate_templates?: {
     name: string;
     category: string;
-    template_image_url: string | null;
+    template_image_url?: string | null;
   };
 }
 
