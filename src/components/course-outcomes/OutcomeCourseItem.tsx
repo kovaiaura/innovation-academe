@@ -20,7 +20,7 @@ const topicIcon = (title: string) => {
 export function OutcomeCourseItem({ course, data, open, onToggle, personal }: { course: OutcomeCourse; data: CourseOutcomeData; open: boolean; onToggle: () => void; personal: boolean }) {
   const Icon = topicIcon(course.course_title);
   const modules = data.moduleAccuracies.filter(m => m.course_id === course.course_id);
-  const status = !course.total_questions ? 'Not assessed yet' : isRevisionTopic(course) ? 'Revision focus' : 'Strong understanding';
+  const status = !course.total_questions ? 'Not assessed yet' : course.total_questions < 5 ? 'Early assessment evidence' : isRevisionTopic(course) ? 'Revision focus' : 'Strong understanding';
   return <Collapsible open={open} onOpenChange={onToggle} className="rounded-lg border bg-card min-w-0 overflow-hidden">
     <div className="p-5 space-y-5">
       <div className="flex items-start gap-3"><div className="outcome-topic-icon shrink-0"><Icon className="h-6 w-6" /></div><div className="min-w-0 flex-1"><h3 className="font-semibold text-base break-words">{course.course_title}</h3><Badge variant="outline" className="mt-2 font-normal whitespace-normal">{status}</Badge></div></div>
