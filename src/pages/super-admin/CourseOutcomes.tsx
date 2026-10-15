@@ -2,26 +2,39 @@ import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { CourseOutcomeAnalytics } from '@/components/course-outcomes/CourseOutcomeAnalytics';
 import { useCourseOutcomeAnalytics } from '@/hooks/useCourseOutcomeAnalytics';
-import { supabase } from '@/integrations/supabase/client';
+import { readOutcomeRows } from '@/services/course-outcomes.service';
+import { getDefaultAcademicYear, getDefaultAcademicYearPeriods, type AcademicYearPeriodsConfig } from '@/utils/academicYear';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 
 const AdminCourseOutcomes = () => {
-  const [institutions, setInstitutions] = useState<{ id: string; name: string }[]>([]);
+  const [institutions, setInstitutions] = useState<{ id: string; name: string; settings: unknown }[]>([]);
   const [classes, setClasses] = useState<{ id: string; class_name: string; section: string | null }[]>([]);
   const [selectedInstitution, setSelectedInstitution] = useState<string>('all');
   const [yearMode, setYearMode] = useState<'current' | 'previous'>('current');
   const [selectedClass, setSelectedClass] = useState<string>('all');
 
   useEffect(() => {
-    supabase.from('institutions').select('id, name').order('name').then(({ data }) => setInstitutions(data || []));
+    let active = true;
+    readOutcomeRows('institutions').then(data => { if (active) setInstitutions(data.sort((a, b) => a.name.localeCompare(b.name))); }).catch(() => { if (active) setInstitutions([]); });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
     if (selectedInstitution === 'all') { setClasses([]); return; }
-    supabase.from('classes').select('id, class_name, section').eq('institution_id', selectedInstitution).order('class_name')
-      .then(({ data }) => setClasses(data || []));
+    let active = true;
+    setClasses([]);
+    readOutcomeRows('classes', q => q.eq('institution_id', selectedInstitution)).then(data => { if (active) setClasses(data.sort((a, b) => a.class_name.localeCompare(b.class_name))); }).catch(() => { if (active) setClasses([]); });
+    return () => { active = false; };
   }, [selectedInstitution]);
+
+  const settings = institutions.find(i => i.id === selectedInstitution)?.settings as { academic_year?: string; academic_year_periods?: AcademicYearPeriodsConfig } | undefined;
+  const defaults = getDefaultAcademicYearPeriods(settings?.academic_year || getDefaultAcademicYear());
+  const periodLabel = (mode: 'current' | 'previous') => {
+    if (selectedInstitution === 'all') return mode === 'current' ? 'Current year · Each institute' : 'Previous year · Each institute';
+    const period = settings?.academic_year_periods?.[mode] || defaults[mode];
+    return `${period.academic_year} (${mode === 'current' ? 'Current' : 'Previous'})`;
+  };
 
   const { data, isLoading, isError, refetch } = useCourseOutcomeAnalytics({
     yearMode,
@@ -40,7 +53,7 @@ const AdminCourseOutcomes = () => {
         <div className="flex flex-wrap gap-4">
           <div className="space-y-1 w-full sm:w-auto">
             <Label className="text-xs">Academic period</Label>
-            <Select value={yearMode} onValueChange={v => setYearMode(v === 'previous' ? 'previous' : 'current')}><SelectTrigger className="w-full sm:w-[200px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="current">Current year</SelectItem><SelectItem value="previous">Previous year</SelectItem></SelectContent></Select>
+            <Select value={yearMode} onValueChange={v => setYearMode(v === 'previous' ? 'previous' : 'current')}><SelectTrigger className="w-full sm:w-[270px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="current">{periodLabel('current')}</SelectItem><SelectItem value="previous">{periodLabel('previous')}</SelectItem></SelectContent></Select>
           </div>
           <div className="space-y-1 w-full sm:w-auto">
             <Label className="text-xs">Institution</Label>
