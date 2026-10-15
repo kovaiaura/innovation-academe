@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Loader2, BookOpen, ChevronRight, CheckCircle2, Users, ListChecks } from 'lucide-react';
-import { useSessionCompletion } from '@/hooks/useSessionCompletion';
+import { useSessionCompletion, issueCertificatesForClass } from '@/hooks/useSessionCompletion';
 import { toast } from 'sonner';
 
 interface BulkMarkCompleteTabProps {
@@ -190,7 +190,7 @@ export function BulkMarkCompleteTab({ classId, className }: BulkMarkCompleteTabP
         undefined, // timetableAssignmentId
         moduleAssignment?.module_id,
         selectedAssignment?.course_id,
-        { silent: true, date: markDate }
+        { silent: true, date: markDate, skipCertificates: true }
       );
 
       if (success) successCount++;
@@ -198,6 +198,7 @@ export function BulkMarkCompleteTab({ classId, className }: BulkMarkCompleteTabP
     }
 
     setIsProcessing(false);
+    if (successCount > 0) void issueCertificatesForClass(classId, studentArr);
     if (successCount === total) {
       toast.success(`All ${total} session${total !== 1 ? 's' : ''} marked complete for ${studentArr.length} student${studentArr.length !== 1 ? 's' : ''}`);
       setSelectedSessionIds(new Set());

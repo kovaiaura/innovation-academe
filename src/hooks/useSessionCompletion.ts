@@ -144,7 +144,7 @@ export function useSessionCompletion(): SessionCompletionResult {
 
       // 5. Issue any level/course certificates now earned (one request per action)
       if (!options?.skipCertificates) {
-        await issueCertificatesForClass(classId, studentIds, { silent: true });
+        await issueCertificatesForClass(classId, studentIds, { silent });
       }
 
       // 6. Invalidate analytics/dashboard caches so progress updates everywhere
