@@ -19,6 +19,8 @@ export interface MarkSessionOptions {
   date?: string;
   /** Existing class_session_attendance row to update instead of creating one. */
   attendanceId?: string;
+  /** Skip automatic certificate issuance (callers marking in bulk issue once at the end). */
+  skipCertificates?: boolean;
 }
 
 interface SessionCompletionResult {
@@ -140,10 +142,9 @@ export function useSessionCompletion(): SessionCompletionResult {
 
 
 
-      // 5. Trigger certificate issuance via edge function (if module/course info available)
-      if (moduleId && courseId) {
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        await triggerCertificateIssuance(studentIds, classAssignmentId, moduleId, courseId);
+      // 5. Issue any level/course certificates now earned (one request per action)
+      if (!options?.skipCertificates) {
+        await issueCertificatesForClass(classId, studentIds, { silent: true });
       }
 
       // 6. Invalidate analytics/dashboard caches so progress updates everywhere
@@ -179,48 +180,37 @@ export function useSessionCompletion(): SessionCompletionResult {
 }
 
 /**
- * Triggers certificate issuance via edge function for each student
+ * Issues level/course completion certificates for students of a class once
+ * their allocated sessions are complete. Safe to call repeatedly.
  */
-async function triggerCertificateIssuance(
-  studentRecordIds: string[],
-  classAssignmentId: string,
-  moduleId: string,
-  courseId: string
-) {
+export async function issueCertificatesForClass(
+  classId: string,
+  studentIds?: string[],
+  opts?: { silent?: boolean }
+): Promise<{ issued: number; missingTemplate: boolean }> {
   try {
-    // Get student user IDs (profiles.id) for each student record
-    const { data: students } = await supabase
-      .from('students')
-      .select('id, user_id, institution_id')
-      .in('id', studentRecordIds);
-
-    if (!students || students.length === 0) return;
-
-    // Call edge function for each student
-    for (const student of students) {
-      if (!student.user_id) continue; // Skip students without linked user accounts
-
-      try {
-        const { error } = await supabase.functions.invoke('issue-completion-certificates', {
-          body: {
-            studentRecordId: student.id,
-            studentUserId: student.user_id,
-            classAssignmentId,
-            courseId,
-            moduleId,
-            institutionId: student.institution_id
-          }
-        });
-
-        if (error) {
-          console.error('Failed to issue certificate for student:', student.id, error);
-        }
-      } catch (err) {
-        console.error('Error calling certificate edge function for student:', student.id, err);
-      }
+    const ids = studentIds && studentIds.length ? studentIds : undefined;
+    let issued = 0;
+    let missingTemplate = false;
+    // studentIds is capped server-side at 500 per call
+    const batches = ids ? Array.from({ length: Math.ceil(ids.length / 500) }, (_, i) => ids.slice(i * 500, i * 500 + 500)) : [undefined];
+    for (const batch of batches) {
+      const { data, error } = await supabase.functions.invoke('issue-completion-certificates', {
+        body: { classId, ...(batch ? { studentIds: batch } : {}) },
+      });
+      if (error) throw error;
+      issued += ((data as any)?.levelIssued || 0) + ((data as any)?.courseIssued || 0);
+      missingTemplate = missingTemplate || !!(data as any)?.missingTemplate;
     }
+    if (!opts?.silent) {
+      if (issued > 0) toast.success(`${issued} certificate${issued === 1 ? '' : 's'} issued to students`);
+      else if (missingTemplate) toast.warning('Levels completed, but no certificate template is set');
+    }
+    return { issued, missingTemplate };
   } catch (err) {
-    console.error('Error in triggerCertificateIssuance:', err);
+    console.error('Certificate issuance failed:', err);
+    if (!opts?.silent) toast.error('Could not issue certificates right now');
+    return { issued: 0, missingTemplate: false };
   }
 }
 
