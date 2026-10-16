@@ -828,7 +828,7 @@ export const gamificationDbService = {
         default_width: template.default_width || 1200,
         default_height: template.default_height || 900,
         name_position: template.name_position || { x: 600, y: 450, fontSize: 48, color: '#1e3a8a', fontFamily: 'serif' },
-        date_position: template.date_position || { x: 600, y: 520, fontSize: 24, color: '#374151' },
+        date_position: template.date_position || null,
         is_active: template.is_active ?? true,
         created_by: user?.user?.id
       })
