@@ -186,7 +186,7 @@ export function CertificatePreviewDialog({
 
   const drawTextOnCertificate = (ctx: CanvasRenderingContext2D, tmpl: any) => {
     const namePos = tmpl.name_position || { x: 600, y: 450, fontSize: 48, color: '#1e3a8a', fontFamily: 'serif' };
-    const datePos = tmpl.date_position || { x: 600, y: 520, fontSize: 24, color: '#374151' };
+    const datePos = tmpl.date_position || null;
     
     // Draw student name
     ctx.font = `${namePos.fontSize}px ${namePos.fontFamily || 'serif'}`;
@@ -195,15 +195,17 @@ export function CertificatePreviewDialog({
     ctx.textBaseline = 'middle';
     ctx.fillText(certificate.student_name, namePos.x, namePos.y);
 
-    // Draw date
-    ctx.font = `${datePos.fontSize}px serif`;
-    ctx.fillStyle = datePos.color;
-    const date = new Date(certificate.completion_date).toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
-    ctx.fillText(date, datePos.x, datePos.y);
+    // Draw date only when the template has date display enabled
+    if (datePos) {
+      ctx.font = `${datePos.fontSize}px serif`;
+      ctx.fillStyle = datePos.color;
+      const date = new Date(certificate.completion_date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      ctx.fillText(date, datePos.x, datePos.y);
+    }
 
     // Draw course name if position exists
     const courseNamePos = tmpl.course_name_position;
