@@ -97,11 +97,35 @@
 .learning-rank-medal { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: 126px; min-height: 126px; margin-block: 22px 18px; border: 2px solid hsl(var(--learning-tone) / .2); border-radius: 50%; background: hsl(var(--card)); }
 .learning-rank-medal strong { font-size: 34px; line-height: 1; overflow-wrap: anywhere; max-width: 110px; }
 .learning-own-rank > p:last-child { font-size: 12px; color: hsl(var(--muted-foreground)); }
+/* Continue learning: up to 4 courses, side panel sits below as a row */
+.learning-main-grid { grid-template-columns: minmax(0, 1fr); }
+.learning-side { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; padding-top: 0; }
+.learning-project-summary { margin-top: 0; align-self: center; }
+.learning-course-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.learning-course-image { height: 130px; }
+.learning-course-body { padding: 16px; }
+.learning-course h3 { font-size: 16px; min-height: 45px; }
+.learning-welcome h1 { font-size: clamp(24px, 3vw, 36px); }
+@media (max-width: 1280px) {
+  .learning-course-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .learning-course-image { height: 150px; }
+}
 @media (max-width: 1100px) {
-  .learning-main-grid { grid-template-columns: minmax(0, 1fr); }
-  .learning-side { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; padding-top: 0; }
-  .learning-project-summary { margin-top: 0; align-self: center; }
   .learning-stat { gap: 8px; padding-inline: 10px; }
+}
+@media (max-width: 900px) {
+  .learning-stat-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 18px; }
+  .learning-stat:nth-child(2) { border-right: 0; }
+  .learning-stat:nth-child(3) { padding-left: 0; }
+  .learning-companion { width: 170px; height: 170px; right: 10px; }
+  .learning-welcome-copy { max-width: calc(100% - 160px); }
+}
+@media (max-width: 420px) {
+  .learning-companion { width: 100px; height: 100px; right: -14px; bottom: 6px; opacity: .9; }
+  .learning-welcome-copy { max-width: calc(100% - 60px); }
+  .learning-welcome { padding: 20px 16px; min-height: 0; }
+  .learning-stat { padding-inline: 6px; }
+  .learning-earned-badges { grid-template-columns: minmax(0, 1fr) !important; }
 }
 @media (max-width: 640px) {
   .learning-achievements-grid { grid-template-columns: minmax(0, 1fr); }

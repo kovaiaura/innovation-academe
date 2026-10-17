@@ -35,7 +35,7 @@ export function DashboardLearningHub(props: DashboardLearningHubProps) {
     const aStarted = a.progressPercentage > 0 ? 1 : 0;
     const bStarted = b.progressPercentage > 0 ? 1 : 0;
     return bStarted - aStarted || b.progressPercentage - a.progressPercentage || a.course.title.localeCompare(b.course.title);
-  }).slice(0, 2);
+  }).slice(0, 4);
   const firstName = props.name?.trim().split(/\s+/)[0] || 'Explorer';
   const stats = [
     { label: 'Total points', value: props.points.toLocaleString(), detail: `+${props.weeklyPoints} this week`, icon: Trophy, tone: 'gold' },
@@ -92,7 +92,7 @@ export function DashboardLearningHub(props: DashboardLearningHubProps) {
                 const course = item.course;
                 const hasUnlockedSession = item.modules.some(module => module.is_unlocked !== false && module.sessions.some(session => session.is_unlocked !== false));
                 return (
-                  <article key={item.id} className={`learning-course learning-tone-${index === 0 ? 'teal' : 'coral'}`}>
+                  <article key={item.id} className={`learning-course learning-tone-${['teal', 'coral', 'gold', 'berry'][index % 4]}`}>
                     <div className="learning-course-image">
                       {course.thumbnail_url ? <StorageImage filePath={course.thumbnail_url} alt={course.title} className="h-full w-full object-cover" /> : <div className="learning-course-placeholder"><BookOpen className="h-12 w-12" /></div>}
                       <span className="learning-course-status">{hasUnlockedSession ? (item.progressPercentage > 0 ? 'In progress' : 'Ready to start') : 'Locked'}</span>
