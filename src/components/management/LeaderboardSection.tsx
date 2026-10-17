@@ -3,8 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trophy, Medal, Loader2 } from 'lucide-react';
-import { gamificationDbService } from '@/services/gamification-db.service';
-import { supabase } from '@/integrations/supabase/client';
+import { useComprehensiveAnalytics } from '@/hooks/useComprehensiveAnalytics';
 
 interface LeaderboardEntry {
   rank: number;
@@ -20,75 +19,25 @@ interface LeaderboardSectionProps {
 }
 
 export function LeaderboardSection({ institutionId }: LeaderboardSectionProps) {
-  const [loading, setLoading] = useState(true);
-  const [overallLeaderboard, setOverallLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [classLeaderboard, setClassLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [classes, setClasses] = useState<{ id: string; class_name: string }[]>([]);
+  const { data, isLoading: loading } = useComprehensiveAnalytics(institutionId);
   const [selectedClass, setSelectedClass] = useState<string>('');
+  const classes = (data?.classPerformance || []).map(c => ({ id: c.class_id, class_name: c.class_name }))
+    .sort((a, b) => a.class_name.localeCompare(b.class_name));
 
   useEffect(() => {
-    if (institutionId) {
-      loadData();
-    }
-  }, [institutionId]);
+    if (!selectedClass && classes.length > 0) setSelectedClass(classes[0].id);
+  }, [classes.length, selectedClass]);
 
-  useEffect(() => {
-    if (selectedClass && institutionId) {
-      loadClassLeaderboard();
-    }
-  }, [selectedClass, institutionId]);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      
-      // Load classes and overall leaderboard in parallel
-      const [classesResult, leaderboardData] = await Promise.all([
-        supabase.from('classes').select('id, class_name').eq('institution_id', institutionId).order('class_name'),
-        gamificationDbService.getInstitutionLeaderboard(institutionId, 10)
-      ]);
-      
-      const classesData = classesResult.data || [];
-      setClasses(classesData);
-      
-      // Set first class as default if available
-      if (classesData.length > 0 && !selectedClass) {
-        setSelectedClass(classesData[0].id);
-      }
-      
-      // Map to LeaderboardEntry format
-      setOverallLeaderboard(leaderboardData.map((s, idx) => ({
-        rank: idx + 1,
-        student_id: s.student_id,
-        student_name: s.student_name,
-        total_points: s.total_points,
-        badges_earned: s.badges_earned,
-        class_name: s.class_name
-      })));
-      
-    } catch (error) {
-      console.error('Error loading leaderboard data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadClassLeaderboard = async () => {
-    try {
-      const leaderboardData = await gamificationDbService.getClassLeaderboard(institutionId, selectedClass, 10);
-      
-      setClassLeaderboard(leaderboardData.map((s, idx) => ({
-        rank: idx + 1,
-        student_id: s.student_id,
-        student_name: s.student_name,
-        total_points: s.total_points,
-        badges_earned: s.badges_earned,
-        class_name: s.class_name
-      })));
-    } catch (error) {
-      console.error('Error loading class leaderboard:', error);
-    }
-  };
+  const toEntry = (s: any): LeaderboardEntry => ({
+    rank: s.rank || 0,
+    student_id: s.student_id,
+    student_name: s.student_name,
+    total_points: s.overall_score,
+    badges_earned: s.badges_count,
+    class_name: s.class_name,
+  });
+  const overallLeaderboard = (data?.topStudents || []).map(toEntry);
+  const classLeaderboard = (data?.classPerformance.find(c => c.class_id === selectedClass)?.topStudents || []).map(toEntry);
 
   const renderLeaderboard = (entries: LeaderboardEntry[], showClass: boolean = false) => {
     if (entries.length === 0) {
@@ -128,7 +77,7 @@ export function LeaderboardSection({ institutionId }: LeaderboardSectionProps) {
             </div>
             <div className="text-right">
               <div className="font-bold text-primary">{entry.total_points}</div>
-              <div className="text-xs text-muted-foreground">pts</div>
+              <div className="text-xs text-muted-foreground">overall</div>
             </div>
           </div>
         ))}
@@ -160,7 +109,7 @@ export function LeaderboardSection({ institutionId }: LeaderboardSectionProps) {
           <Trophy className="h-6 w-6 text-primary" />
           Student Leaderboards
         </h2>
-        <p className="text-sm text-muted-foreground">Top performing students by XP points</p>
+        <p className="text-sm text-muted-foreground">Ranked by overall performance (assessments, assignments, projects, XP)</p>
       </div>
       
       <div className="grid gap-4 md:grid-cols-2">
