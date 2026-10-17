@@ -451,6 +451,27 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
         total_weighted: Math.round((allStudents.reduce((sum, s) => sum + (s.weighted_assessment?.total_weighted || 0), 0) / allStudents.length) * 10) / 10,
       } : { fa1_score: 0, fa2_score: 0, final_score: 0, internal_score: 0, total_weighted: 0 };
 
+      // Save each student's ranks so students can see them on their dashboard
+      const classRankMap = new Map<string, { rank: number; size: number }>();
+      classPerformance.forEach(c => c.allStudents.forEach(s => classRankMap.set(s.student_id, { rank: s.rank || 0, size: c.allStudents.length })));
+      const snapshotRows = sortedAll.filter(s => s.user_id).map(s => ({
+        institution_id: institutionId,
+        academic_year: selectedYear,
+        student_user_id: s.user_id,
+        class_id: s.class_id || null,
+        class_rank: classRankMap.get(s.student_id)?.rank ?? null,
+        class_size: classRankMap.get(s.student_id)?.size ?? null,
+        institute_rank: s.rank ?? null,
+        institute_size: sortedAll.length,
+        overall_score: s.overall_score,
+        updated_at: new Date().toISOString(),
+      }));
+      for (let i = 0; i < snapshotRows.length; i += 500) {
+        void supabase.from('student_rank_snapshots')
+          .upsert(snapshotRows.slice(i, i + 500) as any, { onConflict: 'institution_id,academic_year,student_user_id' })
+          .then(({ error }) => { if (error) console.warn('Rank snapshot not saved:', error.message); });
+      }
+
       return {
         total_students: allStudents.length,
         total_classes: classes?.length || 0,
