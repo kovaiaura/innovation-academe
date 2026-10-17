@@ -37,6 +37,7 @@ export default function StudentDashboard() {
   const { user } = useAuth();
   const { tenantId } = useParams<{ tenantId: string }>();
   const { selectedYear, selectedRange } = useAcademicYear();
+  const [rankInfo, setRankInfo] = useState<{ classSize: number; instituteRank: number; instituteSize: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [gamification, setGamification] = useState<StudentGamification | null>(null);
   const [coursesEnrolled, setCoursesEnrolled] = useState(0);
@@ -105,7 +106,20 @@ export default function StudentDashboard() {
       const weeklyPoints = await getWeeklyPoints(studentId);
       
       // Calculate rank
-      const myRank = leaderboardData.findIndex(s => s.student_id === studentId) + 1 || leaderboardData.length + 1;
+      // Ranks come from the shared Overall-performance ranking (same as Class Toppers)
+      let myRank = 0;
+      if (institutionId) {
+        const { data: snap } = await supabase
+          .from('student_rank_snapshots')
+          .select('class_rank, class_size, institute_rank, institute_size')
+          .eq('institution_id', institutionId)
+          .eq('academic_year', selectedYear)
+          .eq('student_user_id', user.id)
+          .maybeSingle();
+        myRank = snap?.class_rank || 0;
+        setRankInfo(snap ? { classSize: snap.class_size || 0, instituteRank: snap.institute_rank || 0, instituteSize: snap.institute_size || 0 } : null);
+      }
+      void leaderboardData;
       
       // Get earned badge IDs
       const earnedBadgeIds = new Set(studentBadges.map(b => b.badge?.id));
@@ -295,6 +309,9 @@ export default function StudentDashboard() {
         <DashboardAchievements
           badges={gamification?.badges_earned || []}
           rank={gamification?.current_rank || 0}
+          classSize={rankInfo?.classSize || 0}
+          instituteRank={rankInfo?.instituteRank || 0}
+          instituteSize={rankInfo?.instituteSize || 0}
           achievementsPath={gamificationPath}
         />
       </div>

@@ -15,6 +15,13 @@
       "when": 1792055591488,
       "tag": "0001_unique_student_certificates",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792210551731,
+      "tag": "0002_student_rank_snapshots",
+      "breakpoints": true
     }
   ]
 }

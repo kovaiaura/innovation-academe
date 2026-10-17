@@ -1,3 +1,4 @@
+import { computeOverallScore, rankStudents } from '@/utils/studentRanking';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateWeightedScore, calculateCollegeWeightedScore, WEIGHTAGE } from '@/utils/assessmentWeightageCalculator';
@@ -353,20 +354,7 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
           ? (sessionProgress.completed / sessionProgress.total) * 100
           : 0;
 
-        // Calculate overall score: Assessment 50% + Assignments 20% + Projects 20% + XP 10%
-        // assessmentAvg is already 0-100 (weighted assessment total)
-        // assignmentAvg is already 0-100
-        // projects: scale project count to 0-100 (cap at 5 projects = 100%)
-        const projectScore = Math.min(projectsCount * 20, 100);
-        // XP: scale to 0-100 (cap at 2000 XP = 100%)
-        const xpScore = Math.min((totalXp / 2000) * 100, 100);
-        
-        const overallScore = (
-          (assessmentAvg * 0.5) +
-          (assignmentAvg * 0.2) +
-          (projectScore * 0.2) +
-          (xpScore * 0.1)
-        );
+        const overallScore = 0; // computed below with the shared ranking util
 
         studentPerformanceMap.set(student.id, {
           student_id: student.id,
@@ -381,10 +369,14 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
           badges_count: badgesCount,
           projects_count: projectsCount,
           course_completion: Math.round(courseCompletion * 10) / 10,
-          overall_score: Math.round(overallScore * 10) / 10,
+          overall_score: overallScore,
           weighted_assessment: weightedAssessment,
         });
       });
+
+      // Overall score via shared ranking util (XP relative to top earner)
+      const maxXp = Math.max(0, ...Array.from(studentPerformanceMap.values()).map(s => s.total_xp));
+      studentPerformanceMap.forEach(s => { s.overall_score = computeOverallScore(s, maxXp); });
 
       // Build class performance
       const classPerformance: ClassPerformance[] = [];
@@ -412,9 +404,8 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
           return;
         }
 
-        const sortedStudents = [...classStudents].sort((a, b) => b.overall_score - a.overall_score);
-        const top10 = sortedStudents.slice(0, 10).map((s, i) => ({ ...s, rank: i + 1 }));
-        const rankedAll = sortedStudents.map((s, i) => ({ ...s, rank: i + 1 }));
+        const rankedAll = rankStudents(classStudents);
+        const top10 = rankedAll.slice(0, 10);
 
         // Calculate class average weighted assessment
         const classWeightedAvg: WeightedAssessmentBreakdown = {
@@ -448,8 +439,8 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
 
       // Build institution-level metrics
       const allStudents = Array.from(studentPerformanceMap.values());
-      const sortedAll = [...allStudents].sort((a, b) => b.overall_score - a.overall_score);
-      const top10Overall = sortedAll.slice(0, 10).map((s, i) => ({ ...s, rank: i + 1 }));
+      const sortedAll = rankStudents(allStudents);
+      const top10Overall = sortedAll.slice(0, 10);
 
       // Calculate institution average weighted assessment
       const institutionWeightedAvg: WeightedAssessmentBreakdown = allStudents.length > 0 ? {
@@ -459,6 +450,27 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
         internal_score: Math.round((allStudents.reduce((sum, s) => sum + (s.weighted_assessment?.internal_score || 0), 0) / allStudents.length) * 10) / 10,
         total_weighted: Math.round((allStudents.reduce((sum, s) => sum + (s.weighted_assessment?.total_weighted || 0), 0) / allStudents.length) * 10) / 10,
       } : { fa1_score: 0, fa2_score: 0, final_score: 0, internal_score: 0, total_weighted: 0 };
+
+      // Save each student's ranks so students can see them on their dashboard
+      const classRankMap = new Map<string, { rank: number; size: number }>();
+      classPerformance.forEach(c => c.allStudents.forEach(s => classRankMap.set(s.student_id, { rank: s.rank || 0, size: c.allStudents.length })));
+      const snapshotRows = sortedAll.filter(s => s.user_id).map(s => ({
+        institution_id: institutionId,
+        academic_year: selectedYear,
+        student_user_id: s.user_id,
+        class_id: s.class_id || null,
+        class_rank: classRankMap.get(s.student_id)?.rank ?? null,
+        class_size: classRankMap.get(s.student_id)?.size ?? null,
+        institute_rank: s.rank ?? null,
+        institute_size: sortedAll.length,
+        overall_score: s.overall_score,
+        updated_at: new Date().toISOString(),
+      }));
+      for (let i = 0; i < snapshotRows.length; i += 500) {
+        void supabase.from('student_rank_snapshots')
+          .upsert(snapshotRows.slice(i, i + 500) as any, { onConflict: 'institution_id,academic_year,student_user_id' })
+          .then(({ error }) => { if (error) console.warn('Rank snapshot not saved:', error.message); });
+      }
 
       return {
         total_students: allStudents.length,
@@ -479,7 +491,7 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
           ? Math.round(Math.max(0, ...classPerformance.map(c => c.course_completion)) * 10) / 10
           : 0,
         topStudents: top10Overall,
-        allStudents: sortedAll.map((s, i) => ({ ...s, rank: i + 1 })),
+        allStudents: sortedAll,
         classPerformance,
         weighted_assessment: institutionWeightedAvg,
       };

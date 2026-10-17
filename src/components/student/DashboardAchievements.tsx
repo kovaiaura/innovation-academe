@@ -5,10 +5,13 @@ import { Button } from '@/components/ui/button';
 interface DashboardAchievementsProps {
   badges: Array<{ id: string; name: string; description: string; icon: string }>;
   rank: number;
+  classSize?: number;
+  instituteRank?: number;
+  instituteSize?: number;
   achievementsPath: string;
 }
 
-export function DashboardAchievements({ badges, rank, achievementsPath }: DashboardAchievementsProps) {
+export function DashboardAchievements({ badges, rank, classSize = 0, instituteRank = 0, instituteSize = 0, achievementsPath }: DashboardAchievementsProps) {
   return (
     <div className="learning-achievements-grid">
       <section aria-labelledby="my-badges-title" className="learning-badge-collection">
@@ -34,7 +37,8 @@ export function DashboardAchievements({ badges, rank, achievementsPath }: Dashbo
         <p className="learning-kicker">YOUR CLASS</p>
         <h2 id="my-class-rank-title">My class rank</h2>
         <div className="learning-rank-medal"><Trophy className="h-8 w-8" aria-hidden="true" /><strong>{rank > 0 ? `#${rank}` : '—'}</strong></div>
-        <p>{rank > 0 ? 'Your place in the class' : 'Class rank isn’t available yet'}</p>
+        <p>{rank > 0 ? (classSize > 0 ? `of ${classSize} in your class` : 'Your place in the class') : 'Rank appears once your teachers review class performance'}</p>
+        {instituteRank > 0 && <p><strong>Institute rank: #{instituteRank}</strong>{instituteSize > 0 ? ` of ${instituteSize}` : ''}</p>}
       </section>
     </div>
   );
