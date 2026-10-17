@@ -6972,6 +6972,48 @@ export type Database = {
           },
         ]
       }
+      student_rank_snapshots: {
+        Row: {
+          academic_year: string
+          class_id: string | null
+          class_rank: number | null
+          class_size: number | null
+          id: string
+          institute_rank: number | null
+          institute_size: number | null
+          institution_id: string
+          overall_score: number
+          student_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          academic_year: string
+          class_id?: string | null
+          class_rank?: number | null
+          class_size?: number | null
+          id?: string
+          institute_rank?: number | null
+          institute_size?: number | null
+          institution_id: string
+          overall_score?: number
+          student_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          academic_year?: string
+          class_id?: string | null
+          class_rank?: number | null
+          class_size?: number | null
+          id?: string
+          institute_rank?: number | null
+          institute_size?: number | null
+          institution_id?: string
+          overall_score?: number
+          student_user_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       student_resume_extras: {
         Row: {
           about_me: string | null
