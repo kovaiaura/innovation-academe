@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { getDefaultAcademicYear } from '@/utils/academicYear';
+import { getDefaultAcademicYear, classBaseName, isAssessmentInRange } from '@/utils/academicYear';
+export { classBaseName, isAssessmentInRange };
 
 export interface ClassAssessmentMapping {
   id: string;
@@ -239,13 +240,3 @@ export function useClassAssignedAssessments(
   });
 }
 
-export function classBaseName(name: string) {
-  return (name || '').split(/\s+-\s+\d{4}/)[0].trim().toLowerCase();
-}
-
-export function isAssessmentInRange(a: { start_time?: string | null; created_at?: string | null }, range: { start: string; end: string }) {
-  const d = a.start_time || a.created_at;
-  if (!d) return false;
-  const t = new Date(d).getTime();
-  return t >= new Date(range.start).getTime() && t < new Date(range.end).getTime();
-}

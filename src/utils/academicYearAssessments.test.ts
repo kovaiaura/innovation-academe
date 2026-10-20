@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { academicYearLabelVariants } from './academicYear';
-import { isAssessmentInRange, classBaseName } from '@/hooks/useClassAssessmentMapping';
+import { academicYearLabelVariants, isAssessmentInRange, classBaseName } from './academicYear';
 
 const range = { start: '2025-06-01T00:00:00.000Z', end: '2026-04-01T00:00:00.000Z' };
 
