@@ -8,6 +8,7 @@ import {
   computeStudentSessionProgress,
 } from '@/utils/courseProgressCalculations';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { academicYearLabelVariants } from '@/utils/academicYear';
 
 export interface WeightedAssessmentBreakdown {
   fa1_score: number;
@@ -69,7 +70,7 @@ export interface InstitutionPerformance {
 }
 
 export function useComprehensiveAnalytics(institutionId: string | undefined) {
-  const { selectedYear, selectedRange } = useAcademicYear();
+  const { selectedYear, selectedRange, isHistorical } = useAcademicYear();
   return useQuery({
     queryKey: ['comprehensive-analytics', institutionId, selectedYear, selectedRange],
     queryFn: async (): Promise<InstitutionPerformance | null> => {
@@ -86,40 +87,60 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
       const isCollege = institutionData?.type === 'college';
 
       // Fetch all students for this institution
-      const { data: students } = await supabase
+      let studentsQuery = supabase
         .from('students')
         .select('id, user_id, student_name, class_id, status')
-        .eq('institution_id', institutionId)
-        .eq('status', 'active');
+        .eq('institution_id', institutionId);
+      if (!isHistorical) studentsQuery = studentsQuery.eq('status', 'active');
+      const { data: students } = await studentsQuery;
 
       // Fetch classes
-      const { data: classes } = await supabase
+      let classesQuery = supabase
         .from('classes')
         .select('id, class_name, section')
-        .eq('institution_id', institutionId)
-        .eq('status', 'active');
+        .eq('institution_id', institutionId);
+      if (!isHistorical) classesQuery = classesQuery.eq('status', 'active');
+      const { data: classes } = await classesQuery;
+      const yearLabels = academicYearLabelVariants(selectedYear);
 
       // Fetch class assessment mappings for this institution
       const { data: assessmentMappings } = await supabase
         .from('class_assessment_mapping')
         .select('*')
         .eq('institution_id', institutionId)
-        .eq('academic_year', selectedYear);
+        .in('academic_year', yearLabels);
 
       // Fetch internal assessment marks
       const { data: internalMarks } = await supabase
         .from('internal_assessment_marks')
         .select('*')
         .eq('institution_id', institutionId)
-        .eq('academic_year', selectedYear);
+        .in('academic_year', yearLabels);
 
       // Fetch assessment attempts
-      const { data: assessmentAttempts } = await supabase
-        .from('assessment_attempts')
-        .select('id, student_id, class_id, assessment_id, percentage, passed, score, total_points, status')
-        .eq('institution_id', institutionId)
-        .gte('created_at', yearRange.start)
-        .lt('created_at', yearRange.end);
+      const assessmentAttempts: any[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data: page } = await supabase
+          .from('assessment_attempts')
+          .select('id, student_id, class_id, assessment_id, percentage, passed, score, total_points, status')
+          .eq('institution_id', institutionId)
+          .gte('created_at', yearRange.start)
+          .lt('created_at', yearRange.end)
+          .order('id')
+          .range(from, from + 999);
+        assessmentAttempts.push(...(page || []));
+        if (!page || page.length < 1000) break;
+      }
+
+      // For a past year, place each student in the class recorded on that year's attempts
+      if (isHistorical && students) {
+        const yearClassByUser = new Map<string, string>();
+        assessmentAttempts.forEach(a => { if (a.student_id && a.class_id) yearClassByUser.set(a.student_id, a.class_id); });
+        students.forEach(st => {
+          const c = st.user_id ? yearClassByUser.get(st.user_id) : undefined;
+          if (c) (st as any).class_id = c;
+        });
+      }
 
       // Fetch assignment submissions
       const { data: assignmentSubmissions } = await supabase
@@ -327,8 +348,13 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
         // Get weighted assessment score
         const weightedAssessment = getStudentWeightedAssessment(student.user_id, student.class_id);
 
-        // Use weighted assessment total as the assessment average
-        const assessmentAvg = weightedAssessment.total_weighted;
+        // Weighted total when an FA/Final mapping exists; otherwise plain average of attempts
+        const hasMapping = classMappingMap.has(student.class_id);
+        const assessmentAvg = hasMapping
+          ? weightedAssessment.total_weighted
+          : (studentAssessments.length
+            ? studentAssessments.reduce((sum, a) => sum + (Number(a.percentage) || 0), 0) / studentAssessments.length
+            : 0);
         
         // Pass rate based on weighted score (>= 33% is pass)
         const assessmentPassRate = assessmentAvg >= 33 ? 100 : 0;
@@ -385,6 +411,7 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
           .filter(s => s.class_id === cls.id);
         
         if (classStudents.length === 0) {
+          if (isHistorical) return;
           classPerformance.push({
             class_id: cls.id,
             class_name: cls.class_name,

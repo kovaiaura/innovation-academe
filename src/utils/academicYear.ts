@@ -72,3 +72,20 @@ export function getAcademicYearDateRange(
     end: `${startYear + 1}-04-01T00:00:00.000Z`,
   };
 }
+/** Both stored label formats for a year, e.g. ["2025-26", "2025-2026"]. */
+export function academicYearLabelVariants(academicYear: string): string[] {
+  const short = normalizeAcademicYear(academicYear);
+  const start = Number(short.slice(0, 4));
+  return [short, `${start}-${start + 1}`];
+}
+
+export function classBaseName(name: string) {
+  return (name || '').split(/\s+-\s+\d{4}/)[0].trim().toLowerCase();
+}
+
+export function isAssessmentInRange(a: { start_time?: string | null; created_at?: string | null }, range: { start: string; end: string }) {
+  const d = a.start_time || a.created_at;
+  if (!d) return false;
+  const t = new Date(d).getTime();
+  return t >= new Date(range.start).getTime() && t < new Date(range.end).getTime();
+}
