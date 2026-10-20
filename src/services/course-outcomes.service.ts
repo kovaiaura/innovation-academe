@@ -6,21 +6,40 @@ import { emptyMetric, finishMetric, isOutcomeSessionComplete, isWithinOutcomeYea
 type Table = keyof Database['public']['Tables'];
 type Row<T extends Table> = Database['public']['Tables'][T]['Row'];
 // Every read is stable, paginated, and scoped; ID lists are chunked below.
-export async function readOutcomeRows<T extends Table>(table: T, configure: (query: any) => any = q => q): Promise<Row<T>[]> {
+export async function readOutcomeRows<T extends Table>(table: T, configure: (query: any) => any = q => q, columns = '*'): Promise<Row<T>[]> {
   const rows: Row<T>[] = [];
-  for (let offset = 0; ; offset += 500) {
-    const { data, error } = await configure(supabase.from(table).select('*')).order('id').range(offset, offset + 499);
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await configure(supabase.from(table).select(columns)).order('id').range(offset, offset + 999);
     if (error) throw error;
     rows.push(...(data || []));
-    if (!data || data.length < 500) break;
+    if (!data || data.length < 1000) break;
   }
   return rows;
 }
+// Narrow column lists keep payloads small (course content/courses carry large fields).
+const COLS: Partial<Record<Table, string>> = {
+  students: 'id,user_id,class_id,institution_id',
+  institutions: 'id,settings',
+  assessment_attempts: 'id,assessment_id,student_id,institution_id,class_id,status',
+  assessments: 'id,start_time',
+  course_class_assignments: 'id,class_id,course_id,institution_id',
+  class_module_assignments: 'id,class_assignment_id,module_id,unlock_order,is_unlocked',
+  class_session_assignments: 'id,class_module_assignment_id,session_id,unlock_order,is_unlocked',
+  assessment_questions: 'id,assessment_id,course_id,module_id,session_id',
+  assessment_answers: 'id,attempt_id,question_id,is_correct',
+  courses: 'id,title',
+  course_modules: 'id,title,course_id',
+  course_sessions: 'id,title,module_id,course_id',
+  course_content: 'id,session_id',
+  student_content_completions: 'id,student_id,class_assignment_id,content_id',
+  class_session_completions: 'id,student_id,class_assignment_id,session_id',
+};
 async function byIds<T extends Table>(table: T, column: string, ids: string[], configure: (q: any) => any = q => q) {
-  const rows: Row<T>[] = [];
   const unique = [...new Set(ids)];
-  for (let i = 0; i < unique.length; i += 100) rows.push(...await readOutcomeRows(table, q => configure(q.in(column, unique.slice(i, i + 100)))));
-  return rows;
+  const chunks: string[][] = [];
+  for (let i = 0; i < unique.length; i += 100) chunks.push(unique.slice(i, i + 100));
+  const results = await Promise.all(chunks.map(chunk => readOutcomeRows(table, q => configure(q.in(column, chunk)), COLS[table] || '*')));
+  return results.flat();
 }
 
 export interface OutcomeCourse extends OutcomeMetric { course_id: string; course_title: string; nextSession?: string }
@@ -43,7 +62,7 @@ export async function fetchCourseOutcomes(filters: OutcomeFilters, selectedRange
     if (filters.classId) q = q.eq('class_id', filters.classId);
     if (filters.studentId) q = q.eq('user_id', filters.studentId);
     return q;
-  });
+  }, COLS.students);
   if (!students.length) return emptyOutcomes();
   const institutionIds = [...new Set(students.map(s => s.institution_id))];
   const classIds = students.flatMap(s => s.class_id ? [s.class_id] : []);
@@ -67,10 +86,11 @@ export async function fetchCourseOutcomes(filters: OutcomeFilters, selectedRange
   }));
   const assessments = await byIds('assessments', 'id', attempts.map(a => a.assessment_id));
   const assessmentDates = new Map(assessments.map(a => [a.id, a.start_time]));
+  const studentKeys = new Set(students.map(s => `${s.user_id}:${s.institution_id}`));
   const yearAttempts = attempts.filter(a => {
     const date = assessmentDates.get(a.assessment_id);
     const range = rangeByInstitution.get(a.institution_id);
-    return date && range && students.some(s => s.user_id === a.student_id && s.institution_id === a.institution_id) && isWithinOutcomeYear(date, range);
+    return date && range && studentKeys.has(`${a.student_id}:${a.institution_id}`) && isWithinOutcomeYear(date, range);
   });
   const [moduleAssignments, questions, answers] = await Promise.all([
     byIds('class_module_assignments', 'class_assignment_id', assignments.map(a => a.id)),
@@ -105,13 +125,18 @@ export async function fetchCourseOutcomes(filters: OutcomeFilters, selectedRange
     const count = counts.get(student) || { total: 0, completed: 0 }; count.total++; if (done) count.completed++;
     counts.set(student, count); learnerCounts.set(metric, counts);
   };
+  const group = <V,>(items: V[], key: (v: V) => string) => { const m = new Map<string, V[]>(); items.forEach(v => { const k = key(v); const list = m.get(k); if (list) list.push(v); else m.set(k, [v]); }); return m; };
+  const byOrder = (a: { unlock_order: number | null }, b: { unlock_order: number | null }) => (a.unlock_order || 0) - (b.unlock_order || 0);
+  const modulesByAssignment = group(moduleAssignments, m => m.class_assignment_id);
+  const sessionsByModule = group(sessionAssignments, s => s.class_module_assignment_id);
+  sessionsByModule.forEach(list => list.sort(byOrder));
+  const studentsByClass = group(students, s => `${s.class_id}:${s.institution_id}`);
   for (const assignment of assignments) {
     const course = courseMetrics.get(assignment.course_id);
-    const allocatedModules = moduleAssignments.filter(m => m.class_assignment_id === assignment.id).sort((a, b) => (a.unlock_order || 0) - (b.unlock_order || 0));
-    for (const student of students.filter(s => s.class_id === assignment.class_id && s.institution_id === assignment.institution_id)) {
+    const allocatedModules = [...(modulesByAssignment.get(assignment.id) || [])].sort(byOrder);
+    for (const student of studentsByClass.get(`${assignment.class_id}:${assignment.institution_id}`) || []) {
       for (const mod of allocatedModules) {
-        const allocatedSessions = sessionAssignments.filter(s => s.class_module_assignment_id === mod.id);
-        const ordered = allocatedSessions.sort((a, b) => (a.unlock_order || 0) - (b.unlock_order || 0));
+        const ordered = sessionsByModule.get(mod.id) || [];
         for (const session of ordered) {
           const done = isOutcomeSessionComplete(required.get(session.session_id) || [], completedContent.get(`${student.id}:${assignment.id}`) || new Set(), markedSet.has(`${student.id}:${assignment.id}:${session.session_id}`));
           addLearning(course, student.id, done); addLearning(moduleMetrics.get(mod.module_id), student.id, done); addLearning(sessionMetrics.get(session.session_id), student.id, done);

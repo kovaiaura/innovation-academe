@@ -9,6 +9,6 @@ export function useCourseOutcomeAnalytics(filters: OutcomeFilters) {
     queryKey: ['course-outcome-analytics', filters, selectedRange.start, selectedRange.end],
     queryFn: () => fetchCourseOutcomes(filters, selectedRange),
     enabled: filters.enabled !== false && !isLoading,
-    staleTime: 0,
+    staleTime: 5 * 60 * 1000,
   });
 }
