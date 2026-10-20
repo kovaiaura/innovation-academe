@@ -72,3 +72,9 @@ export function getAcademicYearDateRange(
     end: `${startYear + 1}-04-01T00:00:00.000Z`,
   };
 }
+/** Both stored label formats for a year, e.g. ["2025-26", "2025-2026"]. */
+export function academicYearLabelVariants(academicYear: string): string[] {
+  const short = normalizeAcademicYear(academicYear);
+  const start = Number(short.slice(0, 4));
+  return [short, `${start}-${start + 1}`];
+}

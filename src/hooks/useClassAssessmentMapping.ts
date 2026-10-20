@@ -174,33 +174,78 @@ export function useInstitutionMappings(institutionId: string | undefined, academ
   });
 }
 
-export function useClassAssignedAssessments(classId: string | undefined) {
+export function useClassAssignedAssessments(
+  classId: string | undefined,
+  range?: { start: string; end: string },
+) {
   return useQuery({
-    queryKey: ['class-assigned-assessments', classId],
+    queryKey: ['class-assigned-assessments', classId, range?.start, range?.end],
     queryFn: async () => {
       if (!classId) return [];
 
-      const { data, error } = await supabase
-        .from('assessment_class_assignments')
-        .select(`
-          assessment_id,
-          assessments:assessment_id (
-            id,
-            title,
-            status,
-            duration_minutes,
-            total_points
-          )
-        `)
-        .eq('class_id', classId);
-
-      if (error) {
-        console.error('Error fetching assigned assessments:', error);
-        return [];
+      // Find "sibling" classes (same class name across academic years, e.g. "Grade 1A - 2025-26")
+      const { data: cls } = await supabase
+        .from('classes')
+        .select('id, class_name, institution_id')
+        .eq('id', classId)
+        .maybeSingle();
+      const classIds = new Set<string>([classId]);
+      if (cls) {
+        const base = classBaseName(cls.class_name);
+        const { data: siblings } = await supabase
+          .from('classes')
+          .select('id, class_name')
+          .eq('institution_id', cls.institution_id);
+        (siblings || []).forEach(s => { if (classBaseName(s.class_name) === base) classIds.add(s.id); });
       }
 
-      return data?.map(d => d.assessments).filter(Boolean) || [];
+      const ids = new Set<string>();
+      const { data: links, error } = await supabase
+        .from('assessment_class_assignments')
+        .select('assessment_id')
+        .in('class_id', [...classIds]);
+      if (error) console.error('Error fetching assigned assessments:', error);
+      (links || []).forEach(l => ids.add(l.assessment_id));
+
+      // Assessments taken by students of these classes within the selected year
+      if (range) {
+        let attemptsQuery = supabase
+          .from('assessment_attempts')
+          .select('assessment_id')
+          .in('class_id', [...classIds])
+          .gte('created_at', range.start)
+          .lt('created_at', range.end)
+          .limit(1000);
+        const { data: attempts } = await attemptsQuery;
+        (attempts || []).forEach(a => a.assessment_id && ids.add(a.assessment_id));
+      }
+      if (ids.size === 0) return [];
+
+      const all: any[] = [];
+      const list = [...ids];
+      for (let i = 0; i < list.length; i += 200) {
+        const { data } = await supabase
+          .from('assessments')
+          .select('id, title, status, duration_minutes, total_points, start_time, created_at')
+          .in('id', list.slice(i, i + 200));
+        all.push(...(data || []));
+      }
+      const filtered = range
+        ? all.filter(a => isAssessmentInRange(a, range))
+        : all;
+      return filtered.sort((a, b) => String(b.start_time || b.created_at).localeCompare(String(a.start_time || a.created_at)));
     },
     enabled: !!classId,
   });
+}
+
+export function classBaseName(name: string) {
+  return (name || '').split(/\s+-\s+\d{4}/)[0].trim().toLowerCase();
+}
+
+export function isAssessmentInRange(a: { start_time?: string | null; created_at?: string | null }, range: { start: string; end: string }) {
+  const d = a.start_time || a.created_at;
+  if (!d) return false;
+  const t = new Date(d).getTime();
+  return t >= new Date(range.start).getTime() && t < new Date(range.end).getTime();
 }

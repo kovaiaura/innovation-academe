@@ -21,7 +21,9 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, FileText, Percent } from 'lucide-react';
 import { useClassAssessmentMapping, useClassAssignedAssessments } from '@/hooks/useClassAssessmentMapping';
 import { WEIGHTAGE, COLLEGE_WEIGHTAGE, getWeightageLabel } from '@/utils/assessmentWeightageCalculator';
-import { getDefaultAcademicYear } from '@/utils/academicYear';
+import { getDefaultAcademicYear, getAcademicYearDateRange } from '@/utils/academicYear';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { format } from 'date-fns';
 
 interface ClassAssessmentMappingDialogProps {
   open: boolean;
@@ -43,8 +45,10 @@ export function ClassAssessmentMappingDialog({
   institutionType,
 }: ClassAssessmentMappingDialogProps) {
   const isCollege = institutionType === 'college';
+  const { periods } = useAcademicYear();
+  const yearRange = getAcademicYearDateRange(academicYear, periods);
   const { mapping, isLoading, saveMapping, isSaving } = useClassAssessmentMapping(classId, academicYear);
-  const { data: availableAssessments, isLoading: isLoadingAssessments } = useClassAssignedAssessments(classId);
+  const { data: availableAssessments, isLoading: isLoadingAssessments } = useClassAssignedAssessments(classId, yearRange);
 
   const [fa1Id, setFa1Id] = useState<string | null>(null);
   const [fa2Id, setFa2Id] = useState<string | null>(null);
@@ -164,7 +168,7 @@ export function ClassAssessmentMappingDialog({
                       <SelectItem key={assessment.id} value={assessment.id}>
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4" />
-                          {assessment.title}
+                          {assessment.title}{(assessment.start_time || assessment.created_at) ? ` · ${format(new Date(assessment.start_time || assessment.created_at), 'MMM d, yyyy')}` : ''}
                           <Badge variant="outline" className="ml-2">
                             {assessment.total_points} pts
                           </Badge>
@@ -195,7 +199,7 @@ export function ClassAssessmentMappingDialog({
                       <SelectItem key={assessment.id} value={assessment.id}>
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4" />
-                          {assessment.title}
+                          {assessment.title}{(assessment.start_time || assessment.created_at) ? ` · ${format(new Date(assessment.start_time || assessment.created_at), 'MMM d, yyyy')}` : ''}
                           <Badge variant="outline" className="ml-2">
                             {assessment.total_points} pts
                           </Badge>
@@ -225,7 +229,7 @@ export function ClassAssessmentMappingDialog({
                     <SelectItem key={assessment.id} value={assessment.id}>
                       <div className="flex items-center gap-2">
                         <FileText className="h-4 w-4" />
-                        {assessment.title}
+                        {assessment.title}{(assessment.start_time || assessment.created_at) ? ` · ${format(new Date(assessment.start_time || assessment.created_at), 'MMM d, yyyy')}` : ''}
                         <Badge variant="outline" className="ml-2">
                           {assessment.total_points} pts
                         </Badge>
@@ -255,7 +259,7 @@ export function ClassAssessmentMappingDialog({
                       <SelectItem key={assessment.id} value={assessment.id}>
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4" />
-                          {assessment.title}
+                          {assessment.title}{(assessment.start_time || assessment.created_at) ? ` · ${format(new Date(assessment.start_time || assessment.created_at), 'MMM d, yyyy')}` : ''}
                           <Badge variant="outline" className="ml-2">
                             {assessment.total_points} pts
                           </Badge>
