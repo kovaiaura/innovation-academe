@@ -132,6 +132,16 @@ export function useComprehensiveAnalytics(institutionId: string | undefined) {
         if (!page || page.length < 1000) break;
       }
 
+      // For a past year, place each student in the class recorded on that year's attempts
+      if (isHistorical && students) {
+        const yearClassByUser = new Map<string, string>();
+        assessmentAttempts.forEach(a => { if (a.student_id && a.class_id) yearClassByUser.set(a.student_id, a.class_id); });
+        students.forEach(st => {
+          const c = st.user_id ? yearClassByUser.get(st.user_id) : undefined;
+          if (c) (st as any).class_id = c;
+        });
+      }
+
       // Fetch assignment submissions
       const { data: assignmentSubmissions } = await supabase
         .from('assignment_submissions')
