@@ -120,3 +120,7 @@ CREATE POLICY "Staff manage institution ranks" ON public.student_rank_snapshots 
 CREATE POLICY "Admins manage ranks" ON public.student_rank_snapshots FOR ALL TO authenticated
   USING (has_role(auth.uid(),'super_admin') OR has_role(auth.uid(),'system_admin'))
   WITH CHECK (has_role(auth.uid(),'super_admin') OR has_role(auth.uid(),'system_admin'));
+
+-- Assessment proctoring
+ALTER TABLE public.assessment_attempts ADD COLUMN IF NOT EXISTS tab_switch_count integer NOT NULL DEFAULT 0;
+ALTER TABLE public.assessment_attempts ADD COLUMN IF NOT EXISTS proctoring_auto_submitted boolean NOT NULL DEFAULT false;

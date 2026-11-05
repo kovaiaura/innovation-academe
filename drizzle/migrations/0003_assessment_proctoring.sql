@@ -1,0 +1,2 @@
+ALTER TABLE public.assessment_attempts ADD COLUMN IF NOT EXISTS tab_switch_count integer NOT NULL DEFAULT 0;
+ALTER TABLE public.assessment_attempts ADD COLUMN IF NOT EXISTS proctoring_auto_submitted boolean NOT NULL DEFAULT false;

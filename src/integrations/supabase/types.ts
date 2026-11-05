@@ -154,6 +154,7 @@ export type Database = {
           manual_notes: string | null
           passed: boolean
           percentage: number
+          proctoring_auto_submitted: boolean
           question_order: Json | null
           retake_allowed: boolean | null
           score: number
@@ -161,6 +162,7 @@ export type Database = {
           status: string
           student_id: string
           submitted_at: string | null
+          tab_switch_count: number
           time_taken_seconds: number | null
           total_points: number
         }
@@ -175,6 +177,7 @@ export type Database = {
           manual_notes?: string | null
           passed?: boolean
           percentage?: number
+          proctoring_auto_submitted?: boolean
           question_order?: Json | null
           retake_allowed?: boolean | null
           score?: number
@@ -182,6 +185,7 @@ export type Database = {
           status?: string
           student_id: string
           submitted_at?: string | null
+          tab_switch_count?: number
           time_taken_seconds?: number | null
           total_points?: number
         }
@@ -196,6 +200,7 @@ export type Database = {
           manual_notes?: string | null
           passed?: boolean
           percentage?: number
+          proctoring_auto_submitted?: boolean
           question_order?: Json | null
           retake_allowed?: boolean | null
           score?: number
@@ -203,6 +208,7 @@ export type Database = {
           status?: string
           student_id?: string
           submitted_at?: string | null
+          tab_switch_count?: number
           time_taken_seconds?: number | null
           total_points?: number
         }

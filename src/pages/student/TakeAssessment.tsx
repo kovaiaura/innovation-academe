@@ -15,6 +15,8 @@ import { Clock, AlertTriangle, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
+import { useAssessmentProctoring, MAX_PROCTOR_WARNINGS } from '@/hooks/useAssessmentProctoring';
+import { ShieldAlert } from 'lucide-react';
 
 export default function TakeAssessment() {
   const { assessmentId } = useParams();
@@ -85,6 +87,43 @@ export default function TakeAssessment() {
       isAutoSubmittingRef.current = false;
     }
   }, [navigate]);
+
+  // ---- Proctoring ----
+  const [rulesAccepted, setRulesAccepted] = useState(false);
+  const [showProctorWarning, setShowProctorWarning] = useState(false);
+  const handleProctorLimit = useCallback(async () => {
+    if (isAutoSubmittingRef.current || !attemptRef.current) return;
+    isAutoSubmittingRef.current = true;
+    toast.error('Submitted due to tab switching (3 warnings).');
+    try {
+      const success = await assessmentService.submitAttempt(attemptRef.current.id, true);
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      if (success) {
+        sessionStorage.removeItem(`proctor-warnings-${attemptRef.current.id}`);
+        navigate(`${getTenantPath()}/student/assessments`);
+      } else {
+        isAutoSubmittingRef.current = false;
+      }
+    } catch (error) {
+      console.error('Proctoring auto-submit failed:', error);
+      isAutoSubmittingRef.current = false;
+    }
+  }, [navigate]);
+  const proctor = useAssessmentProctoring({
+    attemptId: attempt?.id ?? null,
+    active: !!attempt && rulesAccepted && !isSubmitting && !isLoading,
+    onLimitReached: handleProctorLimit,
+  });
+  useEffect(() => {
+    if (proctor.lastWarningAt && proctor.warnings < MAX_PROCTOR_WARNINGS) setShowProctorWarning(true);
+  }, [proctor.lastWarningAt, proctor.warnings]);
+  useEffect(() => {
+    // Resumed attempts that already had warnings skip the rules screen
+    if (proctor.warnings > 0) setRulesAccepted(true);
+  }, [proctor.warnings]);
+  useEffect(() => () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }, []);
 
   // Reload warning - prevent accidental navigation during assessment
   useEffect(() => {
@@ -362,6 +401,10 @@ export default function TakeAssessment() {
             <p className="text-muted-foreground">{assessment.description}</p>
           </div>
           <div className="flex items-center gap-4">
+            <Badge variant={proctor.warnings > 0 ? 'destructive' : 'outline'} className="gap-1">
+              <ShieldAlert className="h-3.5 w-3.5" />
+              Warnings: {proctor.warnings}/{MAX_PROCTOR_WARNINGS}
+            </Badge>
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
               <Badge variant={timeRemaining < 300 ? 'destructive' : 'secondary'} className="text-lg font-mono">
@@ -539,6 +582,55 @@ export default function TakeAssessment() {
             <AlertDialogAction onClick={() => handleSubmit(false)} disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
               Submit Assessment
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Proctoring rules */}
+      <AlertDialog open={!rulesAccepted}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-destructive" /> Proctored assessment
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>This test runs in full screen and is monitored.</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Don't switch tabs, minimise the browser or open other apps.</li>
+                  <li>Don't leave full screen.</li>
+                  <li>Copy, paste and right-click are disabled.</li>
+                </ul>
+                <p className="font-medium text-destructive">
+                  {MAX_PROCTOR_WARNINGS} warnings = your test is submitted automatically.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => { proctor.requestFullscreen(); setRulesAccepted(true); }}>
+              I understand, start test
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Proctoring warning */}
+      <AlertDialog open={showProctorWarning && rulesAccepted}>
+        <AlertDialogContent className="border-destructive">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" /> Warning {proctor.warnings} of {MAX_PROCTOR_WARNINGS}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              You left the test (switched tab, window or full screen). After {MAX_PROCTOR_WARNINGS} warnings your
+              test will be submitted automatically.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => { setShowProctorWarning(false); proctor.requestFullscreen(); }}>
+              Return to test
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

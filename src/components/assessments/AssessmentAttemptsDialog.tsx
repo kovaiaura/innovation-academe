@@ -34,6 +34,8 @@ interface AttemptWithStudent {
   status: string;
   submitted_at: string | null;
   time_taken_seconds: number | null;
+  tab_switch_count?: number;
+  proctoring_auto_submitted?: boolean;
 }
 
 interface AssessmentAttemptsDialogProps {
@@ -76,6 +78,8 @@ export function AssessmentAttemptsDialog({
           status,
           submitted_at,
           time_taken_seconds,
+          tab_switch_count,
+          proctoring_auto_submitted,
           class_id
         `)
         .eq('assessment_id', assessment.id)
@@ -117,6 +121,8 @@ export function AssessmentAttemptsDialog({
         status: a.status,
         submitted_at: a.submitted_at,
         time_taken_seconds: a.time_taken_seconds,
+        tab_switch_count: a.tab_switch_count ?? 0,
+        proctoring_auto_submitted: a.proctoring_auto_submitted ?? false,
       }));
 
       setAttempts(attemptsWithDetails);
@@ -299,6 +305,12 @@ export function AssessmentAttemptsDialog({
                         <Badge className="bg-red-500/10 text-red-700 border-red-500/20">
                           Failed
                         </Badge>
+                      )}
+                      {(attempt.tab_switch_count ?? 0) > 0 && (
+                        <div className="mt-1 text-xs text-destructive">
+                          Tab switches: {attempt.tab_switch_count}
+                          {attempt.proctoring_auto_submitted && ' · Auto-submitted (proctoring)'}
+                        </div>
                       )}
                     </TableCell>
                     <TableCell className="text-center">
