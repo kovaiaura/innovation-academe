@@ -586,6 +586,55 @@ export default function TakeAssessment() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Proctoring rules */}
+      <AlertDialog open={!rulesAccepted}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-destructive" /> Proctored assessment
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>This test runs in full screen and is monitored.</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Don't switch tabs, minimise the browser or open other apps.</li>
+                  <li>Don't leave full screen.</li>
+                  <li>Copy, paste and right-click are disabled.</li>
+                </ul>
+                <p className="font-medium text-destructive">
+                  {MAX_PROCTOR_WARNINGS} warnings = your test is submitted automatically.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => { proctor.requestFullscreen(); setRulesAccepted(true); }}>
+              I understand, start test
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Proctoring warning */}
+      <AlertDialog open={showProctorWarning && rulesAccepted}>
+        <AlertDialogContent className="border-destructive">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" /> Warning {proctor.warnings} of {MAX_PROCTOR_WARNINGS}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              You left the test (switched tab, window or full screen). After {MAX_PROCTOR_WARNINGS} warnings your
+              test will be submitted automatically.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => { setShowProctorWarning(false); proctor.requestFullscreen(); }}>
+              Return to test
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }
