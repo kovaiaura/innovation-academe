@@ -112,6 +112,9 @@ CREATE TABLE IF NOT EXISTS public.student_rank_snapshots (
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.student_rank_snapshots TO authenticated;
 GRANT ALL ON public.student_rank_snapshots TO service_role;
 ALTER TABLE public.student_rank_snapshots ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Students read own rank" ON public.student_rank_snapshots;
+DROP POLICY IF EXISTS "Staff manage institution ranks" ON public.student_rank_snapshots;
+DROP POLICY IF EXISTS "Admins manage ranks" ON public.student_rank_snapshots;
 CREATE POLICY "Students read own rank" ON public.student_rank_snapshots FOR SELECT TO authenticated
   USING (student_user_id = auth.uid());
 CREATE POLICY "Staff manage institution ranks" ON public.student_rank_snapshots FOR ALL TO authenticated
