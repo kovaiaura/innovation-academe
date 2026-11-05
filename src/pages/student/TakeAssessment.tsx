@@ -15,6 +15,8 @@ import { Clock, AlertTriangle, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
+import { useAssessmentProctoring, MAX_PROCTOR_WARNINGS } from '@/hooks/useAssessmentProctoring';
+import { ShieldAlert } from 'lucide-react';
 
 export default function TakeAssessment() {
   const { assessmentId } = useParams();
@@ -85,6 +87,43 @@ export default function TakeAssessment() {
       isAutoSubmittingRef.current = false;
     }
   }, [navigate]);
+
+  // ---- Proctoring ----
+  const [rulesAccepted, setRulesAccepted] = useState(false);
+  const [showProctorWarning, setShowProctorWarning] = useState(false);
+  const handleProctorLimit = useCallback(async () => {
+    if (isAutoSubmittingRef.current || !attemptRef.current) return;
+    isAutoSubmittingRef.current = true;
+    toast.error('Submitted due to tab switching (3 warnings).');
+    try {
+      const success = await assessmentService.submitAttempt(attemptRef.current.id, true);
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      if (success) {
+        sessionStorage.removeItem(`proctor-warnings-${attemptRef.current.id}`);
+        navigate(`${getTenantPath()}/student/assessments`);
+      } else {
+        isAutoSubmittingRef.current = false;
+      }
+    } catch (error) {
+      console.error('Proctoring auto-submit failed:', error);
+      isAutoSubmittingRef.current = false;
+    }
+  }, [navigate]);
+  const proctor = useAssessmentProctoring({
+    attemptId: attempt?.id ?? null,
+    active: !!attempt && rulesAccepted && !isSubmitting && !isLoading,
+    onLimitReached: handleProctorLimit,
+  });
+  useEffect(() => {
+    if (proctor.lastWarningAt && proctor.warnings < MAX_PROCTOR_WARNINGS) setShowProctorWarning(true);
+  }, [proctor.lastWarningAt, proctor.warnings]);
+  useEffect(() => {
+    // Resumed attempts that already had warnings skip the rules screen
+    if (proctor.warnings > 0) setRulesAccepted(true);
+  }, [proctor.warnings]);
+  useEffect(() => () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }, []);
 
   // Reload warning - prevent accidental navigation during assessment
   useEffect(() => {
@@ -362,6 +401,10 @@ export default function TakeAssessment() {
             <p className="text-muted-foreground">{assessment.description}</p>
           </div>
           <div className="flex items-center gap-4">
+            <Badge variant={proctor.warnings > 0 ? 'destructive' : 'outline'} className="gap-1">
+              <ShieldAlert className="h-3.5 w-3.5" />
+              Warnings: {proctor.warnings}/{MAX_PROCTOR_WARNINGS}
+            </Badge>
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
               <Badge variant={timeRemaining < 300 ? 'destructive' : 'secondary'} className="text-lg font-mono">
