@@ -74,7 +74,7 @@ export function DashboardLearningHub(props: DashboardLearningHubProps) {
         ))}
       </section>
 
-      <div className="learning-main-grid">
+      <div className="learning-main-grid learning-main-grid-full">
         <section className="min-w-0" aria-labelledby="continue-learning-title">
           <div className="learning-section-heading">
             <div><p className="learning-kicker">YOUR NEXT DISCOVERY</p><h2 id="continue-learning-title">Continue learning</h2></div>
@@ -111,17 +111,6 @@ export function DashboardLearningHub(props: DashboardLearningHubProps) {
           )}
         </section>
 
-        <aside className="learning-side" aria-label="Achievement goals">
-          <div className="learning-goal learning-tone-gold">
-            <div className="learning-goal-top"><span className="learning-kicker">NEXT ACHIEVEMENT</span><Sparkles className="h-4 w-4" /></div>
-            <div className="learning-goal-medal"><Award className="h-9 w-9" /></div>
-            <h3>{props.nextBadge?.name || (props.badgesEarned > 0 ? 'Look at you shine!' : 'Your first badge awaits')}</h3>
-            <p>{props.nextBadge?.description || (props.badgesEarned > 0 ? `${props.badgesEarned} badges earned on your learning journey.` : 'Every discovery is a step forward.')}</p>
-            {props.nextBadge && <><div className="learning-course-progress-label"><span>Badge progress</span><strong>{props.nextBadge.progress}%</strong></div><Progress value={props.nextBadge.progress} className="learning-progress h-2" /></>}
-            <Button variant="ghost" size="sm" asChild><Link to={`${studentPath}/gamification`}>Explore achievements <ArrowRight className="ml-1 h-4 w-4" /></Link></Button>
-          </div>
-          <div className="learning-project-summary"><Target className="h-6 w-6 shrink-0" /><div><p><strong>{props.activeProjects}</strong> active projects</p><span>{props.completedProjects} completed</span></div><Button variant="ghost" size="icon" asChild><Link to={`${studentPath}/projects`} aria-label="View my projects"><ArrowRight className="h-4 w-4" /></Link></Button></div>
-        </aside>
       </div>
     </>
   );
