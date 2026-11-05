@@ -13,7 +13,7 @@ interface DashboardAchievementsProps {
 
 export function DashboardAchievements({ badges, rank, classSize = 0, instituteRank = 0, instituteSize = 0, achievementsPath }: DashboardAchievementsProps) {
   return (
-    <div className="learning-achievements-grid">
+    <div className="learning-achievements-grid learning-achievements-full">
       <section aria-labelledby="my-badges-title" className="learning-badge-collection">
         <div className="learning-section-heading">
           <div><p className="learning-kicker">YOUR COLLECTION</p><h2 id="my-badges-title">My badges <span className="learning-badge-count">{badges.length}</span></h2></div>
@@ -32,13 +32,6 @@ export function DashboardAchievements({ badges, rank, classSize = 0, instituteRa
         ) : (
           <div className="learning-badges-empty"><Award className="h-10 w-10" /><h3>Your collection starts here</h3><p>No badges earned yet.</p></div>
         )}
-      </section>
-      <section aria-labelledby="my-class-rank-title" className="learning-own-rank learning-tone-teal">
-        <p className="learning-kicker">YOUR CLASS</p>
-        <h2 id="my-class-rank-title">My class rank</h2>
-        <div className="learning-rank-medal"><Trophy className="h-8 w-8" aria-hidden="true" /><strong>{rank > 0 ? `#${rank}` : '—'}</strong></div>
-        <p>{rank > 0 ? (classSize > 0 ? `of ${classSize} in your class` : 'Your place in the class') : 'Rank appears once your teachers review class performance'}</p>
-        {instituteRank > 0 && <p><strong>Institute rank: #{instituteRank}</strong>{instituteSize > 0 ? ` of ${instituteSize}` : ''}</p>}
       </section>
     </div>
   );
