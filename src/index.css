@@ -126,3 +126,5 @@ All colors MUST be HSL.
     print-color-adjust: exact !important;
   }
 }
+
+.student-no-select body *:not(input):not(textarea):not([contenteditable="true"]) { -webkit-user-select: none; user-select: none; }

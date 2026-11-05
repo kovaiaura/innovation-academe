@@ -1,5 +1,7 @@
 import { Sidebar } from './Sidebar';
 import { AcademicYearSelector } from './AcademicYearSelector';
+import { useAuth } from '@/contexts/AuthContext';
+import { useStudentCopyProtection } from '@/hooks/useStudentCopyProtection';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -8,6 +10,9 @@ interface LayoutProps {
 }
 
 export function Layout({ children, hideNav = false, showAcademicYear = true }: LayoutProps) {
+  const { user } = useAuth();
+  useStudentCopyProtection(user?.role === 'student');
+
   if (hideNav) {
     return (
       <main className="h-screen overflow-hidden bg-gray-50">
