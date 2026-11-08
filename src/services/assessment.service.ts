@@ -439,7 +439,70 @@ export const assessmentService = {
     return true;
   },
 
+  /**
+   * Save edited questions without destroying students' answers:
+   * existing questions are updated in place, new ones inserted, removed ones
+   * deleted only if no student has answered them.
+   */
+  async syncQuestions(assessmentId: string, questions: Partial<AssessmentQuestion>[]): Promise<{ kept: number }> {
+    const existing = await this.getQuestions(assessmentId);
+    const existingIds = new Set(existing.map(q => q.id));
+    const incomingIds = new Set(questions.map(q => q.id).filter((id): id is string => !!id && existingIds.has(id)));
+
+    const toAdd: Partial<AssessmentQuestion>[] = [];
+    for (let i = 0; i < questions.length; i++) {
+      const q = { ...questions[i], order: questions[i].order ?? i, question_number: questions[i].question_number || i + 1 };
+      if (q.id && existingIds.has(q.id)) {
+        await this.updateQuestion(q.id, q);
+      } else {
+        toAdd.push(q);
+      }
+    }
+    if (toAdd.length > 0) {
+      const questionsToInsert = toAdd.map((q, index) => ({
+        assessment_id: assessmentId,
+        question_number: q.question_number || index + 1,
+        question_text: q.question_text!,
+        question_type: q.question_type || 'mcq',
+        options: JSON.parse(JSON.stringify(q.options || [])),
+        correct_option_id: q.correct_option_id!,
+        points: q.points || 1,
+        time_limit_seconds: q.time_limit_seconds,
+        image_url: q.image_url,
+        code_snippet: q.code_snippet,
+        explanation: q.explanation,
+        display_order: q.order ?? index,
+        course_id: q.course_id || null,
+        module_id: q.module_id || null,
+        session_id: q.session_id || null,
+      }));
+      const { error } = await supabase.from('assessment_questions').insert(questionsToInsert);
+      if (error) console.error('Error adding questions:', error);
+    }
+
+    let kept = 0;
+    for (const q of existing) {
+      if (!incomingIds.has(q.id)) {
+        const ok = await this.deleteQuestion(q.id);
+        if (!ok) kept++;
+      }
+    }
+
+    const { data: finalQs } = await supabase.from('assessment_questions').select('points').eq('assessment_id', assessmentId);
+    const totalPoints = (finalQs || []).reduce((s, q: any) => s + (q.points || 1), 0);
+    await supabase.from('assessments').update({ total_points: totalPoints }).eq('id', assessmentId);
+    return { kept };
+  },
+
   async deleteQuestion(questionId: string): Promise<boolean> {
+    const { count } = await supabase
+      .from('assessment_answers')
+      .select('id', { count: 'exact', head: true })
+      .eq('question_id', questionId);
+    if ((count || 0) > 0) {
+      console.warn('Question has student answers; not deleting', questionId);
+      return false;
+    }
     const { error } = await supabase
       .from('assessment_questions')
       .delete()
