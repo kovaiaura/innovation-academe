@@ -29,6 +29,13 @@
       "when": 1793859761789,
       "tag": "0003_assessment_proctoring",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794133218829,
+      "tag": "0004_protect_assessment_answers",
+      "breakpoints": true
     }
   ]
 }

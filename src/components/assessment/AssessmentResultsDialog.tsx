@@ -142,6 +142,10 @@ export const AssessmentResultsDialog = ({
                   <div className="text-center py-8 text-muted-foreground">
                     No questions found for this assessment.
                   </div>
+                ) : answers.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Answer details not available for this attempt (assessment was edited after it was taken). The score is still valid.
+                  </div>
                 ) : (
                   questions.map((question, index) => {
                     // Find answer by question ID

@@ -1,0 +1,2 @@
+ALTER TABLE public.assessment_answers DROP CONSTRAINT IF EXISTS assessment_answers_question_id_fkey;
+ALTER TABLE public.assessment_answers ADD CONSTRAINT assessment_answers_question_id_fkey FOREIGN KEY (question_id) REFERENCES public.assessment_questions(id) ON DELETE RESTRICT;
