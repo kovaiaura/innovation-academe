@@ -127,3 +127,8 @@ CREATE POLICY "Admins manage ranks" ON public.student_rank_snapshots FOR ALL TO 
 -- Assessment proctoring
 ALTER TABLE public.assessment_attempts ADD COLUMN IF NOT EXISTS tab_switch_count integer NOT NULL DEFAULT 0;
 ALTER TABLE public.assessment_attempts ADD COLUMN IF NOT EXISTS proctoring_auto_submitted boolean NOT NULL DEFAULT false;
+
+-- ===== Protect student answers when questions are edited (safe to re-run) =====
+ALTER TABLE public.assessment_answers DROP CONSTRAINT IF EXISTS assessment_answers_question_id_fkey;
+ALTER TABLE public.assessment_answers ADD CONSTRAINT assessment_answers_question_id_fkey
+  FOREIGN KEY (question_id) REFERENCES public.assessment_questions(id) ON DELETE NO ACTION;

@@ -392,7 +392,7 @@ export function AssessmentAnalytics({ assessment, institutionId, onClose }: Asse
                             style={{ width: `${correctPercentage}%` }}
                           />
                         </div>
-                        <span className="text-sm">{correctPercentage.toFixed(0)}%</span>
+                        <span className="text-sm">{answersForQuestion.length > 0 ? `${correctPercentage.toFixed(0)}%` : '—'}</span>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -433,6 +433,11 @@ export function AssessmentAnalytics({ assessment, institutionId, onClose }: Asse
 
               <div className="space-y-3">
                 <h4 className="font-semibold">Answers</h4>
+                {(selectedAttempt.answers?.length ?? 0) === 0 && (selectedAttempt.score ?? 0) > 0 && (
+                  <p className="text-sm text-muted-foreground rounded-md border p-3">
+                    Answer details not available for this attempt (assessment was edited after it was taken). The score above is still valid.
+                  </p>
+                )}
                 {questions.map((question, index) => {
                   const answer = selectedAttempt.answers?.find(a => a.question_id === question.id);
                   const selectedOption = question.options.find(o => o.id === answer?.selected_option_id);

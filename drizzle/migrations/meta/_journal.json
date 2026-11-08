@@ -29,6 +29,20 @@
       "when": 1793859761789,
       "tag": "0003_assessment_proctoring",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794133218829,
+      "tag": "0004_protect_assessment_answers",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794133228978,
+      "tag": "0005_assessment_answers_fk_no_action",
+      "breakpoints": true
     }
   ]
 }

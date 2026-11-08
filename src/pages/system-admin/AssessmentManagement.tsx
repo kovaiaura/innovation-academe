@@ -153,14 +153,9 @@ export default function AssessmentManagement() {
         });
 
         if (success) {
-          // Update questions - delete old and add new
-          const existingQuestions = await assessmentService.getQuestions(editingAssessment.id);
-          for (const q of existingQuestions) {
-            await assessmentService.deleteQuestion(q.id);
-          }
-          if (questions.length > 0) {
-            await assessmentService.addQuestions(editingAssessment.id, questions);
-          }
+          // Update questions in place so students' saved answers are kept
+          const { kept } = await assessmentService.syncQuestions(editingAssessment.id, questions);
+          if (kept > 0) toast.warning(`${kept} removed question(s) were kept because students already answered them`);
 
           // Publish if not draft
           if (!isDraft && publishing.length > 0) {
