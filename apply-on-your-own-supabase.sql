@@ -131,4 +131,4 @@ ALTER TABLE public.assessment_attempts ADD COLUMN IF NOT EXISTS proctoring_auto_
 -- ===== Protect student answers when questions are edited (safe to re-run) =====
 ALTER TABLE public.assessment_answers DROP CONSTRAINT IF EXISTS assessment_answers_question_id_fkey;
 ALTER TABLE public.assessment_answers ADD CONSTRAINT assessment_answers_question_id_fkey
-  FOREIGN KEY (question_id) REFERENCES public.assessment_questions(id) ON DELETE RESTRICT;
+  FOREIGN KEY (question_id) REFERENCES public.assessment_questions(id) ON DELETE NO ACTION;
