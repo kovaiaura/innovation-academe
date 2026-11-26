@@ -43,6 +43,13 @@
       "when": 1794133228978,
       "tag": "0005_assessment_answers_fk_no_action",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795667129940,
+      "tag": "0006_officer_assignment_class_access",
+      "breakpoints": true
     }
   ]
 }

@@ -8095,6 +8095,18 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      officer_can_access_assignment_class: {
+        Args: { _class_id: string; _institution_id: string; _user_id: string }
+        Returns: boolean
+      }
+      officer_owns_assignment: {
+        Args: {
+          _assignment_id: string
+          _institution_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
       reserve_id_range: {
         Args: {
           p_count: number
