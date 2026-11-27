@@ -25,7 +25,7 @@ import { AssignmentWithClasses, AssignmentFormData } from '@/services/assignment
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
-interface Class {
+export interface AssignmentClassOption {
   id: string;
   class_name: string;
   section: string | null;
@@ -37,6 +37,8 @@ interface ManagementAssignmentFormDialogProps {
   onOpenChange: (open: boolean) => void;
   institutionId: string;
   assignment?: AssignmentWithClasses | null;
+  availableClasses?: AssignmentClassOption[];
+  creatorRole?: string;
   onSubmit: (data: AssignmentFormData, role: string) => Promise<void>;
 }
 
@@ -45,10 +47,12 @@ export function ManagementAssignmentFormDialog({
   onOpenChange,
   institutionId,
   assignment,
+  availableClasses,
+  creatorRole = 'management',
   onSubmit,
 }: ManagementAssignmentFormDialogProps) {
   const [loading, setLoading] = useState(false);
-  const [classes, setClasses] = useState<Class[]>([]);
+  const [classes, setClasses] = useState<AssignmentClassOption[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     title: '',
@@ -65,7 +69,11 @@ export function ManagementAssignmentFormDialog({
 
   useEffect(() => {
     if (open && institutionId) {
-      fetchClasses();
+      if (availableClasses) {
+        setClasses(availableClasses);
+      } else {
+        fetchClasses();
+      }
       if (assignment) {
         setFormData({
           title: assignment.title,
@@ -82,7 +90,7 @@ export function ManagementAssignmentFormDialog({
         resetForm();
       }
     }
-  }, [open, assignment, institutionId]);
+  }, [open, assignment, institutionId, availableClasses]);
 
   const resetForm = () => {
     setFormData({
@@ -154,7 +162,7 @@ export function ManagementAssignmentFormDialog({
         passing_marks: formData.passing_marks,
         allow_resubmit: formData.allow_resubmit,
         status: formData.status,
-      }, 'management');
+      }, creatorRole);
       onOpenChange(false);
     } catch (error) {
       console.error('Error submitting assignment:', error);
@@ -241,7 +249,7 @@ export function ManagementAssignmentFormDialog({
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              No classes found for your institution
+              {availableClasses ? 'No classes are currently assigned to you' : 'No classes found for your institution'}
             </p>
           )}
 

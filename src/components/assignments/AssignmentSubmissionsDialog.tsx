@@ -34,12 +34,14 @@ interface AssignmentSubmissionsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assignment: AssignmentWithClasses | null;
+  allowedClassIds?: string[];
 }
 
 export function AssignmentSubmissionsDialog({
   open,
   onOpenChange,
   assignment,
+  allowedClassIds,
 }: AssignmentSubmissionsDialogProps) {
   const [loading, setLoading] = useState(false);
   const [submissions, setSubmissions] = useState<SubmissionWithStudent[]>([]);
@@ -51,14 +53,20 @@ export function AssignmentSubmissionsDialog({
     if (open && assignment) {
       loadSubmissions();
     }
-  }, [open, assignment]);
+  }, [open, assignment, allowedClassIds]);
 
   const loadSubmissions = async () => {
     if (!assignment) return;
+
+    if (allowedClassIds && allowedClassIds.length === 0) {
+      setSubmissions([]);
+      setLoading(false);
+      return;
+    }
     
     setLoading(true);
     try {
-      const data = await assignmentService.getSubmissions(assignment.id);
+      const data = await assignmentService.getSubmissions(assignment.id, allowedClassIds);
       
       // Fetch student details
       const studentIds = data.map(s => s.student_id);

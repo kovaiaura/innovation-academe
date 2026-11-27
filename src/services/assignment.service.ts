@@ -1,5 +1,26 @@
 import { supabase } from '@/integrations/supabase/client';
 import { AcademicYearDateRange, getAcademicYearDateRange } from '@/utils/academicYear';
+import { getOfficerAssignableClassIds, OfficerClassAccessGrant } from '@/utils/officerAssignmentAccess';
+import { format } from 'date-fns';
+
+const PAGE_SIZE = 1000;
+
+async function fetchAllRows<T>(query: any): Promise<T[]> {
+  const rows: T[] = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await query.range(offset, offset + PAGE_SIZE - 1);
+    if (error) throw error;
+
+    const page = (data || []) as T[];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+
+  return rows;
+}
 
 export interface Assignment {
   id: string;
@@ -22,6 +43,13 @@ export interface Assignment {
 export interface AssignmentWithClasses extends Assignment {
   classes: { id: string; class_name: string; section: string | null }[];
   submissions_count?: number;
+}
+
+export interface OfficerAssignableClass {
+  id: string;
+  class_name: string;
+  section: string | null;
+  institution_id: string;
 }
 
 export interface AssignmentFormData {
@@ -54,6 +82,114 @@ export interface AssignmentSubmission {
 }
 
 export const assignmentService = {
+  async getOfficerAssignableClasses(userId: string, institutionId: string): Promise<OfficerAssignableClass[]> {
+    const { data: officer, error: officerError } = await supabase
+      .from('officers')
+      .select('id, status')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (officerError) throw officerError;
+    if (!officer || officer.status !== 'active') return [];
+
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const [timetableRows, grants] = await Promise.all([
+      fetchAllRows<{ class_id: string }>(
+        supabase
+          .from('institution_timetable_assignments')
+          .select('class_id')
+          .eq('institution_id', institutionId)
+          .or(`teacher_id.eq.${officer.id},secondary_officer_id.eq.${officer.id},backup_officer_id.eq.${officer.id}`),
+      ),
+      fetchAllRows<OfficerClassAccessGrant>(
+        supabase
+          .from('officer_class_access_grants')
+          .select('class_id, is_active, valid_from, valid_until')
+          .eq('institution_id', institutionId)
+          .eq('receiving_officer_id', officer.id)
+          .eq('is_active', true)
+          .lte('valid_from', today)
+          .or(`valid_until.is.null,valid_until.gte.${today}`),
+      ),
+    ]);
+
+    const classIds = getOfficerAssignableClassIds(
+      timetableRows.map((row) => row.class_id),
+      grants,
+      today,
+    );
+    if (classIds.length === 0) return [];
+
+    return fetchAllRows<OfficerAssignableClass>(
+      supabase
+        .from('classes')
+        .select('id, class_name, section, institution_id')
+        .eq('institution_id', institutionId)
+        .eq('status', 'active')
+        .in('id', classIds)
+        .order('class_name'),
+    );
+  },
+
+  async getOfficerAssignments(
+    institutionId: string,
+    classIds: string[],
+    academicYear?: string,
+    dateRange?: AcademicYearDateRange,
+  ): Promise<AssignmentWithClasses[]> {
+    const allowedClassIds = [...new Set(classIds.filter(Boolean))];
+    if (allowedClassIds.length === 0) return [];
+
+    const classAssignments = await fetchAllRows<any>(
+      supabase
+        .from('assignment_class_assignments')
+        .select('assignment_id, class_id, classes:class_id(id, class_name, section)')
+        .eq('institution_id', institutionId)
+        .in('class_id', allowedClassIds),
+    );
+    const linkedAssignmentIds = new Set(classAssignments.map((item) => item.assignment_id as string));
+    if (linkedAssignmentIds.size === 0) return [];
+
+    let query = (supabase as any)
+      .from('assignments')
+      .select('*')
+      .eq('institution_id', institutionId)
+      .order('start_date', { ascending: false });
+
+    if (academicYear) {
+      const range = dateRange || getAcademicYearDateRange(academicYear);
+      query = query.gte('start_date', range.start).lt('start_date', range.end);
+    }
+
+    const assignmentRows = await fetchAllRows<Assignment>(query);
+    const visibleAssignments = assignmentRows.filter((assignment) => linkedAssignmentIds.has(assignment.id));
+    if (visibleAssignments.length === 0) return [];
+
+    const visibleIds = new Set(visibleAssignments.map((assignment) => assignment.id));
+    const visibleLinks = classAssignments.filter((item) => visibleIds.has(item.assignment_id));
+    const visibleClassIds = [...new Set(visibleLinks.map((item) => item.class_id as string))];
+    const submissions = await fetchAllRows<{ assignment_id: string }>(
+      (supabase as any)
+        .from('assignment_submissions')
+        .select('assignment_id')
+        .in('assignment_id', visibleAssignments.map((assignment) => assignment.id))
+        .in('class_id', visibleClassIds),
+    );
+    const submissionCounts = submissions.reduce<Record<string, number>>((counts, submission) => {
+      counts[submission.assignment_id] = (counts[submission.assignment_id] || 0) + 1;
+      return counts;
+    }, {});
+
+    return visibleAssignments.map((assignment) => ({
+      ...assignment,
+      classes: visibleLinks
+        .filter((link) => link.assignment_id === assignment.id)
+        .map((link) => link.classes)
+        .filter(Boolean),
+      submissions_count: submissionCounts[assignment.id] || 0,
+    }));
+  },
+
   async getAssignments(institutionId?: string, academicYear?: string, dateRange?: AcademicYearDateRange): Promise<AssignmentWithClasses[]> {
     let query = (supabase as any)
       .from('assignments')
@@ -266,10 +402,12 @@ export const assignmentService = {
 
     // Update class assignments if provided
     if (formData.class_ids !== undefined) {
-      await (supabase as any)
+      const { error: deleteLinksError } = await (supabase as any)
         .from('assignment_class_assignments')
         .delete()
         .eq('assignment_id', id);
+
+      if (deleteLinksError) throw deleteLinksError;
 
       if (formData.class_ids.length > 0) {
         const { data: userData } = await supabase.auth.getUser();
@@ -299,15 +437,17 @@ export const assignmentService = {
   },
 
   // Submission functions
-  async getSubmissions(assignmentId: string): Promise<AssignmentSubmission[]> {
-    const { data, error } = await (supabase as any)
+  async getSubmissions(assignmentId: string, classIds?: string[]): Promise<AssignmentSubmission[]> {
+    if (classIds && classIds.length === 0) return [];
+
+    let query = (supabase as any)
       .from('assignment_submissions')
       .select('*')
       .eq('assignment_id', assignmentId)
       .order('submitted_at', { ascending: false });
 
-    if (error) throw error;
-    return data || [];
+    if (classIds) query = query.in('class_id', classIds);
+    return fetchAllRows<AssignmentSubmission>(query);
   },
 
   async submitAssignment(params: {
